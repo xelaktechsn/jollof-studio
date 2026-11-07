@@ -333,7 +333,8 @@ function probeList(comps, A, facts) {
       const inj = dc.injections(); let i = 0;
       for (const k in S) if (S[k]) i += Math.max(0, inj.get(pid(c, k)) || 0);
       const l = LIM.SOURCE[t];
-      if (i > LIM.SHORT_MA) R('J0103', 'error', { comp: c }, { name: c.name, value: i });
+      // Court-circuit : bien au-delà de ce que la source sait débiter (un accu 18650 fournit 5 A en pointe).
+      if (i > Math.max(LIM.SHORT_MA, 2 * l.max)) R('J0103', 'error', { comp: c }, { name: c.name, value: i });
       else if (i > l.max) R('J0109', 'error', { comp: c }, { name: c.name, value: i, limit: l.max });
       else if (i > l.warn) R('J0902', 'warning', { comp: c }, { name: c.name, value: i, limit: l.warn });
     });

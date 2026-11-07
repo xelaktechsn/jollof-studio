@@ -12,7 +12,7 @@ import { tl, DEC } from '../i18n/index.js';
 export const LED = { warn: 20, max: 30, src: ['kingbrightWp7113id', 'kingbrightWp7113qbcd'] };
 /** Puissance (W) d'une résistance 1/4 W, du potentiomètre, du haut-parleur. */
 export const POWER = {
-  res: { warn: 0.2, max: 0.25, src: 'yageoCfr' }, pot: { warn: 0.08, max: 0.1, src: 'bournsPdb12' }, speaker: { warn: 0.4, max: 0.5, src: 'sameSkyCms40558n' }
+  res: { warn: 0.2, max: 0.25, src: 'yageoCfr' }, pot: { warn: 0.06, max: 0.08, src: 'bournsPdb12' }, speaker: { warn: 0.4, max: 0.5, src: 'sameSkyCms40558n' }
 };
 /** Transistor BC547 : courant de collecteur (mA), tension collecteur-émetteur (V). Les autres modèles : NPNS (parts.js). */
 export const NPN = NPNS.npn;
@@ -21,7 +21,7 @@ export const DIODE = { warn: 800, max: 1000, src: 'vishay1n4007' };
 /** Tension maximale d'un condensateur (V). */
 export const CAP_V = { 'cap-100n': 50, 'cap-100u': 16 };
 /** Contacts du relais (mA), voie du pilote L298N (mA), régulateur LM7805 (mA). */
-export const RELAY_CONTACT = 10000, L298N_CH = { warn: 1500, max: 2000, src: 'stL298' }, LM7805 = { warn: 1000, max: 1500, src: ['onsemiMc7800', 'stL78'] };
+export const RELAY_CONTACT = 7000, L298N_CH = { warn: 1500, max: 2000, src: 'stL298' }, LM7805 = { warn: 1000, max: 1500, src: ['onsemiMc7800', 'stL78'] };
 /**
  * LM7805 en boîtier TO-220 sans radiateur : RθJA ≈ 65 °C/W. À 40 °C ambiants (une salle de classe en saison chaude),
  * 1 W le porte à ≈ 105 °C ; au-delà de ≈ 1,3 W il atteint 125 °C et sa protection thermique coupe la sortie.
@@ -45,8 +45,8 @@ const BOARD = {
   uno: { pin: { warn: 20, max: 40 }, total: 200, five: 500, three: 50 },
   nano: { pin: { warn: 20, max: 40 }, total: 200, five: 500, three: 50 },
   esp32: { pin: { warn: 20, max: 40 }, total: 1200, five: 500, three: 300 },
-  nodemcu: { pin: { warn: 12, max: 20 }, total: 300, five: 500, three: 300 },
-  pico: { pin: { warn: 12, max: 16 }, total: 50, five: 500, three: 300 }
+  nodemcu: { pin: { warn: 8, max: 12 }, total: 300, five: 500, three: 300 },
+  pico: { pin: { warn: 8, max: 12 }, total: 50, five: 500, three: 300 }
 };
 const FAMILY = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
 /**

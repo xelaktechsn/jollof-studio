@@ -281,7 +281,7 @@ export const PARTS = {
     what: tl('Barrette de 8 LED RGB adressables (WS2812B) pilotées par un seul fil de données.'),
     pins: [gnd(), pwr('VCC', [3.5, 5.3], tl('Jusqu’à 60 mA par LED en blanc à pleine puissance, soit 480 mA pour la barrette.'), 'worldsemiWs2812b'), io('DIN', OUT, tl('Données'), tl('Données série à 800 kHz qui traversent les LED en cascade. Une résistance de 300 à 500 Ω en série protège la première LED.'))],
     tips: prof => (prof && prof.logic < 4 ? [tl('Sur une carte 3,3 V, le signal de données est un peu juste pour des LED en 5 V : un adaptateur de niveau (74AHCT125) le fiabilise.')] : []),
-    lib: 'Adafruit NeoPixel', ma: 400, ds: 'adafruitNeopixel',
+    lib: 'Adafruit NeoPixel', ma: 480, ds: 'adafruitNeopixel',
     code: p => `Adafruit_NeoPixel leds(8, ${p.DIN}, NEO_GRB + NEO_KHZ800);\n// setup() : leds.begin();\nleds.setPixelColor(0, leds.Color(255, 0, 0));\nleds.show();`
   },
 
@@ -315,7 +315,7 @@ export const PARTS = {
       { pin: 'COM', kind: 'contact', role: tl('Commun'), why: tl('Borne commune du contact : on y amène le + de l’alimentation de puissance (pile, adaptateur).') },
       { pin: 'NO', kind: 'contact', role: tl('Normalement ouvert'), why: tl('Relié à COM seulement quand le relais est collé : la charge (moteur, ventilateur, lampe) s’allume sur commande.') },
       { pin: 'NC', kind: 'contact', role: tl('Normalement fermé'), why: tl('Relié à COM au repos, ouvert quand le relais colle.') }],
-    notes: [tl('Côté contacts (COM, NO, NC), le circuit de puissance est séparé : jusqu’à 250 V~ 10 A. Le secteur est dangereux : coupez-le avant toute manipulation.')],
+    notes: [tl('Côté contacts (COM, NO, NC), le circuit de puissance est séparé : 10 A sous 125 V~, 7 A sous 240 V~ ou 28 V⎓. Le secteur est dangereux : coupez-le avant toute manipulation.')],
     code: p => tl('pinMode({0}, OUTPUT);\ndigitalWrite({1}, LOW); // relais collé (module actif à l’état bas)', p.IN, p.IN)
   },
 

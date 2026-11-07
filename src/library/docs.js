@@ -225,7 +225,7 @@ export const DOCS = {
     mistakes: [tl('Le brancher sans résistance : 8 Ω demandent bien plus de courant qu’une broche n’en fournit.')]
   },
   relay: {
-    specs: [[tl('Bobine'), '5 V, ≈ 70 mA'], [tl('Contacts'), tl('10 A sous 250 V~ ou 30 V⎓')], [tl('Commande'), tl('transistor et diode intégrés, souvent active à l’état bas')], [tl('Bornier'), tl('COM, NO (normalement ouvert), NC (normalement fermé)')]],
+    specs: [[tl('Bobine'), '5 V, ≈ 70 mA'], [tl('Contacts'), tl('10 A sous 125 V~, 7 A sous 240 V~ ou 28 V⎓')], [tl('Commande'), tl('transistor et diode intégrés, souvent active à l’état bas')], [tl('Bornier'), tl('COM, NO (normalement ouvert), NC (normalement fermé)')]],
     how: tl('Le courant dans la bobine crée un champ magnétique qui attire une lame : le contact COM passe de NC à NO. Le circuit commandé reste isolé de la carte.'),
     uses: [tl('Allumer une lampe, une pompe, un ventilateur : + de la pile sur COM, l’appareil sur NO'), tl('Couper un appareil à distance')],
     mistakes: [tl('Travailler sur le secteur 230 V sous tension : danger de mort.'), tl('Alimenter la bobine en 3,3 V : le relais colle mal ou pas du tout.'), tl('Croire que HIGH active le relais : sur beaucoup de modules, c’est LOW.')]
