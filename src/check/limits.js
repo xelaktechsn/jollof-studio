@@ -2,33 +2,37 @@
 // Copyright (C) 2026 Mamadou Sarr
 // Valeurs nominales et maximales des composants, lisibles par le vérificateur (et non plus seulement
 // écrites dans les fiches). warn : au-delà, le composant s'use ou chauffe ; max : au-delà, il est détruit.
-// Sources : fiches techniques usuelles (docs.js reprend ces chiffres pour les élèves).
+// Sources : fiches techniques de sources.js, citées par la clé src de chaque limite, ou par LIMIT_SRC pour les nombres
+// simples (docs.js reprend ces chiffres pour les élèves).
 import { BOARDS, boardOf } from '../sim/boards.js';
 import { NPNS } from '../sim/parts.js';
 import { tl, DEC } from '../i18n/index.js';
 
 /** Courant dans une LED (mA) : par couleur pour une LED RVB, par segment pour un afficheur. */
-export const LED = { warn: 20, max: 30 };
+export const LED = { warn: 20, max: 30, src: ['kingbrightWp7113id', 'kingbrightWp7113qbcd'] };
 /** Puissance (W) d'une résistance 1/4 W, du potentiomètre, du haut-parleur. */
-export const POWER = { res: { warn: 0.2, max: 0.25 }, pot: { warn: 0.08, max: 0.1 }, speaker: { warn: 0.4, max: 0.5 } };
+export const POWER = {
+  res: { warn: 0.2, max: 0.25, src: 'yageoCfr' }, pot: { warn: 0.08, max: 0.1, src: 'bournsPdb12' }, speaker: { warn: 0.4, max: 0.5, src: 'sameSkyCms40558n' }
+};
 /** Transistor BC547 : courant de collecteur (mA), tension collecteur-émetteur (V). Les autres modèles : NPNS (parts.js). */
 export const NPN = NPNS.npn;
 /** Diode 1N4007 : courant direct (mA). */
-export const DIODE = { warn: 800, max: 1000 };
+export const DIODE = { warn: 800, max: 1000, src: 'vishay1n4007' };
 /** Tension maximale d'un condensateur (V). */
 export const CAP_V = { 'cap-100n': 50, 'cap-100u': 16 };
 /** Contacts du relais (mA), voie du pilote L298N (mA), régulateur LM7805 (mA). */
-export const RELAY_CONTACT = 10000, L298N_CH = { warn: 1500, max: 2000 }, LM7805 = { warn: 1000, max: 1500 };
+export const RELAY_CONTACT = 10000, L298N_CH = { warn: 1500, max: 2000, src: 'stL298' }, LM7805 = { warn: 1000, max: 1500, src: ['onsemiMc7800', 'stL78'] };
 /**
  * LM7805 en boîtier TO-220 sans radiateur : RθJA ≈ 65 °C/W. À 40 °C ambiants (une salle de classe en saison chaude),
  * 1 W le porte à ≈ 105 °C ; au-delà de ≈ 1,3 W il atteint 125 °C et sa protection thermique coupe la sortie.
  */
-export const LM7805_W = { warn: 1, max: 1.3 };
+export const LM7805_W = { warn: 1, max: 1.3, src: 'onsemiMc7800' };
 /** Buzzer actif : tension (V) au-delà de laquelle il s'abîme. */
-export const BUZZER_V = { warn: 5.5, max: 7 };
+export const BUZZER_V = { warn: 5.5, max: 7, src: 'sameSkyCmi1295' };
 /** Sources : courant débité (mA). Au-delà de « short », c'est un court-circuit. */
 export const SOURCE = {
-  bat9v: { warn: 300, max: 1000 }, bat18650: { warn: 3000, max: 5000 }, mb102: { warn: 500, max: 700 }
+  bat9v: { warn: 300, max: 1000, src: 'energizer522' }, bat18650: { warn: 3000, max: 5000, src: 'samsungIcr18650' },
+  mb102: { warn: 500, max: 700, src: ['mb102', 'ams1117'] }
 };
 export const SHORT_MA = 2000;
 
@@ -45,6 +49,25 @@ const BOARD = {
   pico: { pin: { warn: 12, max: 16 }, total: 50, five: 500, three: 300 }
 };
 const FAMILY = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
+/**
+ * Sources des limites écrites en nombres simples (clé de SOURCES, ou liste de clés) ; celles des objets sont dans leur
+ * clé src. BOARD : pour chaque carte, pin, total, five, three, et vmax (la marge des diodes de protection, qui donne
+ * aussi vmin). null : seuil de conception, sans fiche technique.
+ */
+export const LIMIT_SRC = {
+  CAP_V: { 'cap-100n': 'vishayKSeries', 'cap-100u': 'vishay036Rsp' },
+  RELAY_CONTACT: 'songleSrd',
+  // Seuil de conception : bien au-delà de ce que débitent la pile 9 V, le MB102 et l'USB, aucune fiche ne le donne.
+  SHORT_MA: null,
+  BOARD: {
+    uno: { pin: ['atmega328p', 'arduinoUno'], total: 'atmega328p', five: 'arduinoUno', three: 'arduinoUno', vmax: 'atmega328p' },
+    nano: { pin: ['atmega328p', 'arduinoNano'], total: 'atmega328p', five: 'usb2', three: 'ft232r', vmax: 'atmega328p' },
+    // 3V3 des cartes ESP : régulateur AMS1117 de 1 A, dont la puce garde sa part (0,5 A demandés pour l'ESP32).
+    esp32: { pin: 'esp32', total: 'esp32', five: 'usb2', three: ['ams1117', 'esp32'], vmax: 'esp32' },
+    nodemcu: { pin: 'esp8266', total: 'esp8266', five: 'usb2', three: ['ams1117', 'esp8266'], vmax: 'esp8266' },
+    pico: { pin: 'rp2040', total: 'rp2040', five: 'usb2', three: 'pico', vmax: 'rp2040' }
+  }
+};
 /** Limites d'une carte (profil importé : celles de sa famille). */
 export function boardLimits(c) {
   const p = boardOf(c); if (!p) return null;
