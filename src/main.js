@@ -2158,6 +2158,16 @@ async function saveSchematicPdf() {
     if (path) status(native.isTauri() ? tl('Schéma enregistré : {0}', path) : tl('Schéma PDF téléchargé.'), 'ok');
   } catch (e) { status(tl('Enregistrement du PDF impossible : ') + (e.message || e), 'err'); }
 }
+/** Netlist KiCad (.net) : le circuit imprimé se dessine ensuite dans Pcbnew (Fichier → Importer → Netlist). */
+async function saveKicadNetlist() {
+  try {
+    const { kicadNetlist } = await import('./export/kicad.js');
+    const text = kicadNetlist({ comps: S.comps, wires: S.wires, netNames: S.netNames, title: moduleApi.projectTitle(), describe });
+    const name = schFileName().replace(/\.pdf$/, '.net');
+    const path = await native.saveFile(new Blob([text], { type: 'text/plain' }), name, tl('Netlist KiCad'), 'net');
+    if (path) status(native.isTauri() ? tl('Netlist KiCad enregistrée : {0}', path) : tl('Netlist KiCad téléchargée. Dans KiCad : Pcbnew, Fichier → Importer → Netlist.'), 'ok');
+  } catch (e) { status(tl('Export KiCad impossible : ') + (e.message || e), 'err'); }
+}
 /** Impression : seules les feuilles du schéma, au bon format de page. */
 function printSchematic() {
   if (!schLast) renderSchematic();
@@ -2566,6 +2576,7 @@ function bindUI() {
   $('#schFormat').onchange = renderSchematic;
   $('#schLists').onchange = renderSchematic;
   $('#schPdf').onclick = saveSchematicPdf;
+  $('#schKicad').onclick = saveKicadNetlist;
   $('#schPrint').onclick = printSchematic;
   $('#exClose').onclick = closeEx;
   $('#exModal').onclick = e => { if (e.target.id === 'exModal') closeEx(); };

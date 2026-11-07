@@ -3615,8 +3615,13 @@ export default {
   "Connexions non importées": "Connections not imported",
   "Remarques": "Notes",
   "Projet Wokwi importé : {0} composants, {1} fils.": "Wokwi project imported: {0} components, {1} wires.",
-  "Import impossible : ": "Import failed: ",
   "Importer un projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé)": "Import a Wokwi project (diagram.json and sketch.ino, or the downloaded .zip)",
   "Importer un projet Wokwi": "Import a Wokwi project",
-  "Projet importé": "Imported project"
+  "Projet importé": "Imported project",
+  "Netlist KiCad": "KiCad netlist",
+  "Netlist KiCad enregistrée : {0}": "KiCad netlist saved: {0}",
+  "Netlist KiCad téléchargée. Dans KiCad : Pcbnew, Fichier → Importer → Netlist.": "KiCad netlist downloaded. In KiCad: Pcbnew, File → Import → Netlist.",
+  "Export KiCad impossible :": "KiCad export failed:",
+  "Netlist pour KiCad : dessiner le circuit imprimé dans Pcbnew": "Netlist for KiCad: draw the circuit board in Pcbnew",
+  "KiCad": "KiCad"
 };

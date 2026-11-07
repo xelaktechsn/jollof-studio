@@ -273,7 +273,7 @@ function block(c, title, sub, faceRight) {
 /* ---------------- Nœuds ---------------- */
 /** Nom d'une alimentation : +5V, +3V3, +9V, +3V7. */
 const fmtV = v => { const r = Math.round(v * 10) / 10; return Number.isInteger(r) ? `+${r}V` : `+${Math.floor(r)}V${Math.round((r % 1) * 10)}`; };
-function buildNets(comps, A, netNames) {
+export function buildNets(comps, A, netNames) {
   const drawn = new Set(comps), pid = r => `${r.comp.id}|${r.key}`, byPin = new Map(), nets = [];
   for (const c of comps) for (const k of Object.keys(c.pins)) {
     const ref = { comp: c, key: k };
