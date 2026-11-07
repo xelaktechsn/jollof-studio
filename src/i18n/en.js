@@ -3640,5 +3640,6 @@ export default {
   "Lancez la simulation : la carte réelle suivra le programme de {0}.": "Start the simulation: the real board will follow {0}'s program.",
   "sortie recopiée": "mirrored output",
   "simulé {0} · réel {1}": "simulated {0} · real {1}",
-  "écart": "mismatch"
+  "écart": "mismatch",
+  "Ce que le vérificateur prouve, et ce qu’il suppose": "What the checker proves, and what it assumes"
 };

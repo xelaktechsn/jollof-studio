@@ -9,6 +9,9 @@ import { where, summary, fmtN } from './format.js';
 import { explain } from './explain.js';
 import { familyOf } from './codes.js';
 import { tl, LANG } from '../i18n/index.js';
+import { SOURCE_URL } from '../library/credits.js';
+/** Page publique : ce que la preuve couvre, les modèles, la comparaison avec ngspice, les sources des limites. */
+const PROVEN_URL = `${SOURCE_URL}/blob/main/docs/PROVEN.md`;
 
 /**
  * app : { $, esc, icon, anchor (élément avant lequel poser la pastille), comps(), wires(), programs() → Map,
@@ -144,7 +147,7 @@ export function installCheck(app) {
         <button type="button" class="btn small" data-a="explain" aria-expanded="${!!ex}">${tl('Expliquer {0}', d.code)}</button>
         ${d.level === 'warning' ? (d.accepted != null ? `<button type="button" class="btn small" data-a="unaccept">${tl('Retirer l’exception')}</button>` : `<button type="button" class="btn small" data-a="accept">${tl('Accepter…')}</button>`) : ''}
       </div>
-      ${ex ? `<div class="jexp"><p class="fam">${esc(ex.family)}</p><p><b>${tl('Ce qui est vérifié')}</b> ${esc(ex.what)}</p><p><b>${tl('Pourquoi')}</b> ${esc(ex.why)}</p><p><b>${tl('Comment corriger')}</b> ${esc(ex.fix)}</p></div>` : ''}
+      ${ex ? `<div class="jexp"><p class="fam">${esc(ex.family)}</p><p><b>${tl('Ce qui est vérifié')}</b> ${esc(ex.what)}</p><p><b>${tl('Pourquoi')}</b> ${esc(ex.why)}</p><p><b>${tl('Comment corriger')}</b> ${esc(ex.fix)}</p><p class="note"><a href="${PROVEN_URL}" target="_blank" rel="noopener">${tl('Ce que le vérificateur prouve, et ce qu’il suppose')}</a></p></div>` : ''}
     </article>`;
   }
   function render() {
