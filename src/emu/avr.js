@@ -11,6 +11,7 @@ import {
 } from 'avr8js';
 import { parseHex } from './hex.js';
 import { pinMap } from '../prog/runtime.js';
+import { attachDevices } from './devices/index.js';
 
 export const MHZ = 16e6;
 const PER_MS = MHZ / 1000;
@@ -61,7 +62,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       const key = keys.get(n); if (!key) return;
       const rec = { mode: 0, d: 0, pwm: null, freq: 0, ledc: 0, toneEnd: 0, servo: null, px: null, stepper: null, weak: false, dac: null };
       pins.set(key, rec);
-      lines.push({ key, n, P, bit, port, rec, level: 0, ext: null, ring: new Float64Array(RING), lev: new Uint8Array(RING), head: 0, count: 0, sliceEdges: 0 });
+      lines.push({ key, n, P, bit, port, rec, level: 0, ext: null, dev: null, line: 1, subs: [], ring: new Float64Array(RING), lev: new Uint8Array(RING), head: 0, count: 0, sliceEdges: 0 });
     });
     let inside = false;
     port.addListener(() => {
@@ -70,9 +71,10 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       for (const L of lines) {
         if (L.P !== P) continue;
         const st = port.pinState(L.bit), out1 = st === PinState.High || st === PinState.Low, mode = out1 ? 1 : st === PinState.InputPullUp ? 2 : 0;
-        // Entrée qui vient de changer de mode : niveau aussitôt (montage, sinon tirage interne), comme sur la carte.
-        if (!out1 && mode !== L.rec.mode) { inside = true; L.port.setPin(L.bit, L.ext != null ? L.ext : mode === 2); inside = false; }
+        // Entrée qui vient de changer de mode : niveau aussitôt (module, montage, sinon tirage interne), comme sur la carte.
         L.rec.mode = mode;
+        if (!out1) { inside = true; L.port.setPin(L.bit, inLevel(L)); inside = false; }
+        lineChanged(L, out1 ? (st === PinState.High ? 1 : 0) : +inLevel(L), now);
         const lv = st === PinState.High ? 1 : 0;
         if (!out1 || lv === L.level) { if (!out1) L.level = 0; continue; }
         L.level = lv;
@@ -82,6 +84,26 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       }
     });
   }
+  /** Niveau d'une broche en entrée : un module qui la tire (DHT, 1-Wire…), sinon le montage, sinon le tirage interne. */
+  function inLevel(L) { return L.dev != null ? L.dev : L.ext != null ? L.ext : L.rec.mode === 2; }
+  /** La ligne change de niveau : les modules abonnés (protocoles temporisés) le voient au cycle près. */
+  function lineChanged(L, lv, cyc) {
+    if (lv === L.line) return;
+    L.line = lv;
+    for (const fn of L.subs.slice()) fn(lv, cyc);
+  }
+  const byKey = new Map(lines.map(L => [L.key, L]));
+  const pinApi = {
+    keys: () => byKey.keys(),
+    level: key => { const L = byKey.get(key); return L ? L.line : null; },
+    onEdge(key, fn) { const L = byKey.get(key); if (!L) return () => {}; L.subs.push(fn); return () => { const i = L.subs.indexOf(fn); if (i >= 0) L.subs.splice(i, 1); }; },
+    /** Un module tire la ligne (true/false) ou la relâche (null). */
+    drive(key, level) {
+      const L = byKey.get(key); if (!L) return;
+      L.dev = level == null ? null : !!level;
+      if (L.rec.mode !== 1) { L.port.setPin(L.bit, inLevel(L)); lineChanged(L, +inLevel(L), cpu.cycles); }
+    }
+  };
   usart.onByteTransmit = b => { const ch = String.fromCharCode(b); out += ch; tapBuf += ch; };
 
   /** Entrées : niveau imposé par le montage (capteur, bouton, autre carte), sinon tirage interne ; tensions de l'ADC. */
@@ -90,7 +112,8 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       if (L.rec.mode === 1) continue;
       const r = hw.read ? hw.read(L.key) : null;
       L.ext = r ? (r.d != null ? !!r.d : r.v > logic / 2) : null;
-      L.port.setPin(L.bit, L.ext != null ? L.ext : L.rec.mode === 2);
+      L.port.setPin(L.bit, inLevel(L));
+      lineChanged(L, +inLevel(L), cpu.cycles);
     }
     for (let ch = 0; ch < 8; ch++) {
       const r = hw.read ? hw.read('A' + ch) : null;
@@ -145,11 +168,14 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       }
     } catch (e) { state = 'error'; error = { line: 0, msg: String((e && e.message) || e) }; }
     analyse();
+    devices.frame();
     if (eeDirty) flushEeprom();
     if (tap && tapBuf) { tap(tapBuf, vt()); }
     tapBuf = '';
   }
 
+  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi });
+  devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {
     pins, warnings, run, clock: vt,
@@ -167,6 +193,6 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); },
     stop() { state = 'stopped'; },
     /** Pour les tests et les modèles de modules : le processeur émulé et ses périphériques. */
-    hw: { cpu, ports, usart, adc, twi, spi, eeprom: eeBack }
+    hw: { cpu, ports, usart, adc, twi, spi, eeprom: eeBack, pinApi, devices }
   };
 }

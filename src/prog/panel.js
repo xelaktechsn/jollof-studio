@@ -143,6 +143,11 @@ export function createProgram(app) {
         const s = sim();
         return comps().filter(c => types.includes(c.type)).filter(c => { const ins = s.ins && s.ins.get(c); return ins && ins.board === b && ins.level !== 'err'; }).map(c => ({ comp: c, addr: addr(c) }));
       },
+      /** Modules de ces types reliés à cette carte et bien câblés (modèles du mode fidèle : SPI, signaux temporisés). */
+      comps(types) {
+        const s = sim();
+        return comps().filter(c => types.includes(c.type)).filter(c => { const ins = s.ins && s.ins.get(c); return ins && ins.board === b && ins.level !== 'err'; });
+      },
       data(c) { const r = c.simR; return r && r.level !== 'err' && r.data ? r.data : null; },
       /** Composants reliés à une broche de la carte, avec leur broche : [{ comp, pin }]. */
       at, status,

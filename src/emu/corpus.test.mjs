@@ -4,6 +4,7 @@
 // interruptions, EEPROM, I2C…), compilés par arduino-cli puis exécutés sur l'ATmega328P émulé. Chaque fichier
 // de src/emu/corpus/ dit ce qu'il doit écrire sur le port série :
 //   // expect: texte attendu        // run-ms: durée simulée (300 par défaut)        // send: texte envoyé (\n permis)
+//   // lcd: ligne 1|ligne 2         (un écran LCD I2C à l'adresse 0x27 est branché, et doit afficher ces lignes)
 // Sans arduino-cli sur la machine, la suite est ignorée. node --test src/emu/corpus.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -27,13 +28,25 @@ test('Corpus de programmes Arduino réels, compilés et émulés', { skip: !hasC
     fs.mkdirSync(sk, { recursive: true }); fs.writeFileSync(path.join(sk, name + '.ino'), src);
     const c = spawnSync('arduino-cli', ['compile', '--fqbn', 'arduino:avr:uno', '--output-dir', out, sk], { encoding: 'utf8' });
     if (c.status !== 0) { failures.push(`${f} : ne compile pas\n${(c.stdout + c.stderr).split('\n').filter(l => /error/i.test(l)).slice(0, 3).join('\n')}`); continue; }
-    const rt = createAvrRuntime(fs.readFileSync(path.join(out, name + '.ino.hex'), 'utf8'), { prof: BOARDS.uno, kind: 'uno', read: k => (k === 'A0' ? { v: 2.5 } : null) });
+    // Modules branchés pour ce programme (faux composants, comme ceux du montage).
+    const mods = [];
+    if (meta(src, 'lcd').length) mods.push({ comp: { id: 'lcd', type: 'lcd1602', name: 'LCD1' }, addr: [0x27] });
+    const hw = {
+      prof: BOARDS.uno, kind: 'uno', read: k => (k === 'A0' ? { v: 2.5 } : null),
+      bus: types => mods.filter(m => types.includes(m.comp.type)), comps: types => mods.filter(m => types.includes(m.comp.type)).map(m => m.comp),
+      at: () => [], data: () => null
+    };
+    const rt = createAvrRuntime(fs.readFileSync(path.join(out, name + '.ino.hex'), 'utf8'), hw);
     for (const s of meta(src, 'send')) rt.send(s.replace(/\\n/g, '\n'));
     const ms = +(meta(src, 'run-ms')[0] || 300);
     let guard = 0;
     while (rt.clock() < ms && guard++ < 20000) rt.run(16);
     const serial = rt.takeSerial();
     for (const e of meta(src, 'expect')) if (!serial.includes(e)) failures.push(`${f} : attendu « ${e} », reçu ${JSON.stringify(serial.slice(0, 200))}`);
+    for (const e of meta(src, 'lcd')) {
+      const c = mods.find(m => m.comp.type === 'lcd1602').comp, got = c.progScreen ? c.progScreen.lines.map(l => l.trimEnd()).join('|') : '(rien)';
+      if (got !== e) failures.push(`${f} : écran attendu « ${e} », affiché « ${got} »`);
+    }
     if (rt.state !== 'run') failures.push(`${f} : état ${rt.state} ${rt.error ? rt.error.msg : ''}`);
   }
   assert.deepEqual(failures, [], failures.join('\n\n'));
