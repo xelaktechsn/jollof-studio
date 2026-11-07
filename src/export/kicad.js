@@ -125,3 +125,94 @@ export function parseSexpr(text) {
   if (i < text.length) throw new Error('texte après la fin');
   return r;
 }
+
+/* ---------- Schéma KiCad (.kicad_sch) ---------- */
+// Chaque composant devient un bloc rectangulaire (symbole « Jollof:<type> » inclus dans le fichier), broches à
+// gauche et à droite, numérotées comme les pastilles de son empreinte : « Mettre à jour le PCB depuis le schéma »
+// retrouve la netlist ci-dessus. Les liaisons passent par des étiquettes au nom du nœud (GND, 5V, D13…) posées au
+// bout de chaque broche : même nom, même fil pour KiCad. La disposition suit celle du tapis de montage.
+const G = 2.54, F = '(effects (font (size 1.27 1.27)))';
+const snap = v => Math.round(v / G) * G, mm = v => +v.toFixed(2);
+/** Bloc d'un composant : broches réparties à gauche puis à droite, rangées au pas de 2,54 mm. */
+function blockOf(c) {
+  const f = footprintOf(c), keys = Object.keys(c.pins || {}).filter(k => f.pads[k] || f.pads[base(k)]);
+  const half = Math.ceil(keys.length / 2), rows = Math.max(half, 1), w = Math.max(4, Math.ceil(Math.max(...keys.map(k => base(k).length), 1) * 1.6 / G)) * G;
+  const pins = keys.map((k, i) => {
+    const left = i < half, row = left ? i : i - half;
+    return { key: k, num: f.pads[k] || f.pads[base(k)], name: base(k), x: left ? -w / 2 - G : w / 2 + G, y: -((rows - 1) * G) / 2 + row * G, angle: left ? 0 : 180 };
+  });
+  return { f, pins, w, h: rows * G + G };
+}
+
+/**
+ * Schéma KiCad du montage. o : comme kicadNetlist. Rend le texte du fichier .kicad_sch (KiCad 8, format 20231120).
+ */
+export function kicadSchematic(o) {
+  const comps = o.comps.filter(c => !/^breadboard/.test(c.type) && Object.keys(c.pins || {}).length);
+  const A = analyze(o.comps, o.wires, { open: true });
+  const { of } = buildNets(comps, A, o.netNames || {});
+  const refs = refsOf(comps), title = o.title || 'circuit', root = uuidOf('root:' + title);
+  const blocks = new Map(comps.map(c => [c, blockOf(c)]));
+  // Place : celle du tapis (mm), resserrée, puis écartée jusqu'à ce que les blocs (et leurs étiquettes) ne se touchent plus.
+  const pos = new Map(comps.map(c => [c, [((c.group && c.group.position.x) || 0) * 0.9, ((c.group && c.group.position.z) || 0) * 0.9]]));
+  const box = c => { const b = blocks.get(c), [x, y] = pos.get(c); return [x - b.w / 2 - 16, y - b.h / 2 - 3, x + b.w / 2 + 16, y + b.h / 2 + 3]; };
+  for (let it = 0; it < 200; it++) {
+    let moved = false;
+    for (let i = 0; i < comps.length; i++) for (let j = i + 1; j < comps.length; j++) {
+      const a = box(comps[i]), b = box(comps[j]);
+      if (a[2] <= b[0] || b[2] <= a[0] || a[3] <= b[1] || b[3] <= a[1]) continue;
+      const pa = pos.get(comps[i]), pb = pos.get(comps[j]), dx = Math.min(a[2], b[2]) - Math.max(a[0], b[0]), dy = Math.min(a[3], b[3]) - Math.max(a[1], b[1]);
+      if (dx < dy) { const s = pa[0] <= pb[0] ? 1 : -1; pa[0] -= s * dx / 2 + s * 0.5; pb[0] += s * dx / 2 + s * 0.5; }
+      else { const s = pa[1] <= pb[1] ? 1 : -1; pa[1] -= s * dy / 2 + s * 0.5; pb[1] += s * dy / 2 + s * 0.5; }
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  // Repère de la feuille A3 paysage : tout ramené dans le cadre, sur la grille.
+  const all = comps.map(box), x0 = Math.min(...all.map(b => b[0]), 0), y0 = Math.min(...all.map(b => b[1]), 0);
+  for (const c of comps) { const p = pos.get(c); p[0] = snap(p[0] - x0 + 25.4); p[1] = snap(p[1] - y0 + 25.4); }
+
+  const L = [];
+  L.push(`(kicad_sch (version 20231120) (generator "jollof_studio") (generator_version "1.0") (uuid ${q(root)}) (paper "A3")`);
+  L.push(`  (title_block (title ${q(title)}) (date ${q(o.date || new Date().toISOString().slice(0, 10))}) (comment 1 "Jollof Studio"))`);
+  L.push('  (lib_symbols');
+  const done = new Set();
+  for (const c of comps) {
+    const id = `Jollof:${c.type}`; if (done.has(id)) continue; done.add(id);
+    const b = blocks.get(c), sym = c.type.replace(/[^\w-]/g, '_');
+    L.push(`    (symbol ${q(id)} (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes)`);
+    L.push(`      (property "Reference" "U" (at 0 ${mm(-b.h / 2 - 1.27)} 0) ${F})`);
+    L.push(`      (property "Value" ${q(c.type)} (at 0 ${mm(b.h / 2 + 1.27)} 0) ${F})`);
+    L.push(`      (property "Footprint" ${q(b.f.fp)} (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))`);
+    L.push(`      (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) (hide yes)))`);
+    L.push(`      (symbol ${q(sym + '_0_1')} (rectangle (start ${mm(-b.w / 2)} ${mm(-b.h / 2)}) (end ${mm(b.w / 2)} ${mm(b.h / 2)}) (stroke (width 0.254) (type default)) (fill (type background))))`);
+    L.push(`      (symbol ${q(sym + '_1_1')}`);
+    // Dans la bibliothèque, l'axe Y monte : on retourne les rangées pour garder l'ordre de haut en bas.
+    for (const p of b.pins) L.push(`        (pin passive line (at ${mm(p.x)} ${mm(-p.y)} ${p.angle}) (length ${G}) (name ${q(p.name)} ${F}) (number ${q(p.num)} ${F}))`);
+    L.push('      )');
+    L.push('    )');
+  }
+  L.push('  )');
+  for (const c of comps) {
+    const b = blocks.get(c), [x, y] = pos.get(c), ref = refs.get(c), f = b.f;
+    const value = f.value || (boardOf(c) ? boardOf(c).label : o.describe ? o.describe(c).title : c.type);
+    L.push(`  (symbol (lib_id ${q('Jollof:' + c.type)}) (at ${mm(x)} ${mm(y)} 0) (unit 1) (exclude_from_sim no) (in_bom yes) (on_board yes) (dnp no) (uuid ${q(uuidOf(c.id))})`);
+    L.push(`    (property "Reference" ${q(ref)} (at ${mm(x)} ${mm(y - b.h / 2 - 1.27)} 0) ${F})`);
+    L.push(`    (property "Value" ${q(value)} (at ${mm(x)} ${mm(y + b.h / 2 + 1.27)} 0) ${F})`);
+    L.push(`    (property "Footprint" ${q(f.fp)} (at ${mm(x)} ${mm(y)} 0) (effects (font (size 1.27 1.27)) (hide yes)))`);
+    for (const p of b.pins) L.push(`    (pin ${q(p.num)} (uuid ${q(uuidOf(c.id + '#' + p.num))}))`);
+    L.push(`    (instances (project ${q(title)} (path ${q('/' + root)} (reference ${q(ref)}) (unit 1))))`);
+    L.push('  )');
+    // Étiquette au bout de chaque broche reliée ; croix « non connectée » sinon.
+    for (const p of b.pins) {
+      const ex = mm(x + p.x), ey = mm(y + p.y), net = of({ comp: c, key: p.key });
+      if (net && net.pins.length > 1) {
+        const name = net.name === 'COURT-CIRCUIT' ? 'SHORT' : net.name;
+        L.push(`  (label ${q(name)} (at ${ex} ${ey} 0) (effects (font (size 1.27 1.27)) (justify ${p.angle ? 'left' : 'right'} bottom)) (uuid ${q(uuidOf(c.id + '#L' + p.num))}))`);
+      } else L.push(`  (no_connect (at ${ex} ${ey}) (uuid ${q(uuidOf(c.id + '#N' + p.num))}))`);
+    }
+  }
+  L.push('  (sheet_instances (path "/" (page "1")))');
+  L.push(')');
+  return L.join('\n') + '\n';
+}

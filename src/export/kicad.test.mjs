@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { kicadNetlist, parseSexpr, footprintOf } from './kicad.js';
+import { kicadNetlist, kicadSchematic, parseSexpr, footprintOf } from './kicad.js';
 import { loadProject } from '../check/load.js';
 import { analyze } from '../sim/circuit.js';
 
@@ -60,3 +60,33 @@ test('Empreintes : cathode de LED en pastille 1, connecteur pour un module', () 
   assert.match(fp.fp, /PinHeader_1x03/); assert.deepEqual(fp.pads, { VCC: '1', DATA: '2', GND: '3' });
   assert.deepEqual(parseSexpr('(a "b \\"c\\"" (d e))'), ['a', 'b "c"', ['d', 'e']]);
 });
+
+for (const f of examples) {
+  test(`Schéma KiCad : ${f}`, () => {
+    const { comps, wires } = loadProject(JSON.parse(fs.readFileSync(new URL(f, DIR), 'utf8')));
+    const o = { comps, wires, title: f.replace(/\.jollof$/, ''), date: '2026-11-07', describe: c => ({ title: c.type }) };
+    const tree = parseSexpr(kicadSchematic(o)), net = parseSexpr(kicadNetlist(o));
+    assert.equal(tree[0], 'kicad_sch');
+    const libs = new Map(find(tree, 'lib_symbols')[0].slice(1).map(s => [s[1], s]));
+    const syms = find(tree, 'symbol'), labels = find(tree, 'label'), ncs = find(tree, 'no_connect');
+    const at = x => { const a = find(x.slice(1), 'at')[0]; return [+a[1], +a[2]]; };
+    const key = ([x, y]) => `${x.toFixed(2)},${y.toFixed(2)}`;
+    const labelAt = new Map(labels.map(l => [key(at(l)), l[1]])), ncAt = new Set(ncs.map(n => key(at(n))));
+    // Chaque broche de chaque symbole : au bout, une étiquette (nœud) ou une croix « non connectée ».
+    const nodeNet = new Map();
+    for (const n of find(find(net, 'nets')[0].slice(1), 'net')) for (const nd of find(n.slice(1), 'node')) nodeNet.set(`${val(nd.slice(1), 'ref')}#${val(nd.slice(1), 'pin')}`, val(n.slice(1), 'name'));
+    for (const s of syms) {
+      const lib = libs.get(val(s.slice(1), 'lib_id')), [x, y] = at(s);
+      const ref = find(s.slice(1), 'property').find(p => p[1] === 'Reference')[2];
+      const unit = lib.slice(1).filter(u => Array.isArray(u) && u[0] === 'symbol' && /_1_1$/.test(u[1]))[0];
+      const pins = find(unit.slice(2), 'pin');
+      assert.deepEqual(new Set(find(s.slice(1), 'pin').map(p => p[1])), new Set(pins.map(p => val(p.slice(3), 'number'))), `${ref} : broches du symbole`);
+      for (const p of pins) {
+        const [px, py] = at(p), num = val(p.slice(3), 'number'), end = key([x + px, y - py]);
+        assert.ok(labelAt.has(end) || ncAt.has(end), `${ref} broche ${num} : ni étiquette ni croix en ${end}`);
+        // L'étiquette porte le nom du nœud de la netlist (même circuit des deux côtés).
+        if (labelAt.has(end)) assert.equal(labelAt.get(end), nodeNet.get(`${ref}#${num}`), `${ref} broche ${num}`);
+      }
+    }
+  });
+}

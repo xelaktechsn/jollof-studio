@@ -3618,11 +3618,7 @@ export default {
   "Importer un projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé)": "Import a Wokwi project (diagram.json and sketch.ino, or the downloaded .zip)",
   "Importer un projet Wokwi": "Import a Wokwi project",
   "Projet importé": "Imported project",
-  "Netlist KiCad": "KiCad netlist",
-  "Netlist KiCad enregistrée : {0}": "KiCad netlist saved: {0}",
-  "Netlist KiCad téléchargée. Dans KiCad : Pcbnew, Fichier → Importer → Netlist.": "KiCad netlist downloaded. In KiCad: Pcbnew, File → Import → Netlist.",
   "Export KiCad impossible :": "KiCad export failed:",
-  "Netlist pour KiCad : dessiner le circuit imprimé dans Pcbnew": "Netlist for KiCad: draw the circuit board in Pcbnew",
   "KiCad": "KiCad",
   "Carte réelle (Firmata)": "Real board (Firmata)",
   "Téléversez StandardFirmata sur la vraie carte (IDE Arduino : Exemples → Firmata), branchez-la, puis connectez : elle recopie les sorties de la carte simulée et montre ses vraies entrées.": "Upload StandardFirmata to the real board (Arduino IDE: Examples → Firmata), plug it in, then connect: it mirrors the simulated board's outputs and shows its real inputs.",
@@ -3641,5 +3637,9 @@ export default {
   "sortie recopiée": "mirrored output",
   "simulé {0} · réel {1}": "simulated {0} · real {1}",
   "écart": "mismatch",
-  "Ce que le vérificateur prouve, et ce qu’il suppose": "What the checker proves, and what it assumes"
+  "Ce que le vérificateur prouve, et ce qu’il suppose": "What the checker proves, and what it assumes",
+  "Projet KiCad": "KiCad project",
+  "Fichiers KiCad enregistrés : {0}": "KiCad files saved: {0}",
+  "Fichiers KiCad téléchargés : ouvrez le .kicad_sch dans KiCad, ou importez la netlist dans Pcbnew.": "KiCad files downloaded: open the .kicad_sch in KiCad, or import the netlist in Pcbnew.",
+  "Schéma et netlist pour KiCad : dessiner le circuit imprimé": "Schematic and netlist for KiCad: design the circuit board"
 };

@@ -2160,14 +2160,15 @@ async function saveSchematicPdf() {
     if (path) status(native.isTauri() ? tl('Schéma enregistré : {0}', path) : tl('Schéma PDF téléchargé.'), 'ok');
   } catch (e) { status(tl('Enregistrement du PDF impossible : ') + (e.message || e), 'err'); }
 }
-/** Netlist KiCad (.net) : le circuit imprimé se dessine ensuite dans Pcbnew (Fichier → Importer → Netlist). */
+/** Projet KiCad (.zip : netlist .net et schéma .kicad_sch) : le circuit imprimé se dessine ensuite dans KiCad. */
 async function saveKicadNetlist() {
   try {
-    const { kicadNetlist } = await import('./export/kicad.js');
-    const text = kicadNetlist({ comps: S.comps, wires: S.wires, netNames: S.netNames, title: moduleApi.projectTitle(), describe });
-    const name = schFileName().replace(/\.pdf$/, '.net');
-    const path = await native.saveFile(new Blob([text], { type: 'text/plain' }), name, tl('Netlist KiCad'), 'net');
-    if (path) status(native.isTauri() ? tl('Netlist KiCad enregistrée : {0}', path) : tl('Netlist KiCad téléchargée. Dans KiCad : Pcbnew, Fichier → Importer → Netlist.'), 'ok');
+    const [{ kicadNetlist, kicadSchematic }, { zipSync, strToU8 }] = await Promise.all([import('./export/kicad.js'), import('fflate')]);
+    const o = { comps: S.comps, wires: S.wires, netNames: S.netNames, title: moduleApi.projectTitle(), describe };
+    const base = schFileName().replace(/\.pdf$/, '');
+    const bytes = zipSync({ [`${base}.kicad_sch`]: strToU8(kicadSchematic(o)), [`${base}.net`]: strToU8(kicadNetlist(o)) });
+    const path = await native.saveFile(new Blob([bytes], { type: 'application/zip' }), `${base}-kicad.zip`, tl('Projet KiCad'), 'zip');
+    if (path) status(native.isTauri() ? tl('Fichiers KiCad enregistrés : {0}', path) : tl('Fichiers KiCad téléchargés : ouvrez le .kicad_sch dans KiCad, ou importez la netlist dans Pcbnew.'), 'ok');
   } catch (e) { status(tl('Export KiCad impossible : ') + (e.message || e), 'err'); }
 }
 /** Impression : seules les feuilles du schéma, au bon format de page. */
