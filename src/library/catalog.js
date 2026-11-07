@@ -257,8 +257,24 @@ function paintOledOps(x, k, scr) {
   }
   x.restore();
 }
+/**
+ * Image d'un vrai programme (mode fidèle) : la mémoire de l'écran SSD1306 telle que la puce la reçoit, octet par
+ * octet (8 lignes de points par « page », bit 0 en haut). scr = { bits: Uint8Array(w * h / 8), w, h, inv, on }.
+ */
+function paintOledBits(x, k, scr) {
+  const W = scr.w || 128, H = scr.h || 64, sc = 22 * k / 128, on = scr.inv ? OLED_OFF : OLED_ON, off = scr.inv ? OLED_ON : OLED_OFF;
+  x.fillStyle = OLED_OFF; x.fillRect(0, 0, 22 * k, 11 * k);
+  if (scr.on === false) return;
+  x.fillStyle = off; x.fillRect(0, 0, W * sc, H * sc);
+  x.fillStyle = on;
+  for (let page = 0; page < H / 8; page++) for (let col = 0; col < W; col++) {
+    const b = scr.bits[page * W + col]; if (!b) continue;
+    for (let bit = 0; bit < 8; bit++) if (b & (1 << bit)) x.fillRect(col * sc, (page * 8 + bit) * sc, sc, sc);
+  }
+}
 const paintOled = (x, k, lines) => {
   if (lines && lines.ops) { paintOledOps(x, k, lines); return; }
+  if (lines && lines.bits) { paintOledBits(x, k, lines); return; }
   x.fillStyle = OLED_OFF; x.fillRect(0, 0, 22 * k, 11 * k);
   if (lines && !lines.length) return;
   const [a, b] = lines || ['JOLLOF', '23,4 °C  58 %'];

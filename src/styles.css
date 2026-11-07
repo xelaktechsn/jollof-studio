@@ -325,6 +325,11 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 
 /* Exemples */
 .exSheet { width: min(760px, 100%); max-height: 86vh; }
+.impSheet { width: min(620px, 100%); max-height: 86vh; }
+.impBody { overflow: auto; min-height: 0; display: flex; flex-direction: column; gap: 10px; font-size: 13px; }
+.impBody h3 { margin: 4px 0 0; font-size: 13px; }
+.impBody ul { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; }
+.impBody .bad li { color: var(--warn, #c77700); }
 .exList { display: flex; flex-direction: column; gap: 8px; overflow: auto; min-height: 0; }
 .exCard { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 14px; align-items: flex-start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--raise); }
 .exCard:hover { border-color: var(--accent); }

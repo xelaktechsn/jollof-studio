@@ -17,6 +17,8 @@
       <button type="button" class="tb" id="newBtn" data-tip="Nouveau projet · Ctrl+N" aria-label="Nouveau projet"><i data-icon="filePlus"></i></button>
       <button type="button" class="tb" id="openBtn" data-tip="Ouvrir · Ctrl+O" aria-label="Ouvrir un projet"><i data-icon="folder"></i></button>
       <button type="button" class="tb" id="saveBtn" data-tip="Enregistrer · Ctrl+S" aria-label="Enregistrer"><i data-icon="save"></i></button>
+      <button type="button" class="tb" id="importBtn" data-tip="Importer un projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé)" aria-label="Importer un projet Wokwi"><i data-icon="upload"></i></button>
+      <input type="file" id="importFile" accept=".json,.zip,.ino,.txt,.toml,.h,.cpp,.py" multiple hidden>
       <span class="sep" aria-hidden="true"></span>
       <button type="button" class="tb" id="undoBtn" data-tip="Annuler · Ctrl+Z" aria-label="Annuler" disabled><i data-icon="undo"></i></button>
       <button type="button" class="tb" id="redoBtn" data-tip="Rétablir · Ctrl+Maj+Z" aria-label="Rétablir" disabled><i data-icon="redo"></i></button>
@@ -313,6 +315,12 @@
     <div class="rLine"><span>Image <b id="rFrames">0 / 0</b></span></div>
     <div class="progress"><span id="rBar"></span></div>
     <div class="row"><button type="button" class="btn auto" id="rCancel"><i data-icon="x"></i><span>Annuler le rendu</span></button></div>
+  </div>
+</div>
+<div class="modal" id="impModal" hidden>
+  <div class="sheet impSheet" role="dialog" aria-modal="true" aria-labelledby="impTitle">
+    <div class="sheetHead"><h2 id="impTitle"><i data-icon="upload"></i>Projet importé</h2><button type="button" class="btn" id="impClose">Fermer</button></div>
+    <div class="impBody" id="impBody"></div>
   </div>
 </div>
 <div class="modal" id="exModal" hidden>

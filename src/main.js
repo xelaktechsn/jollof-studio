@@ -1652,7 +1652,7 @@ function showLabel(c, r) {
 }
 /** Redessine un écran : null = texte de démonstration, [] = éteint. */
 function paintScreen(c, lines) {
-  const s = c.screen, key = !lines ? 'demo' : lines.ops ? `ops:${lines.ver}:${lines.inv}` : lines.length + ':' + lines.join('\n');
+  const s = c.screen, key = !lines ? 'demo' : lines.ops || lines.bits ? `ops:${lines.ver}:${lines.inv}` : lines.length + ':' + lines.join('\n');
   if (s.key === key) return; s.key = key;
   const tex = s.mesh.material.map, x = tex.image.getContext('2d');
   x.clearRect(0, 0, tex.image.width, tex.image.height); s.paint(x, s.k, lines); tex.needsUpdate = true;
@@ -1787,7 +1787,7 @@ function simTick(now) {
     if (rt) {
       // Carte programmée : l'écran montre ce que le programme y écrit, et rien d'autre.
       lines = off ? [] : c.type === 'lcd1602' ? (ps ? ps.lines : ['', '']) : ps || [];
-      value = off ? firstMsg(ins) || tl('câblage incomplet') : !ps ? tl('rien d’affiché par le programme') : ps.ops ? OLED_TEXT(ps) || 'dessin' : ps.lines.length ? ps.lines.map(l => l.trimEnd()).join(' / ') : tl('rétroéclairage éteint');
+      value = off ? firstMsg(ins) || tl('câblage incomplet') : !ps ? tl('rien d’affiché par le programme') : ps.bits ? tl('dessin') : ps.ops ? OLED_TEXT(ps) || 'dessin' : ps.lines.length ? ps.lines.map(l => l.trimEnd()).join(' / ') : tl('rétroéclairage éteint');
     } else {
       const list = (shown.get(ins.board) || []).slice().sort((a, b) => a.p - b.p).map(x => x.t);
       lines = off ? [] : list.length ? screenLines(c, list) : ['Jollof Studio', tl('Aucun capteur')];
@@ -2455,6 +2455,28 @@ async function openProjectFile() {
     S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); frameAll(); resetHistory(); status(tl('Projet ouvert : {0}', f.name), 'ok');
   } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
 }
+/** Projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé) : converti, ouvert, compte rendu affiché. */
+async function importWokwiFiles(list) {
+  if (!list.length) return;
+  try {
+    const W = await import('./import/wokwi.js');
+    const files = await W.readProjectFiles(list);
+    if (!files['diagram.json']) throw new Error(tl('diagram.json introuvable : choisissez le diagram.json du projet (avec sketch.ino) ou le .zip téléchargé depuis Wokwi'));
+    const zip = list.find(f => /\.zip$/i.test(f.name)), base = (zip ? zip.name.replace(/\.zip$/i, '') : 'wokwi').replace(/[\\/:*?"<>|]+/g, '-');
+    const { project, report } = W.importWokwi(files, base);
+    if (S.anim) finishAnim();
+    await restore(project); setProjectName(base, null); S.projectPath = null;
+    S.dirty = true; $('#projectName').classList.add('dirty'); autosave(); frameAll(); resetHistory();
+    const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
+    $('#impBody').innerHTML = `<p>${esc(tl('{0} composants et {1} fils importés. Les breadboards de Wokwi sont remplacées par des fils directs.', report.parts, report.wires))}</p>`
+      + (report.engine ? `<p>${esc(report.engine === 'firmware' ? tl('Programme : mode fidèle (le vrai compilateur, application de bureau).') : tl('Programme : mode débutant (interpréteur, pas à pas possible).'))}</p>` : '')
+      + (report.unknown.length ? `<h3>${esc(tl('Composants non importés'))}</h3><ul class="bad">${li(report.unknown.map(u => `${u.id} (${u.type})${u.why ? ' : ' + u.why : ''}`))}</ul>` : '')
+      + (report.dropped.length ? `<h3>${esc(tl('Connexions non importées'))}</h3><ul class="bad">${li(report.dropped)}</ul>` : '')
+      + (report.notes.length ? `<h3>${esc(tl('Remarques'))}</h3><ul>${li(report.notes)}</ul>` : '');
+    $('#impModal').hidden = false;
+    status(tl('Projet Wokwi importé : {0} composants, {1} fils.', report.parts, report.wires), report.unknown.length || report.dropped.length ? 'warn' : 'ok');
+  } catch (e) { status(tl('Import impossible : ') + (e.message || e)); }
+}
 async function saveProjectFile(saveAs) {
   try {
     const name = /\.jollof$/i.test(S.projectName) ? S.projectName : `${S.projectName === tl('Sans titre') ? 'circuit' : S.projectName}.jollof`;
@@ -2718,6 +2740,9 @@ function bindUI() {
   };
   $('#newBtn').onclick = newProject;
   $('#openBtn').onclick = openProjectFile;
+  $('#importBtn').onclick = () => $('#importFile').click();
+  $('#importFile').onchange = e => { const l = [...e.target.files]; e.target.value = ''; importWokwiFiles(l); };
+  $('#impClose').onclick = () => { $('#impModal').hidden = true; };
   $('#saveBtn').onclick = e => saveProjectFile(e.shiftKey);
   $('#glb').onchange = async e => {
     const f = e.target.files[0]; if (!f) return; e.target.value = '';
