@@ -7,6 +7,7 @@
 import { driveBoard } from '../sim/drive.js';
 import { compile } from './lang.js';
 import { createRuntime } from './runtime.js';
+import { EMULATED } from '../emu/boards.js';
 import { generate, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs } from './rules.js';
 import { QUANT, ENV, MODELS, NET_DEFAULT } from '../sim/models.js';
 import { createEditor } from './editor.js';
@@ -41,6 +42,8 @@ export function createProgram(app) {
   // net : réseaux Wi-Fi simulés et journal (journal.jollof).
   let P = { rules: [], boards: {}, states: {}, mem: {}, net: null };
   const rts = new Map(), logs = new Map(), diag = new Map(), uploaded = new Map();
+  // Mode fidèle : compilation en cours (jeton par carte : une compilation dépassée est ignorée) et erreurs d'arduino-cli.
+  const fwJobs = new Map(), fwDiag = new Map();
   let cur = null, editor = null, lastUi = 0, logDirty = true, checkT = 0, confirmGen = 0, warnSig = '';
   // Blocs de code : espace de travail Blockly de la carte affichée (chargé à la demande) et correspondances ligne → bloc.
   let vis = null, wideAuto = false; const visMeta = new Map();
@@ -53,6 +56,14 @@ export function createProgram(app) {
   const byId = id => comps().find(c => c.id === id);
   const boards = () => comps().filter(c => boardOf(c));
   const board = () => { const bs = boards(); let b = bs.find(x => x.id === cur); if (!b) { b = bs[0] || null; cur = b && b.id; } return b; };
+  /** Moteur d'exécution d'une carte : 'interp' (interpréteur, instantané, pas à pas) ou 'firmware' (vrai programme émulé). */
+  const engineOf = b => { const e = b && P.boards[b.id]; return e && e.engine === 'firmware' && EMULATED.has(boardKind(b)) ? 'firmware' : 'interp'; };
+  /** Moteur provisoire d'une carte dont le vrai programme se compile. */
+  const compilingStub = logic => ({
+    state: 'compiling', pins: new Map(), warnings: new Map(), line: null, error: null, logic,
+    run() {}, clock: () => 0, probe: () => null, setTrace() {}, setSerialTap() {}, takeSerial: () => '', send() {}, stop() {},
+    debug: { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] }
+  });
   function snapshot() {
     const A = analyze(app.comps(), app.wires()), cache = new Map();
     return { A, inspect: c => { if (!cache.has(c)) cache.set(c, inspect(c, A, partOf(c))); return cache.get(c); } };
@@ -176,6 +187,7 @@ export function createProgram(app) {
   }
   /** Compile et lance le programme d'une carte ; false s'il ne compile pas. */
   function launch(b, sn = snapshot()) {
+    if (engineOf(b) === 'firmware') return launchFirmware(b, codeOf(b, sn));
     const code = codeOf(b, sn), res = compile(code, { ...ctxOf(b), debug: wantsDebug(b) });
     diag.set(b.id, { errors: res.errors, warnings: res.warnings });
     rts.delete(b.id); clearScreens(b);
@@ -184,11 +196,47 @@ export function createProgram(app) {
       const e = res.errors[0];
       app.status(tl('{0} : le programme ne compile pas, ligne {1} : {2}', b.name, e.line, e.msg), 'err');
       log(b, tl('\n✕ Erreur de compilation, ligne {0} : {1}\n', e.line, e.msg));
+      if (EMULATED.has(boardKind(b))) log(b, tl('Astuce : le mode d’exécution « Fidèle » compile le vrai C++ d’Arduino (pointeurs, classes, toutes les bibliothèques) et le fait tourner sur un processeur émulé.\n'));
       return false;
     }
     rts.set(b.id, attach(b, createRuntime(res.js, makeHw(b), res.debug || { globals: res.globals })));
     uploaded.set(b.id, code);
     log(b, tl('{0}— {1} démarre —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
+    return true;
+  }
+  /**
+   * Mode fidèle : le vrai programme est compilé par arduino-cli (quelques secondes, fichiers téléchargés à la
+   * première utilisation), puis tourne sur le processeur émulé. En attendant, la carte affiche « Compilation… ».
+   */
+  function launchFirmware(b, code) {
+    const token = {};
+    fwJobs.set(b.id, token);
+    rts.delete(b.id); clearScreens(b);
+    rts.set(b.id, compilingStub(boardOf(b).logic));
+    fwDiag.set(b.id, { errors: [], warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
+    log(b, tl('{0}— {1} : compilation du vrai programme (mode fidèle)… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
+    // Compilateur et processeur émulé chargés à la demande : ils ne pèsent rien tant que le mode fidèle ne sert pas.
+    Promise.all([import('../emu/compile.js'), import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
+      if (fwJobs.get(b.id) !== token) return; // relancé ou arrêté entre-temps
+      fwJobs.delete(b.id);
+      if (!res.ok) {
+        rts.delete(b.id);
+        fwDiag.set(b.id, { errors: res.errors, warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
+        const e = res.errors[0];
+        app.status(tl('{0} : le programme ne compile pas, ligne {1} : {2}', b.name, e.line, e.msg), 'err');
+        log(b, tl('\n✕ Erreur de compilation, ligne {0} : {1}\n', e.line, e.msg));
+        if (b.id === cur) renderDiag();
+        render();
+        return;
+      }
+      let rt;
+      try { rt = E.createAvrRuntime(res.hex, makeHw(b)); } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
+      rts.set(b.id, attach(b, rt));
+      uploaded.set(b.id, code);
+      log(b, tl('— {0} démarre : vrai programme sur processeur émulé —\n', b.name));
+      if (b.id === cur) renderDiag();
+      render();
+    });
     return true;
   }
   function startAll() {
@@ -199,7 +247,7 @@ export function createProgram(app) {
     render();
     return { n, bad };
   }
-  function stopAll() { rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
+  function stopAll() { fwJobs.clear(); rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
   function frame(dt) {
     for (const [id, rt] of rts) {
       const b = byId(id);
@@ -234,14 +282,15 @@ export function createProgram(app) {
     const st = $('#progState');
     let kind = 'off', text = app.simOn() ? tl('Pas de programme en cours') : tl('Simulation arrêtée');
     if (rt) {
-      if (rt.state === 'run') { kind = 'on'; text = tl('En cours · ligne {0}', rt.line); }
+      if (rt.state === 'compiling') { kind = 'pause'; text = tl('Compilation du vrai programme…'); }
+      else if (rt.state === 'run') { kind = 'on'; text = rt.line == null ? tl('En cours · vrai programme (mode fidèle)') : tl('En cours · ligne {0}', rt.line); }
       else if (rt.state === 'paused') { const at = rt.debug.at; kind = 'pause'; text = at.fn ? tl('En pause · ligne {0} · {1}()', at.line, at.fn) : tl('En pause · ligne {0}', at.line); }
       else if (rt.state === 'error') { kind = 'err'; text = tl('Arrêté par une erreur, ligne {0}', rt.error.line); }
       else { kind = 'off'; text = tl('Terminé'); }
     } else if (b && diag.get(b.id) && diag.get(b.id).errors.length && app.simOn()) { kind = 'err'; text = tl('Ne compile pas'); }
     if (b && boards().length < 2 && kind !== 'off') text = `${b.name} · ${text}`;
     st.dataset.kind = kind; st.querySelector('span:last-child').textContent = text; st.title = b ? `${b.name} (${boardOf(b).label})${COLON}${text}` : text;
-    if (editor) editor.setRunLine(rt && rt.state === 'run' ? rt.line : rt && rt.state === 'error' ? rt.error.line : 0);
+    if (editor) editor.setRunLine(rt && rt.state === 'run' ? rt.line || 0 : rt && rt.state === 'error' ? rt.error.line : 0);
     const changed = b && rt && uploaded.get(b.id) !== undefined && editor && editor.value !== uploaded.get(b.id);
     $('#progRun').classList.toggle('pulse', !!changed);
     $('#progRun').dataset.tip = changed ? tl('Le code a changé : téléversez-le · Ctrl+Entrée') : tl('Compiler et exécuter sur la carte · Ctrl+Entrée');
@@ -270,6 +319,8 @@ export function createProgram(app) {
   }
   function check() {
     const b = board(); if (!b || !editor) return;
+    // Mode fidèle : c'est arduino-cli qui juge le programme (erreurs affichées après la compilation).
+    if (engineOf(b) === 'firmware') { hookLines = null; diag.set(b.id, fwDiag.get(b.id) || { errors: [], warnings: [] }); renderDiag(); applyBps(b); return; }
     // Compilé en mode débogage : on connaît aussi les lignes où un point d'arrêt peut arrêter le programme.
     const res = compile(editor.value, { ...ctxOf(b), debug: true });
     hookLines = res.ok ? res.debug.lines : null;
@@ -293,6 +344,8 @@ export function createProgram(app) {
     const sel = $('#progBoard');
     sel.hidden = bs.length < 2;
     sel.innerHTML = bs.map(x => `<option value="${esc(x.id)}"${x === b ? ' selected' : ''}>${esc(x.name)} · ${esc(boardOf(x).label)}</option>`).join('');
+    const eng = $('#progEngine');
+    if (eng) { eng.hidden = !EMULATED.has(boardKind(b)); eng.value = engineOf(b); }
     renderRules();
     if (!editor) editor = createEditor($('#editor'), { onChange: onEdit, onRun: upload, onGutter: toggleBp });
     syncShown(b);
@@ -794,6 +847,14 @@ export function createProgram(app) {
   function bind() {
     $('#progBoard').onchange = e => { cur = e.target.value; render(); };
     $('#progRun').onclick = upload;
+    if ($('#progEngine')) $('#progEngine').onchange = e => {
+      const b = board(); if (!b) return;
+      const en = ensure(b);
+      if (e.target.value === 'firmware') en.engine = 'firmware'; else delete en.engine;
+      app.markDirty();
+      check();
+      if (app.simOn()) { launch(b); render(); }
+    };
     $('#ruleAdd').onclick = () => { const sn = snapshot(), b = board(); const dst = comps().find(x => isActuator(x) && (!b || sn.inspect(x).board === b)) || comps().find(isActuator); addRule(null, dst || null); };
     $('#rules').addEventListener('change', e => { if (e.target.dataset.f) onRuleField(e.target); });
     $('#rules').addEventListener('click', e => {
@@ -850,6 +911,8 @@ export function createProgram(app) {
     },
     /** Programme produit par les règles (pas écrit par l'élève) : le vérificateur ne lui reproche pas un composant inutilisé. */
     isAuto(b) { const e = entry(b); return !e || (!!e.auto && e.mode !== 'visual'); },
+    /** Carte en mode fidèle : son programme est du vrai C++ jugé par arduino-cli, pas par l'interpréteur. */
+    isFirmware(b) { return engineOf(b) === 'firmware'; },
     /** Montre le programme d'une carte à une ligne (diagnostic cliqué). */
     showLine(b, line, col) { cur = b.id; ensure(b); app.setTab('prog'); render(); if (editor) editor.goLine(line, col); },
     /** Simulation lancée : capteurs et entrées repartent de leur valeur par défaut. */

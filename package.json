@@ -38,6 +38,7 @@
     "@tiptap/extension-underline": "^2.27.3",
     "@tiptap/pm": "^2.27.3",
     "@tiptap/starter-kit": "^2.27.3",
+    "avr8js": "^0.21.1",
     "blockly": "12.5.1",
     "mp4-muxer": "5.2.2",
     "occt-import-js": "0.0.23",

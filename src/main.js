@@ -942,6 +942,7 @@ function installChecker() {
     comps: () => S.comps, wires: () => S.wires,
     programs: () => new Map(boards().map(b => [b.id, prog.programOf(b)]).filter(([, code]) => code)),
     auto: () => new Set(boards().filter(b => prog.isAuto(b)).map(b => b.id)),
+    firmware: () => new Set(boards().filter(b => prog.isFirmware(b)).map(b => b.id)),
     allow: () => S.checkAllow || [],
     setAllow(list) { S.checkAllow = list; S.dirty = true; $('#projectName').classList.add('dirty'); clearTimeout(changed.t); changed.t = setTimeout(autosave, 400); },
     dist: (a, b) => pinWorld(a).distanceTo(pinWorld(b)),

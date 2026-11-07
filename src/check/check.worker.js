@@ -20,7 +20,7 @@ self.onmessage = async e => {
     const comps = proj.comps.map(c => ({ id: c.id, type: c.type, name: c.name, pins: Object.fromEntries(c.pins.map(k => [k, {}])), inp: { ...(c.inp || {}) }, relayOn: c.relayOn, group: { position: { x: c.x, z: c.z } } }));
     const by = Object.fromEntries(comps.map(c => [c.id, c]));
     const wires = proj.wires.map(w => ({ a: { comp: by[w.a[0]], key: w.a[1] }, b: { comp: by[w.b[0]], key: w.b[1] }, progress: 1 }));
-    const r = checkProject({ comps, wires: wires.filter(w => w.a.comp && w.b.comp), programs: new Map(proj.programs), auto: new Set(proj.auto || []), allow: proj.allow || [] });
+    const r = checkProject({ comps, wires: wires.filter(w => w.a.comp && w.b.comp), programs: new Map(proj.programs), auto: new Set(proj.auto || []), firmware: new Set(proj.firmware || []), allow: proj.allow || [] });
     self.postMessage({ id, result: pack(r, new Map(wires.map((w, i) => [w, i]))) });
   } catch (err) {
     self.postMessage({ id, error: String((err && err.message) || err) });

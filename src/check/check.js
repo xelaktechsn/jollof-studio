@@ -36,7 +36,7 @@ const now = () => (typeof performance !== 'undefined' ? performance.now() : Date
 
 /**
  * proj : { comps, wires, programs: Map id de carte → texte du programme, auto: Set des cartes dont le programme vient
- *         des règles (optionnel), allow: [{ code, comp, reason }] }.
+ *         des règles (optionnel), firmware: Set des cartes en mode fidèle (optionnel), allow: [{ code, comp, reason }] }.
  * opts : { dist(a, b) (suggestions de câblage), max (états au plus) }.
  * Rend { diags: [...], errors, warnings, accepted, states, total, proven, dynamic, ms }.
  */
@@ -123,10 +123,17 @@ function* run(proj, opts) {
   for (const b of boards) {
     const code = proj.programs && proj.programs.get(b.id);
     if (!code || !code.trim()) continue;
-    const kind = boardKind(b), prof = boardOf(b), res = compile(code, { board: kind });
-    for (const e of res.errors) put(e.code || 'J1199', 'error', { board: b, line: e.line, col: e.col, len: e.len || 1 }, null, { title: e.msg, help: e.help || null, code: e.code || 'J1199' });
-    for (const w of res.warnings || []) put(w.code || 'J1109', 'warning', { board: b, line: w.line, col: w.col, len: w.len || 1 }, null, { title: w.msg });
-    const f = pinFacts(code, kind, prof);
+    const kind = boardKind(b), prof = boardOf(b), firmware = !!(proj.firmware && proj.firmware.has(b.id));
+    // Mode fidèle : le vrai C++ est jugé par arduino-cli, pas par l'interpréteur ; ses erreurs ne comptent pas ici.
+    if (!firmware) {
+      const res = compile(code, { board: kind });
+      for (const e of res.errors) put(e.code || 'J1199', 'error', { board: b, line: e.line, col: e.col, len: e.len || 1 }, null, { title: e.msg, help: e.help || null, code: e.code || 'J1199' });
+      for (const w of res.warnings || []) put(w.code || 'J1109', 'warning', { board: b, line: w.line, col: w.col, len: w.len || 1 }, null, { title: w.msg });
+    }
+    let f = pinFacts(code, kind, prof);
+    // Programme que l'analyse ne sait pas lire (C++ complet du mode fidèle) : preuve prudente, toute broche reliée
+    // peut être une sortie à LOW ou à HIGH.
+    if (!f.ok && firmware) f = { ok: true, pins: new Map(), dynamic: true, uses: [] };
     if (!f.ok) continue;
     facts.set(b, f);
     // Broche inexistante sur la carte, PWM ou ADC absents, digitalWrite sans pinMode.

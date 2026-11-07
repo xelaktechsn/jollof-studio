@@ -465,23 +465,36 @@ const CORE_URLS: [&str; 3] = [
 fn word(s: &str, extra: &str) -> bool {
     !s.is_empty() && s.len() <= 80 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
 }
-/// N'accepte que les commandes utiles au téléversement, avec des arguments vérifiés : la
+/// Dossier où la compilation dépose le programme machine (.hex, .uf2, .bin), lu ensuite par `read_build`
+/// pour le faire tourner dans l'émulateur (mode « fidèle »).
+fn build_dir(app: &AppHandle) -> Result<PathBuf, String> {
+    Ok(app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("build")
+        .join("jollof_sketch"))
+}
+/// N'accepte que les commandes utiles au téléversement et à l'émulation, avec des arguments vérifiés : la
 /// webview ne peut pas faire exécuter autre chose à arduino-cli (configuration, dépôts git…).
 fn check_cli_args(app: &AppHandle, args: &[String]) -> Result<(), String> {
-    check_cli_args_in(&sketch_dir(app)?, args)
+    check_cli_args_in(&sketch_dir(app)?, &build_dir(app)?, args)
 }
-fn check_cli_args_in(sketch: &Path, args: &[String]) -> Result<(), String> {
+fn check_cli_args_in(sketch: &Path, build: &Path, args: &[String]) -> Result<(), String> {
     let a: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let is_sketch = |p: &str| Path::new(p) == sketch;
+    let is_build = |p: &str| Path::new(p) == build;
     let fqbn = |s: &str| word(s, ":_-.") && s.split(':').count() >= 3;
     let urls_ok = |rest: &[&str]| rest.is_empty() || (rest.len() == 2 && rest[0] == "--additional-urls" && CORE_URLS.contains(&rest[1]));
     let port = |s: &str| !s.is_empty() && s.len() <= 64 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || "/._-:".contains(c));
     let ok = match a.as_slice() {
         ["board", "list", "--format", "json"] => true,
+        ["core", "list", "--format", "json"] => true,
         ["core", "update-index", rest @ ..] => urls_ok(rest),
         ["core", "install", core, rest @ ..] => word(core, ":_-.") && core.split(':').count() == 2 && urls_ok(rest),
         ["lib", "install", libs @ ..] => !libs.is_empty() && libs.len() <= 20 && libs.iter().all(|l| word(l, " _-.")),
         ["compile", "--fqbn", f, dir] => fqbn(f) && is_sketch(dir),
+        ["compile", "--fqbn", f, "--output-dir", out, dir] => fqbn(f) && is_build(out) && is_sketch(dir),
         ["upload", "-p", p, "--fqbn", f, dir] => port(p) && fqbn(f) && is_sketch(dir),
         _ => false,
     };
@@ -507,6 +520,27 @@ async fn arduino_cli(app: AppHandle, args: Vec<String>) -> Result<CliOutput, Str
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+/// Dossiers du croquis et de sa compilation, pour construire la commande `compile --output-dir`.
+#[tauri::command]
+fn build_paths(app: AppHandle) -> Result<(String, String), String> {
+    Ok((
+        sketch_dir(&app)?.to_string_lossy().into_owned(),
+        build_dir(&app)?.to_string_lossy().into_owned(),
+    ))
+}
+
+/// Programme machine produit par la dernière compilation : `hex` (Uno, Nano), `uf2` ou `bin` (Pico, ESP32).
+/// Seul le dossier de compilation est lu, et seulement ces extensions.
+#[tauri::command]
+async fn read_build(app: AppHandle, ext: String) -> Result<tauri::ipc::Response, String> {
+    if !["hex", "uf2", "bin", "elf"].contains(&ext.as_str()) {
+        return Err("Format refusé".into());
+    }
+    let path = build_dir(&app)?.join(format!("jollof_sketch.ino.{ext}"));
+    let bytes = blocking(move || fs::read(&path).map_err(|e| format!("Programme compilé introuvable : {e}"))).await?;
+    Ok(tauri::ipc::Response::new(bytes))
 }
 
 /// Écrit le programme dans un croquis Arduino (dossier et fichier .ino du même nom) et renvoie son dossier.
@@ -599,6 +633,8 @@ pub fn run() {
             autosave_clear,
             arduino_cli,
             write_sketch,
+            build_paths,
+            read_build,
             install_language,
             open_external
         ])
@@ -616,14 +652,18 @@ mod tests {
     #[test]
     fn arduino_cli_allowlist() {
         let sk = PathBuf::from("/cache/sketch/jollof_sketch");
+        let bd = PathBuf::from("/cache/build/jollof_sketch");
         let d = sk.to_string_lossy().into_owned();
-        let ok = |a: &[&str]| check_cli_args_in(&sk, &v(a)).is_ok();
+        let b = bd.to_string_lossy().into_owned();
+        let ok = |a: &[&str]| check_cli_args_in(&sk, &bd, &v(a)).is_ok();
         assert!(ok(&["board", "list", "--format", "json"]));
         assert!(ok(&["core", "update-index"]));
         assert!(ok(&["core", "update-index", "--additional-urls", CORE_URLS[0]]));
         assert!(ok(&["core", "install", "arduino:avr"]));
         assert!(ok(&["lib", "install", "DHT sensor library", "Adafruit Unified Sensor"]));
         assert!(ok(&["compile", "--fqbn", "arduino:avr:uno", &d]));
+        assert!(ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", &b, &d]));
+        assert!(ok(&["core", "list", "--format", "json"]));
         assert!(ok(&["upload", "-p", "/dev/cu.usbmodem1101", "--fqbn", "esp32:esp32:esp32", &d]));
         assert!(ok(&["upload", "-p", "COM3", "--fqbn", "arduino:avr:nano", &d]));
         // Refusés : autres commandes, autres dossiers, options cachées, dépôts arbitraires.
@@ -632,6 +672,8 @@ mod tests {
         assert!(!ok(&["lib", "install", "--zip-path", "/tmp/x.zip"]));
         assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "/etc"]));
         assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", &d, "--build-property", "x"]));
+        assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", "/tmp", &d]));
+        assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", &d, &d]));
         assert!(!ok(&["core", "install", "arduino:avr", "--additional-urls", "https://evil.example/index.json"]));
         assert!(!ok(&["upload", "-p", "--config-file=/x", "--fqbn", "arduino:avr:uno", &d]));
         assert!(!ok(&["daemon"]));

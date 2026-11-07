@@ -59,7 +59,7 @@ export function installCheck(app) {
       data: {
         comps: proj.comps.map(c => ({ id: c.id, type: c.type, name: c.name, pins: Object.keys(c.pins), inp: { ...(c.inp || {}) }, relayOn: c.relayOn, x: c.group.position.x, z: c.group.position.z })),
         wires: wires.map(w => ({ a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key] })),
-        programs: [...proj.programs], auto: [...(proj.auto || [])], allow: proj.allow
+        programs: [...proj.programs], auto: [...(proj.auto || [])], firmware: [...(proj.firmware || [])], allow: proj.allow
       }
     };
   }
@@ -104,7 +104,7 @@ export function installCheck(app) {
     if (ctrl) ctrl.aborted = true;
     const my = ++gen, sig = ctrl = { aborted: false };
     chip.classList.add('busy');
-    const proj = { comps: app.comps(), wires: app.wires(), programs: app.programs(), auto: app.auto ? app.auto() : new Set(), allow: app.allow() };
+    const proj = { comps: app.comps(), wires: app.wires(), programs: app.programs(), auto: app.auto ? app.auto() : new Set(), firmware: app.firmware ? app.firmware() : new Set(), allow: app.allow() };
     let r = null;
     try {
       r = await inWorker(proj);

@@ -150,7 +150,7 @@ export async function autosaveClear() {
   await invoke('autosave_clear');
 }
 
-/* Carte réelle (édition Pro) : arduino-cli, lancé par Rust. */
+/* arduino-cli, lancé par Rust : téléversement sur une carte réelle (édition Pro) et compilation pour l'émulateur. */
 export async function arduinoCli(args) {
   if (!isTauri()) throw new Error('desktop-only');
   return invoke('arduino_cli', { args });
@@ -158,6 +158,17 @@ export async function arduinoCli(args) {
 export async function writeSketch(code) {
   if (!isTauri()) throw new Error('desktop-only');
   return invoke('write_sketch', { code });
+}
+/** Dossiers du croquis et de sa compilation : [sketch, build]. */
+export async function buildPaths() {
+  if (!isTauri()) throw new Error('desktop-only');
+  return invoke('build_paths');
+}
+/** Programme machine de la dernière compilation (ext : hex, uf2, bin), en octets. */
+export async function readBuild(ext) {
+  if (!isTauri()) throw new Error('desktop-only');
+  const r = await invoke('read_build', { ext });
+  return r instanceof ArrayBuffer ? new Uint8Array(r) : new Uint8Array(r);
 }
 /** Langue choisie à l'installation (Windows), sinon null. */
 export async function installLanguage() {

@@ -3572,5 +3572,24 @@ export default {
   "{0} paquets JavaScript et {1} bibliothèques Rust, tous compatibles avec l’AGPL et avec la licence commerciale. Principaux :": "{0} JavaScript packages and {1} Rust libraries, all compatible with the AGPL and with the commercial licence. Main ones:",
   "Répartition par licence :": "By licence:",
   "Liste complète : fichier THIRD_PARTY.md du dépôt (inventaire du {0}). Textes des licences dans le dossier licenses/ de l’application.": "Full list: the THIRD_PARTY.md file of the repository (inventory of {0}). Licence texts in the app’s licenses/ folder.",
-  "La licence de Jollof Studio, puis les modèles 3D et les bibliothèques tierces livrés avec l’application.": "Jollof Studio’s licence, then the 3D models and third-party libraries shipped with the app."
+  "La licence de Jollof Studio, puis les modèles 3D et les bibliothèques tierces livrés avec l’application.": "Jollof Studio’s licence, then the 3D models and third-party libraries shipped with the app.",
+  // mode fidèle (vrai programme émulé)
+  "Première utilisation de {0} : téléchargement des fichiers de la carte (une seule fois)…": "First use of {0}: downloading the board files (only once)…",
+  "Index des cartes injoignable : vérifiez la connexion Internet (une seule fois).": "Board index unreachable: check the Internet connection (needed only once).",
+  "Installation de {0} impossible : {1}": "Cannot install {0}: {1}",
+  "Bibliothèques impossibles à installer ({0}) : vérifiez la connexion Internet.": "Cannot install the libraries ({0}): check the Internet connection.",
+  "bibliothèque {0} introuvable : elle n’est pas connue de Jollof Studio ou son installation a échoué": "library {0} not found: Jollof Studio does not know it, or installing it failed",
+  "Le mode fidèle n’existe pas encore pour cette carte.": "Faithful mode is not available for this board yet.",
+  "Le mode fidèle compile le vrai programme avec arduino-cli : il demande l’application installée.": "Faithful mode compiles the real program with arduino-cli: it needs the installed app.",
+  "arduino-cli est introuvable. Installez-le (https://arduino.github.io/arduino-cli/latest/installation/) puis relancez Jollof Studio.": "arduino-cli was not found. Install it (https://arduino.github.io/arduino-cli/latest/installation/) and restart Jollof Studio.",
+  "Compilation du programme (arduino-cli)…": "Compiling the program (arduino-cli)…",
+  "La compilation a échoué.": "Compilation failed.",
+  "Astuce : le mode d’exécution « Fidèle » compile le vrai C++ d’Arduino (pointeurs, classes, toutes les bibliothèques) et le fait tourner sur un processeur émulé.": "Tip: the “Faithful” run mode compiles real Arduino C++ (pointers, classes, every library) and runs it on an emulated processor.",
+  "{0}— {1} : compilation du vrai programme (mode fidèle)… —": "{0}— {1}: compiling the real program (faithful mode)… —",
+  "— {0} démarre : vrai programme sur processeur émulé —": "— {0} starts: real program on an emulated processor —",
+  "Compilation du vrai programme…": "Compiling the real program…",
+  "En cours · vrai programme (mode fidèle)": "Running · real program (faithful mode)",
+  "Fidèle": "Faithful",
+  "Mode d’exécution": "Run mode",
+  "Débutant : interpréteur instantané, pas à pas. Fidèle : le vrai programme compilé par arduino-cli tourne sur un processeur émulé (application installée).": "Beginner: instant interpreter with step-by-step debugging. Faithful: the real program compiled by arduino-cli runs on an emulated processor (installed app)."
 };

@@ -29,16 +29,17 @@ export function loadProject(data, code = null) {
   const comps = (data.comps || []).map(c => ({ ...c, name: c.name || c.id, pins: Object.fromEntries(pinKeys(c.type).map(k => [k, {}])), inp: { ...(INPUTS[c.type] || {}), ...(c.inp || {}) }, group: { position: { x: c.x || 0, z: c.z || 0 } } }));
   const byId = Object.fromEntries(comps.map(c => [c.id, c]));
   const wires = (data.wires || []).filter(w => byId[w.a[0]] && byId[w.b[0]]).map(w => ({ a: { comp: byId[w.a[0]], key: w.a[1] }, b: { comp: byId[w.b[0]], key: w.b[1] }, progress: 1 }));
-  const programs = new Map(), auto = new Set(), prog = (data.settings && data.settings.prog) || {};
+  const programs = new Map(), auto = new Set(), firmware = new Set(), prog = (data.settings && data.settings.prog) || {};
   const A = analyze(comps, wires), cache = new Map(), insp = c => cache.get(c) || (cache.set(c, inspect(c, A, partOf(c))), cache.get(c));
   for (const b of comps.filter(c => boardOf(c))) {
     let src = code ? code[b.name] || code[b.id] || null : null;
     const e = prog.boards && prog.boards[b.id];
     if (src == null && e) src = e.auto ? generate(b, { comps, A, inspect: insp, rules: prog.rules || [], states: prog.states || {} }) : e.code || '';
     if (src != null && !code && (!e || (e.auto && e.mode !== 'visual'))) auto.add(b.id);
+    if (e && e.engine === 'firmware') firmware.add(b.id);
     if (src == null && (prog.rules || []).length) src = generate(b, { comps, A, inspect: insp, rules: prog.rules, states: prog.states || {} });
     if (src) programs.set(b.id, src);
   }
   const allow = (data.settings && data.settings.check && Array.isArray(data.settings.check.allow)) ? data.settings.check.allow : [];
-  return { comps, wires, programs, auto, allow, byId };
+  return { comps, wires, programs, auto, firmware, allow, byId };
 }

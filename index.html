@@ -189,6 +189,10 @@
           <span class="pstate" id="progState" data-kind="off" role="status"><span class="led"></span><span>Simulation arrêtée</span></span>
           <button type="button" class="tb" id="progMute" aria-pressed="false" aria-label="Couper le son"></button>
           <button type="button" class="tb" id="progWide" aria-pressed="false" data-tip="Agrandir l’inspecteur" aria-label="Agrandir l’inspecteur"></button>
+          <select id="progEngine" class="sel engineSel" aria-label="Mode d’exécution" data-tip="Débutant : interpréteur instantané, pas à pas. Fidèle : le vrai programme compilé par arduino-cli tourne sur un processeur émulé (application installée)." hidden>
+            <option value="interp">Débutant</option>
+            <option value="firmware">Fidèle</option>
+          </select>
           <button type="button" class="btn primary small" id="progRun" data-tip="Compiler et exécuter sur la carte · Ctrl+Entrée"><i data-icon="upload"></i><span>Téléverser</span></button>
         </div>
         <section class="rulesSec">
