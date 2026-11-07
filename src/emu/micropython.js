@@ -77,18 +77,21 @@ export function createTracebackReader(onError) {
 /**
  * Pilote du raw REPL, indépendant de l'émulateur (testé seul).
  *   write(texte) : vers la carte ; out(texte) : vers le moniteur série ; fail(message) : tâche abandonnée ;
+ *   clock() : heure simulée de la carte, en ms (sinon celle du dernier tick) ;
  *   feed(texte) : ce que la carte envoie ; tick(ms) : son heure (relances et délais).
+ * Tout se compte en temps simulé et en réponses de la carte : le résultat ne dépend pas de la vitesse de l'ordinateur.
  *   start({ files, remove, run }) ; run : 'main' (redémarrage logiciel, main.py) ou { code } (exécuté sans être
  *   enregistré, sa sortie va au moniteur au fil de l'eau).
  * Hors tâche, tout passe au moniteur : c'est le REPL normal.
  */
-export function createRawRepl({ write, out, fail = () => {}, done = () => {} }) {
+export function createRawRepl({ write, out, fail = () => {}, done = () => {}, clock = null }) {
   let steps = [], step = null, buf = '', now = 0;
+  const time = () => (clock ? clock() : now);
   const wait = (send, match, opt = {}) => ({ t: 'wait', send, match, ...opt });
   function begin() {
     step = steps.shift() || null; buf = '';
     if (!step) { done(); return; }
-    step.at = now; step.tries = 0;
+    step.at = time(); step.tries = 0;
     if (step.t === 'exec') { step.phase = 'ok'; step.out = ''; step.err = ''; write(step.code + '\x04'); }
     else if (step.t === 'leave') { write('\x02'); begin(); return; }
     else if (step.send) write(step.send);
@@ -130,7 +133,7 @@ export function createRawRepl({ write, out, fail = () => {}, done = () => {} }) 
       begin();
     },
     feed(text) { if (!step) { out(text); return; } buf += text; advance(); },
-    tick(ms) {
+    tick(ms = time()) {
       now = ms;
       if (!step || step.stream) return;
       if (step.retry && now - step.at > step.every * (step.tries + 1)) {
@@ -154,7 +157,10 @@ export function createMicroPythonRuntime(image, hw, opts = {}) {
   const key = hw.mem ? hw.mem() : null;
   let fs = key && FS.get(key);
   if (!fs || fs.version !== FIRMWARE.version) { fs = { version: FIRMWARE.version, sectors: new Map(), files: [] }; if (key) FS.set(key, fs); }
-  const base = createRp2040Runtime(image, hw, { eeprom: false, flash: fs.sectors });
+  // Le pilote lit la sortie de la carte à l'instant simulé où elle arrive (onSerial) et lui répond aussitôt : pas
+  // d'attente jusqu'à la fin de l'image, dont la durée simulée dépend de la vitesse de l'ordinateur.
+  let repl = null;
+  const base = createRp2040Runtime(image, hw, { eeprom: false, flash: fs.sectors, onSerial: s => repl.feed(s) });
   let out = '', tapBuf = '', tap = null, failed = null, held = [], files = {}, execName = 'main.py';
   // Erreur Python : le cadre le plus profond qui est un fichier du projet (ou le code exécuté sans être enregistré).
   const traces = createTracebackReader(({ frames, msg }) => {
@@ -163,11 +169,14 @@ export function createMicroPythonRuntime(image, hw, opts = {}) {
     if (opts.onError) opts.onError({ file: f.file === '<stdin>' ? execName : f.file, line: f.line, msg });
   });
   const show = s => { out += s; tapBuf += s; traces(s); };
-  const repl = createRawRepl({
-    write: s => base.send(s), out: show,
+  repl = createRawRepl({
+    write: s => base.send(s), out: show, clock: base.clock,
     fail: m => { failed = m; },
     done: () => { for (const s of held.splice(0)) base.send(s); }
   });
+  // Relances et délais du pilote : une alarme de l'horloge simulée (toutes les 50 ms), comptés une fois l'USB ouvert.
+  const ticker = base.hw.clock.createAlarm(() => { if (base.hw.usbOpen()) repl.tick(base.clock()); ticker.schedule(50e6); });
+  ticker.schedule(50e6);
   function start(run, list) {
     files = { ...(list || files) };
     const remove = fs.files.filter(p => !(p in files));
@@ -182,8 +191,7 @@ export function createMicroPythonRuntime(image, hw, opts = {}) {
     debug: base.debug, logic: base.logic, hw: base.hw, firmware: 'micropython',
     run(dt) {
       base.run(dt);
-      const s = base.takeSerial(); if (s) repl.feed(s);
-      if (base.hw.usbOpen()) repl.tick(base.clock()); // délais comptés une fois l'USB ouvert (démarrage de la carte)
+      base.takeSerial(); // déjà passée au pilote (onSerial)
       if (tap && tapBuf) tap(tapBuf, base.clock());
       tapBuf = '';
     },

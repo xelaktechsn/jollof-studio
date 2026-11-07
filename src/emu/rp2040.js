@@ -50,7 +50,8 @@ export function parseImage(image) {
  * Moteur d'exécution d'un programme compilé pour le Pico. image : octets du .bin (ou du .uf2) ; hw : pont vers
  * le montage (makeHw, src/prog/panel.js), dont on lit hw.prof, hw.kind et hw.read(clé) pour les entrées.
  * opts : { bootrom (mots de la bootrom), eeprom: false (pas d'EEPROM d'arduino-pico dans la flash),
- *          flash: Map (secteurs de 4 Kio écrits par le programme, gardés pour le démarrage suivant) }.
+ *          flash: Map (secteurs de 4 Kio écrits par le programme, gardés pour le démarrage suivant),
+ *          onSerial(texte) (sortie USB de la carte, à l'instant simulé où elle arrive) }.
  */
 export function createRp2040Runtime(image, hw, opts = {}) {
   const prof = hw.prof, logic = prof.logic, keys = pinMap(prof, hw.kind);
@@ -189,7 +190,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   // Serial : l'USB de la carte. Un hôte simulé l'énumère puis ouvre le port (DTR), comme un PC avec le moniteur ouvert.
   const usb = mcu.usbCtrl, cdc = new USBCDC(usb);
   let usbOpen = false, pendingRead = null;
-  cdc.onDeviceConnected = () => { usbOpen = true; };
+  cdc.onDeviceConnected = () => { usbOpen = true; feedSerial(); };
   // Le programme relance son USB (MicroPython le fait à chaque redémarrage logiciel) : l'hôte l'énumère de nouveau.
   const usbEnabled = usb.onUSBEnabled;
   usb.onUSBEnabled = () => {
@@ -197,13 +198,19 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     cdc.txFIFO.reset(); usbOpen = false; pendingRead = null;
     usbEnabled();
   };
-  cdc.onSerialData = buf => { let s = ''; for (const b of buf) s += String.fromCharCode(b); out += s; tapBuf += s; };
-  // Le programme arme sa réception USB : sans octet à envoyer, l'hôte attend (sinon un paquet vide toutes les 10 µs).
+  // opts.onSerial(texte) : ce que la carte écrit, à l'instant simulé où elle l'écrit (pilote du REPL de MicroPython).
+  cdc.onSerialData = buf => { let s = ''; for (const b of buf) s += String.fromCharCode(b); out += s; tapBuf += s; if (opts.onSerial) opts.onSerial(s); };
+  // Le programme arme sa réception USB : l'hôte lui passe aussitôt ce qui attend ; sans octet à envoyer, il attend
+  // (sinon un paquet vide toutes les 10 µs). Tout se règle au rythme de la carte, jamais à celui de l'ordinateur.
   const cdcRead = usb.onEndpointRead;
-  usb.onEndpointRead = (ep, size) => { if (cdc.txFIFO.empty && ep === cdc.outEndpoint) pendingRead = [ep, size]; else cdcRead(ep, size); };
+  const topUp = () => { if (usbOpen) while (serialIn.length && !cdc.txFIFO.full) cdc.sendSerialByte(serialIn.shift()); };
+  usb.onEndpointRead = (ep, size) => {
+    if (ep === cdc.outEndpoint) topUp();
+    if (cdc.txFIFO.empty && ep === cdc.outEndpoint) pendingRead = [ep, size]; else cdcRead(ep, size);
+  };
   function feedSerial() {
     if (usbOpen && serialIn.length) {
-      while (serialIn.length && !cdc.txFIFO.full) cdc.sendSerialByte(serialIn.shift());
+      topUp();
       if (pendingRead && !cdc.txFIFO.empty) { const [ep, size] = pendingRead; pendingRead = null; cdcRead(ep, size); }
     }
     const u = mcu.uart[0];
@@ -214,7 +221,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   mcu.uart[0].onByte = b => { for (const fn of txSubs) fn(b, cyc()); };
   const uart = {
     onTx(fn) { txSubs.push(fn); return () => { const i = txSubs.indexOf(fn); if (i >= 0) txSubs.splice(i, 1); }; },
-    inject(bytes) { for (const b of bytes) uartIn.push(b & 0xff); },
+    inject(bytes) { for (const b of bytes) uartIn.push(b & 0xff); feedSerial(); },
     baud: () => mcu.uart[0].baudRate
   };
 
@@ -453,7 +460,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     debug, logic, firmware: 'rp2040',
     get state() { return state; }, get error() { return error; }, get line() { return null; },
     takeSerial() { const s = out; out = ''; return s; },
-    send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); },
+    send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); feedSerial(); }, // tout de suite, pas à la fin de l'image
     stop() { state = 'stopped'; },
     /** Pour les tests et les modèles de modules : le processeur émulé et ses périphériques. */
     hw: { mcu, cpu: core, clock, cdc, usbOpen: () => usbOpen, pinApi, uart, devices, i2c: () => i2cHandler }

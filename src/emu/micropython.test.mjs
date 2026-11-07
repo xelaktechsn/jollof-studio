@@ -8,12 +8,23 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { FIRMWARE, pyBytes, syncCommands, createTracebackReader, createRawRepl, createMicroPythonRuntime, loadFirmware } from './micropython.js';
-import { fakeBoard, runFor } from './testkit.mjs';
+import { fakeBoard } from './testkit.mjs';
 
 const FW = new URL('../../public/' + FIRMWARE.file, import.meta.url);
 const skip = !fs.existsSync(FW) && `micrologiciel absent (${FIRMWARE.file})`;
 const image = () => new Uint8Array(fs.readFileSync(FW));
 const RAW = 'raw REPL; CTRL-B to exit\r\n>';
+/**
+ * Fait tourner la carte jusqu'à ce que sa sortie série vérifie ok(texte), au plus max ms de temps simulé (pas une
+ * durée fixe : le temps simulé ne dépend pas de la vitesse de l'ordinateur, la marge couvre un démarrage plus long).
+ * Rend la sortie lue.
+ */
+function runUntil(rt, ok, max = 6000) {
+  let out = '';
+  for (let end = rt.clock() + max, g = 0; rt.clock() < end && g < 500000; g++) { rt.run(16); out += rt.takeSerial(); if (ok(out)) break; }
+  return out;
+}
+const REPL = s => />>> $/.test(s); // invite du REPL : le programme a fini (ou a été interrompu)
 
 test('Raw REPL : fichiers en littéraux bytes ASCII, découpés, dossiers créés, anciens fichiers retirés', () => {
   assert.equal(pyBytes(new Uint8Array([0x61, 0x27, 0x5c, 10, 13, 9, 3, 4, 0xc3, 0xa9])), "b'a\\'\\\\\\n\\r\\t\\x03\\x04\\xc3\\xa9'");
@@ -122,9 +133,7 @@ test('MicroPython : main.py, Pin, ADC, REPL, Traceback à la bonne ligne', { ski
   ].join('\n') + '\n';
   const rt = createMicroPythonRuntime(image(), hw, { files: { 'main.py': main }, onError: e => errors.push(e) });
   rt.setTrace((k, p, t) => { if (k === 'GP15' && p.d === 1) rises.push(t); });
-  let serial = '';
-  rt.setSerialTap(s => { serial += s; });
-  runFor(rt, 1200);
+  const serial = runUntil(rt, s => /fin[\s\S]*>>> $/.test(s));
   assert.equal(rt.state, 'run');
   assert.match(serial, /MPY: soft reboot\r\nadc 21845\r\n/, 'ADC : 1,1 V sur 3,3 V → 21845 sur 16 bits');
   assert.match(serial, /fin 0\r\n/);
@@ -133,10 +142,8 @@ test('MicroPython : main.py, Pin, ADC, REPL, Traceback à la bonne ligne', { ski
   assert.equal(rt.pins.get('GP15').mode, 1);
   assert.deepEqual(errors, [{ file: 'main.py', line: 9, msg: "NameError: name 'undefined_name' isn't defined" }]);
   assert.match(serial, />>> $/, 'le REPL reprend la main');
-  rt.takeSerial();
   rt.send('print(6 * 7)\r');
-  runFor(rt, 100);
-  assert.match(rt.takeSerial(), /42\r\n>>> $/);
+  assert.match(runUntil(rt, s => /42\r\n>>> $/.test(s)), /42\r\n>>> $/);
 });
 
 /** Pilote d'écran LCD 1602 à module I2C (PCF8574), écrit pour le test : 4 bits, RS = P0, E = P2, rétroéclairage P3. */
@@ -204,8 +211,7 @@ servo.duty_ns(1472000)
 print('ok')
 `;
   const rt = createMicroPythonRuntime(image(), hw, { files: { 'main.py': main, 'lib/lcd.py': LCD_PY } });
-  runFor(rt, 2000);
-  const serial = rt.takeSerial();
+  const serial = runUntil(rt, s => /ok\r\n[\s\S]*>>> $/.test(s) || /Traceback/.test(s) && REPL(s));
   assert.match(serial, /scan \[39\]\r\nsoft \[39\]\r\n/, 'I2C matériel, et logiciel (SoftI2C) grâce aux résistances de tirage du module');
   assert.match(serial, /dht 24\.5 61\.0\r\n/);
   assert.match(serial, /ds 1 23\.0625\r\n/);
@@ -222,23 +228,19 @@ test('MicroPython : exécuter sans enregistrer, Ctrl-C, fichiers gardés au red�
   const errors = [];
   const files = { 'main.py': "print('main')\n", 'old.py': 'X = 1\n' };
   let rt = createMicroPythonRuntime(image(), hw, { files, onError: e => errors.push(e) });
-  runFor(rt, 1000);
-  assert.match(rt.takeSerial(), /main\r\n/);
+  assert.match(runUntil(rt, REPL), /main\r\n/);
   rt.mpy.runFile('essai.py', "import time\nprint('essai')\nwhile True:\n    time.sleep_ms(10)\n", files);
-  runFor(rt, 600);
-  assert.match(rt.takeSerial(), /essai\r\n/);
+  assert.match(runUntil(rt, s => /essai\r\n/.test(s)), /essai\r\n/);
   rt.mpy.interrupt();
-  runFor(rt, 200);
-  assert.match(rt.takeSerial(), /KeyboardInterrupt[\s\S]*>>> $/);
+  assert.match(runUntil(rt, REPL), /KeyboardInterrupt[\s\S]*>>> $/);
   assert.deepEqual(errors, [], 'une interruption n’est pas une erreur');
   rt.send("f = open('data.txt', 'w'); f.write('mesures'); f.close()\r");
-  runFor(rt, 100);
+  runUntil(rt, REPL);
   // Nouveau démarrage de la même carte : old.py a quitté le projet, data.txt (écrit par le programme) reste.
   rt = createMicroPythonRuntime(image(), hw, { files: { 'main.py': "import os\nprint(sorted(os.listdir()), open('data.txt').read())\n" }, onError: e => errors.push(e) });
-  runFor(rt, 1000);
-  assert.match(rt.takeSerial(), /\['data\.txt', 'main\.py'\] mesures\r\n/);
+  assert.match(runUntil(rt, REPL), /\['data\.txt', 'main\.py'\] mesures\r\n/);
   // Erreur dans un fichier exécuté sans être enregistré (« <stdin> » pour MicroPython) : rapportée à ce fichier.
   rt.mpy.runFile('erreur.py', 'a = 1\nb = a / 0\n', { 'main.py': '' });
-  runFor(rt, 300);
+  runUntil(rt, s => /ZeroDivisionError[\s\S]*>>> $/.test(s));
   assert.deepEqual(errors, [{ file: 'erreur.py', line: 2, msg: 'ZeroDivisionError: divide by zero' }]);
 });
