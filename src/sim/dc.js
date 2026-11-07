@@ -680,16 +680,20 @@ const VT = 0.025852; // tension thermique à 27 °C
  *            et MOSFET dans l'état trouvé) : ngspice doit retrouver les mêmes tensions, au millivolt près ;
  *   'phys' : modèles physiques de ngspice (diode exponentielle, NPN de Gummel-Poon, MOSFET niveau 1) réglés sur
  *            les mêmes paramètres : l'écart mesure l'erreur des modèles simplifiés.
+ *   'tran' : transitoire (.tran) sur opts.tstop secondes (pas opts.tstep), modèles physiques, condensateurs avec leur
+ *            charge, sorties PWM en impulsions (opts.freqOf(comp, clé) → Hz) : ce que montre l'oscilloscope.
  * Rend { text, probes: [{ node, ref, members }] } (ref : une broche du nœud, pour solveDC().volts), ou null si une sortie
- * PWM découpe le temps (le solveur moyenne plusieurs états : pas de point de fonctionnement unique).
+ * PWM découpe le temps hors transitoire (le solveur moyenne plusieurs états : pas de point de fonctionnement unique).
  */
-export function spiceDeck(comps, A, ctx, mode = 'pwl') {
+export function spiceDeck(comps, A, ctx, mode = 'pwl', opts = {}) {
   const c = ctx || {}, T = topology(comps, A, typeof c.prof === 'function' ? c.prof : boardOf);
   if (!prepare(T, c) && !T.els.length) return null;
-  const L = T.els.length, Vn = new Float64Array(T.nn).fill(NaN), I = new Float64Array(3 * L);
-  run(T, Vn, I, 0, 1);
-  if (T.duties.length) return null;
-  const name = i => (i < 0 || T.isRef[i] ? '0' : `n${i}`), out = [`* Jollof Studio : point de fonctionnement (${mode})`];
+  const L = T.els.length, Vn = new Float64Array(T.nn).fill(NaN), I = new Float64Array(3 * L), tran = mode === 'tran';
+  // Transitoire : un pas fictif rend les condensateurs actifs ; les sorties PWM deviennent de vraies impulsions.
+  run(T, Vn, I, tran ? 1e-6 : 0, 1);
+  if (T.duties.length && !tran) return null;
+  if (tran) mode = 'phys';
+  const name = i => (i < 0 || T.isRef[i] ? '0' : `n${i}`), out = [`* Jollof Studio : ${tran ? 'transitoire' : `point de fonctionnement (${mode})`}`];
   const used = new Set();
   const line = s => out.push(s);
   for (const e of T.els) {
@@ -697,8 +701,17 @@ export function spiceDeck(comps, A, ctx, mode = 'pwl') {
     const i = e.i, a = name(e.a), b = e.gnd ? '0' : name(e.b), cc = e.c >= 0 ? name(e.c) : b;
     [e.a, e.gnd ? -1 : e.b, e.c].forEach(n => { if (n >= 0 && !T.isRef[n]) used.add(n); });
     if (e.k === RES) { if (e.g > 0) { if (e.e) { line(`R${i} ${a} x${i} ${1 / e.g}`); line(`V${i} x${i} ${b} DC ${e.e}`); } else line(`R${i} ${a} ${b} ${1 / e.g}`); } }
-    else if (e.k === NOR) { line(`R${i} ${a} x${i} ${1 / e.g}`); line(`V${i} x${i} ${b} DC ${e.duty >= 0 ? (e.duty > 0 ? e.logic : 0) : e.e}`); }
-    else if (e.k === DIO) {
+    else if (e.k === NOR) {
+      line(`R${i} ${a} x${i} ${1 / e.g}`);
+      if (tran && e.duty > 0 && e.duty < 1) {
+        // PWM, tone(), servo : impulsions à la fréquence de la broche (490 Hz par défaut, celle d'analogWrite sur l'Uno).
+        const f = (opts.freqOf && opts.freqOf(e.comp, e.key)) || 490, T0 = 1 / f, rise = Math.min(1e-7, T0 / 1000);
+        line(`V${i} x${i} ${b} PULSE(0 ${e.logic} 0 ${rise} ${rise} ${(e.duty * T0 - rise).toExponential(6)} ${T0.toExponential(6)})`);
+      } else line(`V${i} x${i} ${b} DC ${e.duty >= 0 ? (e.duty > 0 ? e.logic : 0) : e.e}`);
+    } else if (e.k === CAP) {
+      // Condensateur : sa charge de départ est celle que garde la simulation (c.dcS), déchargé sinon.
+      if (tran) line(`C${i} ${a} ${b} ${e.cap} IC=${e.vc}`);
+    } else if (e.k === DIO) {
       if (mode === 'phys') {
         // Exponentielle calée sur le seuil du solveur à 10 mA, sa résistance devient RS.
         const n = 1.8, is = 0.01 / Math.exp(e.e / (n * VT));
@@ -726,7 +739,8 @@ export function spiceDeck(comps, A, ctx, mode = 'pwl') {
   for (const n of used) line(`RG${n} n${n} 0 ${1 / GMIN}`);
   line('.model DID D(IS=1e-9 N=0.005)');
   line('.options gmin=1e-12');
-  line('.op');
+  if (tran) { const tt = opts.tstop || 0.02, ts = opts.tstep || tt / 1000; line(`.tran ${ts.toExponential(4)} ${tt.toExponential(4)} 0 ${ts.toExponential(4)} uic`); }
+  else line('.op');
   line('.end');
   const probes = [];
   for (const [members, i] of T.nets) if (used.has(i) && members.length) probes.push({ node: `n${i}`, ref: members[0], members });
