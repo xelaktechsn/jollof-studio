@@ -671,3 +671,64 @@ export function solveDC(comps, A, ctx) {
 export function resetDynamic(comps) {
   for (const c of comps || []) if (c && c.dcS) c.dcS = null;
 }
+
+/* ---------- Comparaison avec ngspice (src/sim/spice.test.mjs) ---------- */
+const VT = 0.025852; // tension thermique à 27 °C
+/**
+ * Le montage, tel que le voit ce solveur, écrit pour ngspice (analyse .op). mode :
+ *   'pwl'  : mêmes modèles par morceaux que le solveur (diodes quasi idéales avec seuil et résistance, transistors
+ *            et MOSFET dans l'état trouvé) : ngspice doit retrouver les mêmes tensions, au millivolt près ;
+ *   'phys' : modèles physiques de ngspice (diode exponentielle, NPN de Gummel-Poon, MOSFET niveau 1) réglés sur
+ *            les mêmes paramètres : l'écart mesure l'erreur des modèles simplifiés.
+ * Rend { text, probes: [{ node, ref, members }] } (ref : une broche du nœud, pour solveDC().volts), ou null si une sortie
+ * PWM découpe le temps (le solveur moyenne plusieurs états : pas de point de fonctionnement unique).
+ */
+export function spiceDeck(comps, A, ctx, mode = 'pwl') {
+  const c = ctx || {}, T = topology(comps, A, typeof c.prof === 'function' ? c.prof : boardOf);
+  if (!prepare(T, c) && !T.els.length) return null;
+  const L = T.els.length, Vn = new Float64Array(T.nn).fill(NaN), I = new Float64Array(3 * L);
+  run(T, Vn, I, 0, 1);
+  if (T.duties.length) return null;
+  const name = i => (i < 0 || T.isRef[i] ? '0' : `n${i}`), out = [`* Jollof Studio : point de fonctionnement (${mode})`];
+  const used = new Set();
+  const line = s => out.push(s);
+  for (const e of T.els) {
+    if (!e.live || e.off) continue;
+    const i = e.i, a = name(e.a), b = e.gnd ? '0' : name(e.b), cc = e.c >= 0 ? name(e.c) : b;
+    [e.a, e.gnd ? -1 : e.b, e.c].forEach(n => { if (n >= 0 && !T.isRef[n]) used.add(n); });
+    if (e.k === RES) { if (e.g > 0) { if (e.e) { line(`R${i} ${a} x${i} ${1 / e.g}`); line(`V${i} x${i} ${b} DC ${e.e}`); } else line(`R${i} ${a} ${b} ${1 / e.g}`); } }
+    else if (e.k === NOR) { line(`R${i} ${a} x${i} ${1 / e.g}`); line(`V${i} x${i} ${b} DC ${e.duty >= 0 ? (e.duty > 0 ? e.logic : 0) : e.e}`); }
+    else if (e.k === DIO) {
+      if (mode === 'phys') {
+        // Exponentielle calée sur le seuil du solveur à 10 mA, sa résistance devient RS.
+        const n = 1.8, is = 0.01 / Math.exp(e.e / (n * VT));
+        line(`D${i} ${a} ${b} DX${i}`); line(`.model DX${i} D(IS=${is.toExponential(4)} N=${n} RS=${1 / e.g})`);
+      } else { line(`D${i} ${a} x${i} DID`); line(`V${i} x${i} y${i} DC ${e.e}`); line(`R${i} y${i} ${b} ${1 / e.g}`); }
+    } else if (e.k === SRC) {
+      if (e.kind === REG) {
+        if (!e.on) continue;
+        // Régulateur : la tension de sortie est imposée par rapport à GND, le courant vient de IN (source F).
+        line(`R${i} ${a} x${i} ${e.r || 1e-6}`); line(`V${i} x${i} ${b} DC ${e.e}`); line(`F${i} ${b} ${cc} V${i} 1`);
+      } else if (e.kind === OR) { line(`V${i} x${i} ${b} DC ${e.e}`); line(`D${i} x${i} y${i} DID`); line(`R${i} y${i} ${a} ${e.r || 1e-6}`); }
+      else { line(`V${i} x${i} ${b} DC ${e.e}`); line(`R${i} ${a} x${i} ${e.r || 1e-6}`); }
+    } else if (e.k === BJT) {
+      if (mode === 'phys') { line(`Q${i} ${a} ${cc} ${b} QX${i}`); line(`.model QX${i} NPN(IS=${(1e-3 / Math.exp(VBE / VT)).toExponential(4)} BF=${e.beta} VAF=100 RB=50)`); continue; }
+      if (!e.on) continue;
+      line(`R${i}b ${cc} y${i} ${1 / G_BE}`); line(`V${i}b y${i} ${b} DC ${VBE}`);
+      if (e.on === 2) { line(`R${i} ${a} z${i} ${1 / e.gs}`); line(`V${i} z${i} ${b} DC ${VCE_SAT}`); }
+      else line(`G${i} ${a} ${b} ${cc} y${i} ${e.beta * G_BE}`);
+    } else if (e.k === FET) {
+      if (mode === 'phys') { line(`M${i} ${a} ${cc} ${b} ${b} MX${i}`); line(`.model MX${i} NMOS(LEVEL=1 VTO=${e.e} KP=${(e.g / Math.max(0.5, 5 - e.e)).toExponential(4)})`); continue; }
+      if (e.on) line(`R${i} ${a} ${b} ${1 / e.g}`);
+    }
+  }
+  // Même fuite vers la masse que le solveur (GMIN) : un nœud isolé garde une solution.
+  for (const n of used) line(`RG${n} n${n} 0 ${1 / GMIN}`);
+  line('.model DID D(IS=1e-9 N=0.005)');
+  line('.options gmin=1e-12');
+  line('.op');
+  line('.end');
+  const probes = [];
+  for (const [members, i] of T.nets) if (used.has(i) && members.length) probes.push({ node: `n${i}`, ref: members[0], members });
+  return { text: out.join('\n') + '\n', probes };
+}
