@@ -1,0 +1,419 @@
+{
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Thermomètre DHT22 et écran LCD",
+  "description": "Arduino Uno, capteur de température et d’humidité DHT22 et écran LCD 16×2 avec adaptateur I2C (adresse 0x27). Alimentations 5 V et masses par les rails de la breadboard, I2C sur SDA et SCL. Câblage automatique. Programme écrit à la main (mode Débutant) : température et humidité sur l’écran et le moniteur série, toutes les 2 s.",
+  "en": {
+    "name": "DHT22 thermometer and LCD",
+    "description": "Arduino Uno, a DHT22 temperature and humidity sensor and a 16×2 LCD with an I2C backpack (address 0x27). 5 V and grounds through the breadboard rails, I2C on SDA and SCL. Auto-wired. Hand-written program (Beginner mode): temperature and humidity on the display and the serial monitor every 2 s."
+  },
+  "comps": [
+    {
+      "id": "uno_1",
+      "type": "uno",
+      "name": "UNO",
+      "x": 0,
+      "z": 0,
+      "r": 0
+    },
+    {
+      "id": "breadboard_1",
+      "type": "breadboard",
+      "name": "BB1",
+      "x": 0,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "dht22_1",
+      "type": "dht22",
+      "name": "DHT1",
+      "x": -70,
+      "z": 20,
+      "r": 0
+    },
+    {
+      "id": "lcd1602_1",
+      "type": "lcd1602",
+      "name": "LCD1",
+      "x": 0,
+      "z": -75,
+      "r": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "a": [
+        "uno_1",
+        "5V"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+12"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V vers la breadboard"
+    },
+    {
+      "id": "w2",
+      "a": [
+        "dht22_1",
+        "VCC"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+1"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V"
+    },
+    {
+      "id": "w3",
+      "a": [
+        "uno_1",
+        "GND (2)"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-13"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse vers la breadboard"
+    },
+    {
+      "id": "w4",
+      "a": [
+        "dht22_1",
+        "GND"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-1"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w5",
+      "a": [
+        "dht22_1",
+        "DATA"
+      ],
+      "b": [
+        "uno_1",
+        "D7"
+      ],
+      "color": "#f2c94c",
+      "role": "Données"
+    },
+    {
+      "id": "w6",
+      "a": [
+        "lcd1602_1",
+        "VCC"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+2"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V"
+    },
+    {
+      "id": "w7",
+      "a": [
+        "lcd1602_1",
+        "GND"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-2"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w8",
+      "a": [
+        "lcd1602_1",
+        "SDA"
+      ],
+      "b": [
+        "uno_1",
+        "SDA"
+      ],
+      "color": "#3b82f6",
+      "role": "I2C SDA"
+    },
+    {
+      "id": "w9",
+      "a": [
+        "lcd1602_1",
+        "SCL"
+      ],
+      "b": [
+        "uno_1",
+        "SCL"
+      ],
+      "color": "#9b7be0",
+      "role": "I2C SCL"
+    }
+  ],
+  "blocks": [],
+  "settings": {
+    "dur": 2.2,
+    "env": {
+      "temp": 24,
+      "hum": 55,
+      "press": 1013,
+      "lux": 300,
+      "dist": 35,
+      "motion": 0,
+      "soil": 40,
+      "gas": 0,
+      "sound": 45,
+      "tilt": 0,
+      "tiltY": 0,
+      "rotZ": 0
+    },
+    "shots": [
+      {
+        "id": "s1",
+        "p": [
+          79.27,
+          203.89,
+          226.52
+        ],
+        "t": [
+          -18.5,
+          6.77,
+          5.75
+        ]
+      },
+      {
+        "id": "s2",
+        "p": [
+          10.5,
+          180.24,
+          216.24
+        ],
+        "t": [
+          -18.5,
+          6.77,
+          5.75
+        ]
+      },
+      {
+        "id": "s3",
+        "p": [
+          86.45,
+          176.47,
+          70.23
+        ],
+        "t": [
+          0,
+          4,
+          -75
+        ]
+      }
+    ],
+    "netNames": {},
+    "prog": {
+      "rules": [],
+      "boards": {
+        "uno_1": {
+          "code": "// Thermomètre : le DHT22 mesure, l’écran LCD affiche.\n#include <DHT.h>\n#include <Wire.h>\n#include <LiquidCrystal_I2C.h>\n\nconst int BROCHE_DHT = 7;\nDHT dht(BROCHE_DHT, DHT22);\nLiquidCrystal_I2C lcd(0x27, 16, 2); // adresse I2C 0x27, 16 colonnes, 2 lignes\n\nvoid setup() {\n  Serial.begin(9600);\n  dht.begin();\n  lcd.init();\n  lcd.backlight();\n  lcd.print(\"Thermometre\");\n  delay(1000);\n  lcd.clear();\n}\n\nvoid loop() {\n  float t = dht.readTemperature(); // en degres Celsius\n  float h = dht.readHumidity();    // en %\n\n  if (isnan(t) || isnan(h)) {      // capteur absent ou mal cable\n    lcd.setCursor(0, 0);\n    lcd.print(\"Erreur capteur  \");\n    delay(2000);\n    return;\n  }\n\n  lcd.setCursor(0, 0);\n  lcd.print(\"Temp : \");\n  lcd.print(t, 1);\n  lcd.print(\" C   \");\n  lcd.setCursor(0, 1);\n  lcd.print(\"Hum  : \");\n  lcd.print(h, 0);\n  lcd.print(\" %   \");\n\n  Serial.print(\"Temperature : \");\n  Serial.print(t);\n  Serial.print(\" C, humidite : \");\n  Serial.print(h);\n  Serial.println(\" %\");\n\n  delay(2000); // le DHT22 ne donne pas plus d'une mesure toutes les 2 s\n}\n",
+          "auto": false
+        }
+      },
+      "states": {},
+      "mem": {},
+      "net": null
+    },
+    "check": {
+      "allow": []
+    },
+    "timeline": {
+      "v": 1,
+      "auto": null,
+      "camAuto": false,
+      "pad": 0.6,
+      "hold": 1.6,
+      "wires": [
+        {
+          "id": "c1",
+          "ws": [
+            "w1"
+          ],
+          "t": 8.5,
+          "d": 2.2
+        },
+        {
+          "id": "c2",
+          "ws": [
+            "w2"
+          ],
+          "t": 11.3,
+          "d": 2.2
+        },
+        {
+          "id": "c3",
+          "ws": [
+            "w3"
+          ],
+          "t": 14.1,
+          "d": 2.2
+        },
+        {
+          "id": "c4",
+          "ws": [
+            "w4"
+          ],
+          "t": 16.9,
+          "d": 2.2
+        },
+        {
+          "id": "c5",
+          "ws": [
+            "w5"
+          ],
+          "t": 19.7,
+          "d": 2.2
+        },
+        {
+          "id": "c6",
+          "ws": [
+            "w6"
+          ],
+          "t": 26,
+          "d": 2.2
+        },
+        {
+          "id": "c7",
+          "ws": [
+            "w7"
+          ],
+          "t": 28.8,
+          "d": 2.2
+        },
+        {
+          "id": "c8",
+          "ws": [
+            "w8"
+          ],
+          "t": 31.6,
+          "d": 2.2
+        },
+        {
+          "id": "c9",
+          "ws": [
+            "w9"
+          ],
+          "t": 34.4,
+          "d": 2.2
+        }
+      ],
+      "cam": [
+        {
+          "id": "k1",
+          "shot": "s1",
+          "t": 0,
+          "ease": "smooth"
+        },
+        {
+          "id": "k2",
+          "shot": "s2",
+          "t": 8,
+          "ease": "smooth"
+        },
+        {
+          "id": "k3",
+          "shot": "s2",
+          "t": 36.6,
+          "ease": "smooth"
+        },
+        {
+          "id": "k4",
+          "shot": "s1",
+          "t": 52.7,
+          "ease": "smooth"
+        },
+        {
+          "id": "k5",
+          "shot": "s3",
+          "t": 56.2,
+          "ease": "smooth"
+        }
+      ],
+      "caps": [
+        {
+          "id": "t1",
+          "t": 0,
+          "d": 5,
+          "text": "Thermomètre DHT22 et écran LCD · Arduino Uno"
+        },
+        {
+          "id": "t2",
+          "t": 5,
+          "d": 3.5,
+          "text": "Le DHT22 : 5 V, masse, et la donnée sur D7"
+        },
+        {
+          "id": "t3",
+          "t": 22.5,
+          "d": 3.5,
+          "text": "L’écran LCD I2C : 5 V, masse, SDA et SCL (bus I2C)"
+        },
+        {
+          "id": "t4",
+          "t": 37.2,
+          "d": 5.5,
+          "text": "Le programme : bibliothèques DHT et LiquidCrystal_I2C"
+        },
+        {
+          "id": "t5",
+          "t": 42.7,
+          "d": 5.5,
+          "text": "Toutes les 2 s : lire la température et l’humidité"
+        },
+        {
+          "id": "t6",
+          "t": 48.2,
+          "d": 5.5,
+          "text": "Afficher sur le LCD (ligne 1 : température, ligne 2 : humidité)"
+        },
+        {
+          "id": "t7",
+          "t": 53.7,
+          "d": 5.5,
+          "text": "Simulation : l’écran affiche la mesure du capteur simulé"
+        },
+        {
+          "id": "t8",
+          "t": 59.2,
+          "d": 5.5,
+          "text": "Onglet Simulation : changez la température avec le curseur"
+        },
+        {
+          "id": "t9",
+          "t": 64.7,
+          "d": 5.5,
+          "text": "À vous : allumez une LED rouge au-dessus de 30 °C"
+        },
+        {
+          "id": "t10",
+          "t": 70.2,
+          "d": 4,
+          "text": "Jollof Studio · simuler avant de câbler"
+        }
+      ]
+    },
+    "video": {
+      "res": "1080",
+      "fps": 30,
+      "cap": true,
+      "orbit": false
+    }
+  }
+}

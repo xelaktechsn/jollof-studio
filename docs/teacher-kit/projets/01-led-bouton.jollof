@@ -1,0 +1,367 @@
+{
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "LED et bouton poussoir",
+  "description": "Arduino Uno, une LED rouge avec sa résistance de 220 Ω et un bouton poussoir sur une breadboard. Câblage fait par le câblage automatique. Programme écrit à la main (mode Débutant) : la LED s’allume tant que le bouton est appuyé (entrée en INPUT_PULLUP).",
+  "en": {
+    "name": "LED and push button",
+    "description": "Arduino Uno, a red LED with its 220 Ω resistor and a push button on a breadboard, wired by the auto-wiring. Hand-written program (Beginner mode): the LED is on while the button is pressed (INPUT_PULLUP input)."
+  },
+  "comps": [
+    {
+      "id": "uno_1",
+      "type": "uno",
+      "name": "UNO",
+      "x": 0,
+      "z": 0,
+      "r": 0
+    },
+    {
+      "id": "breadboard_1",
+      "type": "breadboard",
+      "name": "BB1",
+      "x": 0,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "led-red_1",
+      "type": "led-red",
+      "name": "LED1",
+      "x": -20,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "button_1",
+      "type": "button",
+      "name": "BTN1",
+      "x": 30,
+      "z": 80,
+      "r": 0,
+      "inp": {
+        "pressed": false
+      }
+    },
+    {
+      "id": "res-220_d7poqt",
+      "type": "res-220",
+      "name": "R1",
+      "x": -21,
+      "z": 37,
+      "r": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "a": [
+        "uno_1",
+        "GND (2)"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-13"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse vers la breadboard"
+    },
+    {
+      "id": "w2",
+      "a": [
+        "led-red_1",
+        "K"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-7"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w3",
+      "a": [
+        "led-red_1",
+        "A"
+      ],
+      "b": [
+        "res-220_d7poqt",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance série (Anode)"
+    },
+    {
+      "id": "w4",
+      "a": [
+        "res-220_d7poqt",
+        "1"
+      ],
+      "b": [
+        "uno_1",
+        "D7"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande"
+    },
+    {
+      "id": "w5",
+      "a": [
+        "button_1",
+        "2"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-24"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w6",
+      "a": [
+        "button_1",
+        "1"
+      ],
+      "b": [
+        "uno_1",
+        "D2"
+      ],
+      "color": "#f2c94c",
+      "role": "Entrée"
+    }
+  ],
+  "blocks": [],
+  "settings": {
+    "dur": 2.2,
+    "env": {
+      "temp": 24,
+      "hum": 55,
+      "press": 1013,
+      "lux": 300,
+      "dist": 35,
+      "motion": 0,
+      "soil": 40,
+      "gas": 0,
+      "sound": 45,
+      "tilt": 0,
+      "tiltY": 0,
+      "rotZ": 0
+    },
+    "shots": [
+      {
+        "id": "s1",
+        "p": [
+          65.44,
+          139.98,
+          188.19
+        ],
+        "t": [
+          0,
+          8.05,
+          40.43
+        ]
+      },
+      {
+        "id": "s2",
+        "p": [
+          19.41,
+          124.15,
+          181.31
+        ],
+        "t": [
+          0,
+          8.05,
+          40.43
+        ]
+      },
+      {
+        "id": "s3",
+        "p": [
+          72.78,
+          112.19,
+          193.87
+        ],
+        "t": [
+          5,
+          4,
+          80
+        ]
+      }
+    ],
+    "netNames": {},
+    "prog": {
+      "rules": [],
+      "boards": {
+        "uno_1": {
+          "code": "// LED et bouton : la LED s’allume tant que le bouton est appuyé.\nconst int LED = 7;      // anode de la LED, par la résistance de 220 ohms\nconst int BOUTON = 2;   // une patte du bouton ; l’autre est à la masse\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  pinMode(BOUTON, INPUT_PULLUP); // relâché : HIGH ; appuyé : LOW\n  Serial.begin(9600);\n  Serial.println(\"Appuyez sur le bouton\");\n}\n\nvoid loop() {\n  if (digitalRead(BOUTON) == LOW) {\n    digitalWrite(LED, HIGH);\n  } else {\n    digitalWrite(LED, LOW);\n  }\n}\n",
+          "auto": false
+        }
+      },
+      "states": {},
+      "mem": {},
+      "net": null
+    },
+    "check": {
+      "allow": []
+    },
+    "timeline": {
+      "v": 1,
+      "auto": null,
+      "camAuto": false,
+      "pad": 0.6,
+      "hold": 1.6,
+      "wires": [
+        {
+          "id": "c1",
+          "ws": [
+            "w1"
+          ],
+          "t": 8.5,
+          "d": 2.2
+        },
+        {
+          "id": "c2",
+          "ws": [
+            "w2"
+          ],
+          "t": 11.3,
+          "d": 2.2
+        },
+        {
+          "id": "c3",
+          "ws": [
+            "w3"
+          ],
+          "t": 14.1,
+          "d": 2.2
+        },
+        {
+          "id": "c4",
+          "ws": [
+            "w4"
+          ],
+          "t": 16.9,
+          "d": 2.2
+        },
+        {
+          "id": "c5",
+          "ws": [
+            "w5"
+          ],
+          "t": 23.2,
+          "d": 2.2
+        },
+        {
+          "id": "c6",
+          "ws": [
+            "w6"
+          ],
+          "t": 26,
+          "d": 2.2
+        }
+      ],
+      "cam": [
+        {
+          "id": "k1",
+          "shot": "s1",
+          "t": 0,
+          "ease": "smooth"
+        },
+        {
+          "id": "k2",
+          "shot": "s2",
+          "t": 8,
+          "ease": "smooth"
+        },
+        {
+          "id": "k3",
+          "shot": "s2",
+          "t": 28.2,
+          "ease": "smooth"
+        },
+        {
+          "id": "k4",
+          "shot": "s1",
+          "t": 44.3,
+          "ease": "smooth"
+        },
+        {
+          "id": "k5",
+          "shot": "s3",
+          "t": 47.8,
+          "ease": "smooth"
+        }
+      ],
+      "caps": [
+        {
+          "id": "t1",
+          "t": 0,
+          "d": 5,
+          "text": "LED et bouton poussoir · Arduino Uno"
+        },
+        {
+          "id": "t2",
+          "t": 5,
+          "d": 3.5,
+          "text": "La LED : D7 → résistance de 220 Ω → anode, cathode à la masse"
+        },
+        {
+          "id": "t3",
+          "t": 19.7,
+          "d": 3.5,
+          "text": "Le bouton : une patte sur D2, l’autre à la masse"
+        },
+        {
+          "id": "t4",
+          "t": 28.8,
+          "d": 5.5,
+          "text": "Le programme (mode Débutant) : LED en sortie, bouton en INPUT_PULLUP"
+        },
+        {
+          "id": "t5",
+          "t": 34.3,
+          "d": 5.5,
+          "text": "Bouton relâché : la broche lit HIGH. Appuyé : elle lit LOW"
+        },
+        {
+          "id": "t6",
+          "t": 39.8,
+          "d": 5.5,
+          "text": "Si le bouton lit LOW, la LED s’allume ; sinon elle s’éteint"
+        },
+        {
+          "id": "t7",
+          "t": 45.3,
+          "d": 5.5,
+          "text": "Simulation : cliquez sur le bouton pour l’appuyer"
+        },
+        {
+          "id": "t8",
+          "t": 50.8,
+          "d": 5.5,
+          "text": "Le vérificateur a essayé chaque état (bouton relâché et appuyé) : aucune erreur"
+        },
+        {
+          "id": "t9",
+          "t": 56.3,
+          "d": 5.5,
+          "text": "À vous : faites clignoter la LED tant que le bouton est appuyé"
+        },
+        {
+          "id": "t10",
+          "t": 61.8,
+          "d": 4,
+          "text": "Jollof Studio · simuler avant de câbler"
+        }
+      ]
+    },
+    "video": {
+      "res": "1080",
+      "fps": 30,
+      "cap": true,
+      "orbit": false
+    }
+  }
+}

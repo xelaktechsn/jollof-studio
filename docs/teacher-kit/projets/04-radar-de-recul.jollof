@@ -1,0 +1,477 @@
+{
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Radar de recul",
+  "description": "Arduino Nano, télémètre à ultrasons HC-SR04 et buzzer actif. Le buzzer tire environ 25 mA, plus que les 20 mA conseillés par broche : le câblage automatique le place derrière un transistor BC547 avec une résistance de base de 1 kΩ. Programme écrit à la main (mode Débutant) : bips de plus en plus rapides quand l’obstacle approche, son continu sous 10 cm.",
+  "en": {
+    "name": "Parking radar",
+    "description": "Arduino Nano, an HC-SR04 ultrasonic range finder and an active buzzer. The buzzer draws about 25 mA, more than the 20 mA advised per pin, so the auto-wiring puts it behind a BC547 transistor with a 1 kΩ base resistor. Hand-written program (Beginner mode): faster beeps as the obstacle gets closer, continuous tone under 10 cm."
+  },
+  "comps": [
+    {
+      "id": "nano_1",
+      "type": "nano",
+      "name": "NANO",
+      "x": 0,
+      "z": 0,
+      "r": 0
+    },
+    {
+      "id": "breadboard_1",
+      "type": "breadboard",
+      "name": "BB1",
+      "x": 0,
+      "z": 70,
+      "r": 0
+    },
+    {
+      "id": "hcsr04_1",
+      "type": "hcsr04",
+      "name": "US1",
+      "x": -10,
+      "z": -65,
+      "r": 0
+    },
+    {
+      "id": "buzzer_1",
+      "type": "buzzer",
+      "name": "BZ1",
+      "x": 60,
+      "z": -40,
+      "r": 0
+    },
+    {
+      "id": "npn_9qrfpx",
+      "type": "npn",
+      "name": "Q1",
+      "x": 39,
+      "z": -26,
+      "r": 0
+    },
+    {
+      "id": "res-1k_cbe0ya",
+      "type": "res-1k",
+      "name": "R1",
+      "x": 31,
+      "z": -41,
+      "r": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "a": [
+        "nano_1",
+        "5V"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+10"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V vers la breadboard"
+    },
+    {
+      "id": "w2",
+      "a": [
+        "hcsr04_1",
+        "VCC"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+9"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V"
+    },
+    {
+      "id": "w3",
+      "a": [
+        "nano_1",
+        "GND"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-10"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse vers la breadboard"
+    },
+    {
+      "id": "w4",
+      "a": [
+        "hcsr04_1",
+        "GND"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-11"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w5",
+      "a": [
+        "hcsr04_1",
+        "TRIG"
+      ],
+      "b": [
+        "nano_1",
+        "D7"
+      ],
+      "color": "#f2c94c",
+      "role": "Déclenchement"
+    },
+    {
+      "id": "w6",
+      "a": [
+        "hcsr04_1",
+        "ECHO"
+      ],
+      "b": [
+        "nano_1",
+        "D8"
+      ],
+      "color": "#f2c94c",
+      "role": "Écho"
+    },
+    {
+      "id": "w7",
+      "a": [
+        "buzzer_1",
+        "+"
+      ],
+      "b": [
+        "breadboard_1",
+        "T+25"
+      ],
+      "color": "#e5484d",
+      "role": "Alimentation 5 V"
+    },
+    {
+      "id": "w8",
+      "a": [
+        "buzzer_1",
+        "-"
+      ],
+      "b": [
+        "npn_9qrfpx",
+        "C"
+      ],
+      "color": "#f08a3c",
+      "role": "Vers le collecteur du transistor"
+    },
+    {
+      "id": "w9",
+      "a": [
+        "npn_9qrfpx",
+        "E"
+      ],
+      "b": [
+        "breadboard_1",
+        "T-25"
+      ],
+      "color": "#3a3f45",
+      "role": "Émetteur à la masse"
+    },
+    {
+      "id": "w10",
+      "a": [
+        "npn_9qrfpx",
+        "B"
+      ],
+      "b": [
+        "res-1k_cbe0ya",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance de base"
+    },
+    {
+      "id": "w11",
+      "a": [
+        "res-1k_cbe0ya",
+        "1"
+      ],
+      "b": [
+        "nano_1",
+        "D4"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande du transistor"
+    }
+  ],
+  "blocks": [],
+  "settings": {
+    "dur": 2.2,
+    "env": {
+      "temp": 24,
+      "hum": 55,
+      "press": 1013,
+      "lux": 300,
+      "dist": 35,
+      "motion": 0,
+      "soil": 40,
+      "gas": 0,
+      "sound": 45,
+      "tilt": 0,
+      "tiltY": 0,
+      "rotZ": 0
+    },
+    "shots": [
+      {
+        "id": "s1",
+        "p": [
+          109.02,
+          198.85,
+          172.97
+        ],
+        "t": [
+          12.75,
+          6.8,
+          11.25
+        ]
+      },
+      {
+        "id": "s2",
+        "p": [
+          54.84,
+          175.81,
+          171.43
+        ],
+        "t": [
+          12.75,
+          6.8,
+          11.25
+        ]
+      },
+      {
+        "id": "s3",
+        "p": [
+          119.25,
+          161.48,
+          69.71
+        ],
+        "t": [
+          25,
+          4,
+          -52.5
+        ]
+      }
+    ],
+    "netNames": {},
+    "prog": {
+      "rules": [],
+      "boards": {
+        "nano_1": {
+          "code": "// Radar de recul : plus l’obstacle est proche, plus le buzzer bipe vite.\nconst int TRIG = 7;\nconst int ECHO = 8;\nconst int BUZZER = 4; // base du transistor BC547, par 1 kohm\n\n// Distance en cm : impulsion de 10 microsecondes sur TRIG, puis durée de l’écho.\nfloat mesurerDistance() {\n  digitalWrite(TRIG, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG, LOW);\n  long duree = pulseIn(ECHO, HIGH, 30000); // 0 si aucun écho\n  return duree / 58.0;\n}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  pinMode(BUZZER, OUTPUT);\n}\n\nvoid loop() {\n  float cm = mesurerDistance();\n  Serial.print(\"Distance : \");\n  Serial.print(cm);\n  Serial.println(\" cm\");\n\n  if (cm == 0 || cm > 100) {\n    digitalWrite(BUZZER, LOW);   // rien de proche : silence\n    delay(200);\n  } else if (cm < 10) {\n    digitalWrite(BUZZER, HIGH);  // très proche : son continu\n    delay(200);\n  } else {\n    int pause = cm * 10;         // 10 cm : 100 ms ; 100 cm : 1 s\n    digitalWrite(BUZZER, HIGH);\n    delay(80);\n    digitalWrite(BUZZER, LOW);\n    delay(pause);\n  }\n}\n",
+          "auto": false
+        }
+      },
+      "states": {},
+      "mem": {},
+      "net": null
+    },
+    "check": {
+      "allow": []
+    },
+    "timeline": {
+      "v": 1,
+      "auto": null,
+      "camAuto": false,
+      "pad": 0.6,
+      "hold": 1.6,
+      "wires": [
+        {
+          "id": "c1",
+          "ws": [
+            "w1"
+          ],
+          "t": 8.5,
+          "d": 2.2
+        },
+        {
+          "id": "c2",
+          "ws": [
+            "w2"
+          ],
+          "t": 11.3,
+          "d": 2.2
+        },
+        {
+          "id": "c3",
+          "ws": [
+            "w3"
+          ],
+          "t": 14.1,
+          "d": 2.2
+        },
+        {
+          "id": "c4",
+          "ws": [
+            "w4"
+          ],
+          "t": 16.9,
+          "d": 2.2
+        },
+        {
+          "id": "c5",
+          "ws": [
+            "w5"
+          ],
+          "t": 19.7,
+          "d": 2.2
+        },
+        {
+          "id": "c6",
+          "ws": [
+            "w6"
+          ],
+          "t": 22.5,
+          "d": 2.2
+        },
+        {
+          "id": "c7",
+          "ws": [
+            "w7"
+          ],
+          "t": 28.8,
+          "d": 2.2
+        },
+        {
+          "id": "c8",
+          "ws": [
+            "w8"
+          ],
+          "t": 31.6,
+          "d": 2.2
+        },
+        {
+          "id": "c9",
+          "ws": [
+            "w9"
+          ],
+          "t": 34.4,
+          "d": 2.2
+        },
+        {
+          "id": "c10",
+          "ws": [
+            "w10"
+          ],
+          "t": 37.2,
+          "d": 2.2
+        },
+        {
+          "id": "c11",
+          "ws": [
+            "w11"
+          ],
+          "t": 40,
+          "d": 2.2
+        }
+      ],
+      "cam": [
+        {
+          "id": "k1",
+          "shot": "s1",
+          "t": 0,
+          "ease": "smooth"
+        },
+        {
+          "id": "k2",
+          "shot": "s2",
+          "t": 8,
+          "ease": "smooth"
+        },
+        {
+          "id": "k3",
+          "shot": "s2",
+          "t": 42.2,
+          "ease": "smooth"
+        },
+        {
+          "id": "k4",
+          "shot": "s1",
+          "t": 58.3,
+          "ease": "smooth"
+        },
+        {
+          "id": "k5",
+          "shot": "s3",
+          "t": 61.8,
+          "ease": "smooth"
+        }
+      ],
+      "caps": [
+        {
+          "id": "t1",
+          "t": 0,
+          "d": 5,
+          "text": "Radar de recul · Arduino Nano"
+        },
+        {
+          "id": "t2",
+          "t": 5,
+          "d": 3.5,
+          "text": "Le HC-SR04 : 5 V, masse, TRIG sur D7, ECHO sur D8"
+        },
+        {
+          "id": "t3",
+          "t": 25.3,
+          "d": 3.5,
+          "text": "Le buzzer derrière un transistor BC547 : la broche D4 commande la base par 1 kΩ"
+        },
+        {
+          "id": "t4",
+          "t": 42.8,
+          "d": 5.5,
+          "text": "Le programme : une impulsion de 10 µs sur TRIG lance la mesure"
+        },
+        {
+          "id": "t5",
+          "t": 48.3,
+          "d": 5.5,
+          "text": "pulseIn() mesure l’écho : distance (cm) = durée (µs) ÷ 58"
+        },
+        {
+          "id": "t6",
+          "t": 53.8,
+          "d": 5.5,
+          "text": "Plus c’est proche, plus la pause entre deux bips est courte"
+        },
+        {
+          "id": "t7",
+          "t": 59.3,
+          "d": 5.5,
+          "text": "Simulation : réglez la distance avec le curseur de l’onglet Simulation"
+        },
+        {
+          "id": "t8",
+          "t": 64.8,
+          "d": 5.5,
+          "text": "Sous 10 cm le buzzer sonne en continu ; au-delà de 1 m il se tait"
+        },
+        {
+          "id": "t9",
+          "t": 70.3,
+          "d": 5.5,
+          "text": "Pourquoi un transistor ? Le buzzer tire 25 mA, une broche en conseille 20"
+        },
+        {
+          "id": "t10",
+          "t": 75.8,
+          "d": 4,
+          "text": "Jollof Studio · simuler avant de câbler"
+        }
+      ]
+    },
+    "video": {
+      "res": "1080",
+      "fps": 30,
+      "cap": true,
+      "orbit": false
+    }
+  }
+}

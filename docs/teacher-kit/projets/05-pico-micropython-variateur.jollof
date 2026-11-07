@@ -1,0 +1,393 @@
+{
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "MicroPython sur Pico : variateur de LED",
+  "description": "Raspberry Pi Pico sous MicroPython, une LED avec sa résistance de 220 Ω et un potentiomètre 10 kΩ alimenté en 3,3 V. Câblage automatique (curseur sur une entrée ADC). Programme main.py : la position du potentiomètre règle la luminosité de la LED (PWM), valeurs affichées dans le moniteur série.",
+  "en": {
+    "name": "MicroPython on Pico: LED dimmer",
+    "description": "Raspberry Pi Pico running MicroPython, an LED with its 220 Ω resistor and a 10 kΩ potentiometer on 3.3 V. Auto-wired (wiper on an ADC input). main.py program: the potentiometer sets the LED brightness (PWM), values printed in the serial monitor."
+  },
+  "comps": [
+    {
+      "id": "pico_1",
+      "type": "pico",
+      "name": "PICO",
+      "x": 0,
+      "z": 0,
+      "r": 0
+    },
+    {
+      "id": "led-red_1",
+      "type": "led-red",
+      "name": "LED1",
+      "x": -40,
+      "z": -60,
+      "r": 0
+    },
+    {
+      "id": "pot_1",
+      "type": "pot",
+      "name": "POT1",
+      "x": 40,
+      "z": -60,
+      "r": 0,
+      "inp": {
+        "pos": 50
+      }
+    },
+    {
+      "id": "res-220_9jn8s4",
+      "type": "res-220",
+      "name": "R1",
+      "x": -26,
+      "z": -39,
+      "r": 0
+    },
+    {
+      "id": "res-1k_1",
+      "type": "res-1k",
+      "name": "R2",
+      "x": 30,
+      "z": -36,
+      "r": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "a": [
+        "led-red_1",
+        "K"
+      ],
+      "b": [
+        "pico_1",
+        "GND"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w2",
+      "a": [
+        "led-red_1",
+        "A"
+      ],
+      "b": [
+        "res-220_9jn8s4",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance série (Anode)"
+    },
+    {
+      "id": "w3",
+      "a": [
+        "res-220_9jn8s4",
+        "1"
+      ],
+      "b": [
+        "pico_1",
+        "GP2"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande"
+    },
+    {
+      "id": "w4",
+      "a": [
+        "pot_1",
+        "3"
+      ],
+      "b": [
+        "pico_1",
+        "3V3"
+      ],
+      "color": "#e5484d",
+      "role": "Référence"
+    },
+    {
+      "id": "w5",
+      "a": [
+        "pot_1",
+        "1"
+      ],
+      "b": [
+        "pico_1",
+        "GND (5)"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w6",
+      "a": [
+        "pot_1",
+        "W"
+      ],
+      "b": [
+        "res-1k_1",
+        "1"
+      ],
+      "color": "#3fb27f",
+      "role": "Curseur vers la résistance de protection"
+    },
+    {
+      "id": "w7",
+      "a": [
+        "res-1k_1",
+        "2"
+      ],
+      "b": [
+        "pico_1",
+        "GP28"
+      ],
+      "color": "#3fb27f",
+      "role": "Protection de l’entrée analogique (1 kΩ)"
+    }
+  ],
+  "blocks": [],
+  "settings": {
+    "dur": 2.2,
+    "env": {
+      "temp": 24,
+      "hum": 55,
+      "press": 1013,
+      "lux": 300,
+      "dist": 35,
+      "motion": 0,
+      "soil": 40,
+      "gas": 0,
+      "sound": 45,
+      "tilt": 0,
+      "tiltY": 0,
+      "rotZ": 0
+    },
+    "shots": [
+      {
+        "id": "s1",
+        "p": [
+          54.76,
+          117.58,
+          101.01
+        ],
+        "t": [
+          1,
+          9.2,
+          -20.38
+        ]
+      },
+      {
+        "id": "s2",
+        "p": [
+          16.94,
+          104.58,
+          95.36
+        ],
+        "t": [
+          1,
+          9.2,
+          -20.38
+        ]
+      },
+      {
+        "id": "s3",
+        "p": [
+          55.68,
+          92.87,
+          33.54
+        ],
+        "t": [
+          0,
+          4,
+          -60
+        ]
+      }
+    ],
+    "netNames": {},
+    "prog": {
+      "rules": [],
+      "boards": {
+        "pico_1": {
+          "engine": "micropython",
+          "files": {
+            "main.py": "# Variateur : le potentiomètre règle la luminosité de la LED.\nfrom machine import Pin, ADC, PWM\nimport time\n\npot = ADC(Pin(28))      # curseur du potentiomètre (entrée analogique)\nled = PWM(Pin(2))       # LED, par sa résistance de 220 ohms\nled.freq(1000)            # 1000 impulsions par seconde\n\nwhile True:\n    valeur = pot.read_u16()                 # de 0 à 65535\n    rapport = valeur * valeur // 65535      # courbe : plus fin dans les faibles lumières\n    led.duty_u16(rapport)\n    print(\"potentiometre :\", valeur * 100 // 65535, \"%  LED :\", rapport * 100 // 65535, \"%\")\n    time.sleep(0.2)\n"
+          },
+          "file": "main.py",
+          "code": "",
+          "auto": false
+        }
+      },
+      "states": {},
+      "mem": {},
+      "net": null
+    },
+    "check": {
+      "allow": []
+    },
+    "timeline": {
+      "v": 1,
+      "auto": null,
+      "camAuto": false,
+      "pad": 0.6,
+      "hold": 1.6,
+      "wires": [
+        {
+          "id": "c1",
+          "ws": [
+            "w1"
+          ],
+          "t": 8.5,
+          "d": 2.2
+        },
+        {
+          "id": "c2",
+          "ws": [
+            "w2"
+          ],
+          "t": 11.3,
+          "d": 2.2
+        },
+        {
+          "id": "c3",
+          "ws": [
+            "w3"
+          ],
+          "t": 14.1,
+          "d": 2.2
+        },
+        {
+          "id": "c4",
+          "ws": [
+            "w4"
+          ],
+          "t": 20.4,
+          "d": 2.2
+        },
+        {
+          "id": "c5",
+          "ws": [
+            "w5"
+          ],
+          "t": 23.2,
+          "d": 2.2
+        },
+        {
+          "id": "c6",
+          "ws": [
+            "w6"
+          ],
+          "t": 26,
+          "d": 2.2
+        },
+        {
+          "id": "c7",
+          "ws": [
+            "w7"
+          ],
+          "t": 28.8,
+          "d": 2.2
+        }
+      ],
+      "cam": [
+        {
+          "id": "k1",
+          "shot": "s1",
+          "t": 0,
+          "ease": "smooth"
+        },
+        {
+          "id": "k2",
+          "shot": "s2",
+          "t": 8,
+          "ease": "smooth"
+        },
+        {
+          "id": "k3",
+          "shot": "s2",
+          "t": 31,
+          "ease": "smooth"
+        },
+        {
+          "id": "k4",
+          "shot": "s1",
+          "t": 47.1,
+          "ease": "smooth"
+        },
+        {
+          "id": "k5",
+          "shot": "s3",
+          "t": 50.6,
+          "ease": "smooth"
+        }
+      ],
+      "caps": [
+        {
+          "id": "t1",
+          "t": 0,
+          "d": 5,
+          "text": "MicroPython sur Raspberry Pi Pico · variateur de LED"
+        },
+        {
+          "id": "t2",
+          "t": 5,
+          "d": 3.5,
+          "text": "La LED : GP2 → 220 Ω → anode, cathode à la masse"
+        },
+        {
+          "id": "t3",
+          "t": 16.9,
+          "d": 3.5,
+          "text": "Le potentiomètre : 3,3 V, masse, curseur sur GP28 (entrée analogique) par 1 kΩ"
+        },
+        {
+          "id": "t4",
+          "t": 31.6,
+          "d": 5.5,
+          "text": "main.py : ADC lit le potentiomètre, de 0 à 65535"
+        },
+        {
+          "id": "t5",
+          "t": 37.1,
+          "d": 5.5,
+          "text": "PWM : la LED reçoit des impulsions, leur largeur règle la luminosité"
+        },
+        {
+          "id": "t6",
+          "t": 42.6,
+          "d": 5.5,
+          "text": "Le vrai MicroPython tourne sur le Pico émulé : print() va au moniteur série"
+        },
+        {
+          "id": "t7",
+          "t": 48.1,
+          "d": 5.5,
+          "text": "Simulation : tournez le potentiomètre avec son curseur (onglet Simulation)"
+        },
+        {
+          "id": "t8",
+          "t": 53.6,
+          "d": 5.5,
+          "text": "Le 1 kΩ protège GP28 si un programme la passait en sortie par erreur"
+        },
+        {
+          "id": "t9",
+          "t": 59.1,
+          "d": 5.5,
+          "text": "À vous : faites clignoter la LED, plus vite quand on tourne"
+        },
+        {
+          "id": "t10",
+          "t": 64.6,
+          "d": 4,
+          "text": "Jollof Studio · simuler avant de câbler"
+        }
+      ]
+    },
+    "video": {
+      "res": "1080",
+      "fps": 30,
+      "cap": true,
+      "orbit": false
+    }
+  }
+}

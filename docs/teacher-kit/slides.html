@@ -1,0 +1,789 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Copyright (C) 2026 Mamadou Sarr — kit de formation des enseignants de Jollof Studio -->
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Jollof Studio · Formation des enseignants</title>
+<style>
+/* Diaporama autonome : aucune police ni bibliothèque chargée depuis Internet. Diapositives de
+   1280 × 720 px (16:9), mises à l'échelle de la fenêtre ; une diapositive par page à l'impression. */
+:root {
+  --paper: #faf8f4; --ink: #1c2127; --muted: #56606a; --line: #ddd5c8; --soft: #f2ebe1;
+  --accent: #c2541c; --accent-2: #e0703a; --ok: #1d7a4f; --ok-soft: #e3f2ea; --warn: #9a620e; --warn-soft: #fbf0d9;
+  --err: #b0331d; --err-soft: #f9e2dc; --code-bg: #1f252b; --code-ink: #e6e9eb; --back: #2b3036;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--back); }
+body { font-family: var(--sans); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.deck { position: fixed; inset: 0; overflow: hidden; }
+.frame { position: absolute; left: 50%; top: 50%; width: 1280px; height: 720px; transform: translate(-50%, -50%) scale(var(--scale, 1)); }
+.slide { position: absolute; inset: 0; display: none; flex-direction: column; background: var(--paper); color: var(--ink);
+  padding: 44px 64px 54px; font-size: 24px; line-height: 1.38; overflow: hidden; }
+.slide.active { display: flex; }
+.slide > .foot { position: absolute; left: 64px; right: 64px; bottom: 16px; display: flex; justify-content: space-between;
+  font-size: 14px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 7px; }
+.kicker { margin: 0 0 4px; font-size: 16px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+h1 { margin: 0; font-size: 58px; line-height: 1.08; letter-spacing: -.01em; }
+h2 { margin: 0 0 18px; font-size: 40px; line-height: 1.12; letter-spacing: -.01em; }
+h3 { margin: 0 0 8px; font-size: 25px; }
+p { margin: 0 0 12px; }
+ul, ol { margin: 0 0 12px; padding-left: 1.15em; }
+li { margin: 0 0 7px; }
+li::marker { color: var(--accent); }
+b, strong { font-weight: 700; }
+code, kbd, .mono { font-family: var(--mono); font-size: .88em; }
+code { background: var(--soft); border-radius: 5px; padding: 0 5px; }
+kbd { border: 1px solid var(--line); border-bottom-width: 3px; border-radius: 5px; padding: 0 6px; background: #fff; }
+.muted { color: var(--muted); }
+.small { font-size: 19px; }
+.xsmall { font-size: 16px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; align-items: start; }
+.cols.wide-left { grid-template-columns: 1.45fr 1fr; }
+.cols.wide-right { grid-template-columns: 1fr 1.45fr; }
+.cols.three { grid-template-columns: 1fr 1fr 1fr; gap: 22px; }
+.shot { margin: 0; }
+.shot .pos { position: relative; }
+.shot img { display: block; width: 100%; height: auto; border-radius: 10px; border: 1px solid #c9c1b4; box-shadow: 0 6px 18px rgba(30, 25, 15, .18); }
+.shot figcaption { font-size: 15px; color: var(--muted); margin-top: 6px; }
+.box { background: var(--soft); border-radius: 12px; padding: 14px 18px; margin: 0 0 12px; }
+.box > :last-child { margin-bottom: 0; }
+.box.ok { background: var(--ok-soft); border-left: 6px solid var(--ok); }
+.box.warn { background: var(--warn-soft); border-left: 6px solid var(--warn); }
+.box.err { background: var(--err-soft); border-left: 6px solid var(--err); }
+.box h3 { font-size: 22px; }
+.chip { display: inline-block; border-radius: 999px; padding: 1px 12px; font-size: 17px; font-weight: 700; background: var(--soft); color: var(--ink); white-space: nowrap; }
+.chip.ok { background: var(--ok-soft); color: var(--ok); }
+.chip.err { background: var(--err-soft); color: var(--err); }
+.chip.warn { background: var(--warn-soft); color: var(--warn); }
+.chip.t { background: var(--ink); color: #fff; }
+table { border-collapse: collapse; width: 100%; font-size: 19px; line-height: 1.3; }
+table.faq { font-size: 17.5px; }
+table.faq td { padding: 6px 10px; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { font-size: 16px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+tbody tr:nth-child(odd) td { background: rgba(242, 235, 225, .55); }
+td.time { white-space: nowrap; font-family: var(--mono); font-size: 17px; color: var(--accent); font-weight: 700; }
+pre { margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 12px 16px; font: 16px/1.45 var(--mono); white-space: pre; overflow: hidden; }
+pre .c { color: #8fa1ad; }
+pre .k { color: #f0a36b; }
+/* Repères numérotés posés sur une capture */
+.mark { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: var(--accent-2); color: #fff;
+  font: 700 19px/34px var(--sans); text-align: center; box-shadow: 0 0 0 3px #fff, 0 3px 8px rgba(0, 0, 0, .35); }
+.legend { list-style: none; padding: 0; counter-reset: n; font-size: 20px; }
+.legend li { counter-increment: n; position: relative; padding-left: 44px; margin-bottom: 9px; }
+.legend li::before { content: counter(n); position: absolute; left: 0; top: 1px; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-2); color: #fff; font: 700 17px/30px var(--sans); text-align: center; }
+.steps { list-style: none; padding: 0; counter-reset: s; }
+.steps li { counter-increment: s; position: relative; padding-left: 46px; margin-bottom: 10px; }
+.steps li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 32px; height: 32px; border-radius: 8px; background: var(--ink); color: #fff; font: 700 18px/32px var(--sans); text-align: center; }
+.steps .chip { margin-left: 6px; font-size: 15px; }
+/* Diapositive de titre */
+.title { justify-content: center; background: linear-gradient(135deg, #fbf6ee 0%, #f6e7d8 100%); }
+.title .brand { display: flex; align-items: center; gap: 16px; margin-bottom: 30px; font-weight: 700; font-size: 24px; }
+.title .logo { width: 58px; height: 58px; border-radius: 14px; background: var(--accent-2); color: #fff; font: 800 36px/58px var(--sans); text-align: center; }
+.title .sub { font-size: 30px; color: var(--muted); margin-top: 16px; max-width: 900px; }
+.title .meta { margin-top: 44px; font-size: 20px; color: var(--muted); }
+.section-tag { position: absolute; right: 64px; top: 44px; }
+/* Interface du diaporama (masquée à l'impression) */
+.ui { position: fixed; z-index: 5; font: 13px/1.3 var(--sans); color: #e8eaec; }
+.ui.help { left: 12px; top: 10px; background: rgba(0, 0, 0, .6); padding: 5px 10px; border-radius: 6px; transition: opacity .6s; }
+.ui.help.off { opacity: 0; pointer-events: none; }
+.ui.bar { left: 0; bottom: 0; height: 3px; background: var(--accent-2); transition: width .2s; }
+.ui.notes { left: 50%; transform: translateX(-50%); bottom: 40px; width: min(980px, 94vw); max-height: 38vh; overflow: auto; background: rgba(20, 23, 27, .94);
+  border: 1px solid #444b52; border-radius: 10px; padding: 14px 18px; font-size: 16px; line-height: 1.45; display: none; }
+.ui.notes.on { display: block; }
+.ui.notes h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #f0a36b; }
+aside.notes { display: none; }
+@media print {
+  @page { size: 13.333in 7.5in; margin: 0; }
+  html, body { background: #fff; height: auto; }
+  .deck { position: static; overflow: visible; }
+  .frame { position: static; transform: none; width: 1280px; height: auto; }
+  .slide { display: flex !important; position: relative; width: 1280px; height: 720px; break-after: page; page-break-after: always; }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+  .ui { display: none !important; }
+  .shot img { box-shadow: none; }
+}
+</style>
+</head>
+<body>
+<div class="deck"><div class="frame" id="frame">
+
+<!-- 1 ---------------------------------------------------------------- -->
+<section class="slide title">
+  <div class="brand"><div class="logo">J</div><span>Jollof Studio</span></div>
+  <h1>Simuler avant de câbler</h1>
+  <p class="sub">Formation des enseignants : électronique et Arduino au collège, au lycée et en formation professionnelle, avec ou sans matériel.</p>
+  <p class="meta">Séance de 2 heures · un vidéoprojecteur · Internet facultatif<br>Kit de formation de Jollof Studio par Mamadou Sarr · licence AGPL-3.0</p>
+  <aside class="notes">Accueillir les collègues. Vérifier avant la séance : l’application ouverte sur le poste du formateur, les 5 projets du dossier <code>projets/</code> copiés sur chaque poste, le vidéoprojecteur réglé. Annoncer l’objectif : à la fin, chacun saura préparer et animer une séance de TP sur ordinateur, et la faire suivre d’une séance sur paillasse.</aside>
+</section>
+
+<!-- 2 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Programme</p>
+  <h2>Deux heures, dont une heure de pratique</h2>
+  <table>
+    <thead><tr><th>Horaire</th><th>Partie</th><th>Ce qu’on fait</th></tr></thead>
+    <tbody>
+      <tr><td class="time">0:00 – 0:10</td><td><b>Pourquoi simuler</b></td><td>Ce que la simulation apporte en classe, et ses limites</td></tr>
+      <tr><td class="time">0:10 – 0:30</td><td><b>Démonstration</b></td><td>Interface, câblage automatique, vérificateur, modes de code, simulation</td></tr>
+      <tr><td class="time">0:30 – 0:50</td><td><b>Atelier 1</b></td><td>LED et bouton (débutant)</td></tr>
+      <tr><td class="time">0:50 – 1:10</td><td><b>Atelier 2</b></td><td>Feu tricolore (intermédiaire)</td></tr>
+      <tr><td class="time">1:10 – 1:15</td><td>Pause</td><td></td></tr>
+      <tr><td class="time">1:15 – 1:35</td><td><b>Atelier 3</b></td><td>Thermomètre LCD ou radar de recul, puis le montage à corriger</td></tr>
+      <tr><td class="time">1:35 – 1:50</td><td><b>Pour la classe</b></td><td>TP guidés, rendu des élèves, boîtier école, vidéo, Wokwi, KiCad, carte réelle</td></tr>
+      <tr><td class="time">1:50 – 2:00</td><td><b>Dépannage et questions</b></td><td>Problèmes fréquents, où trouver de l’aide</td></tr>
+    </tbody>
+  </table>
+  <aside class="notes">Tenir les horaires des ateliers : ce sont eux qui donnent confiance. Si le temps manque, raccourcir la partie « Pour la classe » (diapositives 16 à 22) : elle peut être lue après la séance.</aside>
+</section>
+
+<!-- 3 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pourquoi simuler · 0:00</p>
+  <h2>Pourquoi simuler avant de câbler ?</h2>
+  <div class="cols">
+    <div>
+      <ul>
+        <li><b>Peu de matériel</b> : une carte pour quatre à six élèves. À l’écran, chacun câble et programme son propre montage.</li>
+        <li><b>Des erreurs sans casse</b> : LED sans résistance, 5 V sur une carte 3,3 V, court-circuit sur l’USB. La simulation les montre (étincelles, fumée, explication) et rien ne grille.</li>
+        <li><b>Voir l’invisible</b> : courant qui circule dans les fils, tensions, multimètre, oscilloscope.</li>
+      </ul>
+    </div>
+    <div>
+      <ul>
+        <li><b>Préparer la paillasse</b> : on n’arrive au vrai matériel qu’avec un montage vérifié, un schéma imprimé et la liste des composants.</li>
+        <li><b>Hors ligne</b> : l’application, les exemples, les TP et MicroPython fonctionnent sans Internet.</li>
+        <li><b>Le même projet partout</b> : un fichier <code>.jollof</code> s’ouvre sur chaque poste, s’imprime, se rend comme un devoir.</li>
+      </ul>
+      <div class="box ok small"><b>Règle de la séance :</b> on simule d’abord ; on câble en vrai quand la pastille affiche <span class="chip ok">✓ Vérifié</span></div>
+    </div>
+  </div>
+  <aside class="notes">Demander aux collègues combien de cartes Arduino ils ont par classe et ce qui casse le plus souvent (LED, cartes alimentées à l’envers, régulateurs chauffés). Relier chaque réponse à une ligne de la diapositive.</aside>
+</section>
+
+<!-- 4 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pourquoi simuler · limites</p>
+  <h2>Ce que la simulation remplace, et ce qu’elle ne remplace pas</h2>
+  <div class="cols">
+    <div class="box ok">
+      <h3>Elle remplace bien</h3>
+      <ul class="small">
+        <li>la première prise en main d’un composant et de son câblage ;</li>
+        <li>l’écriture et la mise au point du programme (pas à pas, moniteur série) ;</li>
+        <li>la recherche d’erreurs de câblage, expliquées une par une ;</li>
+        <li>les mesures de base : tension, courant, signal PWM ;</li>
+        <li>les montages trop chers ou trop risqués pour être refaits vingt fois.</li>
+      </ul>
+    </div>
+    <div class="box warn">
+      <h3>Elle ne remplace pas</h3>
+      <ul class="small">
+        <li>le geste : enfoncer un composant, repérer un faux contact, un fil coupé ;</li>
+        <li>les vrais composants : tolérances, capteur défectueux, parasites, rebonds ;</li>
+        <li>la chaleur, les pointes de courant au démarrage d’un moteur ;</li>
+        <li>la sécurité électrique : <b>jamais de secteur 230 V</b> avec les élèves, simulé ou non.</li>
+      </ul>
+      <p class="small" style="margin-top:10px">Prévoir au moins une séance sur paillasse par séquence.</p>
+    </div>
+  </div>
+  <aside class="notes">Rester honnête avec les élèves : un montage qui marche dans Jollof Studio a de bonnes chances de marcher en vrai, mais un faux contact ou une LED défectueuse ne se simulent pas. Dans Jollof Studio, un composant posé sur la breadboard n’y est pas enfiché : ce sont les fils qui le relient aux trous.</aside>
+</section>
+
+<!-- 5 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration · 0:10</p>
+  <h2>L’écran en un coup d’œil</h2>
+  <div class="cols wide-left">
+    <figure class="shot">
+      <div class="pos"><img src="img/interface.webp" width="1600" height="900" alt="Fenêtre de Jollof Studio : bibliothèque à gauche, plan de travail 3D au centre avec un feu tricolore, onglets à droite">
+      <span class="mark" style="left:9%;top:21%">1</span>
+      <span class="mark" style="left:45%;top:42%">2</span>
+      <span class="mark" style="left:86%;top:10%">3</span>
+      <span class="mark" style="left:93.2%;top:3.2%">4</span>
+      <span class="mark" style="left:76%;top:3.2%">5</span>
+      <span class="mark" style="left:50%;top:87%">6</span></div>
+      <figcaption>Projet <code>02-feu-tricolore.jollof</code>, simulation lancée.</figcaption>
+    </figure>
+    <ol class="legend">
+      <li><b>Bibliothèque</b> : 63 composants par catégorie, recherche, fiche « ? ».</li>
+      <li><b>Plan de travail</b> en 3D (touche <kbd>S</kbd> : schéma).</li>
+      <li><b>Onglets</b> : Câblage, Code, Simulation, Vidéo.</li>
+      <li><b>Pastille du vérificateur</b> et bouton <b>Simuler</b>.</li>
+      <li><b>Barre d’outils</b> : Exemples, Schéma, Documentation, Classe, TP.</li>
+      <li><b>Bas du plan</b> : vues, rendu Simple / Réaliste, Instruments, Courant, mode léger ⚡.</li>
+    </ol>
+  </div>
+  <aside class="notes">Ouvrir <code>projets/02-feu-tricolore.jollof</code> (Ctrl+O) et montrer chaque zone en direct. Les captures viennent de l’édition Pro (badge « PRO » en haut à gauche) ; l’édition gratuite a les mêmes écrans, seuls quelques boutons marqués d’un cadenas diffèrent (Enseigner, Guide de montage, téléversement sur une carte).</aside>
+</section>
+
+<!-- 6 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Poser les composants, se déplacer</h2>
+  <div class="cols">
+    <div>
+      <ul class="small">
+        <li>Un clic sur un composant de la bibliothèque le pose au centre de la vue ; on le glisse ensuite.</li>
+        <li><kbd>R</kbd> pivote, <kbd>Suppr</kbd> retire, <kbd>Ctrl</kbd>+<kbd>Z</kbd> annule tout.</li>
+        <li>Le « ? » ouvre la <b>fiche</b> : brochage, fonctionnement, erreurs fréquentes, exemple de code.</li>
+      </ul>
+      <table class="small">
+        <tbody>
+          <tr><td>Tourner la vue</td><td>clic gauche glissé sur le tapis</td></tr>
+          <tr><td>Déplacer la vue</td><td>clic droit glissé, ou flèches</td></tr>
+          <tr><td>Zoomer</td><td>molette (vers le curseur)</td></tr>
+          <tr><td>Tout cadrer</td><td><kbd>F</kbd></td></tr>
+          <tr><td>Vues fixes</td><td>3D, Dessus, Face, Côté (en bas)</td></tr>
+          <tr><td>Schéma en direct</td><td><kbd>S</kbd></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <figure class="shot">
+        <img src="img/schema-direct.webp" width="1600" height="900" alt="Vue Schéma en direct du thermomètre : symboles, fils colorés selon la tension, simulation lancée">
+        <figcaption>Touche <kbd>S</kbd> : le même montage en schéma électrique, pendant la simulation.</figcaption>
+      </figure>
+      <div class="box small" style="margin-top:12px">PC ancien ou lent : bouton <b>⚡ mode léger</b> en bas du plan de travail. « Quelle carte choisir ? » (en tête des cartes) compare Uno, Nano, ESP32 et Pico.</div>
+    </div>
+  </div>
+  <aside class="notes">Faire poser une Arduino Uno et une LED à tout le monde, puis les faire tourner et zoomer pendant une minute. C’est la manipulation qui bloque le plus les débutants.</aside>
+</section>
+
+<!-- 7 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Câbler : à la main ou automatiquement</h2>
+  <div class="cols">
+    <figure class="shot">
+      <img src="img/cablage-avant.webp" width="1600" height="900" alt="Composants posés sans fils, la carte sélectionnée et le bouton Câbler les composants à cette carte">
+      <figcaption>Avant : carte sélectionnée, « Câbler les composants à cette carte ».</figcaption>
+    </figure>
+    <figure class="shot">
+      <img src="img/cablage-apres.webp" width="1600" height="900" alt="Après le câblage automatique : résistance de 220 ohms ajoutée, fils vers la breadboard">
+      <figcaption>Après : 6 fils, une résistance de 220 Ω ajoutée, rôle de chaque broche.</figcaption>
+    </figure>
+  </div>
+  <div class="cols" style="flex:0 0 auto;margin-top:14px">
+    <ul class="small">
+      <li><b>À la main</b> : glisser d’une broche à l’autre. Une broche ne prend qu’<b>un</b> fil : pour relier plusieurs fils au même point, passer par la breadboard.</li>
+      <li>Clic sur un fil, puis glisser une extrémité : rebrancher.</li>
+    </ul>
+    <ul class="small">
+      <li><b>Automatique</b> : ajoute ce qu’un électronicien ajouterait (220 Ω pour une LED, transistor pour un buzzer, pont diviseur 5 V → 3,3 V…).</li>
+      <li>Refuse ce qui est impossible, avec une explication.</li>
+    </ul>
+  </div>
+  <aside class="notes">Conseil : faire câbler à la main d’abord, puis comparer avec le câblage automatique. La différence est la meilleure leçon (« pourquoi a-t-il ajouté une résistance ? »). Le panneau du composant sélectionné explique chaque broche : rôle, où elle est reliée, ce qui ne va pas.</aside>
+</section>
+
+<!-- 8 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Le vérificateur : erreurs et avertissements</h2>
+  <div class="cols wide-right">
+    <div>
+      <p class="small">La pastille à côté de « Simuler » se met à jour après chaque changement :</p>
+      <p><span class="chip ok">✓ Vérifié</span> <span class="chip err">✕ 5 erreurs</span> <span class="chip warn">! 1 avertissement</span></p>
+      <ul class="small">
+        <li><kbd>F7</kbd> ouvre le rapport : un code stable (<code>J0301</code>…), l’endroit, <b>l’état qui déclenche la faute</b> (« BTN1 appuyé »), une aide, souvent une correction en un clic.</li>
+        <li><b>Erreur</b> : jamais acceptée. Elle bloque l’envoi d’une copie et le téléversement sur une vraie carte (Pro).</li>
+        <li><b>Avertissement</b> : peut être accepté <b>avec une raison écrite</b>, gardée dans le projet et affichée dans le rapport.</li>
+        <li>La simulation tourne quand même : voir fumer, c’est aussi apprendre.</li>
+      </ul>
+    </div>
+    <figure class="shot">
+      <img src="img/verif-rapport.webp" width="1600" height="900" alt="Rapport du vérificateur sur le montage à corriger : court-circuit, tension trop faible, surtension">
+      <figcaption>Exemple « Montage à corriger » : 5 erreurs, 1 avertissement.</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Montrer le rapport sur l’exemple « Montage à corriger » (bouton Exemples, dernière carte). Cliquer sur « Expliquer J0101 » : chaque code a sa page. Le schéma imprimé porte le tampon « VÉRIFIÉ » ou « NON VÉRIFIÉ » : utile pour valider un montage avant de donner le matériel.</aside>
+</section>
+
+<!-- 9 ---------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration · honnêteté</p>
+  <h2>Ce que « Vérifié » veut dire, et ne veut pas dire</h2>
+  <div class="cols">
+    <div class="box ok">
+      <h3>Garanti</h3>
+      <ul class="small">
+        <li><b>Chaque état atteignable</b> est essayé : boutons relâchés et appuyés, potentiomètres aux butées et au milieu, capteurs à leurs extrêmes, chaque broche commandée à LOW et à HIGH.</li>
+        <li>Dans chaque état, aucun composant ne dépasse les valeurs de sa fiche technique ; le programme est d’accord avec le câblage.</li>
+        <li>Calcul comparé au simulateur de référence ngspice sur 80 circuits.</li>
+      </ul>
+    </div>
+    <div class="box warn">
+      <h3>Pas garanti</h3>
+      <ul class="small">
+        <li>Ce que le modèle ignore : régimes transitoires, chaleur (sauf résistances et régulateur LM7805), mécanique, radio, dispersion des composants, câblage sous tension.</li>
+        <li>Au-delà de 4 096 états par partie du montage : « vérification partielle », c’est écrit.</li>
+        <li><b>Mode Fidèle et MicroPython</b> : le vérificateur ne lit pas le programme ; il suppose que <b>toute broche reliée</b> peut être une sortie. Il peut ajouter des fautes, jamais en cacher.</li>
+      </ul>
+    </div>
+  </div>
+  <div class="box small" style="margin-top:14px"><b>Exemple rencontré en préparant ce kit</b> (projet 05, Pico sous MicroPython) : sans résistance entre le curseur du potentiomètre et GP28, le vérificateur signale une erreur. Potentiomètre en butée et GP28 en sortie, 127 mA traverseraient la broche. Une résistance de 1 kΩ en série borne ce courant à 3,3 mA ; la lecture reste juste.</div>
+  <p class="xsmall muted" style="margin-top:6px">Source : <code>docs/PROVEN.md</code> du projet (ce qui est prouvé, les modèles, la comparaison avec ngspice).</p>
+  <aside class="notes">Exemple concret, dans le projet 05 (MicroPython) : sans résistance entre le curseur du potentiomètre et GP28, le vérificateur signale une erreur. Il ne sait pas que le programme Python lit GP28 en entrée ; il essaie GP28 en sortie, potentiomètre en butée : 127 mA, la broche serait détruite. Une résistance de 1 kΩ en série borne ce courant à 3,3 mA. C’est une bonne protection en vrai aussi.</aside>
+</section>
+
+<!-- 10 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Trois façons d’exécuter le code</h2>
+  <div class="cols" style="grid-template-columns: 1fr 196px; gap: 28px">
+    <div>
+      <table>
+        <thead><tr><th></th><th>Débutant</th><th>Fidèle</th><th>MicroPython</th></tr></thead>
+        <tbody>
+          <tr><td><b>Cartes</b></td><td>toutes</td><td>Uno, Nano, Pico</td><td>Pico</td></tr>
+          <tr><td><b>Langage</b></td><td>C++ d’Arduino simplifié : pas de pointeurs, de classes ni de <code>sprintf</code> (utiliser <code>String</code>)</td><td>tout le C++ d’Arduino et ses bibliothèques</td><td>Python (MicroPython 1.29)</td></tr>
+          <tr><td><b>Démarrage</b></td><td>immédiat, hors ligne</td><td>compilé par arduino-cli ; Internet à la première utilisation ; application installée</td><td>immédiat, hors ligne (micrologiciel fourni)</td></tr>
+          <tr><td><b>Mise au point</b></td><td>pas à pas, points d’arrêt, variables</td><td>moniteur série</td><td>moniteur série (REPL), plusieurs fichiers</td></tr>
+          <tr><td><b>Vérificateur</b></td><td>lit les broches du programme</td><td colspan="2">prudent : toute broche reliée peut être une sortie</td></tr>
+        </tbody>
+      </table>
+      <p class="small" style="margin-top:14px">Commencer en <b>Débutant</b> ; passer en <b>Fidèle</b> pour un programme existant qui utilise ce que le Débutant ne connaît pas ; <b>MicroPython</b> pour une initiation à Python sur Pico.</p>
+    </div>
+    <figure class="shot">
+      <img src="img/code-panneau.webp" width="380" height="860" alt="Onglet Code en mode MicroPython : liste Mode d’exécution, fichier main.py et moniteur série">
+      <figcaption>« Mode d’exécution » en haut de l’onglet Code (projet 05).</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Le mode Débutant comprend les bibliothèques courantes : DHT, DallasTemperature, BMP280, MPU6050, SSD1306, LiquidCrystal_I2C, Servo, NeoPixel, Stepper. Le mode Fidèle télécharge arduino-cli, les fichiers de la carte et les bibliothèques à la première utilisation puis les garde : lancez-le une fois sur chaque poste, avec Internet, avant la séance. Les règles (« quand BTN1 est appuyé, LED1 s’allume ») et les blocs de code existent aussi pour les plus jeunes.</aside>
+</section>
+
+<!-- 11 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Simuler : capteurs, effecteurs, mesures</h2>
+  <div class="cols wide-left">
+    <figure class="shot">
+      <img src="img/simulation.webp" width="1600" height="900" alt="Simulation du thermomètre : curseurs de température et d’humidité, écran LCD qui affiche la mesure">
+      <figcaption>Projet 03 : le curseur de température change la mesure du DHT22 et l’écran LCD.</figcaption>
+    </figure>
+    <ul class="small">
+      <li><b>Simuler</b> lance les programmes ; le câblage est verrouillé.</li>
+      <li>Onglet <b>Simulation</b> : curseurs d’environnement (température, distance, lumière…) selon les capteurs présents, mesures, état des effecteurs.</li>
+      <li>Un clic sur un <b>bouton</b> du montage l’appuie ; un <b>potentiomètre</b> se règle par son curseur.</li>
+      <li><b>Instruments</b> : oscilloscope 4 voies, multimètre.</li>
+      <li><b>Courant</b> : des points suivent le courant dans les fils ; touche <kbd>S</kbd> pour le schéma en direct.</li>
+      <li>Moniteur série dans l’onglet <b>Code</b>.</li>
+    </ul>
+  </div>
+  <aside class="notes">Démonstration : ouvrir <code>projets/03-thermometre-lcd.jollof</code>, Simuler, monter la température à 31 °C : la valeur monte progressivement (le capteur simulé a une inertie, comme le vrai). Puis touche S : le schéma électrique avec le courant.</aside>
+</section>
+
+<!-- 12 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Démonstration</p>
+  <h2>Quand le montage est faux</h2>
+  <div class="cols wide-left">
+    <figure class="shot">
+      <img src="img/simulation-erreur.webp" width="1600" height="900" alt="Simulation du montage à corriger : bord rouge, broches fautives entourées, erreurs expliquées à droite">
+      <figcaption>Exemple « Montage à corriger », simulation lancée.</figcaption>
+    </figure>
+    <div>
+      <ul class="small">
+        <li>Bord rouge, ondes sur la broche fautive, fil fantôme vert vers la bonne broche.</li>
+        <li>Pour chaque erreur : <b>où</b>, <b>pourquoi</b> c’est un problème en vrai, <b>comment</b> corriger.</li>
+        <li>Corrections en un clic : Recâbler, Inverser, Retirer le fil, Relier les masses.</li>
+      </ul>
+      <div class="box small">
+        <b>Les 5 erreurs du montage à corriger :</b> BMP280 en 5 V · DHT22 sur une broche « entrée seule » · LED à l’envers · HC-SR04 en 3,3 V · court-circuit entre les rails. Plus un avertissement : DS18B20 sans résistance de tirage.
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Activité possible en classe : distribuer le montage à corriger et demander de trouver les erreurs <b>avant</b> de lancer la simulation, sur papier, puis de vérifier. C’est l’atelier 3.</aside>
+</section>
+
+<!-- 13 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Atelier 1 · 0:30 · 20 min · débutant</p>
+  <h2>LED et bouton poussoir</h2>
+  <div class="cols wide-left">
+    <ol class="steps small">
+      <li>Nouveau projet (<kbd>Ctrl</kbd>+<kbd>N</kbd>). Poser une <b>Arduino Uno</b>, une <b>breadboard</b>, une <b>LED rouge</b>, une <b>résistance de 220 Ω</b>, un <b>bouton</b>.<span class="chip">3 min</span></li>
+      <li>Câbler à la main : D7 → résistance → anode (A) ; cathode (K) → GND ; bouton entre D2 et GND.<span class="chip">7 min</span></li>
+      <li>Corriger jusqu’à <span class="chip ok">✓ Vérifié</span> (<kbd>F7</kbd> pour le rapport).<span class="chip">2 min</span></li>
+      <li>Onglet Code : écrire le programme ci-contre, puis <b>Simuler</b> et cliquer sur le bouton.<span class="chip">5 min</span></li>
+      <li>Comparer avec <code>projets/01-led-bouton.jollof</code>.<span class="chip">3 min</span></li>
+    </ol>
+    <div>
+<pre><span class="k">const int</span> LED = 7;
+<span class="k">const int</span> BOUTON = 2;
+
+<span class="k">void</span> setup() {
+  pinMode(LED, OUTPUT);
+  pinMode(BOUTON, INPUT_PULLUP);
+}
+
+<span class="k">void</span> loop() {
+  <span class="k">if</span> (digitalRead(BOUTON) == LOW) {
+    digitalWrite(LED, HIGH);
+  } <span class="k">else</span> {
+    digitalWrite(LED, LOW);
+  }
+}</pre>
+      <p class="xsmall muted" style="margin-top:8px"><b>INPUT_PULLUP</b> : bouton relâché = HIGH, appuyé = LOW. Pas de résistance externe.</p>
+      <div class="box small"><b>Défi :</b> la LED clignote tant que le bouton est appuyé.</div>
+    </div>
+  </div>
+  <aside class="notes">Erreurs attendues : LED à l’envers (le vérificateur le dit), oubli de la résistance (le courant dépasse la limite de la LED : erreur), bouton relié au 5 V sans résistance de rappel (correction proposée « Relier à la masse »). Laisser chercher avant d’aider. Le TP guidé « Allumer une LED avec un bouton » (bouton TP) reprend cet atelier avec vérification automatique de chaque étape.</aside>
+</section>
+
+<!-- 14 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Atelier 2 · 0:50 · 20 min · intermédiaire</p>
+  <h2>Feu tricolore</h2>
+  <div class="cols">
+    <ol class="steps small">
+      <li>Poser une Uno, une breadboard et trois LED (rouge, jaune, verte). Sélectionner la carte, puis <b>« Câbler les composants à cette carte »</b>. Observer : trois résistances ajoutées, masses sur le rail.<span class="chip">5 min</span></li>
+      <li>Ouvrir <code>projets/02-feu-tricolore.jollof</code> : lire le programme (fonction <code>feux()</code>, <code>delay()</code>).<span class="chip">4 min</span></li>
+      <li>Simuler ; suivre le moniteur série. Changer les durées (vert 5 s, orange 2 s, rouge 5 s).<span class="chip">5 min</span></li>
+      <li><b>Instruments</b> → multimètre : courant dans la LED rouge allumée. Comparer au calcul (5 V − 2 V) ÷ 220 Ω.<span class="chip">6 min</span></li>
+    </ol>
+    <div>
+      <figure class="shot">
+        <img src="img/code-modes.webp" width="1600" height="900" alt="Feu tricolore avec le programme dans l’onglet Code, mode Débutant">
+        <figcaption>Le programme du feu tricolore, mode Débutant.</figcaption>
+      </figure>
+      <div class="box small" style="margin-top:12px"><b>Défi :</b> un feu piéton (une LED verte, une rouge) et un bouton d’appel.</div>
+    </div>
+  </div>
+  <aside class="notes">Le calcul donne environ 14 mA ; le multimètre affiche un peu moins, car le modèle compte aussi la résistance de sortie de la broche (25 Ω) et celle de la LED. Bonne occasion de parler d’écart entre calcul et mesure. TP guidé correspondant : « Le feu tricolore d’un carrefour » (collège, 50 min).</aside>
+</section>
+
+<!-- 15 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Atelier 3 · 1:15 · 20 min · avancé</p>
+  <h2>Capteurs et écran, puis le montage à corriger</h2>
+  <div class="cols">
+    <div>
+      <h3>Au choix (10 min)</h3>
+      <ul class="small">
+        <li><code>projets/03-thermometre-lcd.jollof</code> : DHT22 et écran LCD I2C. Changer la température ; <b>pourquoi l’écran n’a-t-il que 4 fils ?</b> (bus I2C : SDA, SCL).</li>
+        <li><code>projets/04-radar-de-recul.jollof</code> : HC-SR04 et buzzer sur Nano. Régler la distance ; <b>pourquoi un transistor ?</b> (le buzzer tire 25 mA, une broche en conseille 20).</li>
+        <li>Pour ceux qui vont vite : <code>projets/05-pico-micropython-variateur.jollof</code>.</li>
+      </ul>
+      <h3>Montage à corriger (10 min)</h3>
+      <p class="small">Bouton <b>Exemples</b> → « Montage à corriger ». Trouver les 5 erreurs <b>sur le schéma</b>, puis vérifier avec la simulation.</p>
+    </div>
+    <figure class="shot">
+      <img src="img/simulation-radar.webp" width="1600" height="900" alt="Radar de recul : distance réglée à 8 cm, le buzzer sonne">
+      <figcaption>Radar de recul : à 8 cm, le buzzer sonne en continu.</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Le thermomètre et le radar sont des classiques du lycée et de la formation professionnelle. Dans le radar, le transistor BC547 et sa résistance de base de 1 kΩ ont été ajoutés par le câblage automatique : lire les rôles des fils dans l’onglet Câblage.</aside>
+</section>
+
+<!-- 16 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe · 1:35</p>
+  <h2>Les TP guidés</h2>
+  <div class="cols">
+    <ul class="small">
+      <li>Bouton <b>TP</b> : 11 TP prêts, du collège à la formation professionnelle, de 40 à 75 min.</li>
+      <li>Chaque TP part d’un montage posé, non câblé, et guide étape par étape.</li>
+      <li>Chaque étape <b>se vérifie</b> : câblage, programme, comportement en simulation, mesure au multimètre, questions.</li>
+    </ul>
+    <ul class="small">
+      <li>Une résistance se pose dans les deux sens, n’importe quelle GND convient : comme en vrai.</li>
+      <li>Progression gardée sur l’ordinateur ; projet personnel mis de côté pendant le TP.</li>
+      <li>À la fin : <b>compte-rendu PDF</b> (nom, étapes validées, réponses, mesures, schéma).</li>
+    </ul>
+  </div>
+  <div class="cols" style="margin-top:6px">
+    <figure class="shot"><img src="img/tp-bibliotheque.webp" width="1600" height="900" alt="Bibliothèque des travaux pratiques par niveau"><figcaption>La bibliothèque des TP, par niveau.</figcaption></figure>
+    <figure class="shot"><img src="img/tp-seance.webp" width="1600" height="900" alt="Séance de TP : étapes numérotées et consignes à droite"><figcaption>Une séance : étapes numérotées, consigne, « Étape suivante ».</figcaption></figure>
+  </div>
+  <aside class="notes">TP disponibles : LED et bouton, clignotant, feu tricolore, loi d’Ohm, choisir sa carte (collège) ; potentiomètre et PWM, alarme de température, radar de recul, charge d’un condensateur, transistor (lycée) ; arrosage automatique avec relais (formation professionnelle). Hors ligne et sans compte.</aside>
+</section>
+
+<!-- 17 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>Comment les élèves rendent leur travail</h2>
+  <div class="cols">
+    <div class="box">
+      <h3>Sans serveur (hors ligne)</h3>
+      <ul class="small">
+        <li><b>TP</b> : bouton « Compte-rendu en PDF » à la fin, avec le nom de l’élève.</li>
+        <li><b>Projet libre</b> : <kbd>Ctrl</kbd>+<kbd>S</kbd> → un fichier <code>.jollof</code>, ramassé par clé USB ou réseau de la salle.</li>
+        <li>Le schéma (bouton Schéma) s’imprime ou s’enregistre en PDF, avec le tampon <b>VÉRIFIÉ</b> ou <b>NON VÉRIFIÉ</b>.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>Avec l’espace classe</h3>
+      <ul class="small">
+        <li>L’élève se connecte (bouton <b>Classe</b>) avec l’identifiant donné par l’enseignant.</li>
+        <li>Il ouvre le devoir, travaille (enregistrement automatique), clique sur <b>Envoyer la copie</b>.</li>
+        <li>L’envoi est <b>bloqué tant qu’une erreur reste</b> (sauf l’envoi automatique à l’échéance).</li>
+        <li>Montage corrigé automatiquement ; note et commentaires de l’enseignant.</li>
+      </ul>
+      <p class="xsmall muted">Élèves : édition gratuite. Créer classes et devoirs, corriger, « Envoyer ce TP à une classe » : édition Pro.</p>
+    </div>
+  </div>
+  <aside class="notes">Pour démarrer, la voie hors ligne suffit : compte-rendu PDF du TP et fichier .jollof. L’espace classe demande un serveur, sur Internet ou sur un boîtier dans l’établissement (diapositive suivante).</aside>
+</section>
+
+<!-- 18 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>Le boîtier école : l’espace classe sans Internet</h2>
+  <div class="cols wide-left">
+    <div>
+      <ul class="small">
+        <li>Un vieux PC, un mini-PC ou un <b>Raspberry Pi 4/5</b> (1 Go de mémoire au minimum, 2 Go conseillés), sur le réseau local de l’établissement.</li>
+        <li>Internet n’est utile que pour l’installation et les mises à jour.</li>
+        <li>Installation par le référent numérique : dans le dossier <code>server/</code>, <code>sudo ./install.sh</code> (Debian, Ubuntu, Raspberry Pi OS 64 bits), ou l’image Raspberry Pi toute prête.</li>
+        <li>Sur chaque poste : <b>Classe</b> → <b>Serveur</b> → adresse du boîtier, par exemple <code>http://192.168.1.50:3100</code>.</li>
+        <li>Sauvegarde automatique chaque jour ; la copier régulièrement sur une clé USB.</li>
+      </ul>
+      <div class="box warn xsmall"><b>Si les postes ne se connectent pas :</b> Wi-Fi « invités » isolé, adresse du boîtier qui a changé (demander une adresse fixe), pare-feu (port 3100).</div>
+    </div>
+    <figure class="shot">
+       <img src="img/classe-connexion.webp" width="960" height="540" alt="Écran de connexion de l’espace classe avec le champ Adresse du serveur de l’école">
+      <figcaption>Écran de connexion, rubrique « Serveur ».</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Tout est détaillé dans <code>server/README.md</code>, section « Boîtier école (pas à pas) ». Le boîtier peut aussi servir de miroir pour les fichiers des cartes du mode Fidèle ; l’application ne s’en sert pas encore d’elle-même : en attendant, lancez le mode Fidèle une fois par poste avec Internet.</aside>
+</section>
+
+<!-- 19 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>Une vidéo de câblage pour les élèves</h2>
+  <div class="cols wide-left">
+    <figure class="shot">
+      <img src="img/video-timeline.webp" width="1600" height="900" alt="Onglet Vidéo et timeline : pistes Caméra, Fils et Légendes, tête de lecture pendant le câblage du feu orange">
+      <figcaption>Timeline du projet 02 : pistes Caméra, Fils, Légendes.</figcaption>
+    </figure>
+    <div>
+      <ul class="small">
+        <li>Onglet <b>Vidéo</b> : « Animer » joue la vidéo, « Timeline » ouvre ses pistes. Les 5 projets du kit ont une timeline prête.</li>
+        <li><b>Lancer la simulation</b> avant « Rendre la vidéo » : LED et écrans s’animent.</li>
+        <li>MP4, 30 images/s, sans son. <b>720p</b> pour partager (environ 21 Mo par minute), 1080p pour projeter.</li>
+      </ul>
+      <figure class="shot">
+        <img src="img/video-image.webp" width="1280" height="720" alt="Image de la vidéo rendue du feu tricolore : feu orange allumé, légende Simulation en bas">
+        <figcaption>Une image de la vidéo rendue (projet 02, 720p).</figcaption>
+      </figure>
+    </div>
+  </div>
+  <p class="xsmall muted" style="margin-top:8px">Narration minutée et réglages : <code>scripts-videos.md</code>. Rendu image par image : un PC lent met plus longtemps, la vidéo reste fluide.</p>
+  <aside class="notes">Les vidéos servent aux élèves absents, à la révision, et à la classe inversée : la vidéo à la maison ou au CDI, l’atelier en classe. Pour un envoi par messagerie, une vidéo de 80 s en 720p pèse environ 28 Mo ; la réduire si besoin avec un outil de compression vidéo.</aside>
+</section>
+
+<!-- 20 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>Importer un projet Wokwi</h2>
+  <div class="cols">
+    <div>
+      <ul class="small">
+        <li>Bouton <b>Importer un projet Wokwi</b> (flèche vers le haut, en haut à gauche).</li>
+        <li>Choisir <code>diagram.json</code> et <code>sketch.ino</code> (et <code>libraries.txt</code>), ou le <code>.zip</code> téléchargé depuis Wokwi.</li>
+        <li>Les composants connus deviennent des composants de la bibliothèque ; les breadboards de Wokwi sont remplacées par des fils directs.</li>
+        <li>Le programme va à la première carte, en mode Fidèle s’il dépasse le mode Débutant.</li>
+        <li>Un compte rendu liste ce qui n’a pas pu être importé.</li>
+        <li>Ensuite : vérificateur, simulation, vidéo, comme pour tout projet.</li>
+      </ul>
+    </div>
+    <div>
+      <figure class="shot">
+        <img src="img/wokwi-import.webp" width="660" height="280" alt="Compte rendu d’import : 4 composants et 5 fils importés, un écran TFT non importé">
+        <figcaption>Un écran TFT ILI9341 n’a pas d’équivalent : il est signalé.</figcaption>
+      </figure>
+      <div class="box small" style="margin-top:16px">Intérêt : récupérer les nombreux projets publiés en ligne, puis les travailler <b>hors ligne</b> avec le vérificateur.</div>
+    </div>
+  </div>
+  <aside class="notes">Préparer les fichiers à la maison (avec Internet) et les copier sur clé USB. Revérifier le câblage après import : les positions sont recentrées et les breadboards ont disparu.</aside>
+</section>
+
+<!-- 21 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>Du montage au circuit imprimé : export KiCad</h2>
+  <div class="cols wide-right">
+    <div>
+      <ol class="steps small">
+        <li>Bouton <b>Schéma</b> (barre d’outils) : le schéma électrique sur une feuille A4 ou A3.</li>
+        <li>Bouton <b>KiCad</b> : un fichier <code>.zip</code> avec le schéma <code>.kicad_sch</code> et la netlist <code>.net</code> (KiCad 6 à 9).</li>
+        <li>Dans KiCad : ouvrir le schéma, ou dans Pcbnew <b>Fichier → Importer → Netlist</b>.</li>
+      </ol>
+      <p class="small">Empreintes traversantes courantes ; cartes et modules deviennent des barrettes au pas de 2,54 mm : le module s’enfiche sur le circuit imprimé.</p>
+      <p class="small muted">Utile en formation professionnelle et en BTS.</p>
+    </div>
+    <figure class="shot">
+      <img src="img/schema-kicad.webp" width="1600" height="900" alt="Fenêtre Schéma électrique du thermomètre avec les boutons Imprimer, KiCad et Enregistrer en PDF, tampon VÉRIFIÉ">
+      <figcaption>Schéma du projet 03, cartouche avec le tampon « VÉRIFIÉ ».</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Les breadboards et les fils de câblage ne passent pas dans KiCad : seuls comptent les nœuds électriques. Les noms des nœuds (GND, 5V, D7…) sont ceux du schéma.</aside>
+</section>
+
+<!-- 22 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour la classe</p>
+  <h2>La simulation pilote une vraie carte (Firmata)</h2>
+  <div class="cols wide-left">
+    <div>
+      <ol class="steps small">
+        <li>Dans l’IDE Arduino : <b>Fichier → Exemples → Firmata → StandardFirmata</b>, téléverser sur la vraie Uno (une fois).</li>
+        <li>Brancher la carte en USB. Dans Jollof Studio, lancer la simulation, onglet <b>Simulation</b> → <b>Carte réelle (Firmata)</b>.</li>
+        <li>Choisir la carte simulée et le port, puis <b>Connecter</b>.</li>
+      </ol>
+      <ul class="small">
+        <li>Les sorties de la carte simulée sont recopiées sur la vraie : LED, PWM, servo.</li>
+        <li>Les vraies entrées sont lues : valeur simulée et valeur réelle côte à côte. Un écart montre ce que le modèle ne voit pas.</li>
+      </ul>
+      <p class="xsmall muted">Dans un navigateur : Chrome ou Edge (Web Serial). StandardFirmata communique à 57 600 bauds.</p>
+    </div>
+    <figure class="shot">
+      <img src="img/carte-reelle.webp" width="900" height="800" alt="Onglet Simulation : section Carte réelle (Firmata) avec le choix de la carte, du port et le bouton Connecter">
+      <figcaption>Section « Carte réelle (Firmata) ».</figcaption>
+    </figure>
+  </div>
+  <aside class="notes">Intérêt : faire le pont entre l’écran et la paillasse avec une seule carte pour la classe. Le programme tourne dans la simulation, la vraie carte n’exécute que StandardFirmata. Câbler les vraies LED avec leurs résistances, comme dans le montage simulé et vérifié. Message « aucune réponse Firmata » : StandardFirmata n’est pas téléversé, ou le moniteur série de l’IDE occupe le port.</aside>
+</section>
+
+<!-- 23 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Dépannage · 1:50</p>
+  <h2>Problèmes fréquents (1/2)</h2>
+  <table class="faq">
+    <thead><tr><th style="width:36%">Ce qu’on voit</th><th>Que faire</th></tr></thead>
+    <tbody>
+      <tr><td>Impossible de tirer un second fil depuis une broche (« occupée »)</td><td>Une broche, un fil, comme un vrai connecteur. Passer par une rangée ou un rail de la breadboard.</td></tr>
+      <tr><td>Impossible de modifier les fils</td><td>La simulation est lancée : le câblage est verrouillé. Cliquer sur <b>Arrêter</b>.</td></tr>
+      <tr><td>La LED reste éteinte</td><td>LED à l’envers (anode = patte longue vers la résistance), broche différente dans le code et dans le câblage, <code>pinMode</code> oublié. Lire la pastille et <kbd>F7</kbd>.</td></tr>
+      <tr><td>Un bouton qui « s’allume tout seul »</td><td>Entrée en l’air : utiliser <code>INPUT_PULLUP</code> et relier l’autre patte à GND.</td></tr>
+      <tr><td>Erreur de compilation en mode Débutant (pointeurs, <code>sprintf</code>, classes)</td><td>Réécrire avec <code>String</code>, ou passer en mode <b>Fidèle</b> (application installée).</td></tr>
+      <tr><td>L’écran LCD n’affiche rien</td><td>Adresse <code>0x27</code> dans le code, <code>lcd.init()</code> et <code>lcd.backlight()</code> dans <code>setup()</code>, SDA relié à SDA et SCL à SCL (pas croisés).</td></tr>
+      <tr><td>La mesure ne suit pas tout de suite le curseur</td><td>Normal : le capteur simulé a l’inertie et la cadence de lecture du vrai (DHT22 : une mesure toutes les 2 s).</td></tr>
+    </tbody>
+  </table>
+  <aside class="notes">Presque tous ces cas sont signalés par le vérificateur avec une explication : apprendre aux élèves à lire la pastille et le rapport avant d’appeler l’enseignant.</aside>
+</section>
+
+<!-- 24 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Dépannage</p>
+  <h2>Problèmes fréquents (2/2)</h2>
+  <table class="faq">
+    <thead><tr><th style="width:36%">Ce qu’on voit</th><th>Que faire</th></tr></thead>
+    <tbody>
+      <tr><td>Affichage lent, ventilateur bruyant</td><td>Bouton <b>⚡ mode léger</b> (en bas du plan de travail) ; fermer les autres logiciels. La vue Schéma (<kbd>S</kbd>) coûte moins que la 3D.</td></tr>
+      <tr><td>Le mode Fidèle ne démarre pas sans Internet</td><td>Il télécharge arduino-cli et les fichiers de la carte à la première utilisation. Le lancer une fois par poste, avec Internet, avant la séance.</td></tr>
+      <tr><td>« Rendre la vidéo » enregistre en temps réel</td><td>Le système ne sait pas encoder image par image (fréquent sous Linux). La vidéo est enregistrée pendant la lecture : ne pas toucher à la fenêtre.</td></tr>
+      <tr><td>Le poste ne se connecte pas à l’espace classe</td><td>Adresse du serveur (Classe → Serveur), même réseau que le boîtier, Wi-Fi invités, pare-feu.</td></tr>
+      <tr><td>Windows 7 ou 8</td><td>L’application demande Windows 10 ou plus. Une version web peut être servie sur le réseau local (voir le README du projet).</td></tr>
+      <tr><td>Une erreur en mode Fidèle ou MicroPython, alors que le programme semble juste</td><td>Le vérificateur ne lit pas ces programmes : il essaie chaque broche reliée en sortie. Ajouter une résistance série (1 kΩ) devant une entrée reliée directement à une alimentation, comme le curseur d’un potentiomètre.</td></tr>
+    </tbody>
+  </table>
+  <aside class="notes">Garder une clé USB avec l’installateur de l’application, les 5 projets du kit et ce diaporama en PDF : c’est le plan de secours quand le réseau ne marche pas.</aside>
+</section>
+
+<!-- 25 --------------------------------------------------------------- -->
+<section class="slide">
+  <p class="kicker">Pour continuer</p>
+  <h2>Où trouver de l’aide</h2>
+  <div class="cols">
+    <div>
+      <h3>Dans l’application</h3>
+      <ul class="small">
+        <li><b>Documentation</b> : une fiche par carte et par composant (brochage, erreurs fréquentes, exemple de code).</li>
+        <li><b>Exemples</b> : six montages prêts et un montage à corriger.</li>
+        <li><b>TP</b> : 11 travaux pratiques vérifiés pas à pas.</li>
+        <li><kbd>F7</kbd> et « Expliquer J… » : chaque erreur a sa page.</li>
+      </ul>
+      <h3>Dans ce kit</h3>
+      <ul class="small">
+        <li><code>README.md</code> : déroulé, matériel, impression, vidéos.</li>
+        <li><code>projets/</code> : les 5 projets ; <code>scripts-videos.md</code> : narrations.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Dans le projet</h3>
+      <ul class="small">
+        <li><code>docs/PROVEN.md</code> : ce que le vérificateur garantit.</li>
+        <li><code>server/README.md</code> : installer le boîtier école.</li>
+        <li><code>exemples/LISEZMOI.md</code> : les exemples fournis.</li>
+      </ul>
+      <div class="box small">
+        <p><b>Licence :</b> ce kit fait partie de Jollof Studio, publié sous licence AGPL-3.0 (ou ultérieure). Toute copie ou version modifiée garde la mention « Jollof Studio par Mamadou Sarr ».</p>
+        <p class="xsmall muted">Licence commerciale et contact : voir <code>COMMERCIAL.md</code> (contact à compléter par le titulaire des droits).</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Fin de séance : recueillir les questions, noter les problèmes rencontrés sur les postes, et fixer avec les collègues la date d’une première séance avec les élèves.</aside>
+</section>
+
+</div></div>
+
+<div class="ui bar" id="bar"></div>
+<div class="ui help" id="help">← → naviguer · N notes du présentateur · F plein écran · Ctrl+P imprimer · ? cette aide</div>
+<div class="ui notes" id="notes"></div>
+
+<script>
+// Navigation : flèches, Page précédente/suivante, Espace, Début/Fin, clic (tiers gauche : retour),
+// glissement du doigt. N : notes du présentateur. F : plein écran. L'adresse garde le numéro (#7).
+(function () {
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var cur = 0, total = slides.length;
+  var bar = document.getElementById('bar'), notes = document.getElementById('notes'), help = document.getElementById('help');
+  var hideHelp = function () { help.classList.add('off'); };
+  setTimeout(hideHelp, 6000);
+  slides.forEach(function (s, i) {
+    var f = document.createElement('div'); f.className = 'foot';
+    f.innerHTML = '<span>Jollof Studio · Formation des enseignants</span><span>' + (i + 1) + ' / ' + total + '</span>';
+    s.appendChild(f);
+  });
+  function fit() {
+    var k = Math.min(window.innerWidth / 1280, window.innerHeight / 720);
+    document.documentElement.style.setProperty('--scale', k);
+  }
+  function show(n) {
+    cur = Math.max(0, Math.min(total - 1, n));
+    slides.forEach(function (s, i) { s.classList.toggle('active', i === cur); });
+    bar.style.width = (100 * (cur + 1) / total) + '%';
+    var a = slides[cur].querySelector('aside.notes');
+    notes.innerHTML = '<h4>Notes · diapositive ' + (cur + 1) + '</h4>' + (a ? a.innerHTML : '<p>Pas de note.</p>');
+    if (location.hash !== '#' + (cur + 1)) history.replaceState(null, '', '#' + (cur + 1));
+  }
+  function fromHash() { var n = parseInt(location.hash.slice(1), 10); return isNaN(n) ? 0 : n - 1; }
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var k = e.key;
+    if (k === 'ArrowRight' || k === 'ArrowDown' || k === 'PageDown' || k === ' ' || k === 'Enter') { e.preventDefault(); show(cur + 1); }
+    else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp' || k === 'Backspace') { e.preventDefault(); show(cur - 1); }
+    else if (k === 'Home') show(0);
+    else if (k === 'End') show(total - 1);
+    else if (k === 'n' || k === 'N') notes.classList.toggle('on');
+    else if (k === '?') { help.classList.toggle('off'); }
+    else if (k === 'f' || k === 'F') {
+      if (document.fullscreenElement) document.exitFullscreen(); else if (document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+    }
+  });
+  document.querySelector('.deck').addEventListener('click', function (e) {
+    if (e.target.closest('a')) return;
+    show(e.clientX < window.innerWidth / 3 ? cur - 1 : cur + 1);
+  });
+  var x0 = null;
+  document.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; }, { passive: true });
+  document.addEventListener('touchend', function (e) {
+    if (x0 === null) return; var dx = e.changedTouches[0].clientX - x0; x0 = null;
+    if (Math.abs(dx) > 50) show(dx < 0 ? cur + 1 : cur - 1);
+  });
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () { show(fromHash()); });
+  fit(); show(fromHash());
+})();
+</script>
+</body>
+</html>

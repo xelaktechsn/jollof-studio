@@ -1,0 +1,478 @@
+{
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Feu tricolore",
+  "description": "Arduino Uno et trois LED (rouge, orange, verte), chacune avec sa résistance de 220 Ω, masses sur le rail de la breadboard. Câblage automatique. Programme écrit à la main (mode Débutant) : vert 5 s, orange 2 s, rouge 5 s, en boucle.",
+  "en": {
+    "name": "Traffic light",
+    "description": "Arduino Uno and three LEDs (red, amber, green), each with its 220 Ω resistor, grounds on the breadboard rail. Auto-wired. Hand-written program (Beginner mode): green 5 s, amber 2 s, red 5 s, in a loop."
+  },
+  "comps": [
+    {
+      "id": "uno_1",
+      "type": "uno",
+      "name": "UNO",
+      "x": 0,
+      "z": 0,
+      "r": 0
+    },
+    {
+      "id": "breadboard_1",
+      "type": "breadboard",
+      "name": "BB1",
+      "x": 0,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "led-red_1",
+      "type": "led-red",
+      "name": "ROUGE",
+      "x": -30,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "led-yellow_1",
+      "type": "led-yellow",
+      "name": "ORANGE",
+      "x": 0,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "led-green_1",
+      "type": "led-green",
+      "name": "VERT",
+      "x": 30,
+      "z": 80,
+      "r": 0
+    },
+    {
+      "id": "res-220_311aba",
+      "type": "res-220",
+      "name": "R1",
+      "x": -28,
+      "z": 37,
+      "r": 0
+    },
+    {
+      "id": "res-220_070tbk",
+      "type": "res-220",
+      "name": "R2",
+      "x": 16,
+      "z": 39,
+      "r": 0
+    },
+    {
+      "id": "res-220_ty50ps",
+      "type": "res-220",
+      "name": "R3",
+      "x": -7,
+      "z": 41,
+      "r": 0
+    }
+  ],
+  "wires": [
+    {
+      "id": "w1",
+      "a": [
+        "uno_1",
+        "GND (2)"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-13"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse vers la breadboard"
+    },
+    {
+      "id": "w2",
+      "a": [
+        "led-red_1",
+        "K"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-4"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w3",
+      "a": [
+        "led-red_1",
+        "A"
+      ],
+      "b": [
+        "res-220_311aba",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance série (Anode)"
+    },
+    {
+      "id": "w4",
+      "a": [
+        "res-220_311aba",
+        "1"
+      ],
+      "b": [
+        "uno_1",
+        "D7"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande"
+    },
+    {
+      "id": "w5",
+      "a": [
+        "led-yellow_1",
+        "K"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-14"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w6",
+      "a": [
+        "led-yellow_1",
+        "A"
+      ],
+      "b": [
+        "res-220_070tbk",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance série (Anode)"
+    },
+    {
+      "id": "w7",
+      "a": [
+        "res-220_070tbk",
+        "1"
+      ],
+      "b": [
+        "uno_1",
+        "D8"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande"
+    },
+    {
+      "id": "w8",
+      "a": [
+        "led-green_1",
+        "K"
+      ],
+      "b": [
+        "breadboard_1",
+        "B-23"
+      ],
+      "color": "#3a3f45",
+      "role": "Masse"
+    },
+    {
+      "id": "w9",
+      "a": [
+        "led-green_1",
+        "A"
+      ],
+      "b": [
+        "res-220_ty50ps",
+        "2"
+      ],
+      "color": "#f08a3c",
+      "role": "Résistance série (Anode)"
+    },
+    {
+      "id": "w10",
+      "a": [
+        "res-220_ty50ps",
+        "1"
+      ],
+      "b": [
+        "uno_1",
+        "D2"
+      ],
+      "color": "#f2c94c",
+      "role": "Commande"
+    }
+  ],
+  "blocks": [],
+  "settings": {
+    "dur": 2.2,
+    "env": {
+      "temp": 24,
+      "hum": 55,
+      "press": 1013,
+      "lux": 300,
+      "dist": 35,
+      "motion": 0,
+      "soil": 40,
+      "gas": 0,
+      "sound": 45,
+      "tilt": 0,
+      "tiltY": 0,
+      "rotZ": 0
+    },
+    "shots": [
+      {
+        "id": "s1",
+        "p": [
+          65.44,
+          139.98,
+          188.19
+        ],
+        "t": [
+          0,
+          8.05,
+          40.43
+        ]
+      },
+      {
+        "id": "s2",
+        "p": [
+          19.41,
+          124.15,
+          181.31
+        ],
+        "t": [
+          0,
+          8.05,
+          40.43
+        ]
+      },
+      {
+        "id": "s3",
+        "p": [
+          67.78,
+          112.19,
+          193.87
+        ],
+        "t": [
+          0,
+          4,
+          80
+        ]
+      }
+    ],
+    "netNames": {},
+    "prog": {
+      "rules": [],
+      "boards": {
+        "uno_1": {
+          "code": "// Feu tricolore : vert 5 s, orange 2 s, rouge 5 s, puis on recommence.\nconst int ROUGE = 7;\nconst int ORANGE = 8;\nconst int VERT = 2;\n\nvoid setup() {\n  pinMode(ROUGE, OUTPUT);\n  pinMode(ORANGE, OUTPUT);\n  pinMode(VERT, OUTPUT);\n  Serial.begin(9600);\n}\n\n// Allume les feux demandés (HIGH) et éteint les autres (LOW).\nvoid feux(int r, int o, int v) {\n  digitalWrite(ROUGE, r);\n  digitalWrite(ORANGE, o);\n  digitalWrite(VERT, v);\n}\n\nvoid loop() {\n  feux(LOW, LOW, HIGH);\n  Serial.println(\"Vert : on passe\");\n  delay(5000);\n\n  feux(LOW, HIGH, LOW);\n  Serial.println(\"Orange : on ralentit\");\n  delay(2000);\n\n  feux(HIGH, LOW, LOW);\n  Serial.println(\"Rouge : on s'arrete\");\n  delay(5000);\n}\n",
+          "auto": false
+        }
+      },
+      "states": {},
+      "mem": {},
+      "net": null
+    },
+    "check": {
+      "allow": []
+    },
+    "timeline": {
+      "v": 1,
+      "auto": null,
+      "camAuto": false,
+      "pad": 0.6,
+      "hold": 1.6,
+      "wires": [
+        {
+          "id": "c1",
+          "ws": [
+            "w1"
+          ],
+          "t": 8.5,
+          "d": 2.2
+        },
+        {
+          "id": "c2",
+          "ws": [
+            "w2"
+          ],
+          "t": 11.3,
+          "d": 2.2
+        },
+        {
+          "id": "c3",
+          "ws": [
+            "w3"
+          ],
+          "t": 14.1,
+          "d": 2.2
+        },
+        {
+          "id": "c4",
+          "ws": [
+            "w4"
+          ],
+          "t": 16.9,
+          "d": 2.2
+        },
+        {
+          "id": "c5",
+          "ws": [
+            "w5"
+          ],
+          "t": 23.2,
+          "d": 2.2
+        },
+        {
+          "id": "c6",
+          "ws": [
+            "w6"
+          ],
+          "t": 26,
+          "d": 2.2
+        },
+        {
+          "id": "c7",
+          "ws": [
+            "w7"
+          ],
+          "t": 28.8,
+          "d": 2.2
+        },
+        {
+          "id": "c8",
+          "ws": [
+            "w8"
+          ],
+          "t": 35.1,
+          "d": 2.2
+        },
+        {
+          "id": "c9",
+          "ws": [
+            "w9"
+          ],
+          "t": 37.9,
+          "d": 2.2
+        },
+        {
+          "id": "c10",
+          "ws": [
+            "w10"
+          ],
+          "t": 40.7,
+          "d": 2.2
+        }
+      ],
+      "cam": [
+        {
+          "id": "k1",
+          "shot": "s1",
+          "t": 0,
+          "ease": "smooth"
+        },
+        {
+          "id": "k2",
+          "shot": "s2",
+          "t": 8,
+          "ease": "smooth"
+        },
+        {
+          "id": "k3",
+          "shot": "s2",
+          "t": 42.9,
+          "ease": "smooth"
+        },
+        {
+          "id": "k4",
+          "shot": "s1",
+          "t": 59,
+          "ease": "smooth"
+        },
+        {
+          "id": "k5",
+          "shot": "s3",
+          "t": 62.5,
+          "ease": "smooth"
+        }
+      ],
+      "caps": [
+        {
+          "id": "t1",
+          "t": 0,
+          "d": 5,
+          "text": "Feu tricolore · Arduino Uno"
+        },
+        {
+          "id": "t2",
+          "t": 5,
+          "d": 3.5,
+          "text": "Feu rouge : D7 → 220 Ω → LED, cathode au rail de masse"
+        },
+        {
+          "id": "t3",
+          "t": 19.7,
+          "d": 3.5,
+          "text": "Feu orange : même montage, sur D8"
+        },
+        {
+          "id": "t4",
+          "t": 31.6,
+          "d": 3.5,
+          "text": "Feu vert : même montage, sur D2"
+        },
+        {
+          "id": "t5",
+          "t": 43.5,
+          "d": 5.5,
+          "text": "Le programme : trois sorties, une fonction feux() qui en allume une"
+        },
+        {
+          "id": "t6",
+          "t": 49,
+          "d": 5.5,
+          "text": "Vert 5 s, orange 2 s, rouge 5 s : delay() en millisecondes"
+        },
+        {
+          "id": "t7",
+          "t": 54.5,
+          "d": 5.5,
+          "text": "loop() recommence sans fin, comme un vrai carrefour"
+        },
+        {
+          "id": "t8",
+          "t": 60,
+          "d": 5.5,
+          "text": "Simulation : le cycle vert, orange, rouge tourne en temps réel"
+        },
+        {
+          "id": "t9",
+          "t": 65.5,
+          "d": 5.5,
+          "text": "Moniteur série (onglet Code) : chaque changement de feu est écrit"
+        },
+        {
+          "id": "t10",
+          "t": 71,
+          "d": 5.5,
+          "text": "À vous : ajoutez un feu piéton avec deux LED de plus"
+        },
+        {
+          "id": "t11",
+          "t": 76.5,
+          "d": 4,
+          "text": "Jollof Studio · simuler avant de câbler"
+        }
+      ]
+    },
+    "video": {
+      "res": "1080",
+      "fps": 30,
+      "cap": true,
+      "orbit": false
+    }
+  }
+}
