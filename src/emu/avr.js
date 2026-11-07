@@ -102,9 +102,19 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       const L = byKey.get(key); if (!L) return;
       L.dev = level == null ? null : !!level;
       if (L.rec.mode !== 1) { L.port.setPin(L.bit, inLevel(L)); lineChanged(L, +inLevel(L), cpu.cycles); }
-    }
+    },
+    /** Fiche de la broche (celle de pins) : un module y publie ce qu'il affiche (px des LED WS2812…). */
+    rec: key => { const L = byKey.get(key); return L ? L.rec : null; }
   };
-  usart.onByteTransmit = b => { const ch = String.fromCharCode(b); out += ch; tapBuf += ch; };
+  // Port série matériel (D0/D1) : le moniteur série le lit, et un module branché sur RX/TX aussi (HC-05, SIM800).
+  const txSubs = [];
+  usart.onByteTransmit = b => { const ch = String.fromCharCode(b); out += ch; tapBuf += ch; for (const fn of txSubs) fn(b, cpu.cycles); };
+  /** Liaison série matérielle vue par les modules : octets envoyés par la carte, octets reçus par la carte. */
+  const uart = {
+    onTx(fn) { txSubs.push(fn); return () => { const i = txSubs.indexOf(fn); if (i >= 0) txSubs.splice(i, 1); }; },
+    inject(bytes) { for (const b of bytes) serialIn.push(b & 0xff); },
+    baud: () => usart.baudRate
+  };
 
   /** Entrées : niveau imposé par le montage (capteur, bouton, autre carte), sinon tirage interne ; tensions de l'ADC. */
   function readInputs() {
@@ -174,7 +184,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     tapBuf = '';
   }
 
-  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi });
+  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi, uart });
   devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {

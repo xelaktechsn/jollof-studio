@@ -10,14 +10,38 @@
 //   spi  : create rend { cs: 'SDA' (broche de sélection du module), select?(), transfer(octet) → octet, deselect?(), frame?() }
 //   pins : create rend { frame?(), dispose?() } et se branche sur les broches par io (ci-dessous).
 // io, donné à create : { cpu, MHZ, hw, comp, pin(clé du module) → clé de la carte ou null, level(clé carte),
-//   onEdge(clé carte, fn(niveau, cycle)) → désabonnement, drive(clé carte, niveau | null), after(cycles, fn), data() }.
+//   onEdge(clé carte, fn(niveau, cycle)) → désabonnement, drive(clé carte, niveau | null), after(cycles, fn), data(),
+//   rec(clé carte) → fiche de la broche (px…), now() → cycle courant, us(µs) → cycles,
+//   uart : { onTx(fn(octet, cycle)) → désabonnement, inject(octets), baud() } (port série matériel D0/D1) }.
+// drive(clé, null) relâche la ligne : elle reprend le niveau du montage (résistance de tirage câblée), sinon le
+// tirage interne de la carte (INPUT_PULLUP), sinon LOW.
 import lcd from './lcd.js';
+import ssd1306 from './ssd1306.js';
+import bmp280 from './bmp280.js';
+import mpu6050 from './mpu6050.js';
+import dht from './dht.js';
+import ds18b20 from './ds18b20.js';
+import hcsr04 from './hcsr04.js';
+import ws2812 from './ws2812.js';
+import keypad from './keypad.js';
+import irnec from './irnec.js';
+import mfrc522 from './mfrc522.js';
+import nrf24 from './nrf24.js';
+import uart from './uart.js';
 
-export const MODELS = [lcd];
+export const MODELS = [lcd, ssd1306, bmp280, mpu6050, dht, ds18b20, hcsr04, ws2812, keypad, irnec, mfrc522, nrf24, uart].filter(m => m.types.length);
 
-/** Branche les modèles sur un processeur émulé. ctx : { cpu, MHZ, twi, spi, hw, pinApi }. Rend { frame() }. */
+/**
+ * Branche les modèles sur un processeur émulé. ctx : { cpu, MHZ, twi, spi, hw, pinApi, uart } (avr8js). Un autre
+ * processeur (RP2040, src/emu/rp2040.js) donne en plus son horloge et ses bus : now() → cycle courant,
+ * after(cycles, fn), i2c : { setHandler({ start(), connect(adresse, écriture) → acquitté, write(octet) → acquitté,
+ * read(ack) → octet, stop() }) }, spiBus : { onTransfer(fn(octet) → octet) } ; twi et spi ne servent alors pas.
+ * cpu n'est plus qu'un identifiant de la carte (bus 1-Wire partagé). Rend { frame() }.
+ */
 export function attachDevices(ctx) {
-  const { cpu, twi, spi, hw, pinApi, MHZ } = ctx;
+  const { cpu, twi, spi, hw, pinApi, MHZ, uart } = ctx;
+  const now = ctx.now || (() => cpu.cycles);
+  const after = ctx.after || ((cycles, fn) => cpu.addClockEvent(fn, Math.max(1, Math.round(cycles))));
   const live = new Map(); // id du composant → { model, comp, dev, keyMap }
   let i2c = new Map(), spiDevs = [], selected = null, lastBind = -Infinity;
 
@@ -34,8 +58,12 @@ export function attachDevices(ctx) {
       level: key => pinApi.level(key),
       onEdge: (key, fn) => pinApi.onEdge(key, fn),
       drive: (key, level) => pinApi.drive(key, level),
-      after: (cycles, fn) => cpu.addClockEvent(fn, Math.max(1, Math.round(cycles))),
-      data: () => (hw.data ? hw.data(comp) : null)
+      after,
+      data: () => (hw.data ? hw.data(comp) : null),
+      rec: key => (pinApi.rec ? pinApi.rec(key) : null),
+      now,
+      us: n => n * MHZ / 1e6,
+      uart
     };
   }
   /** Modules présents sur cette carte (refait de temps en temps : le montage peut changer pendant la simulation). */
@@ -67,17 +95,26 @@ export function attachDevices(ctx) {
     }) }));
   }
 
-  // Bus I2C (TWI) : chaque adresse est servie par son module ; une adresse vide n'est pas acquittée.
+  // Bus I2C : chaque adresse est servie par son module ; une adresse vide n'est pas acquittée.
   let cur = null;
-  twi.eventHandler = {
-    start() { cur = null; twi.completeStart(); },
-    stop() { if (cur && cur.stop) cur.stop(); cur = null; twi.completeStop(); },
-    connectToSlave(addr, write) { cur = i2c.get(addr) || null; if (cur && cur.start) cur.start(write); twi.completeConnect(!!cur); },
-    writeByte(v) { twi.completeWrite(cur ? cur.write(v & 0xff) !== false : false); },
-    readByte(ack) { twi.completeRead(cur ? cur.read(ack) & 0xff : 0xff); }
+  const bus = {
+    start() { cur = null; },
+    connect(addr, write) { cur = i2c.get(addr) || null; if (cur && cur.start) cur.start(write); return !!cur; },
+    write(v) { return cur ? cur.write(v & 0xff) !== false : false; },
+    read(ack) { return cur ? cur.read(ack) & 0xff : 0xff; },
+    stop() { if (cur && cur.stop) cur.stop(); cur = null; }
+  };
+  if (ctx.i2c) ctx.i2c.setHandler(bus);
+  else twi.eventHandler = { // TWI d'avr8js
+    start() { bus.start(); twi.completeStart(); },
+    stop() { bus.stop(); twi.completeStop(); },
+    connectToSlave(addr, write) { twi.completeConnect(bus.connect(addr, write)); },
+    writeByte(v) { twi.completeWrite(bus.write(v)); },
+    readByte(ack) { twi.completeRead(bus.read(ack)); }
   };
   // Bus SPI : octet échangé avec le module sélectionné ; personne : la ligne MISO reste haute (0xFF).
-  spi.onTransfer = v => (selected ? selected.transfer(v & 0xff) & 0xff : 0xff);
+  const transfer = v => (selected ? selected.transfer(v & 0xff) & 0xff : 0xff);
+  if (ctx.spiBus) ctx.spiBus.onTransfer(transfer); else spi.onTransfer = transfer;
 
   return {
     /** Fin d'une tranche de simulation : modules rafraîchis (toutes les 0,5 s) et état publié (écrans…). */

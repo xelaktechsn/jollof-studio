@@ -76,6 +76,7 @@ export function parseErrors(text) {
 
 /**
  * Compile le programme d'une carte. Rend { ok, hex, errors, log } ; hex : texte Intel HEX (Uno, Nano).
+ * Pico : { ok, image, format, errors, log } ; image : octets du .bin (copie de la flash), sinon du .uf2.
  * log(texte) reçoit l'avancement (installation, compilation).
  */
 export async function compileFirmware(code, kind, log = () => {}, cli = nativeCli) {
@@ -99,6 +100,11 @@ export async function compileFirmware(code, kind, log = () => {}, cli = nativeCl
   if (!ok(out)) {
     const errors = parseErrors(text);
     return { ok: false, errors: errors.length ? errors : [{ line: 1, col: 1, msg: text.trim().split('\n').slice(-3).join(' ') || tl('La compilation a échoué.'), code: 'J1200' }], log: text };
+  }
+  if (coreOf(FQBN[kind]) === 'rp2040:rp2040') {
+    let format = 'bin', bytes;
+    try { bytes = await cli.read('bin'); } catch { format = 'uf2'; bytes = await cli.read('uf2'); }
+    return { ok: true, image: new Uint8Array(bytes), format, errors: [], log: text };
   }
   const bytes = await cli.read('hex');
   return { ok: true, hex: new TextDecoder().decode(bytes), errors: [], log: text };

@@ -221,7 +221,9 @@ export function createProgram(app) {
     fwDiag.set(b.id, { errors: [], warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
     log(b, tl('{0}— {1} : compilation du vrai programme (mode fidèle)… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
     // Compilateur et processeur émulé chargés à la demande : ils ne pèsent rien tant que le mode fidèle ne sert pas.
-    Promise.all([import('../emu/compile.js'), import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
+    // Pico : RP2040 (rp2040js) ; Uno, Nano : ATmega328P (avr8js).
+    const pico = boardKind(b) === 'pico';
+    Promise.all([import('../emu/compile.js'), pico ? import('../emu/rp2040.js') : import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
       if (fwJobs.get(b.id) !== token) return; // relancé ou arrêté entre-temps
       fwJobs.delete(b.id);
       if (!res.ok) {
@@ -235,10 +237,12 @@ export function createProgram(app) {
         return;
       }
       let rt;
-      try { rt = E.createAvrRuntime(res.hex, makeHw(b)); } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
+      try { rt = pico ? E.createRp2040Runtime(res.image, makeHw(b)) : E.createAvrRuntime(res.hex, makeHw(b)); } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
       rts.set(b.id, attach(b, rt));
       uploaded.set(b.id, code);
       log(b, tl('— {0} démarre : vrai programme sur processeur émulé —\n', b.name));
+      // Serial du Pico : l'USB, que le PC n'ouvre qu'après le démarrage ; ce qui est écrit avant est perdu.
+      if (pico && /\bSerial\s*\.\s*print/.test(code) && !/!\s*Serial\b/.test(code)) log(b, tl('Pico : Serial passe par l’USB, que le PC n’ouvre qu’une vingtaine de millisecondes après le démarrage ; ce qui est écrit avant est perdu, comme sur la vraie carte. Ajoutez while (!Serial) delay(10); après Serial.begin().\n'));
       if (b.id === cur) renderDiag();
       render();
     });

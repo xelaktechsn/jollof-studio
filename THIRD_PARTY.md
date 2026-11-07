@@ -6,10 +6,11 @@ Jollof Studio itself: AGPL-3.0-or-later with additional terms (see NOTICE.md), �
 
 | Kind | Count |
 | --- | --- |
-| npm packages (production) | 121 |
-| Rust crates (desktop app) | 387 |
+| npm packages (production) | 125 |
+| Rust crates (desktop app) | 404 |
 | 3D models | 24 |
 | Fonts | 2 |
+| Embedded firmware | 1 |
 
 ## To review
 
@@ -18,7 +19,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 ## Conditions
 
 - LGPL-2.1: module WebAssembly séparé et remplaçable (1 components)
-- MPL-2.0: copyleft par fichier : les fichiers MPL restent sous MPL (5 components)
+- MPL-2.0: copyleft par fichier : les fichiers MPL restent sous MPL (6 components)
 - CC-BY-SA-4.0: modèles 3D : les fichiers convertis restent sous CC-BY-SA, crédit obligatoire (22 components)
 
 ## By license
@@ -115,13 +116,20 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | npm | [entities](git://github.com/fb55/entities) | 6.0.1 | BSD-2-Clause |
 | npm | [webidl-conversions](jsdom/webidl-conversions) | 7.0.0 | BSD-2-Clause |
 
-### BSD-3-Clause (3)
+### BSD-2-Clause OR MIT OR Apache-2.0 (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [mach2](https://github.com/JohnTitor/mach2) | 0.4.3 | BSD-2-Clause OR MIT OR Apache-2.0 |
+
+### BSD-3-Clause (4)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | npm | [tough-cookie](git://github.com/salesforce/tough-cookie) | 5.1.2 | BSD-3-Clause |
 | crate | [alloc-no-stdlib](https://github.com/dropbox/rust-alloc-no-stdlib) | 3.0.0 | BSD-3-Clause |
 | crate | [alloc-stdlib](https://github.com/dropbox/rust-alloc-no-stdlib) | 0.3.0 | BSD-3-Clause |
+| firmware | [RP2040 bootrom](https://github.com/raspberrypi/pico-bootrom) | B1 | BSD-3-Clause |
 
 ### BSD-3-Clause AND MIT (1)
 
@@ -189,7 +197,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | npm | [occt-import-js](github:kovacsv/occt-import-js) | 0.0.23 | LGPL-2.1 |
 
-### MIT (200)
+### MIT (207)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
@@ -236,15 +244,18 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | npm | [@types/mdurl](https://github.com/DefinitelyTyped/DefinitelyTyped) | 2.0.0 | MIT |
 | npm | [@types/wicg-file-system-access](https://github.com/DefinitelyTyped/DefinitelyTyped) | 2020.9.8 | MIT |
 | npm | [agent-base](https://github.com/TooTallNate/proxy-agents) | 7.1.4 | MIT |
+| npm | [avr8js](https://github.com/wokwi/avr8js) | 0.21.1 | MIT |
 | npm | [crelt](https://code.haverbeke.berlin/marijn/crelt) | 1.0.7 | MIT |
 | npm | [cssstyle](jsdom/cssstyle) | 4.6.0 | MIT |
 | npm | [data-urls](jsdom/data-urls) | 5.0.0 | MIT |
 | npm | [debug](git://github.com/debug-js/debug) | 4.3.7 | MIT |
 | npm | [debug](git://github.com/debug-js/debug) | 4.4.3 | MIT |
 | npm | [decimal.js](https://github.com/MikeMcl/decimal.js) | 10.6.0 | MIT |
+| npm | [eecircuit-engine](https://github.com/eelab-dev/EEcircuit-engine) | 1.9.0 | MIT |
 | npm | [engine.io-client](https://github.com/socketio/socket.io) | 6.6.7 | MIT |
 | npm | [engine.io-parser](https://github.com/socketio/socket.io) | 5.2.3 | MIT |
 | npm | [escape-string-regexp](sindresorhus/escape-string-regexp) | 4.0.0 | MIT |
+| npm | [fflate](https://github.com/101arrowz/fflate) | 0.8.2 | MIT |
 | npm | [html-encoding-sniffer](jsdom/html-encoding-sniffer) | 4.0.0 | MIT |
 | npm | [http-proxy-agent](https://github.com/TooTallNate/proxy-agents) | 7.0.2 | MIT |
 | npm | [https-proxy-agent](https://github.com/TooTallNate/proxy-agents) | 7.0.6 | MIT |
@@ -281,6 +292,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | npm | [punycode](https://github.com/mathiasbynens/punycode.js) | 2.3.1 | MIT |
 | npm | [punycode.js](https://github.com/mathiasbynens/punycode.js) | 2.3.1 | MIT |
 | npm | [rope-sequence](https://github.com/marijnh/rope-sequence) | 1.3.4 | MIT |
+| npm | [rp2040js](https://github.com/wokwi/rp2040js) | 1.4.1 | MIT |
 | npm | [rrweb-cssom](rrweb-io/CSSOM) | 0.8.0 | MIT |
 | npm | [safer-buffer](https://github.com/ChALkeR/safer-buffer) | 2.1.2 | MIT |
 | npm | [socket.io-client](https://github.com/socketio/socket.io) | 4.8.1 | MIT |
@@ -342,9 +354,12 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [javascriptcore-rs](https://github.com/tauri-apps/javascriptcore-rs) | 1.1.2 | MIT |
 | crate | [javascriptcore-rs-sys](https://github.com/tauri-apps/javascriptcore-rs) | 1.1.1 | MIT |
 | crate | [libredox](https://gitlab.redox-os.org/redox-os/libredox.git) | 0.1.25 | MIT |
+| crate | [libudev](https://github.com/dcuddeback/libudev-rs) | 0.3.0 | MIT |
+| crate | [libudev-sys](https://github.com/dcuddeback/libudev-sys) | 0.1.4 | MIT |
 | crate | [memoffset](https://github.com/Gilnaa/memoffset) | 0.9.1 | MIT |
 | crate | [mio](https://github.com/tokio-rs/mio) | 1.2.4 | MIT |
 | crate | [new_debug_unreachable](https://github.com/mbrubeck/rust-debug-unreachable) | 1.0.6 | MIT |
+| crate | [nix](https://github.com/nix-rust/nix) | 0.26.4 | MIT |
 | crate | [objc2](https://github.com/madsmtm/objc2) | 0.6.5 | MIT |
 | crate | [objc2-encode](https://github.com/madsmtm/objc2) | 4.1.0 | MIT |
 | crate | [objc2-foundation](https://github.com/madsmtm/objc2) | 0.3.2 | MIT |
@@ -394,7 +409,13 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | model | [Pile 9 V](https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/1321%20Battery%209V/1321%20Battery%209V.step) |  | MIT |
 | model | [Potentiomètre 10 kΩ](https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/562%2010K%20Potentiometer/562%2010K%20Potentiometer.step) |  | MIT |
 
-### MIT OR Apache-2.0 (178)
+### MIT / Apache-2.0 (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [io-kit-sys](https://github.com/jtakakura/io-kit-rs) | 0.4.1 | MIT / Apache-2.0 |
+
+### MIT OR Apache-2.0 (188)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
@@ -556,12 +577,20 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [web-time](https://github.com/daxpedda/web-time) | 1.1.0 | MIT OR Apache-2.0 |
 | crate | [windows](https://github.com/microsoft/windows-rs) | 0.62.2 | MIT OR Apache-2.0 |
 | crate | [windows_aarch64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_aarch64_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_aarch64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_aarch64_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_i686_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_i686_gnu](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
+| crate | [windows_i686_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_i686_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_i686_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_gnu](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows-collections](https://github.com/microsoft/windows-rs) | 0.3.2 | MIT OR Apache-2.0 |
 | crate | [windows-core](https://github.com/microsoft/windows-rs) | 0.62.2 | MIT OR Apache-2.0 |
 | crate | [windows-future](https://github.com/microsoft/windows-rs) | 0.3.2 | MIT OR Apache-2.0 |
@@ -573,7 +602,9 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [windows-strings](https://github.com/microsoft/windows-rs) | 0.5.1 | MIT OR Apache-2.0 |
 | crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.61.2 | MIT OR Apache-2.0 |
 | crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.45.0 | MIT OR Apache-2.0 |
+| crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.52.0 | MIT OR Apache-2.0 |
 | crate | [windows-targets](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows-targets](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
 | crate | [windows-threading](https://github.com/microsoft/windows-rs) | 0.2.1 | MIT OR Apache-2.0 |
 | crate | [windows-version](https://github.com/microsoft/windows-rs) | 0.1.7 | MIT OR Apache-2.0 |
 
@@ -589,6 +620,12 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | crate | [raw-window-handle](https://github.com/rust-windowing/raw-window-handle) | 0.6.2 | MIT OR Apache-2.0 OR Zlib |
+
+### MIT OR GPL-3.0-only (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [unescaper](https://github.com/hack-ink/unescaper) | 0.1.10 | MIT OR GPL-3.0-only |
 
 ### MIT OR Zlib OR Apache-2.0 (2)
 
@@ -619,7 +656,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [winapi-i686-pc-windows-gnu](https://github.com/retep998/winapi-rs) | 0.4.0 | MIT/Apache-2.0 |
 | crate | [winapi-x86_64-pc-windows-gnu](https://github.com/retep998/winapi-rs) | 0.4.0 | MIT/Apache-2.0 |
 
-### MPL-2.0 (5)
+### MPL-2.0 (6)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
@@ -628,6 +665,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [dtoa-short](https://github.com/upsuper/dtoa-short) | 0.3.5 | MPL-2.0 |
 | crate | [option-ext](https://github.com/soc/option-ext.git) | 0.2.0 | MPL-2.0 |
 | crate | [selectors](https://github.com/servo/stylo) | 0.38.0 | MPL-2.0 |
+| crate | [serialport](https://github.com/serialport/serialport-rs) | 4.10.1 | MPL-2.0 |
 
 ### OFL-1.1 (4)
 

@@ -674,6 +674,11 @@ mod tests {
         assert!(ok(&["core", "list", "--format", "json"]));
         assert!(ok(&["upload", "-p", "/dev/cu.usbmodem1101", "--fqbn", "esp32:esp32:esp32", &d]));
         assert!(ok(&["upload", "-p", "COM3", "--fqbn", "arduino:avr:nano", &d]));
+        // Mode fidèle du Pico : cœur arduino-pico (dépôt d'Earle Philhower), compilation vers le dossier de build.
+        assert!(ok(&["core", "update-index", "--additional-urls", CORE_URLS[2]]));
+        assert!(ok(&["core", "install", "rp2040:rp2040", "--additional-urls", CORE_URLS[2]]));
+        assert!(ok(&["compile", "--fqbn", "rp2040:rp2040:rpipico", "--output-dir", &b, &d]));
+        assert!(!ok(&["core", "install", "rp2040:rp2040", "--additional-urls", "https://github.com/evil/package_rp2040_index.json"]));
         // Refusés : autres commandes, autres dossiers, options cachées, dépôts arbitraires.
         assert!(!ok(&["config", "set", "library.enable_unsafe_install", "true"]));
         assert!(!ok(&["lib", "install", "--git-url", "https://evil.example/x.git"]));

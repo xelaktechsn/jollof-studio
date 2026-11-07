@@ -3641,5 +3641,9 @@ export default {
   "Projet KiCad": "KiCad project",
   "Fichiers KiCad enregistrés : {0}": "KiCad files saved: {0}",
   "Fichiers KiCad téléchargés : ouvrez le .kicad_sch dans KiCad, ou importez la netlist dans Pcbnew.": "KiCad files downloaded: open the .kicad_sch in KiCad, or import the netlist in Pcbnew.",
-  "Schéma et netlist pour KiCad : dessiner le circuit imprimé": "Schematic and netlist for KiCad: design the circuit board"
+  "Schéma et netlist pour KiCad : dessiner le circuit imprimé": "Schematic and netlist for KiCad: design the circuit board",
+  "Fichier UF2 abîmé (bloc {0}).": "Corrupted UF2 file (block {0}).",
+  "Programme trop gros pour la flash du Pico.": "Program too large for the Pico's flash.",
+  "Le programme s’est arrêté sur une erreur fatale (panic, point d’arrêt {0}).": "The program stopped on a fatal error (panic, breakpoint {0}).",
+  "Pico : Serial passe par l’USB, que le PC n’ouvre qu’une vingtaine de millisecondes après le démarrage ; ce qui est écrit avant est perdu, comme sur la vraie carte. Ajoutez while (!Serial) delay(10); après Serial.begin().": "Pico: Serial goes over USB, which the PC only opens about twenty milliseconds after startup; anything printed before that is lost, as on the real board. Add while (!Serial) delay(10); after Serial.begin()."
 };
