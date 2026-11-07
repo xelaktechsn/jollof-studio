@@ -18,7 +18,7 @@ import './debug.css';
 import './visual/mode.css';
 import { generateVisual, visualContext } from './visual/generator.js';
 import { emptyWorkspace } from './visual/types.js';
-import { confirm as askConfirm } from '../school/ui.js';
+import { confirm as askConfirm, ask } from '../school/ui.js';
 import { BOARDS, boardOf } from '../sim/boards.js';
 import { analyze, inspect, firstMsg } from '../sim/circuit.js';
 import { partOf, isMotor } from '../sim/parts.js';
@@ -44,6 +44,8 @@ export function createProgram(app) {
   const rts = new Map(), logs = new Map(), diag = new Map(), uploaded = new Map();
   // Mode fidèle : compilation en cours (jeton par carte : une compilation dépassée est ignorée) et erreurs d'arduino-cli.
   const fwJobs = new Map(), fwDiag = new Map();
+  // MicroPython (Pico) : erreur Python de chaque carte (Traceback), fichier à exécuter sans l'enregistrer au lancement.
+  const pyDiag = new Map(), pyRunNext = new Map();
   let cur = null, editor = null, lastUi = 0, logDirty = true, checkT = 0, confirmGen = 0, warnSig = '';
   // Blocs de code : espace de travail Blockly de la carte affichée (chargé à la demande) et correspondances ligne → bloc.
   let vis = null, wideAuto = false; const visMeta = new Map();
@@ -56,11 +58,19 @@ export function createProgram(app) {
   const byId = id => comps().find(c => c.id === id);
   const boards = () => comps().filter(c => boardOf(c));
   const board = () => { const bs = boards(); let b = bs.find(x => x.id === cur); if (!b) { b = bs[0] || null; cur = b && b.id; } return b; };
-  /** Moteur d'exécution d'une carte : 'interp' (interpréteur, instantané, pas à pas) ou 'firmware' (vrai programme émulé). */
-  const engineOf = b => { const e = b && P.boards[b.id]; return e && e.engine === 'firmware' && EMULATED.has(boardKind(b)) ? 'firmware' : 'interp'; };
+  /**
+   * Moteur d'exécution d'une carte : 'interp' (interpréteur, instantané, pas à pas), 'firmware' (vrai programme émulé)
+   * ou 'micropython' (Pico : le micrologiciel MicroPython émulé exécute les fichiers Python de la carte).
+   */
+  const engineOf = b => {
+    const e = b && P.boards[b.id];
+    if (e && e.engine === 'micropython' && boardKind(b) === 'pico') return 'micropython';
+    return e && e.engine === 'firmware' && EMULATED.has(boardKind(b)) ? 'firmware' : 'interp';
+  };
+  const pyOf = b => !!b && engineOf(b) === 'micropython';
   /** Moteur provisoire d'une carte dont le vrai programme se compile. */
-  const compilingStub = logic => ({
-    state: 'compiling', pins: new Map(), warnings: new Map(), line: null, error: null, logic,
+  const compilingStub = (logic, firmware = null) => ({
+    state: 'compiling', pins: new Map(), warnings: new Map(), line: null, error: null, logic, firmware,
     run() {}, clock: () => 0, probe: () => null, setTrace() {}, setSerialTap() {}, takeSerial: () => '', send() {}, stop() {},
     debug: { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] }
   });
@@ -82,6 +92,19 @@ export function createProgram(app) {
   const ensure = b => P.boards[b.id] || (P.boards[b.id] = { code: '', auto: true });
   const hasProgram = (b, sn) => !!entry(b) || P.rules.some(r => ruleBoard(r, sn) === b);
   const rulesOf = (b, sn) => P.rules.filter(r => { const rb = ruleBoard(r, sn); return rb === b || !rb; });
+  /* ---------- MicroPython (Pico) : fichiers de la carte ---------- */
+  const pyMain = () => `from machine import Pin\nimport time\n\nled = Pin(25, Pin.OUT)  # ${tl('LED de la carte (GP25)')}\n\nwhile True:\n    led.toggle()\n    time.sleep(0.5)\n`;
+  /** Fichiers Python de la carte ({ 'main.py': texte, 'lib/lcd.py': … }, gardés avec le projet) ; e.file : celui affiché. */
+  function pyFiles(b) {
+    const e = ensure(b);
+    if (!e.files || typeof e.files !== 'object' || !Object.keys(e.files).length) e.files = { 'main.py': pyMain() };
+    if (!e.file || !(e.file in e.files)) e.file = 'main.py' in e.files ? 'main.py' : Object.keys(e.files).sort()[0];
+    return e.files;
+  }
+  const pyFile = b => { pyFiles(b); return ensure(b).file; };
+  const pySig = b => JSON.stringify(pyFiles(b));
+  /** Nom de fichier accepté sur la carte : dossiers et fichiers simples (lib/capteur.py), sans « .. » ni « / » au début. */
+  const pyName = n => /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/.test(n) && !n.split('/').some(x => x === '.' || x === '..');
   function codeOf(b, sn = snapshot()) {
     const e = ensure(b);
     if (e.mode === 'visual') {
@@ -192,6 +215,7 @@ export function createProgram(app) {
   }
   /** Compile et lance le programme d'une carte ; false s'il ne compile pas. */
   function launch(b, sn = snapshot()) {
+    if (engineOf(b) === 'micropython') return launchPython(b);
     if (engineOf(b) === 'firmware') return launchFirmware(b, codeOf(b, sn));
     const code = codeOf(b, sn), res = compile(code, { ...ctxOf(b), debug: wantsDebug(b) });
     diag.set(b.id, { errors: res.errors, warnings: res.warnings });
@@ -248,6 +272,58 @@ export function createProgram(app) {
     });
     return true;
   }
+  /**
+   * MicroPython : le micrologiciel officiel tourne sur le RP2040 émulé (chargé à la demande, sans arduino-cli). Les
+   * fichiers de la carte y sont écrits, puis main.py s'exécute ; une carte déjà lancée les reçoit et redémarre seule
+   * (redémarrage logiciel, comme Thonny). file : { name, code } pour exécuter un fichier sans l'enregistrer.
+   */
+  function launchPython(b, file = null) {
+    if (!file && pyRunNext.has(b.id)) { file = pyRunNext.get(b.id); pyRunNext.delete(b.id); }
+    const files = { ...pyFiles(b) }, run = file ? { code: file.code, name: file.name } : 'main';
+    pyDiag.set(b.id, []); if (b.id === cur) check();
+    const rt0 = rts.get(b.id);
+    if (rt0 && rt0.mpy && rt0.state === 'run') {
+      if (file) rt0.mpy.runFile(file.name, file.code, files); else rt0.mpy.runMain(files);
+      uploaded.set(b.id, pySig(b));
+      log(b, file ? tl('\n— {0} : exécution de {1} (sans l’enregistrer) —\n', b.name, file.name) : tl('\n— {0} : fichiers envoyés, redémarrage (main.py) —\n', b.name));
+      return true;
+    }
+    const token = {};
+    fwJobs.set(b.id, token);
+    rts.delete(b.id); clearScreens(b);
+    rts.set(b.id, compilingStub(boardOf(b).logic, 'micropython'));
+    log(b, tl('{0}— {1} : démarrage de MicroPython… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
+    import('../emu/micropython.js').then(M => M.loadFirmware().then(img => [M, img])).then(([M, img]) => {
+      if (fwJobs.get(b.id) !== token) return; // relancé ou arrêté entre-temps
+      fwJobs.delete(b.id);
+      let rt;
+      try { rt = M.createMicroPythonRuntime(img, makeHw(b), { files, run, onError: e => pyError(b, e) }); } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); render(); return; }
+      rts.set(b.id, attach(b, rt));
+      uploaded.set(b.id, pySig(b));
+      log(b, tl('— {0} démarre : MicroPython {1} sur processeur émulé —\n', b.name, M.FIRMWARE.version));
+      render();
+    }).catch(err => {
+      if (fwJobs.get(b.id) !== token) return;
+      fwJobs.delete(b.id); rts.delete(b.id);
+      log(b, `\n✕ ${err.message || err}\n`);
+      app.status(tl('{0} : MicroPython n’a pas pu démarrer : {1}', b.name, err.message || err), 'err');
+      render();
+    });
+    return true;
+  }
+  /** Erreur Python (Traceback) : diagnostic à la ligne du fichier en cause, message dans la barre d'état. */
+  function pyError(b, e) {
+    pyDiag.set(b.id, [{ line: e.line, col: 1, msg: e.msg, file: e.file }]);
+    app.status(tl('{0} : erreur Python, {1} ligne {2} : {3}', b.name, e.file, e.line, e.msg), 'err');
+    if (b.id === cur) check();
+  }
+  /** Exécute le fichier affiché sans l'enregistrer sur la carte (les autres y sont envoyés, pour ses import). */
+  function runPyFile() {
+    const b = board(); if (!pyOf(b)) return;
+    const name = pyFile(b), file = { name, code: pyFiles(b)[name] };
+    if (!app.simOn()) { pyRunNext.set(b.id, file); app.setSim(true); return; }
+    launchPython(b, file); render();
+  }
   function startAll() {
     rts.clear();
     const sn = snapshot();
@@ -256,7 +332,7 @@ export function createProgram(app) {
     render();
     return { n, bad };
   }
-  function stopAll() { fwJobs.clear(); rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
+  function stopAll() { fwJobs.clear(); pyRunNext.clear(); rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
   function frame(dt) {
     for (const [id, rt] of rts) {
       const b = byId(id);
@@ -291,7 +367,8 @@ export function createProgram(app) {
     const st = $('#progState');
     let kind = 'off', text = app.simOn() ? tl('Pas de programme en cours') : tl('Simulation arrêtée');
     if (rt) {
-      if (rt.state === 'compiling') { kind = 'pause'; text = tl('Compilation du vrai programme…'); }
+      if (rt.state === 'compiling') { kind = 'pause'; text = rt.firmware === 'micropython' ? tl('Démarrage de MicroPython…') : tl('Compilation du vrai programme…'); }
+      else if (rt.state === 'run' && rt.firmware === 'micropython') { kind = 'on'; text = rt.mpy && rt.mpy.busy ? tl('Envoi des fichiers à la carte…') : tl('En cours · MicroPython'); }
       else if (rt.state === 'run') { kind = 'on'; text = rt.line == null ? tl('En cours · vrai programme (mode fidèle)') : tl('En cours · ligne {0}', rt.line); }
       else if (rt.state === 'paused') { const at = rt.debug.at; kind = 'pause'; text = at.fn ? tl('En pause · ligne {0} · {1}()', at.line, at.fn) : tl('En pause · ligne {0}', at.line); }
       else if (rt.state === 'error') { kind = 'err'; text = tl('Arrêté par une erreur, ligne {0}', rt.error.line); }
@@ -300,9 +377,11 @@ export function createProgram(app) {
     if (b && boards().length < 2 && kind !== 'off') text = `${b.name} · ${text}`;
     st.dataset.kind = kind; st.querySelector('span:last-child').textContent = text; st.title = b ? `${b.name} (${boardOf(b).label})${COLON}${text}` : text;
     if (editor) editor.setRunLine(rt && rt.state === 'run' ? rt.line || 0 : rt && rt.state === 'error' ? rt.error.line : 0);
-    const changed = b && rt && uploaded.get(b.id) !== undefined && editor && editor.value !== uploaded.get(b.id);
+    const py = pyOf(b), changed = b && rt && uploaded.get(b.id) !== undefined && editor && (py ? pySig(b) : editor.value) !== uploaded.get(b.id);
     $('#progRun').classList.toggle('pulse', !!changed);
-    $('#progRun').dataset.tip = changed ? tl('Le code a changé : téléversez-le · Ctrl+Entrée') : tl('Compiler et exécuter sur la carte · Ctrl+Entrée');
+    $('#progRun').dataset.tip = py ? (changed ? tl('Les fichiers ont changé : envoyez-les à la carte · Ctrl+Entrée') : tl('Envoyer les fichiers à la carte et exécuter main.py · Ctrl+Entrée'))
+      : changed ? tl('Le code a changé : téléversez-le · Ctrl+Entrée') : tl('Compiler et exécuter sur la carte · Ctrl+Entrée');
+    if (py && $('#pyStop')) $('#pyStop').disabled = !rt || rt.state !== 'run';
     if (logDirty) {
       logDirty = false;
       const out = $('#serialOut'), atEnd = out.scrollTop + out.clientHeight >= out.scrollHeight - 8;
@@ -317,17 +396,21 @@ export function createProgram(app) {
   function renderDiag() {
     const b = board(), d = (b && diag.get(b.id)) || { errors: [], warnings: [] }, rt = b && rts.get(b.id);
     const items = [
-      ...d.errors.map(e => ({ lv: 'err', line: e.line, col: e.col, len: e.len, msg: e.title || e.msg, code: e.code, help: e.help, tag: tl('Compilation') })),
+      ...d.errors.map(e => ({ lv: 'err', line: e.line, col: e.col, len: e.len, msg: e.title || e.msg, code: e.code, help: e.help, tag: tl('Compilation'), file: e.file })),
       ...(rt && rt.state === 'error' ? [{ lv: 'err', line: rt.error.line, msg: rt.error.msg, tag: tl('Exécution') }] : []),
       ...d.warnings.map(w => ({ lv: 'warn', line: w.line, col: w.col, msg: w.msg, code: w.code, tag: tl('Bibliothèque') })),
       ...(rt ? [...rt.warnings.values()].map(w => ({ lv: 'warn', line: w.line, msg: w.msg + (w.n > 1 ? ` (×${w.n})` : ''), tag: tl('Exécution') })) : [])
     ];
     // Comme rustc : code stable, message, puis l'aide sur sa propre ligne.
-    $('#diag').innerHTML = items.map(i => `<li class="${i.lv}" data-line="${i.line}" data-col="${i.col || 1}" title="${tl('Aller à la ligne {0}', i.line)}"><i>${i.lv === 'err' ? '✕' : '!'}</i><b>${i.line ? tl('Ligne ') + i.line : i.tag}</b><span>${i.code ? `<code class="jcode">${i.code}</code>` : ''}${esc(i.msg)}${i.help ? `<small>${tl('aide :')} ${esc(i.help)}</small>` : ''}</span></li>`).join('');
-    if (editor) editor.setMarks({ errors: items.filter(i => i.lv === 'err'), warnings: items.filter(i => i.lv === 'warn') });
+    $('#diag').innerHTML = items.map(i => `<li class="${i.lv}" data-line="${i.line}" data-col="${i.col || 1}"${i.file ? ` data-file="${esc(i.file)}"` : ''} title="${tl('Aller à la ligne {0}', i.line)}"><i>${i.lv === 'err' ? '✕' : '!'}</i><b>${i.line ? (i.file ? `${esc(i.file)} · ` : '') + tl('Ligne ') + i.line : i.tag}</b><span>${i.code ? `<code class="jcode">${i.code}</code>` : ''}${esc(i.msg)}${i.help ? `<small>${tl('aide :')} ${esc(i.help)}</small>` : ''}</span></li>`).join('');
+    // Carte sous MicroPython : seules les erreurs du fichier affiché sont marquées dans l'éditeur.
+    const here = i => !i.file || (pyOf(b) && i.file === pyFile(b));
+    if (editor) editor.setMarks({ errors: items.filter(i => i.lv === 'err' && here(i)), warnings: items.filter(i => i.lv === 'warn' && here(i)) });
   }
   function check() {
     const b = board(); if (!b || !editor) return;
+    // MicroPython : la carte juge le programme ; ses erreurs (Traceback) arrivent quand il s'exécute.
+    if (pyOf(b)) { hookLines = null; diag.set(b.id, { errors: pyDiag.get(b.id) || [], warnings: [] }); renderDiag(); editor.setBreakpoints([], null); return; }
     // Mode fidèle : c'est arduino-cli qui juge le programme (erreurs affichées après la compilation).
     if (engineOf(b) === 'firmware') { hookLines = null; diag.set(b.id, fwDiag.get(b.id) || { errors: [], warnings: [] }); renderDiag(); applyBps(b); return; }
     // Compilé en mode débogage : on connaît aussi les lignes où un point d'arrêt peut arrêter le programme.
@@ -338,7 +421,9 @@ export function createProgram(app) {
     applyBps(b);
   }
   function renderCodeMode() {
-    const b = board(), e = b && entry(b);
+    const b = board(), e = b && entry(b), py = pyOf(b);
+    $('#pane-prog .codeSec h2').lastChild.textContent = py ? tl('Code MicroPython') : tl('Code Arduino');
+    if (py) { $('#codeMode').textContent = tl('MicroPython · {0}', pyFile(b)); $('#codeMode').dataset.kind = 'python'; $('#codeGen').hidden = true; return; }
     const auto = !e || e.auto;
     const visual = !!e && e.mode === 'visual';
     $('#codeMode').textContent = visual ? tl('créé avec les blocs') : auto ? (rulesOf(b, snapshot()).length ? tl('généré par les règles') : tl('généré à partir du montage')) : tl('écrit à la main');
@@ -354,19 +439,81 @@ export function createProgram(app) {
     sel.hidden = bs.length < 2;
     sel.innerHTML = bs.map(x => `<option value="${esc(x.id)}"${x === b ? ' selected' : ''}>${esc(x.name)} · ${esc(boardOf(x).label)}</option>`).join('');
     const eng = $('#progEngine');
-    if (eng) { eng.hidden = !EMULATED.has(boardKind(b)); eng.value = engineOf(b); }
+    if (eng) {
+      eng.hidden = !EMULATED.has(boardKind(b));
+      const mp = eng.querySelector('option[value="micropython"]'); if (mp) mp.hidden = mp.disabled = boardKind(b) !== 'pico';
+      eng.value = engineOf(b);
+    }
     renderRules();
     if (!editor) editor = createEditor($('#editor'), { onChange: onEdit, onRun: upload, onGutter: toggleBp });
     syncShown(b);
-    const sn = snapshot(), e = entry(b);
-    const code = e || rulesOf(b, sn).length ? codeOf(b, sn) : generate(b, { comps: comps(), A: sn.A, inspect: sn.inspect, rules: [], states: P.states });
-    if (document.activeElement !== editor.el || (e && (e.auto || e.mode === 'visual'))) editor.value = code;
-    renderCodeMode(); check(); logDirty = true; liveUi(true);
-    syncVisual(b);
+    editor.setLanguage(pyOf(b) ? 'python' : 'cpp');
+    if (pyOf(b)) editor.value = pyFiles(b)[pyFile(b)]; // l'éditeur montre le fichier choisi ; ce qu'on tape y est déjà
+    else {
+      const sn = snapshot(), e = entry(b);
+      const code = e || rulesOf(b, sn).length ? codeOf(b, sn) : generate(b, { comps: comps(), A: sn.A, inspect: sn.inspect, rules: [], states: P.states });
+      if (document.activeElement !== editor.el || (e && (e.auto || e.mode === 'visual'))) editor.value = code;
+    }
+    renderCodeMode(); check(); logDirty = true;
+    syncVisual(b); syncPython(b); liveUi(true);
+  }
+
+  /* ---------- MicroPython : fichiers, exécution, REPL ---------- */
+  let serialPh = null;
+  function pythonUi() {
+    if ($('#pyBar')) return;
+    $('#editor').insertAdjacentHTML('beforebegin', `<div class="pyBar" id="pyBar" hidden>
+      <div class="pyFiles" id="pyFiles" role="tablist" aria-label="${tl('Fichiers de la carte')}"></div>
+      <button type="button" class="tb" id="pyNew" data-tip="${tl('Nouveau fichier (module, lib/…)')}" aria-label="${tl('Nouveau fichier')}">${icon('filePlus')}</button>
+      <button type="button" class="tb" id="pyRen" data-tip="${tl('Renommer le fichier')}" aria-label="${tl('Renommer le fichier')}">${icon('edit')}</button>
+      <button type="button" class="tb" id="pyDel" data-tip="${tl('Supprimer le fichier')}" aria-label="${tl('Supprimer le fichier')}">${icon('trash')}</button>
+      <span class="grow"></span>
+      <button type="button" class="btn small" id="pyRunFile" data-tip="${tl('Exécuter ce fichier sans l’enregistrer sur la carte')}">${icon('play')}<span>${tl('Exécuter ce fichier')}</span></button>
+      <button type="button" class="btn small" id="pyStop" data-tip="${tl('Interrompre le programme (Ctrl+C) : le REPL reprend la main')}">${icon('stop')}<span>${tl('Ctrl+C')}</span></button>
+    </div>`);
+    $('#pyFiles').onclick = e => { const t = e.target.closest('[data-file]'), b = board(); if (!t || !pyOf(b)) return; ensure(b).file = t.dataset.file; render(); };
+    $('#pyNew').onclick = () => pyFileOp('new');
+    $('#pyRen').onclick = () => pyFileOp('rename');
+    $('#pyDel').onclick = () => pyFileOp('delete');
+    $('#pyRunFile').onclick = runPyFile;
+    $('#pyStop').onclick = () => { const b = board(), rt = b && rts.get(b.id); if (rt && rt.mpy) rt.mpy.interrupt(); };
+  }
+  /** Barre des fichiers, moniteur série en REPL : visibles pour une carte sous MicroPython. */
+  function syncPython(b) {
+    pythonUi();
+    const py = pyOf(b), inp = $('#serialInput');
+    if (serialPh == null) serialPh = inp.placeholder;
+    $('#pyBar').hidden = !py; $('#dbgBar').hidden = py;
+    inp.placeholder = py ? tl('Commande Python pour le REPL…') : serialPh;
+    if (!py) return;
+    const files = pyFiles(b), shown = pyFile(b);
+    $('#pyFiles').innerHTML = Object.keys(files).sort((x, y) => (x === 'main.py' ? -1 : y === 'main.py' ? 1 : x.localeCompare(y)))
+      .map(f => `<button type="button" role="tab" class="pyTab" data-file="${esc(f)}" aria-selected="${f === shown}">${esc(f)}</button>`).join('');
+    $('#pyDel').disabled = Object.keys(files).length < 2;
+  }
+  /** Nouveau fichier, renommage, suppression (main.py est celui que la carte exécute au démarrage). */
+  async function pyFileOp(kind) {
+    const b = board(); if (!pyOf(b)) return;
+    const e = ensure(b), files = pyFiles(b), shown = pyFile(b);
+    if (kind === 'delete') {
+      if (Object.keys(files).length < 2 || !(await askConfirm(tl('Supprimer le fichier'), tl('Supprimer {0} ? Il disparaît aussi de la carte au prochain envoi.', esc(shown)), tl('Supprimer'), true))) return;
+      delete files[shown]; e.file = null;
+    } else {
+      const name = await ask(kind === 'new' ? tl('Nouveau fichier') : tl('Renommer le fichier'), tl('Nom du fichier (par exemple capteur.py ou lib/lcd.py)'), kind === 'new' ? 'module.py' : shown);
+      if (!name) return; // annulé, ou champ vide
+      const n = String(name).trim();
+      if (!pyName(n)) { app.status(tl('Nom de fichier refusé : lettres, chiffres, « _ », « - », « . » et dossiers séparés par « / ».'), 'warn'); return; }
+      if (n === shown) return;
+      if (n in files) { app.status(tl('{0} existe déjà.', n), 'warn'); return; }
+      if (kind === 'new') files[n] = '';
+      else { files[n] = files[shown]; delete files[shown]; }
+      e.file = n;
+    }
+    app.markDirty(); render();
   }
 
   /* ---------- Blocs de code (Blockly, chargé à la demande) ---------- */
-  const isVisual = b => { const e = b && entry(b); return !!e && e.mode === 'visual'; };
+  const isVisual = b => { const e = b && entry(b); return !!e && e.mode === 'visual' && !pyOf(b); }; // pas de blocs en Python
   function visCtx(b) { const sn = snapshot(); return visualContext(b, { comps: comps(), A: sn.A, inspect: sn.inspect }); }
   function visualUi() {
     if ($('#codeView')) return;
@@ -379,10 +526,11 @@ export function createProgram(app) {
   /** Interface selon le mode de la carte affichée : blocs (code en lecture seule, règles masquées) ou code. */
   function syncVisual(b) {
     visualUi();
-    const on = isVisual(b);
+    const on = isVisual(b), py = pyOf(b);
     $('#viewCode').setAttribute('aria-pressed', !on); $('#viewBlocks').setAttribute('aria-pressed', on);
-    $('#visualHost').hidden = !on; $('#visBanner').hidden = !on;
-    document.querySelectorAll('#pane-prog .rulesSec, #pane-prog .statesSec').forEach(el => { el.hidden = on; });
+    $('#visualHost').hidden = !on; $('#visBanner').hidden = !on; $('#codeView').hidden = py;
+    // Règles et états par défaut : ils écrivent du code Arduino, sans objet pour des blocs ou du Python.
+    document.querySelectorAll('#pane-prog .rulesSec, #pane-prog .statesSec').forEach(el => { el.hidden = on || py; });
     if (editor) editor.readOnly(on || !!(rts.get(b.id) && rts.get(b.id).state === 'paused'));
     if (on) openWorkspace(b); else closeWorkspace();
   }
@@ -436,6 +584,7 @@ export function createProgram(app) {
   function onEdit(text) {
     const b = board(); if (!b) return;
     const e = ensure(b);
+    if (pyOf(b)) { const f = pyFile(b); if (e.files[f] !== text) { e.files[f] = text; app.markDirty(); } return; }
     if (e.mode === 'visual') return; // code en lecture seule : il vient des blocs
     if (e.auto && text !== e.code) { e.auto = false; app.status(tl('Code modifié à la main : les règles ne le réécrivent plus. « Régénérer » revient au code des règles.')); }
     shiftBps(b, e.code, text);
@@ -721,7 +870,7 @@ export function createProgram(app) {
   }
   /** Clic dans la marge ou F9 : pose ou retire un point d'arrêt (sur la prochaine ligne où le programme peut s'arrêter). */
   function toggleBp(n) {
-    const b = board(); if (!b || !n) return;
+    const b = board(); if (!b || !n || pyOf(b)) return; // pas de débogueur pas à pas pour le Python
     const list = bpsOf(b);
     if (list.includes(n)) { setBps(b, list.filter(x => x !== n)); return; }
     let to = n;
@@ -751,7 +900,7 @@ export function createProgram(app) {
   }
   /** Continuer / pause (F8), pas à pas principal (F10), entrer (F11), sortir (Maj+F11). */
   function dbgAction(kind) {
-    const b = board(); if (!b) return;
+    const b = board(); if (!b || pyOf(b)) return;
     const rt = rts.get(b.id);
     if (rt && rt.state === 'paused') {
       stepping = kind !== 'run';
@@ -787,7 +936,7 @@ export function createProgram(app) {
   }
   /** Barre du débogueur, ligne d'arrêt dans l'éditeur, variables. */
   function dbgUi(b, rt) {
-    const st = !b || !rt ? 'off' : rt.state === 'paused' ? 'paused' : rt.state === 'run' ? 'run' : 'off', bar = $('#dbgBar');
+    const st = !b || !rt || pyOf(b) ? 'off' : rt.state === 'paused' ? 'paused' : rt.state === 'run' ? 'run' : 'off', bar = $('#dbgBar');
     if (bar.dataset.state !== st) {
       bar.dataset.state = st;
       const [ic, label, key] = st === 'paused' ? ['play', tl('Continuer'), 'F8'] : st === 'run' ? ['pause', tl('Pause'), 'F8'] : ['bug', tl('Déboguer : démarrer en pause'), 'F8'];
@@ -859,9 +1008,11 @@ export function createProgram(app) {
     if ($('#progEngine')) $('#progEngine').onchange = e => {
       const b = board(); if (!b) return;
       const en = ensure(b);
-      if (e.target.value === 'firmware') en.engine = 'firmware'; else delete en.engine;
+      if (e.target.value === 'firmware' || e.target.value === 'micropython') en.engine = e.target.value; else delete en.engine;
+      if (en.engine === 'micropython') pyFiles(b);
+      else if (typeof en.code !== 'string') { en.code = ''; en.auto = true; } // carte créée en Python (import Wokwi) : code Arduino généré
       app.markDirty();
-      check();
+      render();
       if (app.simOn()) { launch(b); render(); }
     };
     $('#ruleAdd').onclick = () => { const sn = snapshot(), b = board(); const dst = comps().find(x => isActuator(x) && (!b || sn.inspect(x).board === b)) || comps().find(isActuator); addRule(null, dst || null); };
@@ -877,13 +1028,18 @@ export function createProgram(app) {
       confirmGen = 0; ensure(b).auto = true; editor.value = codeOf(b); renderCodeMode(); check(); app.markDirty();
       app.status(tl('Code régénéré à partir des règles et du montage.'), 'ok');
     };
-    $('#diag').onclick = e => { const li = e.target.closest('li[data-line]'); if (li && +li.dataset.line && editor) editor.goLine(+li.dataset.line, +li.dataset.col || 1); };
+    $('#diag').onclick = e => {
+      const li = e.target.closest('li[data-line]'); if (!li || !+li.dataset.line || !editor) return;
+      const b = board(); // erreur Python dans un autre fichier : il s'ouvre d'abord
+      if (li.dataset.file && pyOf(b) && li.dataset.file in pyFiles(b) && li.dataset.file !== pyFile(b)) { ensure(b).file = li.dataset.file; render(); }
+      editor.goLine(+li.dataset.line, +li.dataset.col || 1);
+    };
     $('#serialClear').onclick = () => { const b = board(); if (b) logs.set(b.id, ''); logDirty = true; liveUi(true); };
     $('#serialForm').onsubmit = e => {
       e.preventDefault();
       const b = board(), rt = b && rts.get(b.id), inp = $('#serialInput');
       if (!rt || (rt.state !== 'run' && rt.state !== 'paused')) { app.status(tl('Le programme ne tourne pas : téléversez-le d’abord.'), 'warn'); return; }
-      rt.send(inp.value + '\n'); inp.value = '';
+      rt.send(inp.value + (rt.firmware === 'micropython' ? '\r' : '\n')); inp.value = ''; // REPL de MicroPython : Entrée = \r
     };
     const muteUi = () => { const m = audio.isMuted(); $('#progMute').setAttribute('aria-pressed', m); $('#progMute').innerHTML = icon(m ? 'volumeOff' : 'volume'); $('#progMute').dataset.tip = m ? tl('Rétablir le son (buzzer, haut-parleur, relais)') : tl('Couper le son'); };
     $('#progMute').onclick = () => { audio.setMuted(!audio.isMuted()); muteUi(); };
@@ -911,17 +1067,25 @@ export function createProgram(app) {
   return {
     rts, bind, render, frame, startAll, stopAll, upload, behaviorHtml, onBehavior,
     /** Programme de la carte affichée dans l'onglet Code (pour un module : téléversement réel…). */
-    current() { const b = board(); if (!b) return null; const e = entry(b); return { board: b, kind: boardKind(b), label: boardOf(b).label, code: editor && document.activeElement === editor.el ? editor.value : e ? codeOf(b) : editor ? editor.value : codeOf(b) }; },
+    current() {
+      const b = board(); if (!b) return null; const e = entry(b);
+      if (pyOf(b)) return { board: b, kind: boardKind(b), label: boardOf(b).label, lang: 'python', code: pyFiles(b)['main.py'] || '', files: { ...pyFiles(b) } };
+      return { board: b, kind: boardKind(b), label: boardOf(b).label, lang: 'cpp', code: editor && document.activeElement === editor.el ? editor.value : e ? codeOf(b) : editor ? editor.value : codeOf(b) };
+    },
     /** Programme d'une carte tel qu'il tournerait, pour le vérificateur ('' sans programme). */
     programOf(b) {
+      if (pyOf(b)) return Object.values(pyFiles(b)).join('\n'); // Python : le vérificateur le traite comme dynamique
       const sn = snapshot(); if (!hasProgram(b, sn)) return '';
       const e = entry(b);
       return b.id === cur && editor && e && !e.auto && e.mode !== 'visual' ? editor.value : codeOf(b, sn);
     },
     /** Programme produit par les règles (pas écrit par l'élève) : le vérificateur ne lui reproche pas un composant inutilisé. */
-    isAuto(b) { const e = entry(b); return !e || (!!e.auto && e.mode !== 'visual'); },
-    /** Carte en mode fidèle : son programme est du vrai C++ jugé par arduino-cli, pas par l'interpréteur. */
-    isFirmware(b) { return engineOf(b) === 'firmware'; },
+    isAuto(b) { const e = entry(b); return !pyOf(b) && (!e || (!!e.auto && e.mode !== 'visual')); },
+    /**
+     * Carte en mode fidèle (vrai C++ jugé par arduino-cli) ou sous MicroPython : l'interpréteur ne lit pas son
+     * programme, le vérificateur suppose que toute broche reliée peut être une sortie.
+     */
+    isFirmware(b) { const en = engineOf(b); return en === 'firmware' || en === 'micropython'; },
     /** Montre le programme d'une carte à une ligne (diagnostic cliqué). */
     showLine(b, line, col) { cur = b.id; ensure(b); app.setTab('prog'); render(); if (editor) editor.goLine(line, col); },
     /** Simulation lancée : capteurs et entrées repartent de leur valeur par défaut. */
@@ -939,7 +1103,7 @@ export function createProgram(app) {
         mem: d && d.mem && typeof d.mem === 'object' ? d.mem : {},
         net: d && d.net && typeof d.net === 'object' && Array.isArray(d.net.networks) ? d.net : null
       };
-      rts.clear(); logs.clear(); diag.clear(); uploaded.clear(); cur = null; shownId = null; pendingPause = null; if (plot) plot.reset();
+      rts.clear(); logs.clear(); diag.clear(); pyDiag.clear(); pyRunNext.clear(); uploaded.clear(); cur = null; shownId = null; pendingPause = null; if (plot) plot.reset();
       closeWorkspace(); visMeta.clear();
       if (editor && !$('#pane-prog').hidden) render();
     },

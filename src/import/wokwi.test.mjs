@@ -132,6 +132,26 @@ test('Programme hors interpréteur : mode fidèle sur Uno ; composants inconnus 
   assert.ok(report.notes.some(n => /LiquidCrystal I2C/.test(n)));
 });
 
+test('Projet MicroPython : le Pico exécute main.py et les modules du projet', () => {
+  const diagram = {
+    parts: [{ type: 'wokwi-pi-pico', id: 'pico', top: 0, left: 0 }, { type: 'wokwi-led', id: 'led1', top: 0, left: 120 }],
+    connections: [['pico:GP15', 'led1:A', 'green', []], ['led1:C', 'pico:GND.8', 'black', []]]
+  };
+  const main = 'from machine import Pin\nimport time\nfrom util import twice\nled = Pin(15, Pin.OUT)\nwhile True:\n    led.toggle()\n    time.sleep(twice(0.25))\n';
+  const { project, report } = importWokwi({ 'diagram.json': diagram, 'main.py': main, 'util.py': 'def twice(x):\n    return 2 * x\n' });
+  const id = project.comps.find(c => c.type === 'pico').id, e = project.settings.prog.boards[id];
+  assert.equal(e.engine, 'micropython');
+  assert.deepEqual(Object.keys(e.files).sort(), ['main.py', 'util.py']);
+  assert.equal(e.files['main.py'], main);
+  assert.equal(e.file, 'main.py');
+  assert.equal(report.engine, undefined);
+  assert.ok(report.notes.some(n => /MicroPython/.test(n) && /util\.py/.test(n)));
+  // Sans Pico, main.py est signalé et ignoré.
+  const uno = importWokwi({ 'diagram.json': { parts: [{ type: 'wokwi-arduino-uno', id: 'uno', top: 0, left: 0 }], connections: [] }, 'main.py': main });
+  assert.deepEqual(uno.project.settings.prog.boards, {});
+  assert.ok(uno.report.notes.some(n => /main\.py/.test(n)));
+});
+
 test('Toutes les broches de la table existent dans la bibliothèque', () => {
   // Pour les modules (fiches de câblage connues), chaque broche cible existe dans la fiche.
   return import('./wokwi.js').then(({ PARTS }) => {

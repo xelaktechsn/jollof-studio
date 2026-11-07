@@ -531,6 +531,15 @@ body.dragging, body.dragging * { cursor: grabbing !important; -webkit-user-selec
 .progMain section { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; border-bottom: 1px solid var(--line); }
 .codeMode { margin-right: auto; font-size: 11px; color: var(--muted); padding: 1px 7px; border-radius: 999px; background: var(--raise); }
 .codeMode[data-kind="hand"] { color: var(--warn); background: #f2c94c14; }
+.codeMode[data-kind="python"] { color: #5b9cf5; background: #5b9cf51a; }
+/* MicroPython : fichiers de la carte (onglets), exécuter sans enregistrer, Ctrl+C */
+.pyBar { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.pyBar .tb { height: 26px; min-width: 26px; padding: 0 5px; }
+.pyBar .btn.small { height: 26px; }
+.pyFiles { display: flex; flex-wrap: wrap; gap: 3px; min-width: 0; }
+.pyTab { appearance: none; height: 24px; padding: 0 9px; border: 1px solid var(--line-2); border-radius: 5px; background: var(--raise); color: var(--fg-2); font: 11.5px var(--mono); cursor: pointer; }
+.pyTab:hover { color: var(--fg); }
+.pyTab[aria-selected="true"] { background: #5b9cf51f; border-color: #5b9cf566; color: var(--fg); }
 .secHead h2 .count { margin-left: 2px; }
 
 /* Règles */

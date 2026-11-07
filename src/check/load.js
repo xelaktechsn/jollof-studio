@@ -34,9 +34,12 @@ export function loadProject(data, code = null) {
   for (const b of comps.filter(c => boardOf(c))) {
     let src = code ? code[b.name] || code[b.id] || null : null;
     const e = prog.boards && prog.boards[b.id];
+    // Pico sous MicroPython : ses fichiers Python, que l'analyse ne lit pas (programme dynamique, comme le mode fidèle).
+    const py = !!e && e.engine === 'micropython' && (b.type === 'pico' || boardOf(b).family === 'rp2040');
+    if (src == null && py) src = Object.values(e.files || {}).join('\n');
     if (src == null && e) src = e.auto ? generate(b, { comps, A, inspect: insp, rules: prog.rules || [], states: prog.states || {} }) : e.code || '';
-    if (src != null && !code && (!e || (e.auto && e.mode !== 'visual'))) auto.add(b.id);
-    if (e && e.engine === 'firmware') firmware.add(b.id);
+    if (src != null && !code && !py && (!e || (e.auto && e.mode !== 'visual'))) auto.add(b.id);
+    if (e && (e.engine === 'firmware' || py)) firmware.add(b.id);
     if (src == null && (prog.rules || []).length) src = generate(b, { comps, A, inspect: insp, rules: prog.rules, states: prog.states || {} });
     if (src) programs.set(b.id, src);
   }

@@ -49,6 +49,8 @@ export function parseImage(image) {
 /**
  * Moteur d'exécution d'un programme compilé pour le Pico. image : octets du .bin (ou du .uf2) ; hw : pont vers
  * le montage (makeHw, src/prog/panel.js), dont on lit hw.prof, hw.kind et hw.read(clé) pour les entrées.
+ * opts : { bootrom (mots de la bootrom), eeprom: false (pas d'EEPROM d'arduino-pico dans la flash),
+ *          flash: Map (secteurs de 4 Kio écrits par le programme, gardés pour le démarrage suivant) }.
  */
 export function createRp2040Runtime(image, hw, opts = {}) {
   const prof = hw.prof, logic = prof.logic, keys = pinMap(prof, hw.kind);
@@ -62,9 +64,15 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     mcu.flash.set(p.data, p.at);
   }
   // EEPROM (émulée par arduino-pico dans le dernier secteur de la flash) : la même mémoire que l'interpréteur
-  // (prog.mem de la carte, en hexadécimal), gardée avec le projet.
-  const mem = hw.mem ? hw.mem() : { ee: '' };
-  for (let i = 0; i < Math.min(EE_SIZE, (mem.ee || '').length >> 1); i++) mcu.flash[EE_AT + i] = parseInt(mem.ee.substr(2 * i, 2), 16) & 255;
+  // (prog.mem de la carte, en hexadécimal), gardée avec le projet. opts.eeprom === false : pas d'EEPROM (MicroPython,
+  // dont le système de fichiers occupe ce secteur).
+  const useEe = opts.eeprom !== false, mem = useEe && hw.mem ? hw.mem() : { ee: '' };
+  if (useEe) for (let i = 0; i < Math.min(EE_SIZE, (mem.ee || '').length >> 1); i++) mcu.flash[EE_AT + i] = parseInt(mem.ee.substr(2 * i, 2), 16) & 255;
+  // opts.flash (Map numéro de secteur de 4 Kio → octets) : secteurs écrits par le programme, remis en place au
+  // démarrage suivant (système de fichiers de MicroPython gardé d'un lancement à l'autre).
+  const sectors = opts.flash instanceof Map ? opts.flash : null, touched = new Set();
+  if (sectors) for (const [i, data] of sectors) if ((i + 1) * EE_SIZE <= mcu.flash.length) mcu.flash.set(data, i * EE_SIZE);
+  const touch = (a, n) => { if (sectors) for (let i = Math.floor(a / EE_SIZE); i * EE_SIZE < a + n; i++) touched.add(i); };
   let eeDirty = false;
   const flushEeprom = () => {
     eeDirty = false;
@@ -80,7 +88,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   const fnErase = romFn(0x4552 /* 'R','E' */), fnProgram = romFn(0x5052 /* 'R','P' */);
   if (fnErase > 0) rom16[fnErase >> 1] = 0xbe00 | BK_ERASE;
   if (fnProgram > 0) rom16[fnProgram >> 1] = 0xbe00 | BK_PROGRAM;
-  const touchesEe = (a, n) => a < EE_AT + EE_SIZE && a + n > EE_AT;
+  const touchesEe = (a, n) => { touch(a, n); return useEe && a < EE_AT + EE_SIZE && a + n > EE_AT; };
   mcu.onBreak = code => {
     const r = core.registers, a = r[0] >>> 0;
     if (code === BK_ERASE || code === BK_PROGRAM) {
@@ -96,11 +104,28 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   // pas émulée). boot2 règle la lecture de la flash puis saute au programme ; la bootrom reste là pour ses
   // fonctions (calcul flottant, copies mémoire, écriture de la flash) que le SDK appelle.
   core.PC = FLASH;
-  // rp2040js n'émule que le cœur 0 : la file entre les deux cœurs (SIO 0x50 à 0x58) répond comme si le cœur 1
-  // dormait (rien à lire, toujours de la place), au lieu d'avertissements dans la console à chaque accès.
+  // rp2040js n'émule que le cœur 0. Le cœur 1 est réduit à ce que fait sa bootrom tant qu'aucun programme ne lui
+  // est confié, vu par la file entre les cœurs (SIO 0x50 à 0x58) : sorti de reset (PSM), il envoie 0 (attendu par
+  // multicore_reset_core1(), que MicroPython appelle à chaque redémarrage logiciel) ; pendant un lancement
+  // (0, 0, 1, table, pile, entrée), il renvoie chaque mot reçu. Une fois lancé, son programme ne tourne pas.
   const sioRead = mcu.sio.readUint32.bind(mcu.sio), sioWrite = mcu.sio.writeUint32.bind(mcu.sio);
-  mcu.sio.readUint32 = off => (off === 0x50 ? 0b0010 : off === 0x54 || off === 0x58 ? 0 : sioRead(off));
-  mcu.sio.writeUint32 = (off, v) => { if (off < 0x50 || off > 0x58) sioWrite(off, v); };
+  const fromCore1 = [];
+  let core1Seq = 0, core1Run = false;
+  mcu.sio.readUint32 = off => (off === 0x50 ? (fromCore1.length ? 1 : 0) | 2 : off === 0x58 ? (fromCore1.length ? fromCore1.shift() : 0) : off === 0x54 ? 0 : sioRead(off));
+  mcu.sio.writeUint32 = (off, v) => {
+    if (off < 0x50 || off > 0x58) return sioWrite(off, v);
+    if (off !== 0x54 || core1Run) return;
+    v >>>= 0;
+    if (fromCore1.length < 8) fromCore1.push(v); // écho de la bootrom du cœur 1
+    core1Seq = core1Seq < 3 ? (v === [0, 0, 1][core1Seq] ? core1Seq + 1 : v === 0 ? 1 : 0) : core1Seq + 1;
+    if (core1Seq === 6) core1Run = true;
+  };
+  const psm = mcu.peripherals[0x40010], psmWrite = psm.writeUint32.bind(psm), PROC1 = 1 << 16;
+  psm.writeUint32 = (off, v) => {
+    const was = psm.frceOff & PROC1;
+    psmWrite(off, v);
+    if (off === 4 && was && !(psm.frceOff & PROC1)) { fromCore1.length = 0; fromCore1.push(0); core1Seq = 0; core1Run = false; }
+  };
   // Plots des broches à leur valeur de démarrage (fiche technique : entrée active, tirage bas) : digitalRead()
   // sans pinMode() lit la broche, comme sur la carte.
   for (const g of mcu.gpio) g.padValue = 0x56;
@@ -165,6 +190,13 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   const usb = mcu.usbCtrl, cdc = new USBCDC(usb);
   let usbOpen = false, pendingRead = null;
   cdc.onDeviceConnected = () => { usbOpen = true; };
+  // Le programme relance son USB (MicroPython le fait à chaque redémarrage logiciel) : l'hôte l'énumère de nouveau.
+  const usbEnabled = usb.onUSBEnabled;
+  usb.onUSBEnabled = () => {
+    Object.assign(cdc, { descriptorsSize: null, descriptors: [], initialized: false, inEndpoint: -1, outEndpoint: -1 });
+    cdc.txFIFO.reset(); usbOpen = false; pendingRead = null;
+    usbEnabled();
+  };
   cdc.onSerialData = buf => { let s = ''; for (const b of buf) s += String.fromCharCode(b); out += s; tapBuf += s; };
   // Le programme arme sa réception USB : sans octet à envoyer, l'hôte attend (sinon un paquet vide toutes les 10 µs).
   const cdcRead = usb.onEndpointRead;
@@ -328,7 +360,9 @@ export function createRp2040Runtime(image, hw, opts = {}) {
       L.rec.mode = modeOf(L.gpio, L.gpio.value);
       if (L.rec.mode === 1) continue;
       const r = hw.read ? hw.read(L.key) : null;
-      L.ext = r ? (r.d != null ? !!r.d : r.v > logic / 2) : null;
+      // Ligne reliée au SDA ou au SCL d'un module : ses résistances de tirage la tiennent à HIGH au repos (bus I2C).
+      const pulled = !r && hw.at && hw.at(L.key).some(x => x.pin === 'SDA' || x.pin === 'SCL');
+      L.ext = r ? (r.d != null ? !!r.d : r.v > logic / 2) : pulled ? true : null;
       setIn(L, inLevel(L));
       lineChanged(L, +inLevel(L), cyc());
     }
@@ -398,6 +432,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     analyse();
     devices.frame();
     if (eeDirty) flushEeprom();
+    if (touched.size) { for (const i of touched) sectors.set(i, mcu.flash.slice(i * EE_SIZE, (i + 1) * EE_SIZE)); touched.clear(); }
     if (tap && tapBuf) { tap(tapBuf, vt()); }
     tapBuf = '';
   }

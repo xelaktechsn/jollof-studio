@@ -183,3 +183,20 @@ test('Preuve par sous-montages : 6 boutons et 6 LED commandées, 30 boutons — 
   const t = Date.now(), big = checkProject(project(bparts, blinks));
   assert.equal(big.proven, true); assert.equal(big.space, 2 ** 30); assert.ok(Date.now() - t < 2000);
 });
+
+test('Pico sous MicroPython : programme Python jugé par la carte, broches supposées dynamiques', () => {
+  const main = 'from machine import Pin\nled = Pin(15, Pin.OUT)\nled.value(1)\n';
+  const data = engine => ({
+    comps: [{ id: 'P', type: 'pico', name: 'P' }, { id: 'L', type: 'led-red', name: 'L' }, { id: 'R', type: 'res-220', name: 'R' }],
+    wires: [{ a: ['P', 'GP15'], b: ['R', '1'] }, { a: ['R', '2'], b: ['L', 'A'] }, { a: ['L', 'K'], b: ['P', 'GND'] }],
+    settings: { prog: { boards: { P: { engine, code: '', files: { 'main.py': main, 'lib/aide.py': 'X = 1\n' } } } } }
+  });
+  const p = loadProject(data('micropython'));
+  assert.ok(p.firmware.has('P'));
+  assert.ok(!p.auto.has('P'), 'écrit par l’élève, pas généré');
+  assert.match(p.programs.get('P'), /from machine import Pin[\s\S]*X = 1/);
+  const r = checkProject(p);
+  assert.deepEqual(r.diags.filter(d => /^J1/.test(d.code)).map(d => d.code), [], 'pas d’erreur de l’interpréteur sur du Python');
+  // Sans le moteur MicroPython, le même texte n'est pas lu comme un programme Python.
+  assert.ok(!loadProject(data(undefined)).firmware.has('P'));
+});

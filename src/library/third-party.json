@@ -5,7 +5,7 @@
   "crates": 404,
   "models": 24,
   "fonts": 2,
-  "firmware": 1
+  "firmware": 2
  },
  "licenses": {
   "(MIT OR Apache-2.0) AND Unicode-3.0": 1,
@@ -28,6 +28,7 @@
   "LGPL-2.1": 1,
   "MIT": 207,
   "MIT / Apache-2.0": 1,
+  "MIT AND BSD-3-Clause": 1,
   "MIT OR Apache-2.0": 188,
   "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 2,
   "MIT OR Apache-2.0 OR Zlib": 1,
@@ -114,6 +115,11 @@
    "name": "RP2040 bootrom",
    "license": "BSD-3-Clause",
    "url": "https://github.com/raspberrypi/pico-bootrom"
+  },
+  {
+   "name": "MicroPython (RPI_PICO)",
+   "license": "MIT AND BSD-3-Clause",
+   "url": "https://micropython.org/download/RPI_PICO/"
   }
  ]
 }

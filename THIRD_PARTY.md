@@ -10,7 +10,7 @@ Jollof Studio itself: AGPL-3.0-or-later with additional terms (see NOTICE.md), Â
 | Rust crates (desktop app) | 404 |
 | 3D models | 24 |
 | Fonts | 2 |
-| Embedded firmware | 1 |
+| Embedded firmware | 2 |
 
 ## To review
 
@@ -414,6 +414,12 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | crate | [io-kit-sys](https://github.com/jtakakura/io-kit-rs) | 0.4.1 | MIT / Apache-2.0 |
+
+### MIT AND BSD-3-Clause (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| firmware | [MicroPython (RPI_PICO)](https://micropython.org/download/RPI_PICO/) | 1.29.0 | MIT AND BSD-3-Clause |
 
 ### MIT OR Apache-2.0 (188)
 

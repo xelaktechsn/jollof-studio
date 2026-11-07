@@ -250,7 +250,7 @@ export function importWokwi(files, name = 'wokwi') {
   for (const c of comps) { c.x = Math.round((c.x - ox) * 10) / 10; c.z = Math.round((c.z - oz) * 10) / 10; }
   spread(comps);
 
-  // Programme : à la première carte. Mode fidèle si l'interpréteur ne le comprend pas (Uno, Nano).
+  // Programme : à la première carte. Mode fidèle si l'interpréteur ne le comprend pas (Uno, Nano, Pico).
   const boards = {};
   const code = files['sketch.ino'] ?? Object.entries(files).find(([k]) => /\.ino$/i.test(k))?.[1];
   if (board && typeof code === 'string') {
@@ -262,7 +262,15 @@ export function importWokwi(files, name = 'wokwi') {
     } else report.engine = 'interp';
     boards[board.id] = e;
   } else if (typeof code === 'string') report.notes.push(tl('programme ignoré : aucune carte reconnue dans le montage'));
-  if (files['main.py'] != null) report.notes.push(tl('programme MicroPython (main.py) : pas encore pris en charge, le fichier est ignoré'));
+  // MicroPython : main.py et les autres fichiers .py deviennent les fichiers du Pico, qui exécute le vrai MicroPython.
+  if (files['main.py'] != null) {
+    const py = Object.fromEntries(Object.entries(files).filter(([k, v]) => /\.py$/i.test(k) && typeof v === 'string'));
+    if (board && board.type === 'pico') {
+      boards[board.id] = { ...(boards[board.id] || {}), engine: 'micropython', files: py, file: 'main.py' };
+      delete report.engine;
+      report.notes.push(tl('programme MicroPython ({0}) : le Pico exécute le vrai MicroPython', Object.keys(py).join(', ')));
+    } else report.notes.push(tl('programme MicroPython (main.py) ignoré : seul le Pico exécute MicroPython'));
+  }
   const extra = Object.keys(files).filter(k => /\.(h|hpp|c|cpp)$/i.test(k));
   if (extra.length) report.notes.push(tl('fichiers du programme ignorés (un seul fichier .ino par carte) : {0}', extra.join(', ')));
   if (files['libraries.txt']) {

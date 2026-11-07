@@ -73,7 +73,11 @@ function assets() {
     { kind: 'font', name: 'Instrument Sans', version: '', license: 'OFL-1.1', url: 'https://github.com/Instrument/instrument-sans' },
     { kind: 'font', name: 'JetBrains Mono', version: '', license: 'OFL-1.1', url: 'https://github.com/JetBrains/JetBrainsMono' },
     // Mémoire morte du RP2040 (src/emu/rp2040-bootrom.js, mode fidèle du Pico), reprise de demo/bootrom.ts de rp2040js (MIT).
-    { kind: 'firmware', name: 'RP2040 bootrom', version: 'B1', license: 'BSD-3-Clause', url: 'https://github.com/raspberrypi/pico-bootrom', author: 'Raspberry Pi (Trading) Ltd.' }
+    { kind: 'firmware', name: 'RP2040 bootrom', version: 'B1', license: 'BSD-3-Clause', url: 'https://github.com/raspberrypi/pico-bootrom', author: 'Raspberry Pi (Trading) Ltd.' },
+    // Micrologiciel MicroPython officiel du Pico (public/firmware, fichier .uf2 non modifié), exécuté par l'émulateur :
+    // MicroPython est sous MIT ; le binaire contient aussi le SDK du Pico et littlefs (BSD-3-Clause), TinyUSB (MIT).
+    ...fs.readdirSync(path.join(ROOT, 'public/firmware')).map(f => /^RPI_PICO-\d+-v([\d.]+)\.uf2$/.exec(f)).filter(Boolean)
+      .map(m => ({ kind: 'firmware', name: 'MicroPython (RPI_PICO)', version: m[1], license: 'MIT AND BSD-3-Clause', url: 'https://micropython.org/download/RPI_PICO/', author: 'Damien P. George and contributors' }))
   ];
 }
 
