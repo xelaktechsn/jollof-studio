@@ -1,0 +1,242 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Moteur à vitesse réglable",
+ "description": "Arduino Uno, un moteur à courant continu piloté par un L298N alimenté par une pile 9 V, et un potentiomètre pour régler la vitesse. La masse de la pile, du pilote et de la carte est commune. Programme : la position du potentiomètre règle la vitesse du moteur.",
+ "en": {
+  "name": "Variable-speed motor",
+  "description": "Arduino Uno, a DC motor driven by an L298N powered by a 9 V battery, and a potentiometer to set the speed. The battery, the driver and the board share a common ground. Program: the potentiometer position sets the motor speed."
+ },
+ "comps": [
+  {
+   "id": "uno_1",
+   "type": "uno",
+   "name": "UNO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "dcmotor_1",
+   "type": "dcmotor",
+   "name": "M1",
+   "x": 112,
+   "z": 4,
+   "r": -1.5708
+  },
+  {
+   "id": "pot_1",
+   "type": "pot",
+   "name": "POT1",
+   "x": -6,
+   "z": 66,
+   "r": 0,
+   "inp": {
+    "pos": 50
+   }
+  },
+  {
+   "id": "l298n_1",
+   "type": "l298n",
+   "name": "DRV1",
+   "x": 73,
+   "z": 3,
+   "r": 0
+  },
+  {
+   "id": "bat9v_1",
+   "type": "bat9v",
+   "name": "BAT1",
+   "x": 61,
+   "z": -55,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "dcmotor_1",
+    "M+"
+   ],
+   "b": [
+    "l298n_1",
+    "OUT1"
+   ],
+   "color": "#f08a3c",
+   "role": "Moteur"
+  },
+  {
+   "a": [
+    "dcmotor_1",
+    "M-"
+   ],
+   "b": [
+    "l298n_1",
+    "OUT2"
+   ],
+   "color": "#f08a3c",
+   "role": "Moteur"
+  },
+  {
+   "a": [
+    "l298n_1",
+    "+12V"
+   ],
+   "b": [
+    "bat9v_1",
+    "+"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation moteurs"
+  },
+  {
+   "a": [
+    "bat9v_1",
+    "-"
+   ],
+   "b": [
+    "uno_1",
+    "GND (3)"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse de la batterie"
+  },
+  {
+   "a": [
+    "l298n_1",
+    "GND"
+   ],
+   "b": [
+    "uno_1",
+    "GND (2)"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "l298n_1",
+    "IN1"
+   ],
+   "b": [
+    "uno_1",
+    "D2"
+   ],
+   "color": "#f2c94c",
+   "role": "Sens A"
+  },
+  {
+   "a": [
+    "l298n_1",
+    "IN2"
+   ],
+   "b": [
+    "uno_1",
+    "D4"
+   ],
+   "color": "#f2c94c",
+   "role": "Sens A"
+  },
+  {
+   "a": [
+    "l298n_1",
+    "ENA"
+   ],
+   "b": [
+    "uno_1",
+    "D3"
+   ],
+   "color": "#f08a3c",
+   "role": "Vitesse A"
+  },
+  {
+   "a": [
+    "pot_1",
+    "3"
+   ],
+   "b": [
+    "uno_1",
+    "5V"
+   ],
+   "color": "#e5484d",
+   "role": "Référence"
+  },
+  {
+   "a": [
+    "pot_1",
+    "1"
+   ],
+   "b": [
+    "uno_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "pot_1",
+    "W"
+   ],
+   "b": [
+    "uno_1",
+    "A0"
+   ],
+   "color": "#3fb27f",
+   "role": "Curseur"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "id": "r_pot",
+     "src": {
+      "comp": "pot_1",
+      "sig": "pos"
+     },
+     "op": "follow",
+     "v": 512,
+     "from": [
+      0,
+      1023
+     ],
+     "kind": "rule",
+     "then": [
+      {
+       "kind": "act",
+       "id": "a_r_pot_0",
+       "comp": "dcmotor_1",
+       "act": "follow",
+       "arg": [
+        0,
+        100
+       ]
+      }
+     ],
+     "else": []
+    }
+   ],
+   "boards": {
+    "uno_1": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {}
+  }
+ }
+}

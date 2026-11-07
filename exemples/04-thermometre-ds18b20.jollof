@@ -1,0 +1,222 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Thermomètre étanche",
+ "description": "Raspberry Pi Pico, une sonde DS18B20 avec sa résistance de tirage de 4,7 kΩ entre DQ et VDD, et un écran OLED sur GP4 (SDA) et GP5 (SCL). Programme généré : la température s’affiche sur l’écran et le moniteur série.",
+ "en": {
+  "name": "Waterproof thermometer",
+  "description": "Raspberry Pi Pico, a DS18B20 probe with its 4.7 kΩ pull-up resistor between DQ and VDD, and an OLED display on GP4 (SDA) and GP5 (SCL). Generated program: the temperature shows on the display and in the serial monitor."
+ },
+ "comps": [
+  {
+   "id": "pico_1",
+   "type": "pico",
+   "name": "PICO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "ds18b20_1",
+   "type": "ds18b20",
+   "name": "DS1",
+   "x": -38,
+   "z": -6,
+   "r": 1.5708
+  },
+  {
+   "id": "oled_1",
+   "type": "oled",
+   "name": "OLED1",
+   "x": 44,
+   "z": 6,
+   "r": -1.5708
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 0,
+   "z": 74,
+   "r": 0
+  },
+  {
+   "id": "res-4k7_1",
+   "type": "res-4k7",
+   "name": "R1",
+   "x": -23,
+   "z": 7,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "pico_1",
+    "3V3"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+16"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V vers la breadboard"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "VDD"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+1"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "pico_1",
+    "GND (4)"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-10"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-1"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "pico_1",
+    "GP6"
+   ],
+   "b": [
+    "breadboard_1",
+    "A1"
+   ],
+   "color": "#f08a3c",
+   "role": "GP6 vers la breadboard"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "DQ"
+   ],
+   "b": [
+    "breadboard_1",
+    "B1"
+   ],
+   "color": "#f2c94c",
+   "role": "Données 1-Wire"
+  },
+  {
+   "a": [
+    "res-4k7_1",
+    "1"
+   ],
+   "b": [
+    "breadboard_1",
+    "C1"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance de tirage"
+  },
+  {
+   "a": [
+    "res-4k7_1",
+    "2"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+2"
+   ],
+   "color": "#e5484d",
+   "role": "Résistance de tirage"
+  },
+  {
+   "a": [
+    "oled_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+24"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "oled_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-24"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SCL"
+   ],
+   "b": [
+    "pico_1",
+    "GP5"
+   ],
+   "color": "#9b7be0",
+   "role": "I2C SCL"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SDA"
+   ],
+   "b": [
+    "pico_1",
+    "GP4"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 18.5,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {
+    "pico_1": {
+     "code": "",
+     "auto": true
+    }
+   }
+  }
+ }
+}

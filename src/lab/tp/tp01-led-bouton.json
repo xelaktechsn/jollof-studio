@@ -1,0 +1,370 @@
+{
+ "id": "tp01-led-bouton",
+ "level": "college",
+ "minutes": 45,
+ "title": {
+  "fr": "Allumer une LED avec un bouton",
+  "en": "Turn on an LED with a button"
+ },
+ "summary": {
+  "fr": "Câbler une LED protégée par une résistance et un bouton poussoir sur une Arduino Uno, puis écrire le programme et mesurer le courant.",
+  "en": "Wire an LED protected by a resistor and a push button to an Arduino Uno, then write the program and measure the current."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler une LED dans le bon sens avec sa résistance",
+   "en": "Wire an LED the right way round with its resistor"
+  },
+  {
+   "fr": "Lire un bouton avec INPUT_PULLUP",
+   "en": "Read a button with INPUT_PULLUP"
+  },
+  {
+   "fr": "Mesurer une tension et un courant",
+   "en": "Measure a voltage and a current"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – LED et bouton",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -36,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -12,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "button_1",
+    "type": "button",
+    "name": "BTN1",
+    "x": 26,
+    "z": 122,
+    "r": 0,
+    "inp": {
+     "pressed": false
+    }
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D2"
+    ],
+    "b": [
+     "button_1",
+     "1"
+    ],
+    "color": "#3b82f6",
+    "role": "Entrée (INPUT_PULLUP)"
+   },
+   {
+    "a": [
+     "button_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-14"
+    ],
+    "color": "#3a3f45",
+    "role": "Bouton vers la masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : un bouton commande une LED.\nconst int LED = 7;\nconst int BOUTON = 2;\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n  pinMode(BOUTON, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW\n}\n\nvoid loop() {\n  if (digitalRead(BOUTON) == LOW) {\n    digitalWrite(LED, HIGH);\n  } else {\n    digitalWrite(LED, LOW);\n  }\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le matériel",
+    "en": "The parts"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : une **Arduino Uno** (UNO), une **breadboard** (BB1), une **résistance de 220 Ω** (R1), une **LED rouge** (LED1) et un **bouton poussoir** (BTN1).\n- La LED a deux pattes : l’**anode** (A, patte longue, le +) et la **cathode** (K, côté méplat, le −).\n- La résistance limite le courant qui traverse la LED.\nTirez un fil en glissant d’une broche à une autre.",
+    "en": "On the workspace: an **Arduino Uno** (UNO), a **breadboard** (BB1), a **220 Ω resistor** (R1), a **red LED** (LED1) and a **push button** (BTN1).\n- The LED has two legs: the **anode** (A, long leg, +) and the **cathode** (K, flat side, −).\n- The resistor limits the current through the LED.\nDraw a wire by dragging from one pin to another."
+   }
+  },
+  {
+   "title": {
+    "fr": "La masse",
+    "en": "Ground"
+   },
+   "text": {
+    "fr": "Reliez une broche **GND** de la carte au rail **−** de la breadboard, puis la **cathode K** de la LED à ce même rail.",
+    "en": "Connect a **GND** pin of the board to the breadboard **−** rail, then the LED **cathode K** to that same rail."
+   },
+   "hint": {
+    "fr": "Les deux rails − (haut et bas) ne sont pas reliés entre eux : posez un petit fil entre eux si vous utilisez les deux.",
+    "en": "The two − rails (top and bottom) are not connected to each other: add a short wire between them if you use both."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La LED et sa résistance",
+    "en": "The LED and its resistor"
+   },
+   "text": {
+    "fr": "Reliez la broche **D7** de la carte à une patte de la résistance R1, et l’autre patte de R1 à l’**anode A** de la LED.",
+    "en": "Connect board pin **D7** to one leg of resistor R1, and the other leg of R1 to the LED **anode A**."
+   },
+   "hint": {
+    "fr": "Une résistance n’a pas de sens : n’importe quelle patte peut aller vers D7.",
+    "en": "A resistor has no direction: either leg can go to D7."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D7",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton",
+    "en": "The button"
+   },
+   "text": {
+    "fr": "Reliez une patte du bouton à **D2** et l’autre à la **masse** (GND). Le programme activera la résistance de tirage interne : D2 lira HIGH bouton relâché, LOW bouton appuyé.",
+    "en": "Connect one leg of the button to **D2** and the other to **ground** (GND). The program will enable the internal pull-up resistor: D2 reads HIGH when released, LOW when pressed."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D2",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "UNO.GND*",
+      "BTN1.1|BTN1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Code**, écrivez un programme qui :\n- règle D7 en sortie (`pinMode(7, OUTPUT)`) et D2 en entrée avec tirage (`INPUT_PULLUP`) ;\n- allume la LED (`digitalWrite`) quand `digitalRead(2)` vaut LOW, l’éteint sinon.\nCliquez sur « Téléverser » pour l’envoyer à la carte simulée.",
+    "en": "In the **Code** tab, write a program that:\n- sets D7 as an output (`pinMode(7, OUTPUT)`) and D2 as an input with pull-up (`INPUT_PULLUP`);\n- turns the LED on (`digitalWrite`) when `digitalRead(2)` is LOW, off otherwise.\nClick “Upload” to send it to the simulated board."
+   },
+   "hint": {
+    "fr": "Squelette : `if (digitalRead(2) == LOW) { digitalWrite(7, HIGH); } else { digitalWrite(7, LOW); }` dans loop().",
+    "en": "Skeleton: `if (digitalRead(2) == LOW) { digitalWrite(7, HIGH); } else { digitalWrite(7, LOW); }` in loop()."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "digitalRead\\s*\\(",
+     "digitalWrite\\s*\\(",
+     "pinMode\\s*\\([^)]*OUTPUT"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : bouton appuyé",
+    "en": "Test: button pressed"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur le bouton BTN1 (cliquez dessus dans la scène et maintenez) : la LED doit s’allumer.",
+    "en": "Click “Observe”, then press button BTN1 (click it in the scene and hold): the LED must light up."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : bouton relâché",
+    "en": "Test: button released"
+   },
+   "text": {
+    "fr": "Relâchez le bouton : la LED doit s’éteindre.",
+    "en": "Release the button: the LED must turn off."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "released"
+    },
+    "expect": {
+     "LED1": "off"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant dans la LED",
+    "en": "Measurement: LED current"
+   },
+   "text": {
+    "fr": "Gardez le bouton appuyé (bouton « Appuyer » dans l’inspecteur du composant BTN1), ouvrez **Instruments → Multimètre**, mode **mA**, et mesurez le courant qui traverse LED1. Notez la valeur.",
+    "en": "Keep the button pressed (“Press” button in the BTN1 inspector), open **Instruments → Multimeter**, **mA** mode, and measure the current through LED1. Enter the value."
+   },
+   "hint": {
+    "fr": "Théorie : I = (5 V − 2 V) ÷ 220 Ω ≈ 13 mA (un peu moins à cause de la résistance interne de la broche).",
+    "en": "Theory: I = (5 V − 2 V) ÷ 220 Ω ≈ 13 mA (a bit less because of the pin’s internal resistance)."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED1",
+    "tolerance": 0.15,
+    "state": {
+     "UNO.D7": 1,
+     "BTN1": "pressed"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Comprendre",
+    "en": "Understand"
+   },
+   "text": {
+    "fr": "Que se passerait-il sans la résistance R1 ?",
+    "en": "What would happen without resistor R1?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La LED brillerait un peu plus, sans danger",
+      "en": "The LED would be slightly brighter, safely"
+     },
+     {
+      "fr": "Le courant serait trop fort : la LED et la broche D7 s’abîmeraient",
+      "en": "The current would be too high: the LED and pin D7 would be damaged"
+     },
+     {
+      "fr": "La LED ne s’allumerait plus du tout",
+      "en": "The LED would not light at all"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

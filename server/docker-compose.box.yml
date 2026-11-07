@@ -1,0 +1,162 @@
+# « Boîtier école » : vieux PC, mini-PC ou Raspberry Pi 4/5 (1 à 2 Go de RAM) sur le réseau
+# local de l'école, sans Internet obligatoire. Pas à pas : README, « Boîtier école ».
+#   - API sur le port 3100 de toutes les interfaces : les postes s'y connectent (http://<ip>:3100) ;
+#   - base interne seulement, réglée pour peu de mémoire ; volume persistant jollof_pgdata ;
+#   - sauvegarde quotidienne dans ./backups (14 gardées) ;
+#   - redémarrage automatique après une coupure de courant (Docker lancé au démarrage).
+# Utilisation : COMPOSE_FILE=docker-compose.box.yml dans .env, puis docker compose up -d.
+name: jollof
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  # Journaux courts : une carte SD s'use à l'écriture.
+  logging:
+    driver: json-file
+    options: { max-size: "5m", max-file: "2" }
+
+x-db-env: &db-env
+  PGHOST: db
+  PGUSER: jollof
+  PGDATABASE: jollof
+  PGPASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env (openssl rand -hex 24)}
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:16
+    # Réglages pour ~400 Mo : peu de connexions (pool de 5 côté API), pas de requêtes parallèles
+    # ni de JIT (coûteux en mémoire, inutiles ici). fsync et full_page_writes restent actifs :
+    # les coupures de courant sont fréquentes.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=96MB
+      - -c
+      - effective_cache_size=256MB
+      - -c
+      - work_mem=2MB
+      - -c
+      - maintenance_work_mem=32MB
+      - -c
+      - max_connections=20
+      - -c
+      - max_worker_processes=4
+      - -c
+      - max_parallel_workers=0
+      - -c
+      - max_parallel_workers_per_gather=0
+      - -c
+      - max_parallel_maintenance_workers=0
+      - -c
+      - jit=off
+      - -c
+      - huge_pages=off
+      - -c
+      - wal_buffers=4MB
+      - -c
+      - min_wal_size=64MB
+      - -c
+      - max_wal_size=256MB
+      - -c
+      - checkpoint_timeout=15min
+      - -c
+      - autovacuum_max_workers=2
+      - -c
+      - log_min_duration_statement=2000
+    environment:
+      POSTGRES_USER: jollof
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: jollof
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    read_only: true
+    tmpfs: [/tmp, /var/run/postgresql]
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    mem_limit: 400m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jollof -d jollof"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 60s
+
+  api:
+    <<: *hardening
+    build: .
+    # Image construite ailleurs pour arm64 (README) : JOLLOF_IMAGE=<registre>/jollof-api:<version>.
+    image: ${JOLLOF_IMAGE:-jollof-api}
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      # Tas JavaScript plafonné : l'API reste sous ~300 Mo même sous charge.
+      NODE_OPTIONS: --max-old-space-size=${API_HEAP_MB:-192}
+      DATABASE_URL: postgres://jollof:${POSTGRES_PASSWORD:?}@db:5432/jollof
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-5}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env (openssl rand -base64 48)}
+      PLATFORM_KEY: ${PLATFORM_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost}
+      TRIAL_DAYS: ${TRIAL_DAYS:-30}
+      # bcrypt en JavaScript pur : ~2 fois plus rapide à 11 qu'à 12 sur un Raspberry Pi (une classe
+      # qui se connecte d'un coup n'attend pas). Deux workers au plus.
+      BCRYPT_COST: ${BCRYPT_COST:-11}
+      BCRYPT_WORKERS: ${BCRYPT_WORKERS:-2}
+      # Les postes se connectent directement, sans proxy : X-Forwarded-For est ignoré.
+      TRUST_PROXY: "false"
+    ports:
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-3100}:3100"
+    networks: [backend, frontend]
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cap_drop: [ALL]
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3100/api/v1/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 120s
+
+  backup:
+    <<: *hardening
+    image: postgres:16
+    depends_on:
+      db:
+        condition: service_healthy
+    entrypoint: ["sh", "/usr/local/bin/jollof-backup", "loop"]
+    environment:
+      <<: *db-env
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      BACKUP_HOUR: ${BACKUP_HOUR:-2}
+      TZ: ${TZ:-Africa/Dakar}
+    volumes:
+      - ./docker/backup.sh:/usr/local/bin/jollof-backup:ro
+      - ${BACKUP_HOST_DIR:-./backups}:/backups
+    networks: [backend]
+    read_only: true
+    tmpfs: [/tmp]
+    # root sans privilèges, sauf écrire dans ./backups quel qu'en soit le propriétaire.
+    cap_drop: [ALL]
+    cap_add: [DAC_OVERRIDE]
+    mem_limit: 128m
+    healthcheck:
+      # Sauvegarde en retard (aucune de moins de 50 h) : le service passe « unhealthy ».
+      test: ["CMD-SHELL", "find /backups -maxdepth 1 -name 'jollof-*.dump' -mmin -3000 | grep -q ."]
+      interval: 1h
+      timeout: 10s
+      retries: 1
+      start_period: 15m
+
+networks:
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  pgdata:

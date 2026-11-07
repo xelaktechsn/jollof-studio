@@ -1,0 +1,199 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "LED et bouton sur breadboard",
+ "description": "Arduino Uno, une LED avec sa résistance de 220 Ω et un bouton poussoir. Les masses passent par les rails − de la breadboard : le rail du haut et celui du bas sont reliés par un fil, car ils ne le sont pas d’origine. Programme : une règle « quand BTN1 est appuyé, LED1 s’allume », traduite en code Arduino dans l’onglet Code.",
+ "en": {
+  "name": "LED and button on a breadboard",
+  "description": "Arduino Uno, an LED with its 220 Ω resistor and a push button. The grounds go through the breadboard’s − rails: the top rail and the bottom rail are joined by a wire, because they are not connected out of the box. Program: a rule “when BTN1 is pressed, LED1 turns on”, turned into Arduino code in the Code tab."
+ },
+ "comps": [
+  {
+   "id": "uno_1",
+   "type": "uno",
+   "name": "UNO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 0,
+   "z": 76,
+   "r": 0
+  },
+  {
+   "id": "res-220_1",
+   "type": "res-220",
+   "name": "R1",
+   "x": -36,
+   "z": 122,
+   "r": 0
+  },
+  {
+   "id": "led-red_1",
+   "type": "led-red",
+   "name": "LED1",
+   "x": -12,
+   "z": 122,
+   "r": 0
+  },
+  {
+   "id": "button_1",
+   "type": "button",
+   "name": "BTN1",
+   "x": 26,
+   "z": 122,
+   "r": 0,
+   "inp": {
+    "pressed": false
+   }
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "uno_1",
+    "GND (2)"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-3"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers le rail"
+  },
+  {
+   "a": [
+    "breadboard_1",
+    "T-25"
+   ],
+   "b": [
+    "breadboard_1",
+    "B-25"
+   ],
+   "color": "#3a3f45",
+   "role": "Pont entre les rails −"
+  },
+  {
+   "a": [
+    "uno_1",
+    "D7"
+   ],
+   "b": [
+    "res-220_1",
+    "1"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande"
+  },
+  {
+   "a": [
+    "res-220_1",
+    "2"
+   ],
+   "b": [
+    "led-red_1",
+    "A"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance série (Anode)"
+  },
+  {
+   "a": [
+    "led-red_1",
+    "K"
+   ],
+   "b": [
+    "breadboard_1",
+    "B-8"
+   ],
+   "color": "#3a3f45",
+   "role": "Cathode vers la masse"
+  },
+  {
+   "a": [
+    "uno_1",
+    "D2"
+   ],
+   "b": [
+    "button_1",
+    "1"
+   ],
+   "color": "#3b82f6",
+   "role": "Entrée (INPUT_PULLUP)"
+  },
+  {
+   "a": [
+    "button_1",
+    "2"
+   ],
+   "b": [
+    "breadboard_1",
+    "B-14"
+   ],
+   "color": "#3a3f45",
+   "role": "Bouton vers la masse"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "id": "r_btn",
+     "src": {
+      "comp": "button_1",
+      "sig": "pressed"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "kind": "rule",
+     "then": [
+      {
+       "kind": "act",
+       "id": "a_r_btn_0",
+       "comp": "led-red_1",
+       "act": "on",
+       "arg": null
+      }
+     ],
+     "else": [
+      {
+       "kind": "act",
+       "id": "a_r_btn_1",
+       "comp": "led-red_1",
+       "act": "off",
+       "arg": null
+      }
+     ]
+    }
+   ],
+   "boards": {
+    "uno_1": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {}
+  }
+ }
+}

@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+test
+backups
+docker
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+docker-compose*.yml
+Dockerfile
+README.md
+API.md

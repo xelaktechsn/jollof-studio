@@ -1,0 +1,451 @@
+{
+ "id": "tp08-arrosage-relais",
+ "level": "pro",
+ "minutes": 75,
+ "title": {
+  "fr": "Arrosage automatique : sonde d’humidité et relais de pompe",
+  "en": "Automatic irrigation: moisture probe and pump relay"
+ },
+ "summary": {
+  "fr": "Pour une parcelle maraîchère des Niayes : lire une sonde d’humidité du sol avec un ESP32 et commander la pompe par un module relais actif à l’état bas, en respectant les règles de sécurité côté puissance.",
+  "en": "For a market garden plot in the Niayes: read a soil moisture probe with an ESP32 and drive the pump through an active-low relay module, following the safety rules on the power side."
+ },
+ "objectives": [
+  {
+   "fr": "Alimenter correctement un capteur en 3,3 V et un relais en 5 V",
+   "en": "Power a sensor from 3.3 V and a relay from 5 V correctly"
+  },
+  {
+   "fr": "Programmer la commande d’un relais actif à l’état bas",
+   "en": "Program the control of an active-low relay"
+  },
+  {
+   "fr": "Appliquer les règles de sécurité d’un circuit de pompe",
+   "en": "Apply the safety rules of a pump circuit"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Arrosage automatique",
+  "comps": [
+   {
+    "id": "esp32_1",
+    "type": "esp32",
+    "name": "ESP32",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "soil_1",
+    "type": "soil",
+    "name": "SOL1",
+    "x": -80,
+    "z": 4,
+    "r": 1.5708
+   },
+   {
+    "id": "relay_1",
+    "type": "relay",
+    "name": "K1",
+    "x": 62,
+    "z": 14,
+    "r": -1.5708
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 74,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "soil": 60
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "soil_1",
+     "GND"
+    ],
+    "b": [
+     "esp32_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "soil_1",
+     "AOUT"
+    ],
+    "b": [
+     "esp32_1",
+     "D32"
+    ],
+    "color": "#3fb27f",
+    "role": "Analogique"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "3V3"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+17"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 3,3 V vers la breadboard"
+   },
+   {
+    "a": [
+     "soil_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+2"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 3,3 V"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-17"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "VIN"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+9"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers la breadboard"
+   },
+   {
+    "a": [
+     "relay_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+25"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "relay_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "relay_1",
+     "IN"
+    ],
+    "b": [
+     "esp32_1",
+     "D4"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   }
+  ],
+  "code": {
+   "ESP32": "// TP : arrosage automatique d’une parcelle maraîchère (Niayes).\n// Module relais actif à l’état bas : LOW colle le relais, la pompe tourne.\nconst int SONDE = 32;        // AOUT de la sonde (entrée de l’ADC1)\nconst int RELAIS = 4;        // IN du module relais\nconst int SEUIL_SEC = 2300;  // au-dessus : sol trop sec\n\nvoid setup() {\n  Serial.begin(115200);\n  pinMode(RELAIS, OUTPUT);\n  digitalWrite(RELAIS, HIGH);  // pompe arrêtée dès le démarrage\n}\n\nvoid loop() {\n  int brut = analogRead(SONDE);  // 0 à 4095 sur l’ESP32 ; plus sec = plus haut\n  Serial.print(\"Sol : \");\n  Serial.println(brut);\n\n  if (brut > SEUIL_SEC) {\n    digitalWrite(RELAIS, LOW);   // sol sec : on arrose\n  } else {\n    digitalWrite(RELAIS, HIGH);  // sol humide : pompe arrêtée\n  }\n  delay(500);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le projet",
+    "en": "The project"
+   },
+   "text": {
+    "fr": "Dans les Niayes, entre Dakar et Saint-Louis, les maraîchers arrosent oignons, choux et tomates à la motopompe ou à l’arrosoir. Un arrosage automatique économise l’eau : la pompe ne tourne que quand le sol est **sec**.\nMatériel : un **ESP32**, la sonde capacitive **SOL1** (sortie analogique **AOUT** : plus le sol est sec, plus la tension est haute), le **module relais K1** et la breadboard **BB1**.\nLa pompe n’est pas dans la simulation : elle se branche sur les **contacts** du relais (COM et NO), un circuit de puissance séparé de la carte.",
+    "en": "In the Niayes, between Dakar and Saint-Louis, market gardeners water onions, cabbages and tomatoes with motor pumps or watering cans. Automatic irrigation saves water: the pump only runs when the soil is **dry**.\nParts: an **ESP32**, the capacitive probe **SOL1** (analog output **AOUT**: the drier the soil, the higher the voltage), the **K1 relay module** and the **BB1** breadboard.\nThe pump is not in the simulation: it connects to the relay **contacts** (COM and NO), a power circuit separate from the board."
+   }
+  },
+  {
+   "title": {
+    "fr": "Les alimentations",
+    "en": "Power supplies"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », câblez deux tensions différentes :\n- la sonde **SOL1** sur le **3V3** de l’ESP32 : sa sortie reste ainsi dans la plage de l’ADC (0 à 3,3 V) ;\n- le relais **K1** sur **VIN** (le 5 V de l’USB) : sa bobine demande 5 V.\nReliez aussi le **GND** de la sonde et celui du relais à la masse de l’ESP32.",
+    "en": "In the “Wiring” tab, wire two different voltages:\n- the **SOL1** probe on the ESP32 **3V3**: its output then stays within the ADC range (0 to 3.3 V);\n- the **K1** relay on **VIN** (the USB 5 V): its coil needs 5 V.\nAlso connect the **GND** of the probe and of the relay to the ESP32 ground."
+   },
+   "hint": {
+    "fr": "Le rail + du haut peut porter le 3,3 V et celui du bas le 5 V : ils ne sont pas reliés entre eux. Ne mettez jamais 3V3 et VIN sur un même rail.",
+    "en": "The top + rail can carry 3.3 V and the bottom one 5 V: they are not connected to each other. Never put 3V3 and VIN on the same rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "SOL1.VCC",
+      "ESP32.3V3"
+     ],
+     [
+      "SOL1.GND",
+      "ESP32.GND*"
+     ],
+     [
+      "K1.VCC",
+      "ESP32.VIN"
+     ],
+     [
+      "K1.GND",
+      "ESP32.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les signaux",
+    "en": "Signals"
+   },
+   "text": {
+    "fr": "Reliez **AOUT** de la sonde à **D32**, une entrée de l’ADC1 qui reste utilisable quand le Wi-Fi est actif, et l’entrée **IN** du relais à **D4**.",
+    "en": "Connect the probe **AOUT** to **D32**, an ADC1 input that remains usable when Wi-Fi is on, and the relay **IN** input to **D4**."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "SOL1.AOUT",
+      "ESP32.D32"
+     ],
+     [
+      "K1.IN",
+      "ESP32.D4"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Contrôle : alimentation du relais",
+    "en": "Check: relay supply"
+   },
+   "text": {
+    "fr": "Lancez la simulation, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **K1 · VCC**, pointe noire sur **K1 · GND**. Notez la tension de la bobine.",
+    "en": "Start the simulation, open “Instruments” → **Multimeter**, **V** mode: red probe on **K1 · VCC**, black probe on **K1 · GND**. Enter the coil voltage."
+   },
+   "hint": {
+    "fr": "Environ 5 V : la broche VIN de l’ESP32 transmet le 5 V de l’USB. Sous 3,3 V, la bobine collerait mal, ou pas du tout.",
+    "en": "About 5 V: the ESP32 VIN pin passes on the USB 5 V. On 3.3 V, the coil would pull in poorly, or not at all."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "K1.VCC",
+     "K1.GND"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Un relais actif à l’état bas",
+    "en": "An active-low relay"
+   },
+   "text": {
+    "fr": "Comme beaucoup de modules, K1 est **actif à l’état bas** : c’est un niveau **LOW** sur IN qui colle le relais. Quelle ligne met la pompe **en marche** ?",
+    "en": "Like many modules, K1 is **active-low**: a **LOW** level on IN pulls the relay in. Which line **starts** the pump?"
+   },
+   "hint": {
+    "fr": "Pour la même raison, le programme doit écrire HIGH sur IN dès le démarrage : sinon la pompe risque de démarrer seule à la mise sous tension.",
+    "en": "For the same reason, the program must write HIGH to IN right at startup: otherwise the pump may start on its own at power-up."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "digitalWrite(4, HIGH);",
+      "en": "digitalWrite(4, HIGH);"
+     },
+     {
+      "fr": "digitalWrite(4, LOW);",
+      "en": "digitalWrite(4, LOW);"
+     },
+     {
+      "fr": "analogWrite(4, 255);",
+      "en": "analogWrite(4, 255);"
+     },
+     {
+      "fr": "pinMode(4, INPUT);",
+      "en": "pinMode(4, INPUT);"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme d’arrosage",
+    "en": "The irrigation program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez le programme :\n- dans setup() : `Serial.begin(115200);`, `pinMode(4, OUTPUT);` puis tout de suite `digitalWrite(4, HIGH);` (pompe arrêtée) ;\n- dans loop() : `int brut = analogRead(32);` (0 à 4095), affiché au moniteur série ;\n- si `brut > 2300` (sol sec) : `digitalWrite(4, LOW)`, la pompe tourne ; sinon `HIGH`, elle s’arrête ;\n- `delay(500);` entre deux mesures.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, write the program:\n- in setup(): `Serial.begin(115200);`, `pinMode(4, OUTPUT);` then straight away `digitalWrite(4, HIGH);` (pump off);\n- in loop(): `int brut = analogRead(32);` (0 to 4095), printed to the serial monitor;\n- if `brut > 2300` (dry soil): `digitalWrite(4, LOW)`, the pump runs; otherwise `HIGH`, it stops;\n- `delay(500);` between two readings.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "Sur le terrain, le seuil se règle : notez la valeur de la sonde à l’air libre (très sec, environ 3 270 ici), puis plantée dans une terre bien arrosée, et choisissez un seuil entre les deux.",
+    "en": "In the field, the threshold is calibrated: note the probe value in open air (very dry, about 3,270 here), then planted in well-watered soil, and pick a threshold in between."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "analogRead\\s*\\(",
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\(",
+     "\\bLOW\\b",
+     "\\bHIGH\\b",
+     "if\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : sol sec",
+    "en": "Test: dry soil"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Dans l’onglet « Simulation », section **Environnement**, baissez l’**Humidité du sol** à **25 %** : le relais K1 doit coller, la pompe démarre.",
+    "en": "Click “Observe”. In the “Simulation” tab, **Environment** section, lower the **Soil moisture** to **25%**: relay K1 must pull in, the pump starts."
+   },
+   "hint": {
+    "fr": "Suivez la valeur au moniteur série : elle doit dépasser le seuil. Elle le dépasse sans que le relais colle ? Le programme doit écrire LOW (module actif à l’état bas).",
+    "en": "Watch the value in the serial monitor: it must go above the threshold. It does, but the relay stays released? The program must write LOW (active-low module)."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "K1": "on"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : l’entrée IN, pompe en marche",
+    "en": "Measurement: the IN input, pump running"
+   },
+   "text": {
+    "fr": "Pompe en marche, mesurez au multimètre la tension entre **K1 · IN** et **K1 · GND**.",
+    "en": "With the pump running, measure the voltage between **K1 · IN** and **K1 · GND** with the multimeter."
+   },
+   "hint": {
+    "fr": "0 V : c’est bien un niveau bas qui colle le relais. Pompe arrêtée, vous liriez 3,3 V, le niveau haut d’un ESP32, et non 5 V.",
+    "en": "0 V: it really is a low level that pulls the relay in. With the pump off, you would read 3.3 V, an ESP32’s high level, not 5 V."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "K1.IN",
+     "K1.GND"
+    ],
+    "tolerance": 0.12,
+    "state": {
+     "ESP32.D4": 0
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : sol arrosé",
+    "en": "Test: watered soil"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et remontez l’humidité du sol à **70 %** : le relais doit retomber, la pompe s’arrête.",
+    "en": "Click “Observe” and raise the soil moisture to **70%**: the relay must drop out, the pump stops."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "K1": "off"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "Sécurité côté puissance",
+    "en": "Safety on the power side"
+   },
+   "text": {
+    "fr": "Sur le terrain, la pompe de surface fonctionne en **230 V** et son alimentation passe par les contacts du relais (COM vers NO). Cochez **toutes** les règles à respecter.",
+    "en": "In the field, the surface pump runs on **230 V** and its supply goes through the relay contacts (COM to NO). Tick **all** the rules to follow."
+   },
+   "hint": {
+    "fr": "Le relais sépare la carte du secteur, mais ses contacts restent sous 230 V. Eau et électricité : le différentiel 30 mA protège les personnes.",
+    "en": "The relay separates the board from the mains, but its contacts stay at 230 V. Water and electricity: the 30 mA RCD protects people."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Couper et consigner le disjoncteur avant de câbler ou de toucher le bornier du relais",
+      "en": "Switch off and lock out the breaker before wiring or touching the relay terminals"
+     },
+     {
+      "fr": "Protéger le circuit de la pompe par un disjoncteur différentiel 30 mA et un fusible adapté",
+      "en": "Protect the pump circuit with a 30 mA RCD and a suitable fuse"
+     },
+     {
+      "fr": "Le relais isole la commande : on peut toucher ses contacts pompe en marche",
+      "en": "The relay isolates the control side: its contacts can be touched while the pump runs"
+     },
+     {
+      "fr": "Vérifier que le relais supporte le courant de démarrage de la pompe (10 A pour ce module), sinon passer par un contacteur",
+      "en": "Check that the relay can handle the pump’s starting current (10 A for this module), otherwise use a contactor"
+     },
+     {
+      "fr": "Placer l’électronique et les borniers dans un boîtier étanche, à l’abri des projections d’eau",
+      "en": "Put the electronics and terminals in a waterproof box, protected from water splashes"
+     }
+    ],
+    "answer": [
+     0,
+     1,
+     3,
+     4
+    ]
+   }
+  }
+ ]
+}

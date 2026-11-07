@@ -1,0 +1,14 @@
+name: Idée · Feature
+description: Une amélioration ou un nouvel usage en classe · An improvement or a new classroom use
+labels: [enhancement]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Le besoin · The need
+      description: Qui en a besoin (élève, enseignant…) et pourquoi · Who needs it and why
+    validations: { required: true }
+  - type: textarea
+    id: idea
+    attributes:
+      label: Proposition · Proposal

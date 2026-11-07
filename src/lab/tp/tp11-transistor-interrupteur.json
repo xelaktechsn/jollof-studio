@@ -1,0 +1,381 @@
+{
+ "id": "tp11-transistor-interrupteur",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Le transistor, un interrupteur commandé",
+  "en": "The transistor as a controlled switch"
+ },
+ "summary": {
+  "fr": "Un transistor NPN (BC547) allume une LED alimentée en 5 V : la broche de l’Arduino ne fournit qu’un petit courant de base. Mesures de Ib, Ic et Vce au multimètre.",
+  "en": "An NPN transistor (BC547) turns on an LED powered from 5 V: the Arduino pin only supplies a small base current. Ib, Ic and Vce measured with the multimeter."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un transistor NPN en commutation",
+   "en": "Wire an NPN transistor as a switch"
+  },
+  {
+   "fr": "Distinguer courant de base et courant de collecteur",
+   "en": "Tell base current from collector current"
+  },
+  {
+   "fr": "Reconnaître un transistor saturé",
+   "en": "Recognise a saturated transistor"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Le transistor interrupteur",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R1",
+    "x": -44,
+    "z": 64,
+    "r": 0
+   },
+   {
+    "id": "npn_1",
+    "type": "npn",
+    "name": "Q1",
+    "x": -12,
+    "z": 64,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R2",
+    "x": 18,
+    "z": 64,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 44,
+    "z": 64,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "res-1k_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "npn_1",
+     "B"
+    ],
+    "color": "#f08a3c",
+    "role": "Base"
+   },
+   {
+    "a": [
+     "npn_1",
+     "E"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "npn_1",
+     "C"
+    ],
+    "color": "#9b7be0",
+    "role": "Vers le collecteur"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : le transistor commande la LED, la broche D8 ne fournit que le courant de base.\nconst int BASE = 8;\n\nvoid setup() {\n  pinMode(BASE, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(BASE, HIGH);   // transistor saturé : la LED s'allume\n  delay(1000);\n  digitalWrite(BASE, LOW);    // transistor bloqué : la LED s'éteint\n  delay(1000);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Pourquoi un transistor ?",
+    "en": "Why a transistor?"
+   },
+   "text": {
+    "fr": "Une broche d’Arduino ne fournit que quelques dizaines de milliampères : pas assez pour un moteur, un relais ou une bande de LED. Le **transistor NPN** sert d’interrupteur : un **petit courant** entre la **base B** et l’**émetteur E** laisse passer un **grand courant** entre le **collecteur C** et l’émetteur.\nIci, il commande une LED pour que l’on puisse tout mesurer.",
+    "en": "An Arduino pin only supplies a few tens of milliamps: not enough for a motor, a relay or an LED strip. The **NPN transistor** works as a switch: a **small current** between the **base B** and the **emitter E** lets a **large current** flow between the **collector C** and the emitter.\nHere it drives an LED so everything can be measured."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit de commande",
+    "en": "The control circuit"
+   },
+   "text": {
+    "fr": "Reliez **D8** à une patte de **R1 (1 kΩ)**, l’autre patte de R1 à la **base B** de Q1, et l’**émetteur E** de Q1 à une broche **GND** de l’UNO.",
+    "en": "Connect **D8** to one leg of **R1 (1 kΩ)**, the other leg of R1 to Q1’s **base B**, and Q1’s **emitter E** to a UNO **GND** pin."
+   },
+   "hint": {
+    "fr": "Sans R1, la jonction base-émetteur court-circuiterait la broche D8.",
+    "en": "Without R1, the base-emitter junction would short-circuit pin D8."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D8",
+      "R1.1|R1.2"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit de puissance",
+    "en": "The power circuit"
+   },
+   "text": {
+    "fr": "Reliez **5V** de l’UNO à une patte de **R2 (220 Ω)**, l’autre patte de R2 à l’**anode A** de LED1, et la **cathode K** de LED1 au **collecteur C** de Q1.",
+    "en": "Connect the UNO’s **5V** to one leg of **R2 (220 Ω)**, the other leg of R2 to LED1’s **anode A**, and LED1’s **cathode K** to Q1’s **collector C**."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.K",
+      "Q1.C"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Onglet **Code** : mettez D8 en sortie, puis faites clignoter la LED en alternant `digitalWrite(8, HIGH)` et `digitalWrite(8, LOW)` toutes les secondes. Téléversez.",
+    "en": "**Code** tab: set D8 as an output, then blink the LED by alternating `digitalWrite(8, HIGH)` and `digitalWrite(8, LOW)` every second. Upload."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\([^)]*HIGH",
+     "delay\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer",
+    "en": "Observe"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et lancez la simulation : la LED doit s’allumer quand D8 est à HIGH. Activez **Courant** pour voir le courant passer par le collecteur.",
+    "en": "Click “Observe” and start the simulation: the LED must light up when D8 is HIGH. Turn on **Current** to see the current flow through the collector."
+   },
+   "check": {
+    "type": "watch",
+    "when": {},
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant de la LED",
+    "en": "Measurement: LED current"
+   },
+   "text": {
+    "fr": "D8 à HIGH, multimètre en mode **mA** : mesurez le courant qui traverse **LED1** (c’est le courant de collecteur Ic).",
+    "en": "With D8 HIGH, multimeter in **mA** mode: measure the current through **LED1** (this is the collector current Ic)."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED1",
+    "state": {
+     "UNO.D8": 1
+    },
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant de base",
+    "en": "Measurement: base current"
+   },
+   "text": {
+    "fr": "Mesurez maintenant le courant qui traverse **R1** : c’est le courant de base Ib, celui que fournit vraiment la broche D8.",
+    "en": "Now measure the current through **R1**: this is the base current Ib, the one pin D8 really supplies."
+   },
+   "hint": {
+    "fr": "Ib ≈ (5 V − 0,65 V) / 1 kΩ, un peu moins à cause de la résistance interne de la broche.",
+    "en": "Ib ≈ (5 V − 0.65 V) / 1 kΩ, a little less because of the pin’s internal resistance."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "R1",
+    "state": {
+     "UNO.D8": 1
+    },
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : tension collecteur-émetteur",
+    "en": "Measurement: collector-emitter voltage"
+   },
+   "text": {
+    "fr": "Multimètre en mode **V** : pointe rouge sur **Q1 · C**, pointe noire sur **Q1 · E**, D8 à HIGH.",
+    "en": "Multimeter in **V** mode: red probe on **Q1 · C**, black probe on **Q1 · E**, D8 HIGH."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "Q1.C",
+     "Q1.E"
+    ],
+    "state": {
+     "UNO.D8": 1
+    },
+    "tolerance": 0.25
+   }
+  },
+  {
+   "title": {
+    "fr": "Transistor saturé",
+    "en": "Saturated transistor"
+   },
+   "text": {
+    "fr": "Vce est très faible (environ 0,2 V) et Ic est bien plus petit que β × Ib (β ≈ 200 pour un BC547). Dans quel état est le transistor ?",
+    "en": "Vce is very low (about 0.2 V) and Ic is much smaller than β × Ib (β ≈ 200 for a BC547). What state is the transistor in?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Bloqué : il ne conduit pas",
+      "en": "Off: it does not conduct"
+     },
+     {
+      "fr": "Saturé : il se comporte comme un interrupteur fermé",
+      "en": "Saturated: it behaves like a closed switch"
+     },
+     {
+      "fr": "Détruit",
+      "en": "Destroyed"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Qui fournit le courant de la LED ?",
+    "en": "Who supplies the LED current?"
+   },
+   "text": {
+    "fr": "D’où vient le courant d’environ 12 mA qui traverse la LED ?",
+    "en": "Where does the roughly 12 mA flowing through the LED come from?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "De la broche D8",
+      "en": "From pin D8"
+     },
+     {
+      "fr": "De la broche 5V, à travers le transistor ; D8 ne fournit que le courant de base",
+      "en": "From the 5V pin, through the transistor; D8 only supplies the base current"
+     },
+     {
+      "fr": "Du transistor lui-même, qui crée du courant",
+      "en": "From the transistor itself, which creates current"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

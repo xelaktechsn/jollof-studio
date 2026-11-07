@@ -1,0 +1,384 @@
+{
+ "id": "tp02-clignotant",
+ "level": "college",
+ "minutes": 45,
+ "title": {
+  "fr": "Faire clignoter une LED",
+  "en": "Make an LED blink"
+ },
+ "summary": {
+  "fr": "Programmer le clignotement d’une LED sur une Arduino Uno, lire sa période et sa fréquence à l’oscilloscope, puis les modifier en changeant le délai.",
+  "en": "Program an LED to blink on an Arduino Uno, read its period and frequency on the oscilloscope, then change them by changing the delay."
+ },
+ "objectives": [
+  {
+   "fr": "Créer un signal avec digitalWrite() et delay()",
+   "en": "Create a signal with digitalWrite() and delay()"
+  },
+  {
+   "fr": "Lire une période et une fréquence à l’oscilloscope",
+   "en": "Read a period and a frequency on the oscilloscope"
+  },
+  {
+   "fr": "Relier le délai du programme à la fréquence (f = 1 ÷ T)",
+   "en": "Relate the program delay to the frequency (f = 1 ÷ T)"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – LED clignotante",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -24,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 6,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-10"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : faire clignoter une LED.\nconst int LED = 8;\nconst int DUREE = 250; // durée allumée, puis éteinte (en ms)\n\nvoid setup() {\n  pinMode(LED, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(LED, HIGH); // allumée\n  delay(DUREE);\n  digitalWrite(LED, LOW);  // éteinte\n  delay(DUREE);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le matériel",
+    "en": "The parts"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : une **Arduino Uno** (UNO), une **breadboard** (BB1), une **résistance de 220 Ω** (R1) et une **LED rouge** (LED1).\nFaire clignoter une LED, c’est le « bonjour » de l’électronique programmée : la carte allume et éteint une sortie à un rythme précis. Ce rythme, vous allez le **mesurer à l’oscilloscope**.\n- La LED a une **anode A** (patte longue, le +) et une **cathode K** (côté méplat, le -).\n- La résistance limite le courant : elle protège à la fois la LED et la broche de la carte.",
+    "en": "On the workspace: an **Arduino Uno** (UNO), a **breadboard** (BB1), a **220 Ω resistor** (R1) and a **red LED** (LED1).\nBlinking an LED is the “hello world” of programmed electronics: the board switches an output on and off at a precise rate. You will **measure** that rate **with the oscilloscope**.\n- The LED has an **anode A** (long leg, +) and a **cathode K** (flat side, -).\n- The resistor limits the current: it protects both the LED and the board pin."
+   }
+  },
+  {
+   "title": {
+    "fr": "La masse",
+    "en": "Ground"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez une broche **GND** de la carte au rail **-** de la breadboard, puis la **cathode K** de LED1 à ce même rail.",
+    "en": "In the “Wiring” tab, connect a **GND** pin of the board to the breadboard **-** rail, then the **cathode K** of LED1 to that same rail."
+   },
+   "hint": {
+    "fr": "Les deux rails - (en haut et en bas de la breadboard) ne sont pas reliés entre eux : posez un petit fil entre eux si vous utilisez les deux.",
+    "en": "The two - rails (at the top and bottom of the breadboard) are not connected to each other: add a short wire between them if you use both."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La LED et sa résistance",
+    "en": "The LED and its resistor"
+   },
+   "text": {
+    "fr": "Reliez la broche **D8** de la carte à une patte de R1, et l’autre patte de R1 à l’**anode A** de LED1.\nD8 est la sortie que le programme va allumer et éteindre.",
+    "en": "Connect board pin **D8** to one leg of R1, and the other leg of R1 to the **anode A** of LED1.\nD8 is the output the program will switch on and off."
+   },
+   "hint": {
+    "fr": "Une résistance n’a pas de sens : n’importe quelle patte peut aller vers D8.",
+    "en": "A resistor has no direction: either leg can go to D8."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D8",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Premier programme : LED allumée",
+    "en": "First program: LED on"
+   },
+   "text": {
+    "fr": "Avant de faire clignoter, vérifiez que tout fonctionne. Dans l’onglet « Code », écrivez un programme qui règle D8 en sortie et l’allume :\n- `pinMode(8, OUTPUT);`\n- `digitalWrite(8, HIGH);`\nCliquez sur « Téléverser », puis lancez la simulation : LED1 doit rester allumée.",
+    "en": "Before making it blink, check that everything works. In the “Code” tab, write a program that sets D8 as an output and turns it on:\n- `pinMode(8, OUTPUT);`\n- `digitalWrite(8, HIGH);`\nClick “Upload”, then start the simulation: LED1 must stay on."
+   },
+   "hint": {
+    "fr": "Les deux lignes peuvent aller dans setup() : elles ne s’exécutent qu’une fois, et la sortie garde ensuite son état.",
+    "en": "Both lines can go in setup(): they run only once, and the output then keeps its state."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\(",
+     "\\bHIGH\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : tension aux bornes de la LED",
+    "en": "Measurement: voltage across the LED"
+   },
+   "text": {
+    "fr": "LED allumée et simulation lancée, ouvrez « Instruments » → **Multimètre**, mode **V**. Posez la pointe rouge sur **LED1 · A** et la pointe noire sur **LED1 · K**, puis notez la tension aux bornes de la LED.",
+    "en": "With the LED on and the simulation running, open “Instruments” → **Multimeter**, **V** mode. Put the red probe on **LED1 · A** and the black probe on **LED1 · K**, then enter the voltage across the LED."
+   },
+   "hint": {
+    "fr": "Une LED rouge allumée garde environ 2 V à ses bornes ; le reste des 5 V (environ 2,5 V) se retrouve aux bornes de la résistance. Valeur négative : inversez les pointes.",
+    "en": "A lit red LED keeps about 2 V across itself; the rest of the 5 V (about 2.5 V) is across the resistor. Negative value: swap the probes."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "LED1.A",
+     "LED1.K"
+    ],
+    "tolerance": 0.12,
+    "state": {
+     "UNO.D8": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Faire clignoter",
+    "en": "Make it blink"
+   },
+   "text": {
+    "fr": "Modifiez le programme pour que la LED clignote. Dans loop() :\n- allumez la LED (`digitalWrite(8, HIGH);`), puis attendez **500 ms** (`delay(500);`) ;\n- éteignez-la (`digitalWrite(8, LOW);`), puis attendez encore 500 ms.\nGardez `pinMode(8, OUTPUT);` dans setup() et cliquez sur « Téléverser ».",
+    "en": "Change the program so that the LED blinks. In loop():\n- turn the LED on (`digitalWrite(8, HIGH);`), then wait **500 ms** (`delay(500);`);\n- turn it off (`digitalWrite(8, LOW);`), then wait another 500 ms.\nKeep `pinMode(8, OUTPUT);` in setup() and click “Upload”."
+   },
+   "hint": {
+    "fr": "delay(500) met le programme en pause 500 millisecondes, soit une demi-seconde. Sans le second delay(), la LED se rallumerait aussitôt éteinte : elle paraîtrait toujours allumée.",
+    "en": "delay(500) pauses the program for 500 milliseconds, i.e. half a second. Without the second delay(), the LED would turn back on as soon as it went off: it would look always on."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "digitalWrite\\s*\\(",
+     "\\bHIGH\\b",
+     "\\bLOW\\b|digitalWrite\\s*\\([^)]*(,\\s*0\\s*\\)|!)",
+     "delay\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la LED s’éteint",
+    "en": "Test: the LED turns off"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » : la simulation se lance. LED1 doit maintenant s’éteindre régulièrement ; la vérification réussit dès qu’elle est restée éteinte un instant.",
+    "en": "Click “Observe”: the simulation starts. LED1 must now turn off regularly; the check succeeds as soon as it has stayed off for a moment."
+   },
+   "hint": {
+    "fr": "Si la LED reste allumée, le nouveau programme n’a peut-être pas été téléversé, ou il manque le delay() après digitalWrite(8, LOW).",
+    "en": "If the LED stays on, the new program may not have been uploaded, or the delay() after digitalWrite(8, LOW) is missing."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "off"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Oscilloscope : la fréquence",
+    "en": "Oscilloscope: the frequency"
+   },
+   "text": {
+    "fr": "Ouvrez « Instruments » → **Oscilloscope**. Sur la voie 1, choisissez la broche **D8** de UNO, et réglez la **base de temps** sur **500 ms/div** : l’écran montre 5 secondes de signal.\nLe signal est **carré** : 5 V (HIGH) quand la LED est allumée, 0 V (LOW) quand elle est éteinte. Une **période T**, c’est une fois allumée plus une fois éteinte ; la **fréquence** f = 1 ÷ T est le nombre de périodes par seconde, en hertz (Hz).\nQuelle fréquence l’oscilloscope affiche-t-il ?",
+    "en": "Open “Instruments” → **Oscilloscope**. On channel 1, pick pin **D8** of UNO, and set the **time base** to **500 ms/div**: the screen shows 5 seconds of signal.\nThe signal is a **square wave**: 5 V (HIGH) while the LED is on, 0 V (LOW) while it is off. One **period T** is one time on plus one time off; the **frequency** f = 1 ÷ T is the number of periods per second, in hertz (Hz).\nWhat frequency does the oscilloscope show?"
+   },
+   "hint": {
+    "fr": "T = 500 ms allumée + 500 ms éteinte = 1 s, donc f = 1 ÷ 1 s = 1 Hz. La mesure s’affiche à côté du choix de la voie.",
+    "en": "T = 500 ms on + 500 ms off = 1 s, so f = 1 ÷ 1 s = 1 Hz. The reading is shown next to the channel selector."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,5 Hz",
+      "en": "0.5 Hz"
+     },
+     {
+      "fr": "1 Hz",
+      "en": "1 Hz"
+     },
+     {
+      "fr": "2 Hz",
+      "en": "2 Hz"
+     },
+     {
+      "fr": "500 Hz",
+      "en": "500 Hz"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Clignoter deux fois plus vite",
+    "en": "Blink twice as fast"
+   },
+   "text": {
+    "fr": "Remplacez les deux `delay(500)` par `delay(250)`, puis cliquez sur « Téléverser ». Regardez l’oscilloscope : les créneaux se resserrent.",
+    "en": "Replace both `delay(500)` with `delay(250)`, then click “Upload”. Watch the oscilloscope: the pulses get closer together."
+   },
+   "hint": {
+    "fr": "Astuce de programmeur : une constante `const int DUREE = 250;` en haut du programme et `delay(DUREE);` dans loop(). Le rythme se change alors à un seul endroit.",
+    "en": "Programmer’s tip: a constant `const int DUREE = 250;` at the top of the program and `delay(DUREE);` in loop(). The rate is then changed in one place only."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "delay\\s*\\(",
+     "\\b250\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "La nouvelle fréquence",
+    "en": "The new frequency"
+   },
+   "text": {
+    "fr": "Avec `delay(250)`, quelle est la fréquence du clignotement ? Vérifiez votre réponse sur l’oscilloscope.",
+    "en": "With `delay(250)`, what is the blinking frequency? Check your answer on the oscilloscope."
+   },
+   "hint": {
+    "fr": "T = 250 ms + 250 ms = 0,5 s, donc f = 1 ÷ 0,5 s = 2 Hz : diviser le délai par deux double la fréquence.",
+    "en": "T = 250 ms + 250 ms = 0.5 s, so f = 1 ÷ 0.5 s = 2 Hz: halving the delay doubles the frequency."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,25 Hz",
+      "en": "0.25 Hz"
+     },
+     {
+      "fr": "1 Hz",
+      "en": "1 Hz"
+     },
+     {
+      "fr": "2 Hz",
+      "en": "2 Hz"
+     },
+     {
+      "fr": "4 Hz",
+      "en": "4 Hz"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

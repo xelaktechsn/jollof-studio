@@ -1,0 +1,432 @@
+{
+ "id": "tp04-loi-ohm",
+ "level": "college",
+ "minutes": 50,
+ "title": {
+  "fr": "La loi d’Ohm au multimètre",
+  "en": "Ohm’s law with the multimeter"
+ },
+ "summary": {
+  "fr": "Sans microcontrôleur : une pile 9 V, deux résistances (220 Ω et 1 kΩ) et deux LED. Mesurer tensions et courants au multimètre, vérifier la loi d’Ohm et calculer une puissance.",
+  "en": "No microcontroller: a 9 V battery, two resistors (220 Ω and 1 kΩ) and two LEDs. Measure voltages and currents with the multimeter, check Ohm’s law and work out a power."
+ },
+ "objectives": [
+  {
+   "fr": "Mesurer une tension et un courant au multimètre",
+   "en": "Measure a voltage and a current with the multimeter"
+  },
+  {
+   "fr": "Vérifier la loi d’Ohm : U = R × I",
+   "en": "Check Ohm’s law: U = R × I"
+  },
+  {
+   "fr": "Calculer la puissance dissipée : P = U × I",
+   "en": "Work out the power dissipated: P = U × I"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Loi d’Ohm",
+  "comps": [
+   {
+    "id": "bat9v_1",
+    "type": "bat9v",
+    "name": "BAT1",
+    "x": -76,
+    "z": -6,
+    "r": 1.5708
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -22,
+    "z": 44,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 4,
+    "z": 44,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R2",
+    "x": -22,
+    "z": 62,
+    "r": 0
+   },
+   {
+    "id": "led-red_2",
+    "type": "led-red",
+    "name": "LED2",
+    "x": 4,
+    "z": 62,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "bat9v_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation par batterie"
+   },
+   {
+    "a": [
+     "bat9v_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "B+6"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "B+16"
+    ],
+    "b": [
+     "res-1k_1",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "led-red_2",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_2",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-22"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Un circuit sans carte",
+    "en": "A circuit with no board"
+   },
+   "text": {
+    "fr": "Pas de programme aujourd’hui : une **pile 9 V** (BAT1) alimente directement deux branches.\n- Branche 1 : **R1 = 220 Ω** (rouge, rouge, marron) et **LED1**.\n- Branche 2 : **R2 = 1 kΩ** (marron, noir, rouge) et **LED2**.\nVous allez mesurer tensions et courants au **multimètre**, puis vérifier la **loi d’Ohm** : U = R × I (U en volts, R en ohms, I en ampères).",
+    "en": "No program today: a **9 V battery** (BAT1) powers two branches directly.\n- Branch 1: **R1 = 220 Ω** (red, red, brown) and **LED1**.\n- Branch 2: **R2 = 1 kΩ** (brown, black, red) and **LED2**.\nYou will measure voltages and currents with the **multimeter**, then check **Ohm’s law**: U = R × I (U in volts, R in ohms, I in amperes)."
+   }
+  },
+  {
+   "title": {
+    "fr": "La pile sur les rails",
+    "en": "The battery on the rails"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez la borne **+** de la pile au rail **+** de la breadboard, et la borne **-** au rail **-** du même côté. Ces deux rails distribueront la tension aux deux branches.",
+    "en": "In the “Wiring” tab, connect the battery **+** terminal to the breadboard **+** rail, and the **-** terminal to the **-** rail on the same side. These two rails will share the voltage with both branches."
+   },
+   "hint": {
+    "fr": "Rouge pour le +, noir pour le - : une bonne habitude qui évite les inversions. Attention à ne jamais relier directement + et - : la pile serait en court-circuit.",
+    "en": "Red for +, black for -: a good habit that avoids mix-ups. Never connect + and - directly: the battery would be short-circuited."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BAT1.+",
+      "BB1.T+*|BB1.B+*"
+     ],
+     [
+      "BAT1.-",
+      "BB1.T-*|BB1.B-*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Branche 1 : 220 Ω",
+    "en": "Branch 1: 220 Ω"
+   },
+   "text": {
+    "fr": "Reliez le rail **+** à une patte de **R1**, l’autre patte de R1 à l’**anode A** de **LED1**, et la **cathode K** de LED1 au rail **-**.",
+    "en": "Connect the **+** rail to one leg of **R1**, the other leg of R1 to the **anode A** of **LED1**, and the **cathode K** of LED1 to the **-** rail."
+   },
+   "hint": {
+    "fr": "La LED est polarisée : anode A vers le +, cathode K vers le -. Montée à l’envers, elle bloque le courant et reste éteinte.",
+    "en": "The LED is polarised: anode A towards +, cathode K towards -. Fitted the wrong way round, it blocks the current and stays off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BAT1.+",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "LED1.A"
+     ],
+     [
+      "LED1.K",
+      "BAT1.-"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Branche 2 : 1 kΩ",
+    "en": "Branch 2: 1 kΩ"
+   },
+   "text": {
+    "fr": "Même montage avec **R2** et **LED2** : rail **+** → R2 → anode A de LED2, cathode K de LED2 → rail **-**.\nLes deux branches sont **en dérivation** : chacune reçoit la tension de la pile.",
+    "en": "Same circuit with **R2** and **LED2**: **+** rail → R2 → anode A of LED2, cathode K of LED2 → **-** rail.\nThe two branches are **in parallel**: each one gets the battery voltage."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BAT1.+",
+      "R2.1|R2.2"
+     ],
+     [
+      "R2.1|R2.2",
+      "LED2.A"
+     ],
+     [
+      "LED2.K",
+      "BAT1.-"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Mise sous tension",
+    "en": "Power on"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » : la simulation se lance et les deux LED doivent s’allumer.",
+    "en": "Click “Observe”: the simulation starts and both LEDs must light up."
+   },
+   "hint": {
+    "fr": "Une LED reste éteinte ? Vérifiez son sens, puis que sa branche rejoint bien les deux rails.",
+    "en": "An LED stays off? Check its direction, then that its branch reaches both rails."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on",
+     "LED2": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : tension aux bornes de R1",
+    "en": "Measurement: voltage across R1"
+   },
+   "text": {
+    "fr": "Ouvrez « Instruments » → **Multimètre**, mode **V**. Un voltmètre se branche **aux bornes** du dipôle : pointe rouge sur la patte de R1 reliée au rail + (ou sur **BAT1 · +**, au même potentiel), pointe noire sur l’autre patte de R1, celle reliée à **LED1 · A**. Notez la tension U1 aux bornes de R1.",
+    "en": "Open “Instruments” → **Multimeter**, **V** mode. A voltmeter is connected **across** the component: red probe on the leg of R1 joined to the + rail (or on **BAT1 · +**, at the same potential), black probe on the other leg of R1, the one joined to **LED1 · A**. Enter the voltage U1 across R1."
+   },
+   "hint": {
+    "fr": "Les 9 V de la pile se partagent : environ 2 V pour la LED rouge, le reste pour la résistance. Si le multimètre affiche une valeur négative, inversez les pointes.",
+    "en": "The battery’s 9 V are shared: about 2 V for the red LED, the rest for the resistor. If the multimeter shows a negative value, swap the probes."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "BAT1.+",
+     "LED1.A"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant dans la branche 1",
+    "en": "Measurement: current in branch 1"
+   },
+   "text": {
+    "fr": "Passez en mode **mA** et choisissez **LED1** : c’est le courant I1 de la branche 1, le même dans R1 et dans LED1, qui sont en série. Un vrai multimètre se brancherait **en série** dans la branche ; ici, il suffit de choisir le composant traversé.",
+    "en": "Switch to **mA** mode and pick **LED1**: this is the current I1 in branch 1, the same in R1 and in LED1, which are in series. A real multimeter would be connected **in series** in the branch; here, you just pick the component."
+   },
+   "hint": {
+    "fr": "Loi d’Ohm : I1 = U1 ÷ R1 ≈ 6,5 V ÷ 220 Ω ≈ 0,030 A, soit environ 30 mA. Le multimètre prévient que c’est plus que les 20 mA conseillés pour une LED.",
+    "en": "Ohm’s law: I1 = U1 ÷ R1 ≈ 6.5 V ÷ 220 Ω ≈ 0.030 A, i.e. about 30 mA. The multimeter warns that this is more than the 20 mA advised for an LED."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED1",
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : tension aux bornes de R2",
+    "en": "Measurement: voltage across R2"
+   },
+   "text": {
+    "fr": "Mode **V** : mesurez de la même façon la tension U2 aux bornes de R2 (pointe rouge côté rail +, pointe noire sur la patte reliée à **LED2 · A**).",
+    "en": "**V** mode: measure the voltage U2 across R2 in the same way (red probe on the + rail side, black probe on the leg joined to **LED2 · A**)."
+   },
+   "hint": {
+    "fr": "Elle est proche de U1 : les deux branches sont branchées sur la même pile, et chaque LED garde environ 2 V.",
+    "en": "It is close to U1: both branches are connected to the same battery, and each LED keeps about 2 V."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "BAT1.+",
+     "LED2.A"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant dans la branche 2",
+    "en": "Measurement: current in branch 2"
+   },
+   "text": {
+    "fr": "Mode **mA**, composant **LED2** : notez le courant I2 de la branche 2.",
+    "en": "**mA** mode, component **LED2**: enter the current I2 in branch 2."
+   },
+   "hint": {
+    "fr": "I2 = U2 ÷ R2 ≈ 6,8 V ÷ 1 000 Ω ≈ 0,0068 A, soit environ 7 mA : avec une résistance environ 4,5 fois plus grande, le courant est environ 4,5 fois plus faible.",
+    "en": "I2 = U2 ÷ R2 ≈ 6.8 V ÷ 1,000 Ω ≈ 0.0068 A, i.e. about 7 mA: with a resistor about 4.5 times larger, the current is about 4.5 times smaller."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED2",
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Loi d’Ohm et puissance",
+    "en": "Ohm’s law and power"
+   },
+   "text": {
+    "fr": "Avec vos mesures, calculez U ÷ I pour chaque résistance (I en ampères : 30 mA = 0,030 A), puis la puissance P = U × I dissipée par R1. Cochez **toutes** les affirmations vraies.",
+    "en": "With your measurements, work out U ÷ I for each resistor (I in amperes: 30 mA = 0.030 A), then the power P = U × I dissipated by R1. Tick **all** the true statements."
+   },
+   "hint": {
+    "fr": "U1 ÷ I1 ≈ 6,5 ÷ 0,030 ≈ 220 Ω ; P1 ≈ 6,5 V × 0,030 A ≈ 0,19 W. Une résistance ordinaire supporte 0,25 W : R1 chauffe. Plus le courant est fort, plus la LED brille… et plus vite elle s’use.",
+    "en": "U1 ÷ I1 ≈ 6.5 ÷ 0.030 ≈ 220 Ω; P1 ≈ 6.5 V × 0.030 A ≈ 0.19 W. An ordinary resistor withstands 0.25 W: R1 gets warm. The stronger the current, the brighter the LED… and the faster it wears out."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "U1 ÷ I1 ≈ 220 Ω et U2 ÷ I2 ≈ 1 000 Ω : la loi d’Ohm est vérifiée",
+      "en": "U1 ÷ I1 ≈ 220 Ω and U2 ÷ I2 ≈ 1,000 Ω: Ohm’s law holds"
+     },
+     {
+      "fr": "Le courant est le même dans les deux branches",
+      "en": "The current is the same in both branches"
+     },
+     {
+      "fr": "R1 dissipe environ 0,2 W : presque la limite d’une résistance de 1/4 W, elle chauffe",
+      "en": "R1 dissipates about 0.2 W: almost the limit of a 1/4 W resistor, it gets warm"
+     },
+     {
+      "fr": "Sur une pile 9 V, la résistance de 1 kΩ protège mieux la LED que celle de 220 Ω",
+      "en": "On a 9 V battery, the 1 kΩ resistor protects the LED better than the 220 Ω one"
+     },
+     {
+      "fr": "LED2 brillerait plus fort que LED1",
+      "en": "LED2 would shine brighter than LED1"
+     }
+    ],
+    "answer": [
+     0,
+     2,
+     3
+    ]
+   }
+  }
+ ]
+}

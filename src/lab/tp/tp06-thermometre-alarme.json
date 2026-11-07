@@ -1,0 +1,479 @@
+{
+ "id": "tp06-thermometre-alarme",
+ "level": "lycee",
+ "minutes": 60,
+ "title": {
+  "fr": "Alarme de température pour la salle de classe",
+  "en": "Temperature alarm for the classroom"
+ },
+ "summary": {
+  "fr": "Mesurer la température avec une sonde DS18B20 (bus 1-Wire et résistance de tirage), et déclencher un buzzer quand la salle dépasse 30 °C.",
+  "en": "Measure the temperature with a DS18B20 probe (1-Wire bus and pull-up resistor), and sound a buzzer when the room goes above 30 °C."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un capteur numérique 1-Wire avec sa résistance de tirage",
+   "en": "Wire a 1-Wire digital sensor with its pull-up resistor"
+  },
+  {
+   "fr": "Lire une température avec OneWire et DallasTemperature",
+   "en": "Read a temperature with OneWire and DallasTemperature"
+  },
+  {
+   "fr": "Programmer une alarme à seuil et comprendre l’hystérésis",
+   "en": "Program a threshold alarm and understand hysteresis"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Alarme de température",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "ds18b20_1",
+    "type": "ds18b20",
+    "name": "DS1",
+    "x": -30,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-4k7_1",
+    "type": "res-4k7",
+    "name": "R1",
+    "x": -6,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 26,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "temp": 26
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+5"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers la breadboard"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T+24"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+24"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "ds18b20_1",
+     "VDD"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+3"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "ds18b20_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-2"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D4"
+    ],
+    "b": [
+     "breadboard_1",
+     "J6"
+    ],
+    "color": "#f2c94c",
+    "role": "Données 1-Wire"
+   },
+   {
+    "a": [
+     "ds18b20_1",
+     "DQ"
+    ],
+    "b": [
+     "breadboard_1",
+     "I6"
+    ],
+    "color": "#f2c94c",
+    "role": "Données 1-Wire"
+   },
+   {
+    "a": [
+     "res-4k7_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "H6"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de tirage"
+   },
+   {
+    "a": [
+     "res-4k7_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+8"
+    ],
+    "color": "#e5484d",
+    "role": "Résistance de tirage"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "buzzer_1",
+     "+"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-16"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : alarme de température pour une salle de classe.\n#include <OneWire.h>\n#include <DallasTemperature.h>\n\nconst int SONDE = 4;       // DQ de la DS18B20\nconst int BUZZER = 8;      // buzzer actif\nconst float SEUIL = 30.0;  // en °C\n\nOneWire bus(SONDE);\nDallasTemperature capteur(&bus);\n\nvoid setup() {\n  Serial.begin(9600);\n  capteur.begin();\n  pinMode(BUZZER, OUTPUT);\n}\n\nvoid loop() {\n  capteur.requestTemperatures();         // mesure (750 ms)\n  float t = capteur.getTempCByIndex(0);  // première sonde du bus\n  Serial.print(\"Temperature : \");\n  Serial.print(t);\n  Serial.println(\" C\");\n\n  if (t > SEUIL) {\n    digitalWrite(BUZZER, HIGH);  // trop chaud : alarme\n  } else {\n    digitalWrite(BUZZER, LOW);\n  }\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Une salle trop chaude",
+    "en": "A room that gets too hot"
+   },
+   "text": {
+    "fr": "En avril-mai, dans une salle de classe de Kaolack ou de Matam, il peut faire plus de 35 °C l’après-midi. Vous allez construire une **alarme** : un buzzer sonne dès que la température dépasse **30 °C**.\nMatériel : **UNO**, **BB1**, la sonde **DS1** (DS18B20), **R1** = 4,7 kΩ (jaune, violet, rouge) et le buzzer actif **BZ1**.\nLa DS18B20 est un capteur **numérique** : elle envoie la température sur un seul fil de données, le **bus 1-Wire** (broche **DQ**).",
+    "en": "In April–May, a classroom in Kaolack or Matam can get above 35 °C in the afternoon. You will build an **alarm**: a buzzer sounds as soon as the temperature goes above **30 °C**.\nParts: **UNO**, **BB1**, the **DS1** probe (DS18B20), **R1** = 4.7 kΩ (yellow, violet, red) and the active buzzer **BZ1**.\nThe DS18B20 is a **digital** sensor: it sends the temperature over a single data wire, the **1-Wire bus** (pin **DQ**)."
+   }
+  },
+  {
+   "title": {
+    "fr": "La sonde DS18B20",
+    "en": "The DS18B20 probe"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez **VDD** de DS1 au **5V** de la carte, **GND** à la masse, et la broche de données **DQ** à **D4**.",
+    "en": "In the “Wiring” tab, connect **VDD** of DS1 to the board’s **5V**, **GND** to ground, and the **DQ** data pin to **D4**."
+   },
+   "hint": {
+    "fr": "Passez par les rails de la breadboard (5V sur le rail +, GND sur le rail -) : la résistance de tirage s’y branchera facilement à l’étape suivante.",
+    "en": "Go through the breadboard rails (5V on the + rail, GND on the - rail): the pull-up resistor will connect there easily in the next step."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "DS1.VDD",
+      "UNO.5V"
+     ],
+     [
+      "DS1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "DS1.DQ",
+      "UNO.D4"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La résistance de tirage",
+    "en": "The pull-up resistor"
+   },
+   "text": {
+    "fr": "Placez **R1 (4,7 kΩ)** entre **DQ** et **VDD** : une patte sur la ligne de données (DQ et D4), l’autre sur le 5 V. Au repos, elle ramène la ligne au niveau haut ; pour répondre, la sonde la tire vers 0 V.",
+    "en": "Put **R1 (4.7 kΩ)** between **DQ** and **VDD**: one leg on the data line (DQ and D4), the other on 5 V. At rest it pulls the line high; to answer, the probe pulls it down to 0 V."
+   },
+   "hint": {
+    "fr": "Dans une colonne de la breadboard, les trous f à j sont reliés : DQ, le fil venant de D4 et une patte de R1 peuvent partager la même colonne.",
+    "en": "In a breadboard column, holes f to j are connected: DQ, the wire from D4 and one leg of R1 can share the same column."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "R1.1|R1.2",
+      "DS1.DQ"
+     ],
+     [
+      "R1.1|R1.2",
+      "DS1.VDD"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le buzzer",
+    "en": "The buzzer"
+   },
+   "text": {
+    "fr": "Reliez la patte **+** du buzzer à **D8** et la patte **-** à la masse. Ce buzzer est **actif** : il sonne dès que D8 passe à HIGH.",
+    "en": "Connect the buzzer **+** leg to **D8** and the **-** leg to ground. This buzzer is **active**: it sounds as soon as D8 goes HIGH."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BZ1.+",
+      "UNO.D8"
+     ],
+     [
+      "BZ1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "À quoi sert R1 ?",
+    "en": "What is R1 for?"
+   },
+   "text": {
+    "fr": "Que se passerait-il sans la résistance de 4,7 kΩ ?",
+    "en": "What would happen without the 4.7 kΩ resistor?"
+   },
+   "hint": {
+    "fr": "Essayez plus tard : supprimez un fil de R1, simulation lancée. La section Mesures de l’onglet « Simulation » signale l’erreur 1-Wire.",
+    "en": "Try it later: remove one of R1’s wires while the simulation runs. The Readings section of the “Simulation” tab reports the 1-Wire error."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : elle sert seulement à protéger la sonde",
+      "en": "Nothing: it only protects the probe"
+     },
+     {
+      "fr": "La ligne DQ ne reviendrait pas au niveau haut : la sonde ne pourrait pas répondre et la lecture donnerait -127 °C",
+      "en": "The DQ line would not return high: the probe could not answer and the reading would be -127 °C"
+     },
+     {
+      "fr": "La sonde chaufferait et mesurerait une température trop haute",
+      "en": "The probe would heat up and measure too high a temperature"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme d’alarme",
+    "en": "The alarm program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez le programme :\n- en haut : `#include <OneWire.h>` et `#include <DallasTemperature.h>`, puis `OneWire bus(4);` et `DallasTemperature capteur(&bus);` ;\n- dans setup() : `Serial.begin(9600);`, `capteur.begin();` et `pinMode(8, OUTPUT);` ;\n- dans loop() : `capteur.requestTemperatures();`, puis `float t = capteur.getTempCByIndex(0);`, et affichez t au moniteur série ;\n- si `t > 30`, buzzer à HIGH, sinon à LOW.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, write the program:\n- at the top: `#include <OneWire.h>` and `#include <DallasTemperature.h>`, then `OneWire bus(4);` and `DallasTemperature capteur(&bus);`;\n- in setup(): `Serial.begin(9600);`, `capteur.begin();` and `pinMode(8, OUTPUT);`;\n- in loop(): `capteur.requestTemperatures();`, then `float t = capteur.getTempCByIndex(0);`, and print t to the serial monitor;\n- if `t > 30`, buzzer HIGH, otherwise LOW.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "requestTemperatures() lance la conversion (750 ms), getTempCByIndex(0) lit la première sonde du bus. Une constante `const float SEUIL = 30.0;` rend le programme plus lisible.",
+    "en": "requestTemperatures() starts the conversion (750 ms), getTempCByIndex(0) reads the first probe on the bus. A constant `const float SEUIL = 30.0;` makes the program easier to read."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<OneWire\\.h>",
+     "#include\\s*<DallasTemperature\\.h>",
+     "requestTemperatures\\s*\\(",
+     "getTempCByIndex\\s*\\(",
+     "if\\s*\\(",
+     "\\b30\\b",
+     "digitalWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : il fait trop chaud",
+    "en": "Test: too hot"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Dans l’onglet « Simulation », section **Environnement**, montez la **Température** à **35 °C** : la sonde se réchauffe en quelques secondes, puis le buzzer BZ1 doit sonner.",
+    "en": "Click “Observe”. In the “Simulation” tab, **Environment** section, raise the **Temperature** to **35 °C**: the probe warms up in a few seconds, then buzzer BZ1 must sound."
+   },
+   "hint": {
+    "fr": "Suivez la température au moniteur série. Rien ne sonne au-dessus de 30 °C ? Vérifiez le sens de la comparaison (t > 30) et le fil de D8.",
+    "en": "Watch the temperature in the serial monitor. Nothing sounds above 30 °C? Check the direction of the comparison (t > 30) and the D8 wire."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "BZ1": "on"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : la sortie d’alarme",
+    "en": "Measurement: the alarm output"
+   },
+   "text": {
+    "fr": "Pendant que le buzzer sonne, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **BZ1 · +**, pointe noire sur **BZ1 · -**. Notez la tension qui alimente le buzzer.",
+    "en": "While the buzzer sounds, open “Instruments” → **Multimeter**, **V** mode: red probe on **BZ1 · +**, black probe on **BZ1 · -**. Enter the voltage powering the buzzer."
+   },
+   "hint": {
+    "fr": "Une sortie à HIGH est à la tension logique de la carte : 5 V sur une Uno, 3,3 V sur un ESP32.",
+    "en": "A HIGH output sits at the board’s logic voltage: 5 V on an Uno, 3.3 V on an ESP32."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "BZ1.+",
+     "BZ1.-"
+    ],
+    "tolerance": 0.12,
+    "state": {
+     "UNO.D8": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la salle se rafraîchit",
+    "en": "Test: the room cools down"
+   },
+   "text": {
+    "fr": "On a ouvert les fenêtres : cliquez sur « Observer » et redescendez la température à **25 °C**. Le buzzer doit se taire.",
+    "en": "The windows are open: click “Observe” and bring the temperature back down to **25 °C**. The buzzer must go quiet."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "BZ1": "off"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "Autour du seuil",
+    "en": "Around the threshold"
+   },
+   "text": {
+    "fr": "Quand la température hésite autour de 30 °C (29,9 puis 30,1 puis 29,9…), le buzzer s’allume et s’éteint sans arrêt. Quelle est la meilleure solution ?",
+    "en": "When the temperature hovers around 30 °C (29.9, then 30.1, then 29.9…), the buzzer keeps switching on and off. What is the best solution?"
+   },
+   "hint": {
+    "fr": "C’est le principe du thermostat d’un climatiseur : un écart entre le seuil de marche et le seuil d’arrêt évite les basculements incessants.",
+    "en": "This is how an air conditioner’s thermostat works: a gap between the switch-on and switch-off thresholds avoids endless toggling."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Ajouter un delay(10000) dans loop()",
+      "en": "Add a delay(10000) in loop()"
+     },
+     {
+      "fr": "Deux seuils : l’alarme démarre au-dessus de 30 °C et ne s’arrête qu’en dessous de 29 °C (hystérésis)",
+      "en": "Two thresholds: the alarm starts above 30 °C and only stops below 29 °C (hysteresis)"
+     },
+     {
+      "fr": "Remplacer la DS18B20 par un capteur moins précis",
+      "en": "Replace the DS18B20 with a less accurate sensor"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

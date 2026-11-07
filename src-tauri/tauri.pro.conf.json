@@ -1,0 +1,27 @@
+{
+  "productName": "Jollof Studio Pro",
+  "identifier": "sn.jollof.studio.pro",
+  "build": {
+    "beforeDevCommand": "npm run dev:pro",
+    "beforeBuildCommand": "npm run build:pro"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Jollof Studio Pro",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 640,
+        "center": true,
+        "theme": "Dark",
+        "backgroundColor": "#0b0e11"
+      }
+    ]
+  },
+  "bundle": {
+    "shortDescription": "Conception de circuits 3D et cours guidés",
+    "longDescription": "Jollof Studio Pro : montage de circuits ESP32 et Arduino en 3D, programmation, simulation, et mode Enseignement (notes sur le montage, présentation pas à pas)."
+  }
+}

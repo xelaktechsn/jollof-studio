@@ -1,0 +1,467 @@
+{
+ "id": "tp09-choisir-carte",
+ "level": "college",
+ "minutes": 40,
+ "title": {
+  "fr": "Choisir la bonne carte : Uno ou ESP32 ?",
+  "en": "Choosing the right board: Uno or ESP32?"
+ },
+ "summary": {
+  "fr": "Comparer une Arduino Uno (5 V) et un ESP32 (3,3 V) avec la même LED : mesurer la différence au multimètre, puis choisir la bonne carte pour des projets réels.",
+  "en": "Compare an Arduino Uno (5 V) and an ESP32 (3.3 V) driving the same LED: measure the difference with the multimeter, then choose the right board for real projects."
+ },
+ "objectives": [
+  {
+   "fr": "Distinguer microcontrôleur et ordinateur monocarte",
+   "en": "Tell a microcontroller from a single-board computer"
+  },
+  {
+   "fr": "Mesurer la tension logique d’une carte (5 V ou 3,3 V)",
+   "en": "Measure a board’s logic voltage (5 V or 3.3 V)"
+  },
+  {
+   "fr": "Choisir une carte selon le projet",
+   "en": "Choose a board for a given project"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Choisir la bonne carte",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": -78,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "esp32_1",
+    "type": "esp32",
+    "name": "ESP32",
+    "x": 70,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -92,
+    "z": 62,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -62,
+    "z": 62,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": 56,
+    "z": 62,
+    "r": 0
+   },
+   {
+    "id": "led-red_2",
+    "type": "led-red",
+    "name": "LED2",
+    "x": 86,
+    "z": 62,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "D2"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-red_2",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_2",
+     "K"
+    ],
+    "b": [
+     "esp32_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   }
+  ],
+  "code": {
+   "UNO": "// UNO : la LED de D7 reste allumée.\nvoid setup() {\n  pinMode(7, OUTPUT);\n  digitalWrite(7, HIGH);\n}\n\nvoid loop() {\n}",
+   "ESP32": "// ESP32 : la LED de D2 reste allumée.\nvoid setup() {\n  pinMode(2, OUTPUT);\n  digitalWrite(2, HIGH);\n}\n\nvoid loop() {\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Deux cartes, deux familles",
+    "en": "Two boards, two families"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : une **Arduino Uno** (UNO) à gauche, un **ESP32** à droite, et pour chacune une résistance de 220 Ω et une LED rouge.\n- L’Uno travaille en **5 V**.\n- L’ESP32 travaille en **3,3 V** et a le Wi-Fi et le Bluetooth.\nAvant de commencer, ouvrez la **Documentation** et lisez la page « Quelle carte choisir ? ».",
+    "en": "On the workspace: an **Arduino Uno** (UNO) on the left, an **ESP32** on the right, each with a 220 Ω resistor and a red LED.\n- The Uno works at **5 V**.\n- The ESP32 works at **3.3 V** and has Wi-Fi and Bluetooth.\nBefore starting, open the **Documentation** and read the “Which board should I choose?” page."
+   }
+  },
+  {
+   "title": {
+    "fr": "Microcontrôleur ou ordinateur ?",
+    "en": "Microcontroller or computer?"
+   },
+   "text": {
+    "fr": "Laquelle de ces cartes est un **ordinateur monocarte** qui fait tourner Linux (écran, clavier, Internet) ?",
+    "en": "Which of these boards is a **single-board computer** running Linux (screen, keyboard, Internet)?"
+   },
+   "hint": {
+    "fr": "Attention aux noms : Raspberry Pi et Raspberry Pi Pico sont deux produits très différents.",
+    "en": "Watch the names: Raspberry Pi and Raspberry Pi Pico are two very different products."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Arduino Uno",
+      "en": "Arduino Uno"
+     },
+     {
+      "fr": "ESP32",
+      "en": "ESP32"
+     },
+     {
+      "fr": "Raspberry Pi 4",
+      "en": "Raspberry Pi 4"
+     },
+     {
+      "fr": "Raspberry Pi Pico",
+      "en": "Raspberry Pi Pico"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler la LED de l’Uno",
+    "en": "Wire the Uno’s LED"
+   },
+   "text": {
+    "fr": "Reliez **D7** de l’UNO à une patte de R1, l’autre patte de R1 à l’**anode A** de LED1, et la **cathode K** de LED1 à une broche **GND** de l’UNO.",
+    "en": "Connect UNO **D7** to one leg of R1, the other leg of R1 to the LED1 **anode A**, and the LED1 **cathode K** to a UNO **GND** pin."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D7",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler la LED de l’ESP32",
+    "en": "Wire the ESP32’s LED"
+   },
+   "text": {
+    "fr": "Même montage côté ESP32 : **D2** → R2 → **anode A** de LED2, **cathode K** de LED2 → une broche **GND** de l’ESP32.",
+    "en": "Same circuit on the ESP32 side: **D2** → R2 → LED2 **anode A**, LED2 **cathode K** → an ESP32 **GND** pin."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "ESP32.D2",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.K",
+      "ESP32.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme de l’Uno",
+    "en": "The Uno’s program"
+   },
+   "text": {
+    "fr": "Onglet **Code** : choisissez la carte **UNO** et écrivez un programme qui met D7 en sortie et l’allume en permanence :\n`pinMode(7, OUTPUT);` puis `digitalWrite(7, HIGH);` dans setup(). Cliquez sur « Téléverser ».",
+    "en": "**Code** tab: choose the **UNO** board and write a program that sets D7 as an output and keeps it on:\n`pinMode(7, OUTPUT);` then `digitalWrite(7, HIGH);` in setup(). Click “Upload”."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\([^)]*HIGH"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme de l’ESP32",
+    "en": "The ESP32’s program"
+   },
+   "text": {
+    "fr": "Toujours dans l’onglet **Code**, choisissez maintenant la carte **ESP32** et faites de même avec la broche **2**. Téléversez.",
+    "en": "Still in the **Code** tab, now choose the **ESP32** board and do the same with pin **2**. Upload."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\([^)]*HIGH"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : sortie de l’Uno",
+    "en": "Measurement: the Uno’s output"
+   },
+   "text": {
+    "fr": "Simulation lancée, ouvrez **Instruments → Multimètre**, mode **V**. Pointe rouge sur **UNO · D7**, pointe noire sur **UNO · GND**. Notez la tension.",
+    "en": "With the simulation running, open **Instruments → Multimeter**, **V** mode. Red probe on **UNO · D7**, black probe on **UNO · GND**. Enter the voltage."
+   },
+   "hint": {
+    "fr": "Une sortie HIGH d’Uno donne un peu moins de 5 V quand la LED consomme : la broche a une petite résistance interne.",
+    "en": "An Uno HIGH output gives a little under 5 V while the LED draws current: the pin has a small internal resistance."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "UNO.D7",
+     "UNO.GND"
+    ],
+    "tolerance": 0.1,
+    "state": {
+     "UNO.D7": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : sortie de l’ESP32",
+    "en": "Measurement: the ESP32’s output"
+   },
+   "text": {
+    "fr": "Même mesure côté ESP32 : pointe rouge sur **ESP32 · D2**, pointe noire sur **ESP32 · GND**.",
+    "en": "Same measurement on the ESP32: red probe on **ESP32 · D2**, black probe on **ESP32 · GND**."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "ESP32.D2",
+     "ESP32.GND"
+    ],
+    "tolerance": 0.1,
+    "state": {
+     "ESP32.D2": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant de LED2",
+    "en": "Measurement: LED2 current"
+   },
+   "text": {
+    "fr": "Multimètre en mode **mA** : mesurez le courant qui traverse **LED2** (ESP32). Comparez avec LED1, sur l’Uno.",
+    "en": "Multimeter in **mA** mode: measure the current through **LED2** (ESP32). Compare with LED1, on the Uno."
+   },
+   "hint": {
+    "fr": "Même résistance, tension plus basse : I = (3,3 V - 2 V) / 220 Ω, environ 5 mA, contre environ 11 mA sur l’Uno.",
+    "en": "Same resistor, lower voltage: I = (3.3 V - 2 V) / 220 Ω, about 5 mA, against about 11 mA on the Uno."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED2",
+    "tolerance": 0.15,
+    "state": {
+     "ESP32.D2": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "5 V sur un ESP32 ?",
+    "en": "5 V on an ESP32?"
+   },
+   "text": {
+    "fr": "Un capteur à ultrasons HC-SR04 alimenté en 5 V renvoie un signal ECHO de 5 V. Comment le relier à une entrée de l’ESP32 ?",
+    "en": "An HC-SR04 ultrasonic sensor powered at 5 V sends back a 5 V ECHO signal. How do you connect it to an ESP32 input?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Directement : l’ESP32 supporte 5 V",
+      "en": "Directly: the ESP32 handles 5 V"
+     },
+     {
+      "fr": "Par un pont diviseur (1 kΩ et 2 kΩ) ou un adaptateur de niveau",
+      "en": "Through a voltage divider (1 kΩ and 2 kΩ) or a level shifter"
+     },
+     {
+      "fr": "Avec une seule résistance de 220 Ω en série",
+      "en": "With a single 220 Ω series resistor"
+     },
+     {
+      "fr": "C’est impossible avec un ESP32",
+      "en": "It cannot be done with an ESP32"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Projet : arrosage connecté",
+    "en": "Project: connected irrigation"
+   },
+   "text": {
+    "fr": "Un maraîcher des Niayes veut suivre l’humidité de son sol **depuis son téléphone**, par le Wi-Fi de la ferme. Quelles cartes conviennent ? (plusieurs réponses)",
+    "en": "A market gardener in the Niayes wants to follow soil moisture **from his phone**, over the farm’s Wi-Fi. Which boards fit? (several answers)"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Arduino Uno",
+      "en": "Arduino Uno"
+     },
+     {
+      "fr": "ESP32",
+      "en": "ESP32"
+     },
+     {
+      "fr": "NodeMCU (ESP8266)",
+      "en": "NodeMCU (ESP8266)"
+     },
+     {
+      "fr": "Raspberry Pi Pico (sans W)",
+      "en": "Raspberry Pi Pico (without W)"
+     }
+    ],
+    "answer": [
+     1,
+     2
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Premier achat d’un club",
+    "en": "A club’s first purchase"
+   },
+   "text": {
+    "fr": "Le club d’électronique d’un collège de Thiès achète ses 10 premières cartes pour apprendre : LED, boutons, capteurs, moteurs. Quel choix conseillez-vous ?",
+    "en": "A middle-school electronics club in Thiès is buying its first 10 boards to learn: LEDs, buttons, sensors, motors. What do you recommend?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Des Arduino Uno ou Nano (clones) : 5 V, robustes, beaucoup de tutoriels",
+      "en": "Arduino Uno or Nano (clones): 5 V, sturdy, lots of tutorials"
+     },
+     {
+      "fr": "Des ordinateurs Raspberry Pi 5",
+      "en": "Raspberry Pi 5 computers"
+     },
+     {
+      "fr": "Des ESP32 uniquement, car ils sont plus rapides",
+      "en": "Only ESP32s, because they are faster"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

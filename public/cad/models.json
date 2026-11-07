@@ -1,0 +1,458 @@
+{
+ "esp32-wroom-32": {
+  "file": "esp32-wroom-32.glb",
+  "title": "Module ESP32-WROOM-32",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/RF_Module.3dshapes/ESP32-WROOM-32.step",
+  "min": [
+   -9,
+   0,
+   -15.745
+  ],
+  "max": [
+   9,
+   3.1,
+   9.755
+  ],
+  "tris": 8656
+ },
+ "esp-12e": {
+  "file": "esp-12e.glb",
+  "title": "Module ESP-12E (ESP8266)",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/RF_Module.3dshapes/ESP-12E.step",
+  "min": [
+   -8,
+   0,
+   -12
+  ],
+  "max": [
+   8,
+   3.2,
+   12
+  ],
+  "tris": 11592
+ },
+ "rpi-pico": {
+  "file": "rpi-pico.glb",
+  "title": "Raspberry Pi Pico",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Module.3dshapes/RaspberryPi_Pico.step",
+  "min": [
+   -10.5,
+   0,
+   -26.8
+  ],
+  "max": [
+   10.5,
+   3.7,
+   25.5
+  ],
+  "tris": 15408
+ },
+ "dht11": {
+  "file": "dht11.glb",
+  "title": "Capteur DHT11",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Sensor.3dshapes/Aosong_DHT11_5.5x12.0_P2.54mm.step",
+  "min": [
+   -2.75,
+   -8,
+   -2.19
+  ],
+  "max": [
+   2.75,
+   15.5,
+   9.81
+  ],
+  "tris": 1280
+ },
+ "led-5mm-red": {
+  "file": "led-5mm-red.glb",
+  "title": "LED 5 mm rouge",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm.step",
+  "min": [
+   -1.23,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.17,
+   11.6,
+   2.9
+  ],
+  "tris": 1371
+ },
+ "led-5mm-green": {
+  "file": "led-5mm-green.glb",
+  "title": "LED 5 mm verte",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm_Green.step",
+  "min": [
+   -1.23,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.17,
+   11.6,
+   2.9
+  ],
+  "tris": 1371
+ },
+ "led-5mm-blue": {
+  "file": "led-5mm-blue.glb",
+  "title": "LED 5 mm bleue",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm_Blue.step",
+  "min": [
+   -1.23,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.17,
+   11.6,
+   2.9
+  ],
+  "tris": 1371
+ },
+ "led-5mm-yellow": {
+  "file": "led-5mm-yellow.glb",
+  "title": "LED 5 mm jaune",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm_Yellow.step",
+  "min": [
+   -1.23,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.17,
+   11.6,
+   2.9
+  ],
+  "tris": 1371
+ },
+ "led-5mm-clear": {
+  "file": "led-5mm-clear.glb",
+  "title": "LED 5 mm blanche",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm_Clear.step",
+  "min": [
+   -1.23,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.17,
+   11.6,
+   2.9
+  ],
+  "tris": 1371
+ },
+ "led-5mm-rgb": {
+  "file": "led-5mm-rgb.glb",
+  "title": "LED RGB 5 mm",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/LED_THT.3dshapes/LED_D5.0mm-4_RGB.step",
+  "min": [
+   -0.595,
+   -2.5,
+   -2.9
+  ],
+  "max": [
+   4.805,
+   11.6,
+   2.9
+  ],
+  "tris": 1411
+ },
+ "resistor-axial": {
+  "file": "resistor-axial.glb",
+  "title": "Résistance axiale 1/4 W",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Resistor_THT.3dshapes/R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal.step",
+  "min": [
+   -0.3,
+   -3,
+   -1.25
+  ],
+  "max": [
+   10.46,
+   2.5,
+   1.25
+  ],
+  "tris": 3300
+ },
+ "diode-do41": {
+  "file": "diode-do41.glb",
+  "title": "Diode DO-41",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Diode_THT.3dshapes/D_DO-41_SOD81_P10.16mm_Horizontal.step",
+  "min": [
+   -0.4,
+   -2.5,
+   -1.355
+  ],
+  "max": [
+   10.56,
+   3.21,
+   1.355
+  ],
+  "tris": 1852
+ },
+ "cap-radial": {
+  "file": "cap-radial.glb",
+  "title": "Condensateur électrolytique",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Capacitor_THT.3dshapes/CP_Radial_D6.3mm_P2.50mm.step",
+  "min": [
+   -1.898,
+   -2,
+   -3.15
+  ],
+  "max": [
+   4.4,
+   6.3,
+   3.15
+  ],
+  "tris": 5268
+ },
+ "cap-disc": {
+  "file": "cap-disc.glb",
+  "title": "Condensateur céramique",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Capacitor_THT.3dshapes/C_Disc_D5.0mm_W2.5mm_P2.50mm.step",
+  "min": [
+   -1.25,
+   -2,
+   -1.25
+  ],
+  "max": [
+   3.748,
+   5.098,
+   1.25
+  ],
+  "tris": 2800
+ },
+ "to-92": {
+  "file": "to-92.glb",
+  "title": "Boîtier TO-92",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Package_TO_SOT_THT.3dshapes/TO-92_Inline.step",
+  "min": [
+   -1.144,
+   -2.5,
+   -2.41
+  ],
+  "max": [
+   3.684,
+   7.3,
+   1.33
+  ],
+  "tris": 188
+ },
+ "buzzer-12mm": {
+  "file": "buzzer-12mm.glb",
+  "title": "Buzzer 12 mm",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Buzzer_Beeper.3dshapes/Buzzer_12x9.5RM7.6.step",
+  "min": [
+   -2.2,
+   -3,
+   -6
+  ],
+  "max": [
+   9.8,
+   9.53,
+   6
+  ],
+  "tris": 4076
+ },
+ "button-6mm": {
+  "file": "button-6mm.glb",
+  "title": "Bouton poussoir 6 mm",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Button_Switch_THT.3dshapes/SW_PUSH_6mm.step",
+  "min": [
+   -0.436,
+   -3.5,
+   -0.75
+  ],
+  "max": [
+   6.736,
+   4.3,
+   5.25
+  ],
+  "tris": 2378
+ },
+ "usb-micro-b": {
+  "file": "usb-micro-b.glb",
+  "title": "Connecteur micro-USB",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Connector_USB.3dshapes/USB_Micro-B_Molex_47346-0001.step",
+  "min": [
+   -3.989,
+   -0.24,
+   -1.648
+  ],
+  "max": [
+   3.989,
+   2.697,
+   3.77
+  ],
+  "tris": 5488
+ },
+ "usb-mini-b": {
+  "file": "usb-mini-b.glb",
+  "title": "Connecteur mini-USB",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Connector_USB.3dshapes/USB_Mini-B_Lumberg_2486_01_Horizontal.step",
+  "min": [
+   -4.95,
+   -1,
+   -3.4
+  ],
+  "max": [
+   4.95,
+   3.997,
+   5.8
+  ],
+  "tris": 7238
+ },
+ "barrel-jack": {
+  "file": "barrel-jack.glb",
+  "title": "Prise jack d’alimentation",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Connector_BarrelJack.3dshapes/BarrelJack_Horizontal.step",
+  "min": [
+   -13.8,
+   -3.9,
+   -4.5
+  ],
+  "max": [
+   0.4,
+   10.7,
+   4.8
+  ],
+  "tris": 3115
+ },
+ "dip-28": {
+  "file": "dip-28.glb",
+  "title": "Boîtier DIP-28 (ATmega328P)",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Package_DIP.3dshapes/DIP-28_W7.62mm.step",
+  "min": [
+   -0.127,
+   -3.3,
+   -1.27
+  ],
+  "max": [
+   7.747,
+   3.68,
+   34.29
+  ],
+  "tris": 3330
+ },
+ "crystal-hc49": {
+  "file": "crystal-hc49.glb",
+  "title": "Quartz HC-49",
+  "license": "CC-BY-SA-4.0",
+  "source": "KiCad 3D library",
+  "author": "KiCad Library Team",
+  "url": "https://gitlab.com/kicad/libraries/kicad-packages3D/-/raw/master/Crystal.3dshapes/Crystal_HC49-U_Vertical.step",
+  "min": [
+   -3.01,
+   -2.9,
+   -2.325
+  ],
+  "max": [
+   7.89,
+   13.1,
+   2.325
+  ],
+  "tris": 1256
+ },
+ "battery-9v": {
+  "file": "battery-9v.glb",
+  "title": "Pile 9 V",
+  "license": "MIT",
+  "source": "Adafruit_CAD_Parts",
+  "author": "Adafruit Industries",
+  "url": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/1321%20Battery%209V/1321%20Battery%209V.step",
+  "min": [
+   -41.998,
+   -9,
+   -48.302
+  ],
+  "max": [
+   -15.998,
+   8,
+   0
+  ],
+  "tris": 7338
+ },
+ "pot-10k": {
+  "file": "pot-10k.glb",
+  "title": "Potentiomètre 10 kΩ",
+  "license": "MIT",
+  "source": "Adafruit_CAD_Parts",
+  "author": "Adafruit Industries",
+  "url": "https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/562%2010K%20Potentiometer/562%2010K%20Potentiometer.step",
+  "min": [
+   -8.75,
+   -7.2,
+   -8.75
+  ],
+  "max": [
+   8.75,
+   17.6,
+   16.6
+  ],
+  "tris": 8118
+ }
+}

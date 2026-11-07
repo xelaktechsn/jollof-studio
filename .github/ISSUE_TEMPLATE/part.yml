@@ -1,0 +1,20 @@
+name: Nouveau composant · New part
+description: Demander l'ajout d'un composant électronique · Ask for a new electronic part
+labels: [part]
+body:
+  - type: input
+    id: name
+    attributes:
+      label: Composant · Part
+      placeholder: "Capteur BME280, module relais 2 canaux…"
+    validations: { required: true }
+  - type: input
+    id: datasheet
+    attributes:
+      label: Fiche technique · Datasheet
+      description: Lien vers la fiche du fabricant · Link to the maker's datasheet
+    validations: { required: true }
+  - type: textarea
+    id: use
+    attributes:
+      label: Usage en classe · Classroom use

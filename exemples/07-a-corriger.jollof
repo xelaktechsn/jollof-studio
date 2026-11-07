@@ -1,0 +1,346 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Montage à corriger",
+ "description": "Ce montage contient des erreurs de câblage volontaires. Lancez la simulation : chaque erreur est signalée dans la scène et expliquée. Saurez-vous les corriger toutes ?",
+ "en": {
+  "name": "Circuit to fix",
+  "description": "This circuit contains deliberate wiring mistakes. Start the simulation: each mistake is flagged in the scene and explained. Can you fix them all?"
+ },
+ "exercice": true,
+ "comps": [
+  {
+   "id": "esp32_1",
+   "type": "esp32",
+   "name": "ESP32",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "bmp280_1",
+   "type": "bmp280",
+   "name": "BMP1",
+   "x": 46,
+   "z": -26,
+   "r": -1.5708
+  },
+  {
+   "id": "dht22_1",
+   "type": "dht22",
+   "name": "DHT22",
+   "x": -50,
+   "z": 8,
+   "r": 1.5708
+  },
+  {
+   "id": "res-220_1",
+   "type": "res-220",
+   "name": "R1",
+   "x": 40,
+   "z": 32,
+   "r": 0
+  },
+  {
+   "id": "led-green_1",
+   "type": "led-green",
+   "name": "LED1",
+   "x": 60,
+   "z": 32,
+   "r": 0
+  },
+  {
+   "id": "hcsr04_1",
+   "type": "hcsr04",
+   "name": "US1",
+   "x": 0,
+   "z": -74,
+   "r": 0
+  },
+  {
+   "id": "ds18b20_1",
+   "type": "ds18b20",
+   "name": "DS1",
+   "x": -44,
+   "z": -40,
+   "r": 1.5708
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 0,
+   "z": 84,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "esp32_1",
+    "3V3"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+1"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V vers la breadboard"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-1"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "VCC"
+   ],
+   "b": [
+    "esp32_1",
+    "VIN"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "GND"
+   ],
+   "b": [
+    "esp32_1",
+    "GND (2)"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SDO"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-24"
+   ],
+   "color": "#3a3f45",
+   "role": "Adresse"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SDA"
+   ],
+   "b": [
+    "esp32_1",
+    "D21"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SCL"
+   ],
+   "b": [
+    "esp32_1",
+    "D22"
+   ],
+   "color": "#9b7be0",
+   "role": "I2C SCL"
+  },
+  {
+   "a": [
+    "dht22_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+3"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation"
+  },
+  {
+   "a": [
+    "dht22_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-3"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "dht22_1",
+    "DATA"
+   ],
+   "b": [
+    "esp32_1",
+    "D34"
+   ],
+   "color": "#f2c94c",
+   "role": "Données"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "D4"
+   ],
+   "b": [
+    "res-220_1",
+    "1"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande"
+  },
+  {
+   "a": [
+    "res-220_1",
+    "2"
+   ],
+   "b": [
+    "led-green_1",
+    "K"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance série"
+  },
+  {
+   "a": [
+    "led-green_1",
+    "A"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-22"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+8"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-8"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "TRIG"
+   ],
+   "b": [
+    "esp32_1",
+    "D25"
+   ],
+   "color": "#f2c94c",
+   "role": "Déclenchement"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "ECHO"
+   ],
+   "b": [
+    "esp32_1",
+    "D26"
+   ],
+   "color": "#f2c94c",
+   "role": "Écho"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "VDD"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+5"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-5"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "ds18b20_1",
+    "DQ"
+   ],
+   "b": [
+    "esp32_1",
+    "D27"
+   ],
+   "color": "#f2c94c",
+   "role": "Données 1-Wire"
+  },
+  {
+   "a": [
+    "breadboard_1",
+    "T+16"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-17"
+   ],
+   "color": "#f08a3c",
+   "role": "Fil oublié"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  }
+ }
+}

@@ -1,0 +1,287 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Arrosage automatique",
+ "description": "ESP32, une sonde d’humidité du sol capacitive sur une entrée de l’ADC1, un DHT11 et un module relais qui commande la pompe. Le relais est alimenté par VIN, car sa bobine demande 5 V. Programme : quand le sol est trop sec, le relais de la pompe se ferme, sauf s’il fait plus de 35 °C (règle imbriquée : on n’arrose pas en plein soleil). Au démarrage, la pompe est arrêtée.",
+ "en": {
+  "name": "Automatic watering",
+  "description": "ESP32, a capacitive soil moisture probe on an ADC1 input, a DHT11 and a relay module that drives the pump. The relay is powered from VIN, because its coil needs 5 V. Program: when the soil is too dry, the pump relay closes, unless it is hotter than 35 °C (nested rule: no watering in full sun). At startup, the pump is off."
+ },
+ "comps": [
+  {
+   "id": "esp32_1",
+   "type": "esp32",
+   "name": "ESP32",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "soil_1",
+   "type": "soil",
+   "name": "SOL1",
+   "x": -80,
+   "z": 4,
+   "r": 1.5708
+  },
+  {
+   "id": "dht11_1",
+   "type": "dht11",
+   "name": "DHT11",
+   "x": -6,
+   "z": -66,
+   "r": 0
+  },
+  {
+   "id": "relay_1",
+   "type": "relay",
+   "name": "K1",
+   "x": 62,
+   "z": 14,
+   "r": -1.5708
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 0,
+   "z": 74,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "soil_1",
+    "GND"
+   ],
+   "b": [
+    "esp32_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "soil_1",
+    "AOUT"
+   ],
+   "b": [
+    "esp32_1",
+    "D32"
+   ],
+   "color": "#3fb27f",
+   "role": "Analogique"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "3V3"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+17"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V vers la breadboard"
+  },
+  {
+   "a": [
+    "soil_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+2"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "dht11_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+10"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "GND (2)"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-17"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "a": [
+    "dht11_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-12"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "dht11_1",
+    "DATA"
+   ],
+   "b": [
+    "esp32_1",
+    "D14"
+   ],
+   "color": "#f2c94c",
+   "role": "Données"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "VIN"
+   ],
+   "b": [
+    "breadboard_1",
+    "B+9"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V vers la breadboard"
+  },
+  {
+   "a": [
+    "relay_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "B+25"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V"
+  },
+  {
+   "a": [
+    "relay_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-25"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "relay_1",
+    "IN"
+   ],
+   "b": [
+    "esp32_1",
+    "D4"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 33,
+   "hum": 40,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 22,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "kind": "rule",
+     "id": "r_sol",
+     "src": {
+      "comp": "soil_1",
+      "sig": "soil"
+     },
+     "op": ">",
+     "v": 2250,
+     "from": [
+      0,
+      4095
+     ],
+     "then": [
+      {
+       "kind": "rule",
+       "id": "r_chaud",
+       "src": {
+        "comp": "dht11_1",
+        "sig": "temp"
+       },
+       "op": ">",
+       "v": 35,
+       "from": [
+        0,
+        50
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a_chaud_off",
+         "comp": "relay_1",
+         "act": "off",
+         "arg": null
+        }
+       ],
+       "else": [
+        {
+         "kind": "act",
+         "id": "a_arrose",
+         "comp": "relay_1",
+         "act": "on",
+         "arg": null
+        }
+       ]
+      }
+     ],
+     "else": [
+      {
+       "kind": "act",
+       "id": "a_humide",
+       "comp": "relay_1",
+       "act": "off",
+       "arg": null
+      }
+     ]
+    }
+   ],
+   "boards": {
+    "esp32_1": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {
+    "relay_1": {
+     "act": "off",
+     "arg": null,
+     "mode": "start"
+    }
+   }
+  }
+ }
+}

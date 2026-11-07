@@ -1,0 +1,21 @@
+# Développement seulement (jamais en production), ajouté à docker-compose.yml :
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.dev.yml   (dans .env)
+# - base publiée sur le port 5433 de l'hôte, avec la base jollof_test des tests e2e ;
+# - API en mode développement : les contrôles de secrets de production ne s'appliquent pas
+#   (mot de passe de base « jollof » permis, POSTGRES_PASSWORD=jollof dans .env).
+services:
+  db:
+    ports:
+      - "5433:5432"
+    volumes:
+      # Exécuté seulement à la création du volume : ajoute la base jollof_test.
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    # Un réseau non interne en plus : un port n'est publié que sur un tel réseau.
+    networks: [backend, devnet]
+
+  api:
+    environment:
+      NODE_ENV: development
+
+networks:
+  devnet: {}

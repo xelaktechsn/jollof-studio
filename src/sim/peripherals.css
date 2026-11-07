@@ -1,0 +1,89 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Section « Périphériques » de l'onglet Simulation (sim/peripherals.js) : les cartes reprennent celles des mesures (.probes). */
+.periphs .pxBody { display: flex; flex-direction: column; gap: 7px; margin-top: 6px; }
+.periphs .pxBody button { font: inherit; color: var(--fg); cursor: pointer; }
+.periphs .pxBody button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.periphs .pxLast { margin: 0; min-height: 1.4em; font-family: var(--mono); font-size: 11.5px; color: var(--fg-2); }
+.periphs .pxHint { margin: 0; font-size: 11.5px; color: var(--muted); }
+.periphs .pxHint.warn { color: var(--warn); }
+.periphs li .pd { line-height: 1.4; }
+
+/* Télécommande « Car MP3 » : 7 rangées de 3 touches */
+.periphs .irRemote { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; width: 100%; max-width: 210px; padding: 9px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 14px; }
+.periphs .irKey { height: 27px; padding: 0; border-radius: 14px; background: var(--raise-2); border: 1px solid var(--line-2); font-size: 12px; font-weight: 600; touch-action: none; user-select: none; -webkit-user-select: none; }
+.periphs .irKey.ch { color: var(--danger); }
+.periphs .irKey:hover { border-color: var(--muted); }
+.periphs .irKey.on, .periphs .irKey:active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* Badges RFID */
+.periphs .rfBadges { display: flex; flex-direction: column; gap: 5px; }
+.periphs .rfBadge { display: flex; align-items: center; gap: 8px; min-height: 30px; padding: 4px 8px; text-align: left; background: var(--raise); border: 1px solid var(--line-2); border-radius: var(--r-sm); }
+.periphs .rfBadge i { flex: 0 0 auto; width: 22px; height: 15px; border-radius: 3px; box-shadow: inset 0 0 0 1px #0004; }
+.periphs .rfBadge span { flex: 1; min-width: 0; font-size: 12px; }
+.periphs .rfBadge code { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.periphs .rfBadge:hover { background: var(--raise-2); }
+.periphs .rfBadge[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.periphs .rfBadge[aria-pressed="true"] code { color: var(--fg-2); }
+
+/* Clavier 4×4 */
+.periphs .kpGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px; width: 100%; max-width: 190px; padding: 8px; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r); }
+.periphs .kpKey { aspect-ratio: 1.25; padding: 0; background: var(--raise-2); border: 1px solid var(--line-2); border-radius: var(--r-sm); font-family: var(--mono); font-size: 14px; font-weight: 600; touch-action: none; user-select: none; -webkit-user-select: none; }
+.periphs .kpKey.let { color: var(--danger); }
+.periphs .kpKey.sym { color: var(--info); }
+.periphs .kpKey:hover { border-color: var(--muted); }
+.periphs .kpKey.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+
+/* Conversation Bluetooth et SMS */
+.periphs .chatLog, .periphs .smsList { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 5px; max-height: 170px; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.periphs .chatLog li, .periphs .smsList li { max-width: 88%; padding: 5px 8px; border-radius: 9px; font-size: 12px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--raise-2); border: 0; display: block; }
+.periphs .chatLog li small, .periphs .smsList li small { display: block; font-size: 10.5px; color: var(--muted); }
+.periphs .chatLog li.phone { align-self: flex-end; background: var(--accent-soft); }
+.periphs .chatLog li.board, .periphs .smsList li { align-self: flex-start; font-family: var(--mono); }
+.periphs .chatLog li.part { opacity: .7; }
+.periphs .chatLog li.none, .periphs .smsList li.none { align-self: stretch; max-width: none; background: none; color: var(--muted); font-family: var(--sans); font-size: 11.5px; }
+.periphs .chatForm, .periphs .smsForm { display: flex; gap: 5px; align-items: center; }
+.periphs .chatForm input, .periphs .smsForm input, .periphs .chatForm select { font: inherit; font-size: 12px; height: 26px; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 7px; }
+.periphs .chatForm input, .periphs .smsForm input { flex: 1; min-width: 0; }
+.periphs .chatForm select { flex: 0 0 auto; padding: 0 4px; font-family: var(--mono); }
+.periphs .chatForm .btn, .periphs .smsForm .btn { flex: 0 0 auto; }
+.periphs .gsmCall { display: flex; align-items: center; gap: 7px; padding: 6px 8px; font-size: 12px; background: var(--accent-soft); border: 1px solid var(--accent); border-radius: var(--r-sm); }
+.periphs .gsmCall[hidden] { display: none; }
+.periphs .gsmCall span { flex: 1; min-width: 0; }
+.periphs .gsmCall .ic { width: 15px; height: 15px; color: var(--accent); }
+
+/* HC-05 : nom Bluetooth ou mode AT ; SIM800 : appeler la carte */
+.periphs .pxNote { margin: 0; font-size: 11.5px; color: var(--fg-2); }
+.periphs .gsmRing { align-self: flex-start; }
+.periphs .gsmRing[hidden] { display: none; }
+.periphs .chatForm input:disabled, .periphs .chatForm select:disabled { opacity: .5; }
+
+/* Réseau Wi-Fi */
+.periphs .wifiForm { display: grid; grid-template-columns: 1fr 1fr auto; gap: 5px; align-items: end; }
+.periphs .wifiForm label { display: flex; flex-direction: column; gap: 3px; min-width: 0; font-size: 11px; color: var(--muted); }
+.periphs .wifiForm input { font: inherit; font-size: 12px; height: 26px; min-width: 0; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 7px; }
+.periphs .wifiList { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.periphs .wifiList li { display: flex; flex-direction: row; align-items: center; gap: 6px; flex-wrap: wrap; padding: 3px 0; border: 0; border-radius: 0; background: none; font-size: 12px; text-align: left; }
+.periphs .wifiList li .ic { width: 13px; height: 13px; color: var(--muted); flex: 0 0 auto; }
+.periphs .wifiList li span { flex: 1; min-width: 0; }
+.periphs .wifiList li small { color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.periphs .wifiList li.brd small { flex-basis: 100%; padding-left: 19px; }
+.periphs .wifiList li.brd { border-top: 1px solid var(--line); padding-top: 5px; }
+
+/* Navigateur : barre d'adresse et page servie (cadre sans scripts) */
+.periphs .webBar { display: flex; gap: 5px; align-items: center; }
+.periphs .webBar select, .periphs .webBar input { font: inherit; font-size: 12px; height: 26px; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 7px; }
+.periphs .webBar select { flex: 0 1 40%; min-width: 0; }
+.periphs .webBar select[hidden] { display: none; }
+.periphs .webBar input { flex: 1; min-width: 0; font-family: var(--mono); }
+.periphs .webBar .btn { flex: 0 0 auto; padding: 0 7px; }
+.periphs .webStatus { margin: 0; min-height: 1.3em; font-size: 11.5px; color: var(--muted); }
+.periphs .webView { width: 100%; height: 260px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: #fff; }
+
+/* Journal : une courbe par champ */
+.periphs .jrnCharts { display: flex; flex-direction: column; gap: 6px; }
+.periphs .jrnCharts figure { margin: 0; padding: 5px 7px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.periphs .jrnCharts figcaption { font-family: var(--mono); font-size: 11.5px; }
+.periphs .jrnCharts figcaption small { color: var(--muted); }
+.periphs .jrnCharts svg { display: block; width: 100%; height: 56px; }
+.periphs [data-jclear] { align-self: flex-start; }

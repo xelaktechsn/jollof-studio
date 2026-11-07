@@ -1,0 +1,347 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Radar de recul",
+ "description": "Arduino Uno, un télémètre à ultrasons HC-SR04, un buzzer derrière un transistor BC547 (il tire 25 mA, plus que les 20 mA conseillés par broche) qui bipe plus vite quand l’obstacle approche et un écran LCD 16×2 pour la distance. Tout est en 5 V : aucun adaptateur de niveau nécessaire. Programme écrit à la main : le buzzer bipe de plus en plus vite quand l’obstacle approche.",
+ "en": {
+  "name": "Parking radar",
+  "description": "Arduino Uno, an HC-SR04 ultrasonic range finder, a buzzer behind a BC547 transistor (it draws 25 mA, more than the 20 mA advised per pin) that beeps faster as the obstacle gets closer and a 16×2 LCD for the distance. Everything runs on 5 V: no level shifter needed. Hand-written program: the buzzer beeps faster and faster as the obstacle approaches.",
+  "code": {
+   "uno_1": [
+    "// Parking radar: the closer the obstacle, the faster the buzzer beeps.",
+    "// The display shows the distance and a proximity bar.",
+    "#include <Wire.h>",
+    "#include <LiquidCrystal_I2C.h>",
+    "",
+    "const int TRIG = 7;",
+    "const int ECHO = 8;",
+    "const int BUZZER = 2;",
+    "LiquidCrystal_I2C lcd(0x27, 16, 2);",
+    "",
+    "// Distance in cm: 10 µs pulse on TRIG, then length of the echo.",
+    "float measureDistance() {",
+    "  digitalWrite(TRIG, LOW);",
+    "  delayMicroseconds(2);",
+    "  digitalWrite(TRIG, HIGH);",
+    "  delayMicroseconds(10);",
+    "  digitalWrite(TRIG, LOW);",
+    "  long duration = pulseIn(ECHO, HIGH, 30000); // 0 if no echo",
+    "  return duration / 58.0;",
+    "}",
+    "",
+    "void setup() {",
+    "  Serial.begin(9600);",
+    "  pinMode(TRIG, OUTPUT);",
+    "  pinMode(ECHO, INPUT);",
+    "  pinMode(BUZZER, OUTPUT);",
+    "  lcd.init();",
+    "  lcd.backlight();",
+    "  lcd.print(\"Parking radar\");",
+    "  delay(1000);",
+    "}",
+    "",
+    "void loop() {",
+    "  float cm = measureDistance();",
+    "",
+    "  lcd.setCursor(0, 0);",
+    "  lcd.print(\"Distance:       \");",
+    "  lcd.setCursor(10, 0);",
+    "  if (cm == 0) {",
+    "    lcd.print(\"---\");",
+    "  } else {",
+    "    lcd.print(cm, 0);",
+    "    lcd.print(\" cm\");",
+    "  }",
+    "",
+    "  // Bar: one more block for every 10 cm below 160 cm.",
+    "  int blocks = cm == 0 ? 0 : constrain(16 - (int)(cm / 10), 0, 16);",
+    "  lcd.setCursor(0, 1);",
+    "  for (int i = 0; i < 16; i++) {",
+    "    lcd.print(i < blocks ? '#' : ' ');",
+    "  }",
+    "",
+    "  Serial.print(\"Distance: \");",
+    "  Serial.print(cm);",
+    "  Serial.println(\" cm\");",
+    "",
+    "  if (cm > 0 && cm < 10) {",
+    "    digitalWrite(BUZZER, HIGH); // very close: continuous tone",
+    "    delay(100);",
+    "  } else if (cm > 0 && cm < 100) {",
+    "    digitalWrite(BUZZER, HIGH);",
+    "    delay(50);",
+    "    digitalWrite(BUZZER, LOW);",
+    "    delay(cm * 4); // the farther the obstacle, the longer the pause",
+    "  } else {",
+    "    digitalWrite(BUZZER, LOW);",
+    "    delay(200);",
+    "  }",
+    "}"
+   ]
+  }
+ },
+ "comps": [
+  {
+   "id": "uno_1",
+   "type": "uno",
+   "name": "UNO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "hcsr04_1",
+   "type": "hcsr04",
+   "name": "US1",
+   "x": 0,
+   "z": -70,
+   "r": 0
+  },
+  {
+   "id": "buzzer_1",
+   "type": "buzzer",
+   "name": "BZ1",
+   "x": 58,
+   "z": -48,
+   "r": 0
+  },
+  {
+   "id": "npn_1",
+   "type": "npn",
+   "name": "Q1",
+   "x": 84,
+   "z": -40,
+   "r": 0
+  },
+  {
+   "id": "res-1k_1",
+   "type": "res-1k",
+   "name": "R1",
+   "x": 84,
+   "z": -14,
+   "r": 0
+  },
+  {
+   "id": "lcd1602_1",
+   "type": "lcd1602",
+   "name": "LCD1",
+   "x": 12,
+   "z": 72,
+   "r": 0
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 6,
+   "z": 126,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "hcsr04_1",
+    "GND"
+   ],
+   "b": [
+    "uno_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "TRIG"
+   ],
+   "b": [
+    "uno_1",
+    "D7"
+   ],
+   "color": "#f2c94c",
+   "role": "Déclenchement"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "ECHO"
+   ],
+   "b": [
+    "uno_1",
+    "D8"
+   ],
+   "color": "#f2c94c",
+   "role": "Écho"
+  },
+  {
+   "a": [
+    "buzzer_1",
+    "-"
+   ],
+   "b": [
+    "npn_1",
+    "C"
+   ],
+   "color": "#f08a3c",
+   "role": "Vers le collecteur du transistor"
+  },
+  {
+   "a": [
+    "npn_1",
+    "E"
+   ],
+   "b": [
+    "uno_1",
+    "GND (3)"
+   ],
+   "color": "#3a3f45",
+   "role": "Émetteur à la masse"
+  },
+  {
+   "a": [
+    "buzzer_1",
+    "+"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+14"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V"
+  },
+  {
+   "a": [
+    "npn_1",
+    "B"
+   ],
+   "b": [
+    "res-1k_1",
+    "2"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance de base"
+  },
+  {
+   "a": [
+    "res-1k_1",
+    "1"
+   ],
+   "b": [
+    "uno_1",
+    "D2"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande du transistor"
+  },
+  {
+   "a": [
+    "uno_1",
+    "5V"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+10"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V vers la breadboard"
+  },
+  {
+   "a": [
+    "hcsr04_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+9"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V"
+  },
+  {
+   "a": [
+    "lcd1602_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+1"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 5 V"
+  },
+  {
+   "a": [
+    "uno_1",
+    "GND (2)"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-11"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "a": [
+    "lcd1602_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-1"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "lcd1602_1",
+    "SDA"
+   ],
+   "b": [
+    "uno_1",
+    "SDA"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  },
+  {
+   "a": [
+    "lcd1602_1",
+    "SCL"
+   ],
+   "b": [
+    "uno_1",
+    "SCL"
+   ],
+   "color": "#9b7be0",
+   "role": "I2C SCL"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 35,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {
+    "uno_1": {
+     "code": "// Radar de recul : plus l’obstacle est proche, plus le buzzer bipe vite.\n// L’écran affiche la distance et une barre de proximité.\n#include <Wire.h>\n#include <LiquidCrystal_I2C.h>\n\nconst int TRIG = 7;\nconst int ECHO = 8;\nconst int BUZZER = 2;\nLiquidCrystal_I2C lcd(0x27, 16, 2);\n\n// Distance en cm : impulsion de 10 µs sur TRIG, puis durée de l’écho.\nfloat mesurerDistance() {\n  digitalWrite(TRIG, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG, LOW);\n  long duree = pulseIn(ECHO, HIGH, 30000); // 0 si aucun écho\n  return duree / 58.0;\n}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  pinMode(BUZZER, OUTPUT);\n  lcd.init();\n  lcd.backlight();\n  lcd.print(\"Radar de recul\");\n  delay(1000);\n}\n\nvoid loop() {\n  float cm = mesurerDistance();\n\n  lcd.setCursor(0, 0);\n  lcd.print(\"Distance:       \");\n  lcd.setCursor(10, 0);\n  if (cm == 0) {\n    lcd.print(\"---\");\n  } else {\n    lcd.print(cm, 0);\n    lcd.print(\" cm\");\n  }\n\n  // Barre : un bloc de plus par tranche de 10 cm en dessous de 160 cm.\n  int blocs = cm == 0 ? 0 : constrain(16 - (int)(cm / 10), 0, 16);\n  lcd.setCursor(0, 1);\n  for (int i = 0; i < 16; i++) {\n    lcd.print(i < blocs ? '#' : ' ');\n  }\n\n  Serial.print(\"Distance : \");\n  Serial.print(cm);\n  Serial.println(\" cm\");\n\n  if (cm > 0 && cm < 10) {\n    digitalWrite(BUZZER, HIGH); // très près : son continu\n    delay(100);\n  } else if (cm > 0 && cm < 100) {\n    digitalWrite(BUZZER, HIGH);\n    delay(50);\n    digitalWrite(BUZZER, LOW);\n    delay(cm * 4); // plus l’obstacle est loin, plus la pause est longue\n  } else {\n    digitalWrite(BUZZER, LOW);\n    delay(200);\n  }\n}\n",
+     "auto": false
+    }
+   }
+  }
+ }
+}

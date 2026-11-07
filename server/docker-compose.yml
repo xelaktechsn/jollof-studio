@@ -1,0 +1,75 @@
+# Production (cloud) : PostgreSQL 16 + API NestJS, derrière un proxy inverse HTTPS (README).
+#   - la base n'est joignable que par l'API (réseau interne, aucun port publié) ;
+#   - l'API écoute sur 127.0.0.1:3100, pour le proxy de la même machine (API_BIND pour changer) ;
+#   - secrets obligatoires dans .env : POSTGRES_PASSWORD, JWT_SECRET (l'API refuse les valeurs d'exemple).
+# Développement : ajouter docker-compose.dev.yml (COMPOSE_FILE dans .env, voir README).
+# Boîtier école : docker-compose.box.yml, à la place de ce fichier.
+name: jollof
+
+x-hardening: &hardening
+  restart: unless-stopped
+  security_opt: ["no-new-privileges:true"]
+  logging:
+    driver: json-file
+    options: { max-size: "10m", max-file: "3" }
+
+services:
+  db:
+    <<: *hardening
+    image: postgres:16
+    environment:
+      POSTGRES_USER: jollof
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env (openssl rand -hex 24)}
+      POSTGRES_DB: jollof
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [backend]
+    # Système de fichiers en lecture seule : seules les données (volume), le socket et /tmp s'écrivent.
+    read_only: true
+    tmpfs: [/tmp, /var/run/postgresql]
+    # Le point d'entrée de l'image règle les propriétaires puis passe à l'utilisateur postgres.
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U jollof -d jollof"]
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 30s
+
+  api:
+    <<: *hardening
+    build: .
+    image: ${JOLLOF_IMAGE:-jollof-api}
+    init: true
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3100
+      NODE_OPTIONS: --max-old-space-size=${API_HEAP_MB:-384}
+      DATABASE_URL: postgres://jollof:${POSTGRES_PASSWORD:?}@db:5432/jollof
+      DB_POOL_SIZE: ${DB_POOL_SIZE:-10}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET manquant dans .env (openssl rand -base64 48)}
+      PLATFORM_KEY: ${PLATFORM_KEY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:1420,tauri://localhost,http://tauri.localhost,https://tauri.localhost}
+      TRIAL_DAYS: ${TRIAL_DAYS:-30}
+      BCRYPT_COST: ${BCRYPT_COST:-12}
+      # Derrière le proxy inverse : 1. Sans proxy, laisser false (sinon X-Forwarded-For est falsifiable).
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+    ports:
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-3100}:3100"
+    networks: [backend, frontend]
+    read_only: true
+    tmpfs: ["/tmp:size=16m"]
+    cap_drop: [ALL]
+
+networks:
+  # Réseau interne : pas d'accès à l'extérieur, pas de port publiable. La base n'est que là.
+  backend:
+    internal: true
+  frontend: {}
+
+volumes:
+  pgdata:

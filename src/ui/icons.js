@@ -1,0 +1,148 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Mamadou Sarr
+// Jeu d'icônes de l'interface : tracés SVG 24 × 24 au trait, dessinés pour Jollof Studio.
+// <i data-icon="nom"></i> dans le HTML est remplacé au démarrage ; icon('nom') sert dans le code.
+import { tl } from '../i18n/index.js';
+const P = {
+  filePlus: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 11v6 M9 14h6',
+  file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5',
+  folder: 'M3 8V6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v1 M3 8v10a2 2 0 0 0 2 2h13l3-9H7l-3 9',
+  save: 'M5 3h11l4 4v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 1-2z M8 3v5h7V3 M7 21v-7h10v7',
+  undo: 'M9 14 4 9l5-5 M4 9h10.5a5.5 5.5 0 0 1 0 11H11',
+  redo: 'M15 14l5-5-5-5 M20 9H9.5a5.5 5.5 0 0 0 0 11H13',
+  layers: 'M12 3 2 8l10 5 10-5z M2 13l10 5 10-5 M2 17.5l10 5 10-5',
+  book: 'M4 4.5A1.5 1.5 0 0 1 5.5 3H20v15H5.5A1.5 1.5 0 0 0 4 19.5z M4 19.5A1.5 1.5 0 0 0 5.5 21H20v-3 M8 7h8 M8 11h5',
+  play: 'M7 4.5v15a.8.8 0 0 0 1.2.7l12-7.5a.8.8 0 0 0 0-1.4l-12-7.5A.8.8 0 0 0 7 4.5z',
+  stop: 'M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1z',
+  pause: 'M8 5v14 M16 5v14',
+  timeline: 'M4 7h8 M9 12h10 M5 17h7 M15 4v16',
+  box: 'M21 8 12 3 3 8v8l9 5 9-5z M3 8l9 5 9-5 M12 13v8',
+  search: 'M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z M20 20l-4-4',
+  upload: 'M12 15V4 M7 9l5-5 5 5 M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3',
+  rotate: 'M20 12a8 8 0 1 1-2.4-5.7 M20 4v4.5h-4.5',
+  help: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M9.6 9.3a2.5 2.5 0 1 1 3.4 2.4c-.6.3-1 .8-1 1.5v.6 M12 17h.01',
+  trash: 'M4 7h16 M9 7V4.5h6V7 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
+  wand: 'M5 19 15 9 M13.5 7.5l3 3 M18 3v3 M16.5 4.5h3 M20 9v2 M19 10h2 M10 3v2 M9 4h2',
+  cable: 'M7 21v-5 M5 16h4V9a5 5 0 0 1 10 0v2 M17 11h4v4h-4z M19 15v6',
+  zap: 'M13 2 4 14h7l-1 8 9-12h-7z',
+  film: 'M4 4h16v16H4z M8 4v16 M16 4v16 M4 9h4 M4 15h4 M16 9h4 M16 15h4',
+  list: 'M9 6h11 M9 12h11 M9 18h11 M4.5 6h.01 M4.5 12h.01 M4.5 18h.01',
+  link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1 M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
+  alert: 'M10.3 4.3 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0z M12 9v4.5 M12 17h.01',
+  check: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M8 12.5l2.7 2.7L16 9.5',
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 11v5.5 M12 7.5h.01',
+  x: 'M6 6l12 12 M18 6 6 18',
+  frame: 'M4 9V5a1 1 0 0 1 1-1h4 M15 4h4a1 1 0 0 1 1 1v4 M20 15v4a1 1 0 0 1-1 1h-4 M9 20H5a1 1 0 0 1-1-1v-4 M12 9v6 M9 12h6',
+  eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  wrench: 'M14.7 6.3a4 4 0 0 0-5.3 5.3L3.5 17.5a1.4 1.4 0 0 0 2 2l5.9-5.9a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.1-.4-.4-2.1z',
+  swap: 'M7 4 3 8l4 4 M3 8h14 M17 20l4-4-4-4 M21 16H7',
+  scissors: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M8.1 7.6 20 17 M8.1 16.4 20 7',
+  palette: 'M12 21a9 9 0 1 1 9-9c0 2-1.5 3-3 3h-2a2 2 0 0 0-1.4 3.4c.8.8.2 2.6-1.6 2.6z M7.5 11.5h.01 M10 7.5h.01 M14.5 7.5h.01 M17 11.5h.01',
+  sliders: 'M4 6h9 M17 6h3 M4 12h3 M11 12h9 M4 18h11 M19 18h1 M15 4v4 M9 10v4 M17 16v4',
+  activity: 'M3 12h4l3-8 4 16 3-8h4',
+  clapper: 'M4 9h16v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1z M4 9l1.5-5 15 3L20 9 M9 4.8l1.5 3.5 M14.5 5.9 16 9.3',
+  record: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  plus: 'M12 5v14 M5 12h14',
+  cube: 'M12 2.5 3.5 7.2v9.6l8.5 4.7 8.5-4.7V7.2z M3.5 7.2 12 12l8.5-4.8 M12 12v9.5',
+  shapes: 'M4 4h7v7H4z M17.5 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7z M7.5 13.5 11 20H4z M14 14h7v7h-7z',
+  sidebar: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M9.5 4v16 M6.5 8h.01 M6.5 11h.01',
+  chevsLeft: 'M11 17l-5-5 5-5 M18 17l-5-5 5-5',
+  chevsRight: 'M13 17l5-5-5-5 M6 17l5-5-5-5',
+  chevUp: 'M6 15l6-6 6 6',
+  chevDown: 'M6 9l6 6 6-6',
+  pin: 'M12 21s6.5-5.8 6.5-11.2a6.5 6.5 0 1 0-13 0C5.5 15.2 12 21 12 21z M12 12a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z',
+  code: 'M8.5 7 3.5 12l5 5 M15.5 7l5 5-5 5 M13.5 4.5l-3 15',
+  puzzle: 'M4 7h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4z',
+  workflow: 'M4 4h6v6H4z M14 14h6v6h-6z M7 10v4a3 3 0 0 0 3 3h4 M17 14v-4a3 3 0 0 0-3-3h-4',
+  terminal: 'M4 4h16a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M7 9l3 3-3 3 M12.5 15H17',
+  volume: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4z M15.5 9a4 4 0 0 1 0 6 M18 6.5a7.5 7.5 0 0 1 0 11',
+  volumeOff: 'M4 9.5h3.5L12 5.5v13l-4.5-4H4z M16 9.5l5 5 M21 9.5l-5 5',
+  expand: 'M14 4h6v6 M20 4l-7 7 M10 20H4v-6 M4 20l7-7',
+  shrink: 'M20 10h-6V4 M14 10l7-7 M4 14h6v6 M10 14l-7 7',
+  send: 'M21 3 10.5 13.5 M21 3l-6.5 18-4-7.5L3 9.5z',
+  axes: 'M5 19V4 M5 19h15 M5 19l-3.5 3.5 M3 6l2-2 2 2 M18 17l2 2-2 2',
+  tag: 'M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9z M7.5 7.5h.01',
+  blockFrame: 'M4 7V4h3 M17 4h3v3 M20 17v3h-3 M7 20H4v-3 M8 9h8v6H8z',
+  note: 'M5 4h14a1 1 0 0 1 1 1v10l-5 5H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M15 20v-4a1 1 0 0 1 1-1h4 M8 9h8 M8 12.5h5',
+  present: 'M3 4h18 M4 4v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V4 M12 16v4 M8 21l4-1 4 1 M10 8l4 2.5-4 2.5z',
+  graduation: 'M12 4 2 9l10 5 10-5z M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5 M22 9v6',
+  route: 'M5 19V12h7V5h7 M5 19h.01 M19 5h.01',
+  curve: 'M4 19C4 9 20 15 20 5 M4 19h.01 M20 5h.01',
+  lock: 'M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z M8.5 11V8a3.5 3.5 0 0 1 7 0v3 M12 15v2',
+  schematic: 'M3 12h3l2-4 3 8 2-4h2 M15 12h2 M17 8v8 M20 9.5v5 M3 4h7 M3 20h7',
+  printer: 'M7 9V3h10v6 M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2 M7 14h10v7H7z',
+  pdf: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 11v6 M9.5 14.5 12 17l2.5-2.5',
+  /* Débogueur et traceur série */
+  bug: 'M9.5 6.5a2.5 2.5 0 0 1 5 0 M7 11a5 5 0 0 1 10 0v3a5 5 0 0 1-10 0z M12 11v8 M3 12.5h4 M17 12.5h4 M4 7.5l3 2 M20 7.5l-3 2 M4 18.5l3-2 M20 18.5l-3-2',
+  stepOver: 'M4 13a8 8 0 0 1 15.2-4 M19.2 4v5h-5 M12 20.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+  stepInto: 'M12 3v10 M7.5 8.5 12 13l4.5-4.5 M12 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+  stepOut: 'M12 14V4 M7.5 8.5 12 4l4.5 4.5 M12 21a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+  chart: 'M4 4v16h16 M7.5 15l3.5-4.5 3 3L19 7',
+  /* Catégories de la bibliothèque */
+  cpu: 'M7 7h10v10H7z M10 10h4v4h-4z M9 3v4 M15 3v4 M9 17v4 M15 17v4 M3 9h4 M3 15h4 M17 9h4 M17 15h4',
+  grid: 'M3 5h18v14H3z M3 12h18 M7 8.5h.01 M11 8.5h.01 M15 8.5h.01 M7 15.5h.01 M11 15.5h.01 M15 15.5h.01 M19 8.5h.01 M19 15.5h.01',
+  thermo: 'M14 14.8V5a2 2 0 0 0-4 0v9.8a4 4 0 1 0 4 0z M12 10v7',
+  toggle: 'M8 7h8a5 5 0 0 1 0 10H8A5 5 0 0 1 8 7z M16 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
+  monitor: 'M3 4h18v12H3z M8 20h8 M12 16v4',
+  bulb: 'M9 18h6 M10 21h4 M12 3a6 6 0 0 0-3.6 10.8c.7.6 1.1 1.4 1.1 2.2h5c0-.8.4-1.6 1.1-2.2A6 6 0 0 0 12 3z',
+  gear: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M12 2v3 M12 19v3 M2 12h3 M19 12h3 M4.9 4.9l2.1 2.1 M17 17l2.1 2.1 M4.9 19.1 7 17 M17 7l2.1-2.1',
+  resistor: 'M2 12h4l1.5-3.5 3 7 3-7 3 7L18 12h4',
+  battery: 'M3 7h15a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1z M22 10.5v3 M6 10v4 M9.5 10v4',
+  radio: 'M12 13a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z M8.5 8a5 5 0 0 0 0 7 M15.5 8a5 5 0 0 1 0 7 M5.6 5.1a9 9 0 0 0 0 12.8 M18.4 5.1a9 9 0 0 1 0 12.8',
+  gauge: 'M3.5 16a8.5 8.5 0 1 1 17 0 M12 16l4.2-5.2 M7 19.5h10 M6.2 11.2l1.3.8 M12 7.5V9 M17.8 11.2l-1.3.8',
+  flow: 'M3 7h10a4 4 0 0 1 0 8H8 M6 12l-3 3 3 3 M17 7.01h.01 M13 11h.01 M9 15h.01',
+  users: 'M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M2.5 20a6.5 6.5 0 0 1 13 0 M16 4.3a3.5 3.5 0 0 1 0 6.4 M18 14.2a6.5 6.5 0 0 1 3.5 5.8',
+  message: 'M21 12a8 8 0 0 1-11.6 7.1L4 20.5l1.4-4.9A8 8 0 1 1 21 12z M8.5 10.5h7 M8.5 14h4.5',
+  bell: 'M6 9a6 6 0 1 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z M10 20a2.2 2.2 0 0 0 4 0',
+  school: 'M3 21h18 M5 21V10l7-5 7 5v11 M10 21v-5h4v5 M12 10.5h.01 M3 10.5 12 4l9 6.5',
+  inbox: 'M3 13l2.5-8h13l2.5 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z M3 13h5l1.5 3h5l1.5-3h5',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M12 7v5l3.5 2',
+  history: 'M3.5 12a8.5 8.5 0 1 0 2.5-6 M3 3.5V8h4.5 M12 8v4.5l3 1.8',
+  logout: 'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3 M10 16l-4-4 4-4 M6 12h10',
+  key: 'M14.5 10a4.5 4.5 0 1 0-4.4 4.5L8 16.6V19h2.4v-2h2l1.6-1.6 M15.5 8.5h.01',
+  star: 'M12 3.5l2.6 5.3 5.9.9-4.2 4.1 1 5.8L12 16.9l-5.3 2.7 1-5.8-4.2-4.1 5.9-.9z',
+  image: 'M4 5h16v14H4z M4 16l4.5-4.5 4 4 2.5-2.5L20 18 M15.5 9.5h.01',
+  attach: 'M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8',
+  edit: 'M4 20h4l10.5-10.5a2.8 2.8 0 0 0-4-4L4 16z M13.5 6.5l4 4',
+  copy: 'M9 9h11v11H9z M5 15H4V4h11v1',
+  dots: 'M5 12h.01 M12 12h.01 M19 12h.01',
+  chevRight: 'M9 5l7 7-7 7',
+  chevLeft: 'M15 5l-7 7 7 7',
+  calendar: 'M4 6h16v15H4z M4 10h16 M8 3v4 M16 3v4',
+  award: 'M12 15a6 6 0 1 0 0-12 6 6 0 0 0 0 12z M8.5 14 7 21l5-2.5 5 2.5-1.5-7',
+  bold: 'M7 4h6a4 4 0 0 1 0 8H7z M7 12h7a4 4 0 0 1 0 8H7z',
+  italic: 'M10 4h8 M6 20h8 M14 4l-4 16',
+  underline: 'M7 4v6a5 5 0 0 0 10 0V4 M5 20h14',
+  strike: 'M5 12h14 M16 6.5C15.3 5 13.8 4 12 4c-2.5 0-4.5 1.6-4.5 3.8 0 1.6 1 2.6 2.6 3.2 M8 17.5c.7 1.5 2.2 2.5 4 2.5 2.5 0 4.5-1.6 4.5-3.8',
+  marker: 'M9 13l-4 4v3h3l4-4 M9 13l6.5-6.5a2.1 2.1 0 0 1 3 3L12 16z M14 20h6',
+  quote: 'M5 11h4v6H4v-5c0-3 1.5-5 4-6 M15 11h4v6h-5v-5c0-3 1.5-5 4-6',
+  listOl: 'M10 6h10 M10 12h10 M10 18h10 M4 5l1.5-1v5 M3.8 15.5a1.4 1.4 0 0 1 2.4 1l-2.4 2.5h2.6',
+  checklist: 'M4 6.5l1.5 1.5L8 5.5 M4 16.5 5.5 18 8 15.5 M11 7h9 M11 17h9',
+  minus: 'M5 12h14',
+  alignLeft: 'M4 6h16 M4 10h10 M4 14h16 M4 18h10',
+  alignCenter: 'M4 6h16 M7 10h10 M4 14h16 M7 18h10',
+  alignRight: 'M4 6h16 M10 10h10 M4 14h16 M10 18h10',
+  heading: 'M6 4v16 M18 4v16 M6 12h12',
+  sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0'
+};
+
+export function icon(name, cls = '') {
+  const d = P[name];
+  if (!d) return '';
+  return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
+}
+/** Logo : une carte stylisée, piste en J et pastille de soudure. */
+export const LOGO = '<svg class="logo" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7" fill="#e0703a"/><path d="M17 7.5v9a4.5 4.5 0 0 1-9 0" fill="none" stroke="#1e0d04" stroke-width="2.6" stroke-linecap="round"/><circle cx="17" cy="7.5" r="2.4" fill="#1e0d04"/><circle cx="8" cy="16.5" r="1.4" fill="#1e0d04"/></svg>';
+
+/** Remplit chaque <i data-icon> de son icône. */
+export function hydrateIcons(root = document) {
+  root.querySelectorAll('[data-icon]').forEach(el => {
+    if (el.dataset.done) return;
+    el.dataset.done = '1';
+    el.insertAdjacentHTML('afterbegin', el.dataset.icon === 'logo' ? LOGO : icon(el.dataset.icon));
+  });
+}
+/** Icône de chaque catégorie de la bibliothèque. */
+/** (Clés : noms des catégories dans la langue de l'interface.) */
+export const CAT_ICON = { [tl('Cartes')]: 'cpu', [tl('Prototypage')]: 'grid', [tl('Capteurs')]: 'thermo', [tl('Entrées')]: 'toggle', [tl('Affichage')]: 'monitor', [tl('Sorties')]: 'bulb', [tl('Moteurs')]: 'gear', [tl('Passifs')]: 'resistor', [tl('Alimentation')]: 'battery', [tl('Communication')]: 'radio' };

@@ -1,0 +1,385 @@
+{
+ "id": "tp10-charge-condensateur",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Charge et décharge d’un condensateur",
+  "en": "Charging and discharging a capacitor"
+ },
+ "summary": {
+  "fr": "Un condensateur de 100 µF se charge à travers une résistance de 10 kΩ. L’Arduino mesure sa tension et la trace : on lit la constante de temps τ = R·C sur la courbe.",
+  "en": "A 100 µF capacitor charges through a 10 kΩ resistor. The Arduino measures its voltage and plots it: the time constant τ = R·C is read on the curve."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un circuit RC",
+   "en": "Wire an RC circuit"
+  },
+  {
+   "fr": "Tracer une tension avec le traceur série",
+   "en": "Plot a voltage with the serial plotter"
+  },
+  {
+   "fr": "Mesurer et calculer la constante de temps τ = R·C",
+   "en": "Measure and calculate the time constant τ = R·C"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Charge d’un condensateur",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": -30,
+    "z": 124,
+    "r": 0
+   },
+   {
+    "id": "cap-100u_1",
+    "type": "cap-100u",
+    "name": "C1",
+    "x": 12,
+    "z": 124,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-10k_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Charge"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A12"
+    ],
+    "color": "#f08a3c",
+    "role": "Vers le condensateur"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B12"
+    ],
+    "color": "#e5484d",
+    "role": "Condensateur +"
+   },
+   {
+    "a": [
+     "uno_1",
+     "A0"
+    ],
+    "b": [
+     "breadboard_1",
+     "C12"
+    ],
+    "color": "#3fb27f",
+    "role": "Mesure"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "-"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : charge et décharge d'un condensateur (R = 10 kΩ, C = 100 µF).\nconst int CHARGE = 7;\n\nvoid mesurer() {\n  float u = analogRead(A0) * 5.0 / 1023;   // tension du condensateur, en volts\n  Serial.print(\"tension:\");\n  Serial.println(u);\n  delay(20);                                // une mesure toutes les 20 ms\n}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(CHARGE, OUTPUT);\n}\n\nvoid loop() {\n  digitalWrite(CHARGE, HIGH);               // charge pendant 5 s\n  for (int i = 0; i < 250; i++) mesurer();\n  digitalWrite(CHARGE, LOW);                // décharge pendant 5 s\n  for (int i = 0; i < 250; i++) mesurer();\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le circuit RC",
+    "en": "The RC circuit"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : une **résistance R1 de 10 kΩ** et un **condensateur chimique C1 de 100 µF** (patte **+** et patte **−** : il a un sens).\n- Quand la broche D7 passe à HIGH, le condensateur se **charge** à travers R1 : sa tension monte vers 5 V, d’abord vite puis de plus en plus lentement.\n- Quand D7 repasse à LOW, il se **décharge**.\nLa vitesse dépend de la **constante de temps** τ = R × C.",
+    "en": "On the workspace: a **10 kΩ resistor R1** and a **100 µF electrolytic capacitor C1** (a **+** leg and a **−** leg: it has a direction).\n- When pin D7 goes HIGH, the capacitor **charges** through R1: its voltage rises towards 5 V, fast at first, then more and more slowly.\n- When D7 goes back LOW, it **discharges**.\nThe speed depends on the **time constant** τ = R × C."
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer τ",
+    "en": "Calculate τ"
+   },
+   "text": {
+    "fr": "Calculez τ = R × C avec R = 10 kΩ = 10 000 Ω et C = 100 µF = 0,0001 F.",
+    "en": "Calculate τ = R × C with R = 10 kΩ = 10,000 Ω and C = 100 µF = 0.0001 F."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,01 s",
+      "en": "0.01 s"
+     },
+     {
+      "fr": "0,1 s",
+      "en": "0.1 s"
+     },
+     {
+      "fr": "1 s",
+      "en": "1 s"
+     },
+     {
+      "fr": "10 s",
+      "en": "10 s"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler",
+    "en": "Wire it"
+   },
+   "text": {
+    "fr": "- **D7** → une patte de R1.\n- L’autre patte de R1, la patte **+** de C1 et la broche **A0** de l’UNO se rejoignent sur une même colonne de la breadboard (par exemple A12, B12, C12).\n- La patte **−** de C1 → une broche **GND** de l’UNO.",
+    "en": "- **D7** → one leg of R1.\n- The other leg of R1, the **+** leg of C1 and the UNO’s **A0** pin meet on the same breadboard column (for example A12, B12, C12).\n- The **−** leg of C1 → a UNO **GND** pin."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour relier trois points, utilisez les cinq trous d’une même colonne de la breadboard.",
+    "en": "A pin takes only one wire: to join three points, use the five holes of one breadboard column."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D7",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "C1.+",
+      "UNO.A0"
+     ],
+     [
+      "C1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Code**, écrivez un programme qui :\n- met D7 à HIGH pendant 5 s puis à LOW pendant 5 s, en boucle ;\n- toutes les 20 ms, lit `analogRead(A0)`, convertit en volts (`* 5.0 / 1023`) et l’affiche avec `Serial.print(\"tension:\")` puis `Serial.println(u)`.\nTéléversez.",
+    "en": "In the **Code** tab, write a program that:\n- sets D7 HIGH for 5 s then LOW for 5 s, in a loop;\n- every 20 ms reads `analogRead(A0)`, converts it to volts (`* 5.0 / 1023`) and prints it with `Serial.print(\"tension:\")` then `Serial.println(u)`.\nUpload it."
+   },
+   "hint": {
+    "fr": "Écrivez une fonction `mesurer()` qui lit, affiche puis attend 20 ms, et appelez-la 250 fois de suite (250 × 20 ms = 5 s).",
+    "en": "Write a `mesurer()` function that reads, prints then waits 20 ms, and call it 250 times in a row (250 × 20 ms = 5 s)."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "digitalWrite\\s*\\(",
+     "analogRead\\s*\\(\\s*(A0|0)\\s*\\)",
+     "Serial\\.print(ln)?\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Tracer la courbe",
+    "en": "Plot the curve"
+   },
+   "text": {
+    "fr": "Lancez la simulation, ouvrez l’onglet **Code** puis **Traceur** (au-dessus du moniteur série). La tension monte en arrondi pendant la charge, puis redescend pendant la décharge.\nChoisissez une fenêtre de **10 s** pour voir un cycle entier.",
+    "en": "Start the simulation, open the **Code** tab then **Plotter** (above the serial monitor). The voltage rises in a curve during charging, then falls during discharging.\nChoose a **10 s** window to see a whole cycle."
+   }
+  },
+  {
+   "title": {
+    "fr": "63 % de la tension finale",
+    "en": "63% of the final voltage"
+   },
+   "text": {
+    "fr": "Au bout d’une durée τ, le condensateur a atteint environ **63 %** de sa tension finale. Que vaut 63 % de 5 V ?",
+    "en": "After a time τ, the capacitor has reached about **63%** of its final voltage. What is 63% of 5 V?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1,85 V",
+      "en": "1.85 V"
+     },
+     {
+      "fr": "2,5 V",
+      "en": "2.5 V"
+     },
+     {
+      "fr": "3,16 V",
+      "en": "3.16 V"
+     },
+     {
+      "fr": "4,95 V",
+      "en": "4.95 V"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesurer τ sur la courbe",
+    "en": "Measure τ on the curve"
+   },
+   "text": {
+    "fr": "Sur le traceur, figez l’image (« Figer ») et repérez avec le curseur l’instant où la charge commence et l’instant où la tension atteint **3,16 V**. La différence est τ. Entrez-la en secondes.",
+    "en": "On the plotter, hold the display (“Hold”) and use the cursor to find the moment charging starts and the moment the voltage reaches **3.16 V**. The difference is τ. Enter it in seconds."
+   },
+   "hint": {
+    "fr": "La valeur attendue est proche de celle calculée à l’étape 2.",
+    "en": "The expected value is close to the one calculated in step 2."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "s",
+    "expect": 1.0,
+    "tolerance": 0.15
+   }
+  },
+  {
+   "title": {
+    "fr": "Condensateur chargé",
+    "en": "Charged capacitor"
+   },
+   "text": {
+    "fr": "Charge terminée (D7 à HIGH depuis plus de 5 s) : mesurez au multimètre la tension entre **C1 · +** et **C1 · −**.",
+    "en": "Charging finished (D7 HIGH for more than 5 s): measure with the multimeter the voltage between **C1 · +** and **C1 · −**."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "C1.+",
+     "C1.-"
+    ],
+    "state": {
+     "UNO.D7": 1
+    },
+    "tolerance": 0.08
+   }
+  },
+  {
+   "title": {
+    "fr": "Et avec une résistance deux fois plus grande ?",
+    "en": "And with a resistor twice as large?"
+   },
+   "text": {
+    "fr": "Si l’on remplace R1 par une résistance de 20 kΩ, que devient la constante de temps ?",
+    "en": "If R1 is replaced by a 20 kΩ resistor, what happens to the time constant?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle est divisée par deux",
+      "en": "It is halved"
+     },
+     {
+      "fr": "Elle ne change pas",
+      "en": "It does not change"
+     },
+     {
+      "fr": "Elle double",
+      "en": "It doubles"
+     },
+     {
+      "fr": "Elle est multipliée par quatre",
+      "en": "It is multiplied by four"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Décharge",
+    "en": "Discharge"
+   },
+   "text": {
+    "fr": "Combien de temps faut-il environ pour que le condensateur soit presque complètement déchargé (moins de 1 %) ?",
+    "en": "About how long does it take for the capacitor to be almost completely discharged (less than 1%)?"
+   },
+   "hint": {
+    "fr": "On retient souvent : 5 τ pour une charge ou une décharge presque complète.",
+    "en": "A common rule: 5 τ for an almost complete charge or discharge."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "τ",
+      "en": "τ"
+     },
+     {
+      "fr": "2 τ",
+      "en": "2 τ"
+     },
+     {
+      "fr": "5 τ",
+      "en": "5 τ"
+     },
+     {
+      "fr": "100 τ",
+      "en": "100 τ"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

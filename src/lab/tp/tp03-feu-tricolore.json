@@ -1,0 +1,510 @@
+{
+ "id": "tp03-feu-tricolore",
+ "level": "college",
+ "minutes": 50,
+ "title": {
+  "fr": "Le feu tricolore d’un carrefour",
+  "en": "A crossroads traffic light"
+ },
+ "summary": {
+  "fr": "Câbler trois LED (rouge, jaune, verte) sur trois sorties d’une Arduino Uno, puis programmer la séquence d’un feu de carrefour, comme à Dakar.",
+  "en": "Wire three LEDs (red, yellow, green) to three outputs of an Arduino Uno, then program the sequence of a crossroads traffic light, as in Dakar."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler plusieurs LED, chacune avec sa résistance",
+   "en": "Wire several LEDs, each with its own resistor"
+  },
+  {
+   "fr": "Programmer une séquence temporisée avec delay()",
+   "en": "Program a timed sequence with delay()"
+  },
+  {
+   "fr": "Comparer le courant de LED de couleurs différentes",
+   "en": "Compare the current of LEDs of different colours"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Feu tricolore",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -38,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -21,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": -4,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-yellow_1",
+    "type": "led-yellow",
+    "name": "LED2",
+    "x": 13,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_3",
+    "type": "res-220",
+    "name": "R3",
+    "x": 30,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED3",
+    "x": 47,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-5"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "led-yellow_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-19"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D4"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D3"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-yellow_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D2"
+    ],
+    "b": [
+     "res-220_3",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_3",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : feu tricolore d’un carrefour.\nconst int ROUGE = 4;\nconst int JAUNE = 3;\nconst int VERT = 2;\n\nvoid setup() {\n  pinMode(ROUGE, OUTPUT);\n  pinMode(JAUNE, OUTPUT);\n  pinMode(VERT, OUTPUT);\n}\n\nvoid loop() {\n  // Vert : les voitures passent.\n  digitalWrite(VERT, HIGH);\n  digitalWrite(JAUNE, LOW);\n  digitalWrite(ROUGE, LOW);\n  delay(3000);\n\n  // Jaune : les voitures ralentissent.\n  digitalWrite(VERT, LOW);\n  digitalWrite(JAUNE, HIGH);\n  delay(1000);\n\n  // Rouge : les voitures s’arrêtent, les piétons traversent.\n  digitalWrite(JAUNE, LOW);\n  digitalWrite(ROUGE, HIGH);\n  delay(3000);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le carrefour",
+    "en": "The crossroads"
+   },
+   "text": {
+    "fr": "Aux heures de pointe, un carrefour de Dakar sans feu, c’est vite l’embouteillage. Vous allez programmer un **feu tricolore** : vert, puis jaune, puis rouge, et on recommence.\nSur le plan de travail : la carte **UNO**, la breadboard **BB1**, trois résistances de **220 Ω** (R1, R2, R3) et trois LED : **LED1 rouge**, **LED2 jaune**, **LED3 verte**.\nChaque LED a **sa propre résistance** et **sa propre sortie** :\n- rouge sur **D4** ;\n- jaune sur **D3** ;\n- verte sur **D2**.",
+    "en": "At rush hour, a Dakar crossroads without lights quickly turns into a traffic jam. You will program a **traffic light**: green, then yellow, then red, and again.\nOn the workspace: the **UNO** board, the **BB1** breadboard, three **220 Ω** resistors (R1, R2, R3) and three LEDs: **LED1 red**, **LED2 yellow**, **LED3 green**.\nEach LED has **its own resistor** and **its own output**:\n- red on **D4**;\n- yellow on **D3**;\n- green on **D2**."
+   }
+  },
+  {
+   "title": {
+    "fr": "Les masses",
+    "en": "Grounds"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez une broche **GND** de la carte au rail **-** de la breadboard, puis la **cathode K** de chacune des trois LED à ce rail.",
+    "en": "In the “Wiring” tab, connect a **GND** pin of the board to the breadboard **-** rail, then the **cathode K** of each of the three LEDs to that rail."
+   },
+   "hint": {
+    "fr": "Les rails - du haut et du bas ne sont pas reliés : si la carte va sur le rail du haut et les cathodes sur celui du bas, posez un fil entre les deux.",
+    "en": "The top and bottom - rails are not connected: if the board goes to the top rail and the cathodes to the bottom one, add a wire between them."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ],
+     [
+      "LED3.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Trois sorties, trois résistances",
+    "en": "Three outputs, three resistors"
+   },
+   "text": {
+    "fr": "Pour chaque couleur, reliez la sortie de la carte à une patte de la résistance, et l’autre patte à l’**anode A** de la LED :\n- **D4** → R1 → LED1 (rouge) ;\n- **D3** → R2 → LED2 (jaune) ;\n- **D2** → R3 → LED3 (verte).",
+    "en": "For each colour, connect the board output to one leg of the resistor, and the other leg to the LED **anode A**:\n- **D4** → R1 → LED1 (red);\n- **D3** → R2 → LED2 (yellow);\n- **D2** → R3 → LED3 (green)."
+   },
+   "hint": {
+    "fr": "Vérifiez chaque couleur : le programme s’appuie sur ces numéros de broches. Une résistance n’a pas de sens, une LED si (anode côté résistance).",
+    "en": "Check each colour: the program relies on these pin numbers. A resistor has no direction, an LED does (anode on the resistor side)."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D4",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D3",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "UNO.D2",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED3.A",
+      "R3.1|R3.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme de test",
+    "en": "Test program"
+   },
+   "text": {
+    "fr": "Avant d’écrire la séquence, testez le câblage. Dans l’onglet « Code », écrivez un programme qui, dans setup(), règle **D2, D3 et D4 en sortie** (`pinMode(…, OUTPUT)`) et les met toutes à **HIGH** (`digitalWrite(…, HIGH)`). Cliquez sur « Téléverser ».",
+    "en": "Before writing the sequence, test the wiring. In the “Code” tab, write a program that, in setup(), sets **D2, D3 and D4 as outputs** (`pinMode(…, OUTPUT)`) and sets them all **HIGH** (`digitalWrite(…, HIGH)`). Click “Upload”."
+   },
+   "hint": {
+    "fr": "Six lignes suffisent : trois pinMode() puis trois digitalWrite(). Avec des constantes en haut du programme (`const int ROUGE = 4;`…), il se relit plus facilement.",
+    "en": "Six lines are enough: three pinMode() then three digitalWrite(). With constants at the top of the program (`const int ROUGE = 4;`…), it is easier to read."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\(",
+     "\\bHIGH\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : les trois feux allumés",
+    "en": "Test: all three lights on"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » : la simulation se lance et les trois LED doivent s’allumer en même temps.",
+    "en": "Click “Observe”: the simulation starts and all three LEDs must light up at the same time."
+   },
+   "hint": {
+    "fr": "Une LED reste éteinte ? Vérifiez son sens (anode A côté résistance), sa cathode sur la masse et le numéro de sa sortie.",
+    "en": "An LED stays off? Check its direction (anode A on the resistor side), its cathode to ground and its output number."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on",
+     "LED2": "on",
+     "LED3": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : courant de la LED verte",
+    "en": "Measurement: green LED current"
+   },
+   "text": {
+    "fr": "Les trois LED allumées, ouvrez « Instruments » → **Multimètre**, mode **mA**, et choisissez **LED3** comme composant traversé. Notez le courant dans la LED verte.",
+    "en": "With the three LEDs on, open “Instruments” → **Multimeter**, **mA** mode, and pick **LED3** as the component. Enter the current through the green LED."
+   },
+   "hint": {
+    "fr": "Théorie : I = (5 V − 2,2 V) ÷ 220 Ω ≈ 12,7 mA ; un peu moins en réalité, car la broche de la carte et la LED ont aussi une petite résistance.",
+    "en": "Theory: I = (5 V − 2.2 V) ÷ 220 Ω ≈ 12.7 mA; a little less in practice, because the board pin and the LED also have a small resistance."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED3",
+    "tolerance": 0.15,
+    "state": {
+     "UNO.D2": 1,
+     "UNO.D3": 1,
+     "UNO.D4": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Rouge ou verte ?",
+    "en": "Red or green?"
+   },
+   "text": {
+    "fr": "Mesurez aussi le courant de LED1 (rouge) : environ 11,5 mA, un peu plus que la verte, avec la même résistance de 220 Ω. Pourquoi ?",
+    "en": "Also measure the current of LED1 (red): about 11.5 mA, a little more than the green one, with the same 220 Ω resistor. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La LED verte a une tension de seuil un peu plus élevée (environ 2,2 V contre 2 V) : il reste moins de tension pour la résistance",
+      "en": "The green LED has a slightly higher threshold voltage (about 2.2 V against 2 V): less voltage is left for the resistor"
+     },
+     {
+      "fr": "La broche D2 fournit moins de courant que la broche D4",
+      "en": "Pin D2 supplies less current than pin D4"
+     },
+     {
+      "fr": "La résistance R3 vaut plus que R1",
+      "en": "Resistor R3 has a higher value than R1"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "La séquence du feu",
+    "en": "The traffic light sequence"
+   },
+   "text": {
+    "fr": "Remplacez le test par la vraie séquence, dans loop() :\n- **vert** seul pendant **3 s** (`delay(3000)`) ;\n- **jaune** seul pendant **1 s** (`delay(1000)`) ;\n- **rouge** seul pendant **3 s**.\nÀ chaque phase, allumez une LED (`HIGH`) et éteignez les autres (`LOW`). Cliquez sur « Téléverser ».",
+    "en": "Replace the test with the real sequence, in loop():\n- **green** alone for **3 s** (`delay(3000)`);\n- **yellow** alone for **1 s** (`delay(1000)`);\n- **red** alone for **3 s**.\nIn each phase, turn one LED on (`HIGH`) and the others off (`LOW`). Click “Upload”."
+   },
+   "hint": {
+    "fr": "Erreur fréquente : oublier d’éteindre la couleur précédente. Avant chaque delay(), demandez-vous quelles LED sont allumées à ce moment-là.",
+    "en": "Common mistake: forgetting to turn off the previous colour. Before each delay(), ask yourself which LEDs are on at that moment."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "digitalWrite\\s*\\(",
+     "\\bHIGH\\b",
+     "\\bLOW\\b",
+     "delay\\s*\\(",
+     "\\b3000(?!\\d)",
+     "\\b1000(?!\\d)"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : jamais vert et rouge ensemble",
+    "en": "Test: never green and red together"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et laissez tourner le feu. Pendant la phase verte, la rouge et la jaune doivent être éteintes : sinon voitures et piétons passeraient en même temps !",
+    "en": "Click “Observe” and let the light run. During the green phase, red and yellow must be off: otherwise cars and pedestrians would go at the same time!"
+   },
+   "hint": {
+    "fr": "L’observation attend que LED3 (verte) s’allume, puis vérifie pendant une seconde que LED1 et LED2 sont éteintes.",
+    "en": "The check waits for LED3 (green) to light up, then checks for one second that LED1 and LED2 are off."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "LED3": "on"
+    },
+    "expect": {
+     "LED1": "off",
+     "LED2": "off"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "La durée d’un cycle",
+    "en": "The length of a cycle"
+   },
+   "text": {
+    "fr": "Combien de temps dure un cycle complet du feu (vert, jaune, rouge), et combien de cycles se succèdent en une minute ?",
+    "en": "How long does a full cycle of the light (green, yellow, red) last, and how many cycles follow one another in a minute?"
+   },
+   "hint": {
+    "fr": "3 s + 1 s + 3 s = 7 s ; 60 s ÷ 7 s ≈ 8,6 cycles par minute. Sur un vrai carrefour, chaque phase dure plutôt 30 s à 1 min.",
+    "en": "3 s + 1 s + 3 s = 7 s; 60 s ÷ 7 s ≈ 8.6 cycles per minute. At a real crossroads, each phase lasts more like 30 s to 1 min."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "3 s, soit 20 cycles par minute",
+      "en": "3 s, i.e. 20 cycles per minute"
+     },
+     {
+      "fr": "4 s, soit 15 cycles par minute",
+      "en": "4 s, i.e. 15 cycles per minute"
+     },
+     {
+      "fr": "7 s, soit environ 8 cycles et demi par minute",
+      "en": "7 s, i.e. about 8 and a half cycles per minute"
+     },
+     {
+      "fr": "7 min, soit un peu plus de 8 cycles par heure",
+      "en": "7 min, i.e. a little over 8 cycles per hour"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Éditeur de blocs (Blockly) aux couleurs de l'interface sombre. */
+.visualHost { position: relative; height: 420px; min-height: 240px; resize: vertical; overflow: hidden; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); touch-action: none; }
+.visualHost .blocklySvg { background: var(--bg); }
+.visualHost .blocklyToolbox { padding: 6px 0; border-right: 1px solid var(--line); font-family: var(--sans); }
+.visualHost .blocklyToolboxCategory { margin: 1px 6px; padding: 0 8px 0 0; height: 28px; border-radius: var(--r-sm); }
+.visualHost .blocklyToolboxCategory:not(.blocklyToolboxSelected):hover { background: var(--raise); }
+.visualHost .blocklyToolboxCategoryLabel { font: 500 12.5px var(--sans); color: var(--fg-2); }
+.visualHost .blocklyToolboxSelected .blocklyToolboxCategoryLabel { color: #fff; }
+.visualHost .blocklyFlyoutLabelText { fill: var(--fg-2); font: 600 12px var(--sans); }
+.visualHost .blocklyFlyoutButton { fill: var(--raise-2); }
+.visualHost .blocklyFlyoutButton .blocklyText { fill: var(--fg); }
+.visualHost .blocklyScrollbarHandle { fill: var(--line-2); }
+.visualHost .blocklyZoom > image, .visualHost .blocklyZoom > svg > image { opacity: .5; }
+.visualHost .blocklyMainBackground { stroke: none; }
+
+/* Menus, bulles d'aide et listes déroulantes : ajoutés par Blockly à la fin de <body>. */
+.blocklyWidgetDiv .blocklyMenu, .blocklyContextMenu { background: var(--raise); border: 1px solid var(--line-2); border-radius: var(--r-sm); box-shadow: var(--shadow); font: 13px var(--sans); }
+.blocklyWidgetDiv .blocklyMenuItem, .blocklyContextMenu .blocklyMenuItem { color: var(--fg); }
+.blocklyWidgetDiv .blocklyMenuItemHighlight, .blocklyContextMenu .blocklyMenuItemHighlight { background: var(--raise-2); }
+.blocklyWidgetDiv .blocklyMenuItemDisabled { color: var(--muted); }
+.blocklyTooltipDiv { background: #1c232a; color: var(--fg); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow); font: 12px/1.4 var(--sans); padding: 5px 8px; opacity: 1; }
+.blocklyWidgetDiv .blocklyHtmlInput { font-family: var(--sans); }
+
+/* Boîte de dialogue des blocs (nom d'une variable…) : window.prompt n'existe pas partout. */
+.vDialog { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; background: #0008; }
+.vDialog form { display: grid; gap: 10px; min-width: 260px; max-width: 90%; padding: 14px; background: var(--panel); border: 1px solid var(--line-2); border-radius: var(--r); box-shadow: var(--shadow); color: var(--fg); }
+.vDialog input { height: var(--ctl); font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 8px; -webkit-user-select: text; user-select: text; }
+.vDialog div { display: flex; justify-content: flex-end; gap: 8px; }
+.vDialog button { height: 30px; padding: 0 12px; font: inherit; border-radius: var(--r-sm); border: 1px solid var(--line-2); background: var(--raise); color: var(--fg); cursor: pointer; }
+.vDialog button[value="ok"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }

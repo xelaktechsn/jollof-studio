@@ -1,0 +1,14 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+.DS_Store
+scripts/cad/.cache/
+release/
+*.log
+.claude/
+coverage/
+.env.local
+.env.*.local
+# Modules Pro : dépôt privé à part (jollof-studio-pro), jamais dans ce dépôt.
+src/pro/

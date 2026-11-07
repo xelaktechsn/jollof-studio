@@ -1,0 +1,270 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Station météo",
+ "description": "ESP32 avec un DHT22 (température, humidité), un BMP280 (pression) et un écran OLED. Les deux modules I2C partagent les mêmes fils SDA et SCL. Programme généré : les mesures s’affichent sur l’écran et le moniteur série.",
+ "en": {
+  "name": "Weather station",
+  "description": "ESP32 with a DHT22 (temperature, humidity), a BMP280 (pressure) and an OLED display. Both I2C modules share the same SDA and SCL wires. Generated program: the readings show on the display and in the serial monitor."
+ },
+ "comps": [
+  {
+   "id": "esp32_1",
+   "type": "esp32",
+   "name": "ESP32",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "dht22_1",
+   "type": "dht22",
+   "name": "DHT22",
+   "x": -50,
+   "z": 8,
+   "r": 1.5708
+  },
+  {
+   "id": "bmp280_1",
+   "type": "bmp280",
+   "name": "BMP1",
+   "x": 46,
+   "z": -26,
+   "r": -1.5708
+  },
+  {
+   "id": "oled_1",
+   "type": "oled",
+   "name": "OLED1",
+   "x": 50,
+   "z": 22,
+   "r": -1.5708
+  },
+  {
+   "id": "breadboard_1",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 0,
+   "z": 74,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "dht22_1",
+    "GND"
+   ],
+   "b": [
+    "esp32_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "dht22_1",
+    "DATA"
+   ],
+   "b": [
+    "esp32_1",
+    "D14"
+   ],
+   "color": "#f2c94c",
+   "role": "Données"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "3V3"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+17"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V vers la breadboard"
+  },
+  {
+   "a": [
+    "dht22_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+1"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+25"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "GND (2)"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-17"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-25"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SDO"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-24"
+   ],
+   "color": "#3a3f45",
+   "role": "Adresse"
+  },
+  {
+   "a": [
+    "oled_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_1",
+    "T+24"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "oled_1",
+    "GND"
+   ],
+   "b": [
+    "breadboard_1",
+    "T-23"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "D22"
+   ],
+   "b": [
+    "breadboard_1",
+    "A30"
+   ],
+   "color": "#9b7be0",
+   "role": "D22 vers la breadboard"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SCL"
+   ],
+   "b": [
+    "breadboard_1",
+    "B30"
+   ],
+   "color": "#9b7be0",
+   "role": "I2C SCL"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SCL"
+   ],
+   "b": [
+    "breadboard_1",
+    "C30"
+   ],
+   "color": "#9b7be0",
+   "role": "I2C SCL"
+  },
+  {
+   "a": [
+    "esp32_1",
+    "D21"
+   ],
+   "b": [
+    "breadboard_1",
+    "A29"
+   ],
+   "color": "#3b82f6",
+   "role": "D21 vers la breadboard"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SDA"
+   ],
+   "b": [
+    "breadboard_1",
+    "B29"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SDA"
+   ],
+   "b": [
+    "breadboard_1",
+    "C29"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 31,
+   "hum": 68,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {
+    "esp32_1": {
+     "code": "",
+     "auto": true
+    }
+   }
+  }
+ }
+}

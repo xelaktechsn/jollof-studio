@@ -1,0 +1,386 @@
+{
+ "id": "tp07-radar-recul",
+ "level": "lycee",
+ "minutes": 60,
+ "title": {
+  "fr": "Radar de recul à ultrasons",
+  "en": "Ultrasonic parking radar"
+ },
+ "summary": {
+  "fr": "Mesurer une distance avec un capteur HC-SR04 et pulseIn(), puis faire biper un buzzer de plus en plus vite quand l’obstacle approche. Signaux observés à l’oscilloscope.",
+  "en": "Measure a distance with an HC-SR04 sensor and pulseIn(), then make a buzzer beep faster and faster as the obstacle gets closer. Signals observed on the oscilloscope."
+ },
+ "objectives": [
+  {
+   "fr": "Comprendre la mesure par temps de vol (distance = durée ÷ 58)",
+   "en": "Understand time-of-flight measurement (distance = time ÷ 58)"
+  },
+  {
+   "fr": "Utiliser pulseIn() et delayMicroseconds()",
+   "en": "Use pulseIn() and delayMicroseconds()"
+  },
+  {
+   "fr": "Relier la distance au rythme des bips, vu à l’oscilloscope",
+   "en": "Relate the distance to the beep rate, seen on the oscilloscope"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Radar de recul",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "hcsr04_1",
+    "type": "hcsr04",
+    "name": "US1",
+    "x": 0,
+    "z": -70,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 58,
+    "z": -48,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "dist": 50
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "hcsr04_1",
+     "VCC"
+    ],
+    "b": [
+     "uno_1",
+     "5V"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "hcsr04_1",
+     "GND"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "hcsr04_1",
+     "TRIG"
+    ],
+    "b": [
+     "uno_1",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Déclenchement"
+   },
+   {
+    "a": [
+     "hcsr04_1",
+     "ECHO"
+    ],
+    "b": [
+     "uno_1",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Écho"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "+"
+    ],
+    "b": [
+     "uno_1",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "uno_1",
+     "GND (3)"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : radar de recul. Plus l’obstacle est proche, plus le buzzer bipe vite.\nconst int TRIG = 7;\nconst int ECHO = 8;\nconst int BUZZER = 2;\n\n// Distance en cm : impulsion de 10 µs sur TRIG, puis durée de l’écho.\nfloat mesurerDistance() {\n  digitalWrite(TRIG, LOW);\n  delayMicroseconds(2);\n  digitalWrite(TRIG, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(TRIG, LOW);\n  long duree = pulseIn(ECHO, HIGH, 30000); // 0 si aucun écho en 30 ms\n  return duree / 58.0;\n}\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(TRIG, OUTPUT);\n  pinMode(ECHO, INPUT);\n  pinMode(BUZZER, OUTPUT);\n}\n\nvoid loop() {\n  float cm = mesurerDistance();\n  Serial.print(\"Distance : \");\n  Serial.print(cm);\n  Serial.println(\" cm\");\n\n  if (cm > 0 && cm < 10) {\n    digitalWrite(BUZZER, HIGH); // très près : son continu\n    delay(100);\n  } else if (cm > 0 && cm < 100) {\n    digitalWrite(BUZZER, HIGH); // un bip court...\n    delay(50);\n    digitalWrite(BUZZER, LOW);\n    delay(cm * 4);              // ...puis une pause, plus courte quand l’obstacle approche\n  } else {\n    digitalWrite(BUZZER, LOW);  // rien à moins d’un mètre : silence\n    delay(200);\n  }\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le principe",
+    "en": "How it works"
+   },
+   "text": {
+    "fr": "Les minibus et les taxis qui reculent dans les ruelles de Dakar ont souvent un **radar de recul** : un bip de plus en plus rapide quand l’obstacle approche.\nLe **HC-SR04** (US1) envoie une salve d’ultrasons à 40 kHz quand sa broche **TRIG** reçoit une impulsion de 10 µs. Sa broche **ECHO** reste ensuite à l’état haut pendant l’**aller-retour** du son. Le son parcourt environ 343 m/s, d’où : **distance (cm) = durée (µs) ÷ 58**.\nMatériel : **UNO**, **US1** et le buzzer actif **BZ1**.",
+    "en": "Minibuses and taxis backing up in Dakar’s narrow streets often have a **parking radar**: a beep that gets faster as the obstacle gets closer.\nThe **HC-SR04** (US1) sends a 40 kHz ultrasound burst when its **TRIG** pin receives a 10 µs pulse. Its **ECHO** pin then stays high for the sound’s **round trip**. Sound travels at about 343 m/s, hence: **distance (cm) = time (µs) ÷ 58**.\nParts: **UNO**, **US1** and the active buzzer **BZ1**."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le capteur à ultrasons",
+    "en": "The ultrasonic sensor"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez **VCC** de US1 au **5V**, **GND** à une masse, **TRIG** à **D7** et **ECHO** à **D8**.",
+    "en": "In the “Wiring” tab, connect **VCC** of US1 to **5V**, **GND** to a ground pin, **TRIG** to **D7** and **ECHO** to **D8**."
+   },
+   "hint": {
+    "fr": "Le HC-SR04 ne fonctionne correctement qu’en 5 V : pas sur le 3V3.",
+    "en": "The HC-SR04 only works properly on 5 V: not on 3V3."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "US1.VCC",
+      "UNO.5V"
+     ],
+     [
+      "US1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "US1.TRIG",
+      "UNO.D7"
+     ],
+     [
+      "US1.ECHO",
+      "UNO.D8"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le buzzer",
+    "en": "The buzzer"
+   },
+   "text": {
+    "fr": "Reliez la patte **+** de BZ1 à **D2** et la patte **-** à une autre broche **GND** de la carte (l’Uno en a trois).",
+    "en": "Connect the **+** leg of BZ1 to **D2** and the **-** leg to another **GND** pin of the board (the Uno has three)."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BZ1.+",
+      "UNO.D2"
+     ],
+     [
+      "BZ1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Contrôle de l’alimentation",
+    "en": "Checking the supply"
+   },
+   "text": {
+    "fr": "Bon réflexe de dépannage : avant d’accuser le programme, vérifiez l’alimentation. Lancez la simulation, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **US1 · VCC**, pointe noire sur **US1 · GND**. Notez la tension.",
+    "en": "A good troubleshooting habit: before blaming the program, check the supply. Start the simulation, open “Instruments” → **Multimeter**, **V** mode: red probe on **US1 · VCC**, black probe on **US1 · GND**. Enter the voltage."
+   },
+   "hint": {
+    "fr": "On attend 5 V : la broche 5V de l’Uno est régulée. Une valeur nulle ou « OL » signale un fil manquant.",
+    "en": "You should get 5 V: the Uno’s 5V pin is regulated. A zero or “OL” reading means a missing wire."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "US1.VCC",
+     "US1.GND"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez une fonction qui mesure la distance :\n- `digitalWrite(7, HIGH); delayMicroseconds(10); digitalWrite(7, LOW);` : l’impulsion de déclenchement ;\n- `long duree = pulseIn(8, HIGH, 30000);` : la durée de l’écho en µs (0 si rien ne revient en 30 ms) ;\n- `float cm = duree / 58.0;`\nDans loop() : sous **10 cm**, buzzer allumé en continu ; sous **100 cm**, un bip de 50 ms suivi d’une pause de `cm * 4` ms ; au-delà, silence. Cliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, write a function that measures the distance:\n- `digitalWrite(7, HIGH); delayMicroseconds(10); digitalWrite(7, LOW);`: the trigger pulse;\n- `long duree = pulseIn(8, HIGH, 30000);`: the echo time in µs (0 if nothing comes back within 30 ms);\n- `float cm = duree / 58.0;`\nIn loop(): below **10 cm**, buzzer on continuously; below **100 cm**, a 50 ms beep followed by a `cm * 4` ms pause; beyond that, silence. Click “Upload”."
+   },
+   "hint": {
+    "fr": "Pensez à `pinMode(7, OUTPUT)`, `pinMode(8, INPUT)` et `pinMode(2, OUTPUT)` dans setup(), et à `Serial.begin(9600)` pour afficher la distance au moniteur série.",
+    "en": "Remember `pinMode(7, OUTPUT)`, `pinMode(8, INPUT)` and `pinMode(2, OUTPUT)` in setup(), and `Serial.begin(9600)` to print the distance to the serial monitor."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pulseIn\\s*\\(",
+     "delayMicroseconds\\s*\\(",
+     "\\bHIGH\\b",
+     "58|29|0\\.0?34|0\\.017",
+     "\\b100\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "La durée de l’écho",
+    "en": "The echo time"
+   },
+   "text": {
+    "fr": "Simulation lancée, dans l’onglet « Simulation », section **Environnement**, réglez la **Distance de l’obstacle** à **20 cm**. La ligne US1 de la section Mesures indique la durée de l’écho. Combien vaut-elle, à peu près ?",
+    "en": "With the simulation running, in the “Simulation” tab, **Environment** section, set the **Obstacle distance** to **20 cm**. The US1 line of the Readings section shows the echo time. Roughly what is it?"
+   },
+   "hint": {
+    "fr": "20 cm × 58 µs/cm = 1 160 µs : le son parcourt 40 cm (aller et retour) à 343 m/s.",
+    "en": "20 cm × 58 µs/cm = 1,160 µs: the sound travels 40 cm (there and back) at 343 m/s."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "58 µs",
+      "en": "58 µs"
+     },
+     {
+      "fr": "Environ 1 160 µs (1,16 ms)",
+      "en": "About 1,160 µs (1.16 ms)"
+     },
+     {
+      "fr": "20 ms",
+      "en": "20 ms"
+     },
+     {
+      "fr": "0,34 s",
+      "en": "0.34 s"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : obstacle tout près",
+    "en": "Test: obstacle very close"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis approchez l’obstacle à **5 cm** (curseur Distance de l’obstacle) : le buzzer doit sonner **en continu**.",
+    "en": "Click “Observe”, then bring the obstacle to **5 cm** (Obstacle distance slider): the buzzer must sound **continuously**."
+   },
+   "hint": {
+    "fr": "Le buzzer ne fait que biper ? Vérifiez la condition « moins de 10 cm ». Il reste muet ? Vérifiez TRIG, ECHO et que le programme est bien téléversé.",
+    "en": "The buzzer only beeps? Check the “less than 10 cm” condition. It stays silent? Check TRIG, ECHO and that the program is uploaded."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "BZ1": "on"
+    },
+    "hold": 600
+   }
+  },
+  {
+   "title": {
+    "fr": "Les bips à l’oscilloscope",
+    "en": "The beeps on the oscilloscope"
+   },
+   "text": {
+    "fr": "Ouvrez « Instruments » → **Oscilloscope** : voie 1 sur **D7** (TRIG), voie 2 sur **D2** (buzzer), base de temps **100 ms/div**. Sur la voie 1, chaque trait fin est une impulsion de déclenchement, donc une mesure.\nRéglez la distance à **50 cm**, puis à **20 cm**. Que voit-on sur la voie 2 ?",
+    "en": "Open “Instruments” → **Oscilloscope**: channel 1 on **D7** (TRIG), channel 2 on **D2** (buzzer), time base **100 ms/div**. On channel 1, each thin line is a trigger pulse, i.e. one measurement.\nSet the distance to **50 cm**, then to **20 cm**. What do you see on channel 2?"
+   },
+   "hint": {
+    "fr": "Une période = bip de 50 ms + pause de cm × 4 ms : 50 + 200 = 250 ms à 50 cm (4 Hz), 50 + 80 = 130 ms à 20 cm (près de 8 Hz).",
+    "en": "One period = 50 ms beep + cm × 4 ms pause: 50 + 200 = 250 ms at 50 cm (4 Hz), 50 + 80 = 130 ms at 20 cm (nearly 8 Hz)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les bips se rapprochent : leur fréquence passe d’environ 4 Hz à près de 8 Hz",
+      "en": "The beeps get closer together: their frequency goes from about 4 Hz to nearly 8 Hz"
+     },
+     {
+      "fr": "Les bips durent plus longtemps, à la même fréquence",
+      "en": "The beeps last longer, at the same frequency"
+     },
+     {
+      "fr": "Rien ne change : seule la distance affichée au moniteur série varie",
+      "en": "Nothing changes: only the distance in the serial monitor varies"
+     },
+     {
+      "fr": "Le signal reste à 5 V en continu",
+      "en": "The signal stays at 5 V all the time"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Aucun obstacle",
+    "en": "No obstacle"
+   },
+   "text": {
+    "fr": "Réglez la distance au-delà de 4 m (hors de portée). Que renvoie alors `pulseIn(8, HIGH, 30000)`, et pourquoi le programme teste-t-il `cm > 0` ?",
+    "en": "Set the distance beyond 4 m (out of range). What does `pulseIn(8, HIGH, 30000)` return then, and why does the program test `cm > 0`?"
+   },
+   "hint": {
+    "fr": "Le troisième argument de pulseIn() est un délai maximal en microsecondes : 30 000 µs correspondent à une distance d’environ 5 m (30 000 ÷ 58).",
+    "en": "The third argument of pulseIn() is a timeout in microseconds: 30,000 µs correspond to a distance of about 5 m (30,000 ÷ 58)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "30000 : la distance calculée vaut alors 517 cm",
+      "en": "30000: the computed distance is then 517 cm"
+     },
+     {
+      "fr": "0, au bout de 30 ms sans écho : sans le test cm > 0, le programme croirait l’obstacle collé au capteur et sonnerait en continu",
+      "en": "0, after 30 ms without an echo: without the cm > 0 test, the program would think the obstacle is touching the sensor and sound continuously"
+     },
+     {
+      "fr": "Rien : pulseIn() bloque le programme jusqu’au retour d’un écho",
+      "en": "Nothing: pulseIn() blocks the program until an echo comes back"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

@@ -1,0 +1,51 @@
+{
+  "name": "jollof-studio",
+  "private": true,
+  "license": "AGPL-3.0-or-later",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "dev:pro": "vite --mode pro",
+    "build": "vite build",
+    "build:pro": "vite build --mode pro",
+    "preview": "vite preview",
+    "blockly:media": "node scripts/blockly-media.mjs",
+    "tauri": "tauri",
+    "tauri:dev:pro": "tauri dev --config src-tauri/tauri.pro.conf.json",
+    "tauri:build:free": "tauri build",
+    "tauri:build:pro": "tauri build --config src-tauri/tauri.pro.conf.json",
+    "release:free": "node scripts/release.mjs --edition free --lang auto",
+    "release:pro": "node scripts/release.mjs --edition pro --lang auto",
+    "release:free:fr": "node scripts/release.mjs --edition free --lang fr",
+    "release:free:en": "node scripts/release.mjs --edition free --lang en",
+    "release:pro:fr": "node scripts/release.mjs --edition pro --lang fr",
+    "release:pro:en": "node scripts/release.mjs --edition pro --lang en"
+  },
+  "dependencies": {
+    "@fontsource/instrument-sans": "^5.0.0",
+    "@fontsource/jetbrains-mono": "^5.0.0",
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/plugin-dialog": "^2.0.0",
+    "@tiptap/core": "^2.27.3",
+    "@tiptap/extension-highlight": "^2.27.3",
+    "@tiptap/extension-image": "^2.27.3",
+    "@tiptap/extension-link": "^2.27.3",
+    "@tiptap/extension-placeholder": "^2.27.3",
+    "@tiptap/extension-task-item": "^2.27.3",
+    "@tiptap/extension-task-list": "^2.27.3",
+    "@tiptap/extension-text-align": "^2.27.3",
+    "@tiptap/extension-underline": "^2.27.3",
+    "@tiptap/pm": "^2.27.3",
+    "@tiptap/starter-kit": "^2.27.3",
+    "blockly": "12.5.1",
+    "mp4-muxer": "5.2.2",
+    "occt-import-js": "0.0.23",
+    "socket.io-client": "^4.8.1",
+    "three": "0.150.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "vite": "^5.4.0"
+  }
+}

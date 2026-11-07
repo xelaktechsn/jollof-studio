@@ -1,0 +1,463 @@
+{
+ "id": "tp05-potentiometre-pwm",
+ "level": "lycee",
+ "minutes": 60,
+ "title": {
+  "fr": "Potentiomètre et PWM : un variateur de lumière",
+  "en": "Potentiometer and PWM: a light dimmer"
+ },
+ "summary": {
+  "fr": "Lire un potentiomètre avec analogRead(), afficher la valeur au moniteur série, puis régler la luminosité d’une LED en PWM avec map() et analogWrite(). Mesures au multimètre et à l’oscilloscope.",
+  "en": "Read a potentiometer with analogRead(), print the value to the serial monitor, then set an LED’s brightness with PWM using map() and analogWrite(). Measurements with the multimeter and the oscilloscope."
+ },
+ "objectives": [
+  {
+   "fr": "Lire une tension analogique avec analogRead() (0 à 1023)",
+   "en": "Read an analog voltage with analogRead() (0 to 1023)"
+  },
+  {
+   "fr": "Convertir une plage de valeurs avec map()",
+   "en": "Convert a range of values with map()"
+  },
+  {
+   "fr": "Comprendre la PWM : rapport cyclique et valeur moyenne",
+   "en": "Understand PWM: duty cycle and average value"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Potentiomètre et PWM",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "pot_1",
+    "type": "pot",
+    "name": "POT1",
+    "x": -30,
+    "z": 122,
+    "r": 0,
+    "inp": {
+     "pos": 50
+    }
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": 2,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 28,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+5"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers la breadboard"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T+24"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+24"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "pot_1",
+     "3"
+    ],
+    "b": [
+     "breadboard_1",
+     "B+4"
+    ],
+    "color": "#e5484d",
+    "role": "Référence"
+   },
+   {
+    "a": [
+     "pot_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "pot_1",
+     "W"
+    ],
+    "b": [
+     "uno_1",
+     "A0"
+    ],
+    "color": "#3fb27f",
+    "role": "Curseur"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D9"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-15"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : un potentiomètre règle la luminosité d’une LED (PWM).\nconst int POT = A0;  // curseur du potentiomètre\nconst int LED = 9;   // broche PWM (~)\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED, OUTPUT);\n}\n\nvoid loop() {\n  int valeur = analogRead(POT);               // 0 à 1023\n  int lumiere = map(valeur, 0, 1023, 0, 255); // 0 à 255\n  analogWrite(LED, lumiere);\n  Serial.println(valeur);\n  delay(100);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le variateur",
+    "en": "The dimmer"
+   },
+   "text": {
+    "fr": "Un **potentiomètre** est une résistance réglable : en tournant le bouton, le **curseur W** se déplace sur une piste de 10 kΩ. Branché entre 0 V et 5 V, il délivre une tension de 0 à 5 V, que la carte lit sur une **entrée analogique**.\nLa carte, elle, ne sait pas sortir une tension intermédiaire : pour faire varier une LED, elle utilise la **PWM**, une sortie qui s’allume et s’éteint très vite. Seules les broches marquées **~** en sont capables : 3, 5, 6, 9, 10 et 11.\nMatériel : **UNO**, **BB1**, **POT1** (10 kΩ), **R1** (220 Ω) et **LED1**.",
+    "en": "A **potentiometer** is an adjustable resistor: turning the knob moves the **wiper W** along a 10 kΩ track. Connected between 0 V and 5 V, it delivers a voltage from 0 to 5 V, which the board reads on an **analog input**.\nThe board itself cannot output an in-between voltage: to dim an LED, it uses **PWM**, an output that switches on and off very fast. Only the pins marked **~** can do it: 3, 5, 6, 9, 10 and 11.\nParts: **UNO**, **BB1**, **POT1** (10 kΩ), **R1** (220 Ω) and **LED1**."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le potentiomètre",
+    "en": "The potentiometer"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez la patte **1** de POT1 à la masse (**GND**), la patte **3** au **5V**, et le curseur **W** à l’entrée analogique **A0**.",
+    "en": "In the “Wiring” tab, connect leg **1** of POT1 to ground (**GND**), leg **3** to **5V**, and the wiper **W** to analog input **A0**."
+   },
+   "hint": {
+    "fr": "En passant par la breadboard : 5V sur le rail +, GND sur le rail -. Le 5V et la masse ne doivent jamais se toucher directement (court-circuit).",
+    "en": "Through the breadboard: 5V on the + rail, GND on the - rail. 5V and ground must never touch directly (short circuit)."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "POT1.1",
+      "UNO.GND*"
+     ],
+     [
+      "POT1.3",
+      "UNO.5V"
+     ],
+     [
+      "POT1.W",
+      "UNO.A0"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La LED sur une sortie PWM",
+    "en": "The LED on a PWM output"
+   },
+   "text": {
+    "fr": "Reliez la broche **D9** (PWM ~) à une patte de R1, l’autre patte de R1 à l’**anode A** de LED1, et la **cathode K** de LED1 à la masse.",
+    "en": "Connect pin **D9** (PWM ~) to one leg of R1, the other leg of R1 to the **anode A** of LED1, and the **cathode K** of LED1 to ground."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D9",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire le potentiomètre",
+    "en": "Read the potentiometer"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez un programme qui lit A0 et affiche la valeur au **moniteur série** :\n- dans setup() : `Serial.begin(9600);`\n- dans loop() : `int valeur = analogRead(A0);`, puis `Serial.println(valeur);` et un petit `delay(100);`\nCliquez sur « Téléverser », lancez la simulation et déplacez le curseur de POT1 (onglet « Simulation », section Mesures) : la valeur défile dans le moniteur série.",
+    "en": "In the “Code” tab, write a program that reads A0 and prints the value to the **serial monitor**:\n- in setup(): `Serial.begin(9600);`\n- in loop(): `int valeur = analogRead(A0);`, then `Serial.println(valeur);` and a short `delay(100);`\nClick “Upload”, start the simulation and move the POT1 wiper (“Simulation” tab, Readings section): the value scrolls in the serial monitor."
+   },
+   "hint": {
+    "fr": "analogRead() renvoie un entier de 0 (0 V) à 1023 (5 V) : le convertisseur de l’Uno travaille sur 10 bits, soit 1 024 valeurs.",
+    "en": "analogRead() returns an integer from 0 (0 V) to 1023 (5 V): the Uno’s converter works on 10 bits, i.e. 1,024 values."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "Serial\\.begin\\s*\\(",
+     "analogRead\\s*\\(",
+     "Serial\\.print(ln)?\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Curseur au milieu",
+    "en": "Wiper in the middle"
+   },
+   "text": {
+    "fr": "Placez le curseur de POT1 à **50 %**. Quelle valeur le moniteur série affiche-t-il, à peu près ?",
+    "en": "Set the POT1 wiper to **50%**. Roughly what value does the serial monitor show?"
+   },
+   "hint": {
+    "fr": "La moitié de 5 V, c’est 2,5 V, soit la moitié de 1023 : environ 511 ou 512.",
+    "en": "Half of 5 V is 2.5 V, i.e. half of 1023: about 511 or 512."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "50",
+      "en": "50"
+     },
+     {
+      "fr": "255",
+      "en": "255"
+     },
+     {
+      "fr": "512",
+      "en": "512"
+     },
+     {
+      "fr": "1023",
+      "en": "1023"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : tension du curseur",
+    "en": "Measurement: wiper voltage"
+   },
+   "text": {
+    "fr": "Curseur toujours à 50 %, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **POT1 · W**, pointe noire sur **POT1 · 1** (la masse). Notez la tension.",
+    "en": "With the wiper still at 50%, open “Instruments” → **Multimeter**, **V** mode: red probe on **POT1 · W**, black probe on **POT1 · 1** (ground). Enter the voltage."
+   },
+   "hint": {
+    "fr": "Le curseur partage la piste en deux résistances de 5 kΩ : c’est un pont diviseur, U = 5 V × 50 % = 2,5 V. Vérification : 2,5 ÷ 5 × 1023 ≈ 511, la valeur du moniteur série.",
+    "en": "The wiper splits the track into two 5 kΩ resistors: it is a voltage divider, U = 5 V × 50% = 2.5 V. Check: 2.5 ÷ 5 × 1023 ≈ 511, the serial monitor value."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "POT1.W",
+     "POT1.1"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "De 0–1023 à 0–255",
+    "en": "From 0–1023 to 0–255"
+   },
+   "text": {
+    "fr": "analogWrite() attend une valeur de **0** (toujours éteinte) à **255** (toujours allumée). Complétez loop() :\n- `int lumiere = map(valeur, 0, 1023, 0, 255);`\n- `analogWrite(9, lumiere);`\nCliquez sur « Téléverser ».",
+    "en": "analogWrite() expects a value from **0** (always off) to **255** (always on). Complete loop():\n- `int lumiere = map(valeur, 0, 1023, 0, 255);`\n- `analogWrite(9, lumiere);`\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "map(valeur, 0, 1023, 0, 255) fait une règle de trois : 0 → 0, 1023 → 255, 512 → 127. Diviser par 4 donne presque le même résultat.",
+    "en": "map(valeur, 0, 1023, 0, 255) is a rule of three: 0 → 0, 1023 → 255, 512 → 127. Dividing by 4 gives almost the same result."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "map\\s*\\(|\\/\\s*4\\b",
+     "analogWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la LED s’allume",
+    "en": "Test: the LED lights up"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Curseur à 50 %, LED1 doit être allumée (à mi-puissance). Déplacez ensuite le curseur : la luminosité suit.",
+    "en": "Click “Observe”. With the wiper at 50%, LED1 must be on (at half power). Then move the wiper: the brightness follows."
+   },
+   "hint": {
+    "fr": "LED éteinte : vérifiez que analogWrite() vise bien la broche 9, celle où est branchée R1, et que le programme est téléversé.",
+    "en": "LED off: check that analogWrite() targets pin 9, where R1 is connected, and that the program is uploaded."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "La PWM à l’oscilloscope",
+    "en": "PWM on the oscilloscope"
+   },
+   "text": {
+    "fr": "Ouvrez « Instruments » → **Oscilloscope**, voie 1 sur **D9**, base de temps **1 ms/div**. Curseur à 50 %, que montre l’oscilloscope ?",
+    "en": "Open “Instruments” → **Oscilloscope**, channel 1 on **D9**, time base **1 ms/div**. With the wiper at 50%, what does the oscilloscope show?"
+   },
+   "hint": {
+    "fr": "La LED s’allume et s’éteint 490 fois par seconde : bien trop vite pour l’œil, qui ne voit que la moyenne. Déplacez le curseur : le rapport cyclique affiché suit sa position.",
+    "en": "The LED switches on and off 490 times per second: far too fast for the eye, which only sees the average. Move the wiper: the displayed duty cycle follows its position."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une tension continue de 2,5 V",
+      "en": "A steady 2.5 V voltage"
+     },
+     {
+      "fr": "Un signal carré 0 V / 5 V, à l’état haut la moitié du temps (rapport cyclique d’environ 50 %), vers 490 Hz",
+      "en": "A 0 V / 5 V square wave, high half of the time (duty cycle about 50%), at about 490 Hz"
+     },
+     {
+      "fr": "Un signal toujours à 5 V",
+      "en": "A signal always at 5 V"
+     },
+     {
+      "fr": "Une tension qui monte lentement de 0 à 5 V",
+      "en": "A voltage that slowly rises from 0 to 5 V"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : le multimètre lit la moyenne",
+    "en": "Measurement: the multimeter reads the average"
+   },
+   "text": {
+    "fr": "Multimètre, mode **mA**, composant **LED1**, curseur à 50 % : notez le courant affiché.",
+    "en": "Multimeter, **mA** mode, component **LED1**, wiper at 50%: enter the current shown."
+   },
+   "hint": {
+    "fr": "Allumée en continu, la LED recevrait environ 11,5 mA. En PWM à 50 %, le multimètre affiche la **valeur moyenne** : à peu près la moitié.",
+    "en": "Lit all the time, the LED would get about 11.5 mA. With 50% PWM, the multimeter shows the **average value**: roughly half."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED1",
+    "tolerance": 0.15,
+    "state": {
+     "UNO.D9": {
+      "mode": 1,
+      "d": 1,
+      "pwm": 0.5
+     }
+    }
+   }
+  }
+ ]
+}

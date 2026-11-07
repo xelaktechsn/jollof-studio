@@ -1,0 +1,92 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright (C) 2026 Mamadou Sarr
+// Explication de chaque code, comme « rustc --explain » : ce qui est vérifié, pourquoi c'est dangereux, comment corriger.
+// Les diagnostics de câblage gardent en plus leurs propres textes (faults.js), plus précis sur le cas rencontré.
+import { tl } from '../i18n/index.js';
+import { CODES, familyOf } from './codes.js';
+
+const E = (what, why, fix) => ({ what, why, fix });
+export const EXPLAIN = {
+  J0101: E(tl('Une alimentation est reliée directement à la masse.'), tl('Rien ne limite le courant : fil qui chauffe, port USB qui se coupe, régulateur ou pile détruits.'), tl('Retirez le fil qui relie le + à la masse : chaque alimentation doit passer par un composant.')),
+  J0102: E(tl('Deux alimentations de tensions différentes sont reliées.'), tl('La plus forte débite dans la plus faible sans limite : régulateur qui chauffe, carte qui grille.'), tl('Séparez les deux alimentations ; ne reliez que leurs masses.')),
+  J0111: E(tl('L’entrée VIN (ou VSYS) d’une carte reçoit plus que ce que son régulateur admet.'), tl('Le régulateur chauffe puis grille, et la carte avec lui (Pico : VSYS au plus 5,5 V ; Uno : 7 à 12 V conseillés).'), tl('Alimentez la carte dans sa plage, ou passez par un régulateur (LM7805) avant VIN.')),
+  J0112: E(tl('L’entrée VIN d’une carte reçoit moins que le minimum de son régulateur.'), tl('Sur pile seule, la carte redémarre sans cesse ou ne démarre pas ; tant que l’USB est branché, il la fait tourner et le problème se cache.'), tl('Prenez une pile ou un accu dans la plage de VIN (Uno : 7 à 12 V), ou alimentez la carte par l’USB.')),
+  J0103: E(tl('Dans au moins un état du montage, une source débite un courant de court-circuit.'), tl('Un bouton, un relais ou une sortie qui ferme le circuit sans charge : la source débite des ampères.'), tl('Placez une charge (résistance, LED et sa résistance, moteur) entre le contact et la masse.')),
+  J0104: E(tl('Une broche d’alimentation d’un module n’est reliée à aucune source.'), tl('Le module reste éteint : il ne répond pas, la carte lit des valeurs vides.'), tl('Reliez VCC à la bonne tension de la carte (3V3 ou 5V).')),
+  J0105: E(tl('Un module reçoit moins que sa tension minimale.'), tl('Il fonctionne mal ou pas du tout : mesures fausses, redémarrages.'), tl('Alimentez-le dans sa plage (voir sa fiche).')),
+  J0106: E(tl('Un module reçoit plus que sa tension maximale.'), tl('Ses transistors claquent : il chauffe, peut fumer et meurt souvent pour de bon.'), tl('Alimentez-le en 3,3 V s’il le demande, ou passez par un régulateur.')),
+  J0107: E(tl('Un composant n’a pas de chemin de retour vers la masse.'), tl('Le courant ne peut pas circuler : rien ne marche.'), tl('Reliez sa masse (GND, cathode…) à la masse du montage.')),
+  J0108: E(tl('Un module et la carte n’ont pas la même masse.'), tl('Une tension n’a de sens que par rapport à une référence : signaux illisibles.'), tl('Reliez les masses entre elles.')),
+  J0109: E(tl('Une source ou une broche d’alimentation fournit plus que ce qu’elle peut.'), tl('Le régulateur chauffe et coupe, la tension s’effondre, la carte redémarre ou grille.'), tl('Alimentez la charge par une source plus puissante (pile, adaptateur) avec une masse commune.')),
+  J0110: E(tl('Un bouton relie seul le + à la masse.'), tl('Appuyer met la source en court-circuit.'), tl('Mettez ce que le bouton commande entre lui et la masse.')),
+  J0201: E(tl('Une broche de signal est reliée directement à une alimentation.'), tl('Elle reste bloquée à l’état haut ; si la carte la met à LOW, sa sortie grille.'), tl('Retirez le fil et reliez la broche à une GPIO de la carte.')),
+  J0202: E(tl('Une broche de signal est reliée directement à la masse.'), tl('Elle reste bloquée à 0 V ; si la carte la met à HIGH, sa sortie grille.'), tl('Retirez le fil et reliez la broche à une GPIO de la carte.')),
+  J0203: E(tl('Un signal n’atteint aucune broche de la carte.'), tl('Le programme ne peut ni le lire ni le commander.'), tl('Reliez-le à une GPIO adaptée.')),
+  J0204: E(tl('La broche choisie n’a pas la capacité demandée (PWM, ADC, sortie, tirage).'), tl('Comme un type qui n’implémente pas un trait : l’opération n’existe pas sur cette broche.'), tl('Choisissez une broche qui offre cette capacité (voir le guide des cartes).')),
+  J0205: E(tl('La broche est réservée à la mémoire flash.'), tl('Y brancher autre chose fait planter la carte au démarrage.'), tl('Utilisez une autre broche.')),
+  J0206: E(tl('Un module I2C ou SPI n’est pas sur les broches du bus.'), tl('Sur certaines cartes, le bus matériel est câblé sur des broches fixes.'), tl('Reliez-le aux broches SDA/SCL (ou SPI) de la carte.')),
+  J0207: E(tl('Un signal 5 V arrive sur une carte 3,3 V.'), tl('Les entrées 3,3 V ne sont pas prévues pour 5 V : ça marche… jusqu’au jour où la broche lâche.'), tl('Passez par un pont diviseur ou un adaptateur de niveau.')),
+  J0208: E(tl('Un module 3,3 V reçoit des signaux 5 V.'), tl('Il dépasse ce que tolèrent ses entrées.'), tl('Ajoutez un adaptateur de niveau ou utilisez une carte 3,3 V.')),
+  J0209: E(tl('Une ligne à drain ouvert n’a pas de résistance de tirage.'), tl('Elle ne remonte jamais au niveau haut : aucune donnée ne passe.'), tl('Ajoutez la résistance de tirage (4,7 kΩ vers VDD pour la DS18B20).')),
+  J0210: E(tl('Un bouton vers l’alimentation sans résistance de rappel.'), tl('Relâché, l’entrée flotte et lit des valeurs au hasard.'), tl('Ajoutez 10 kΩ vers la masse, ou reliez le bouton à la masse et utilisez INPUT_PULLUP.')),
+  J0211: E(tl('Un module est branché sur le port série USB.'), tl('Il perturbe le téléversement et le moniteur série.'), tl('Utilisez d’autres broches (SoftwareSerial, Serial2).')),
+  J0301: E(tl('Dans au moins un état, une LED est traversée par plus de 20 mA (conseillé) ou 30 mA (maximum).'), tl('Au-delà, elle chauffe et s’use vite ; au-delà du maximum, elle grille.'), tl('Ajoutez ou augmentez sa résistance série : R = (U − 2 V) / 0,015 A ≈ 220 Ω sous 5 V.')),
+  J0302: E(tl('Dans au moins un état, une broche de la carte débite plus que son courant conseillé ou maximal.'), tl('La sortie chauffe, sa tension s’effondre, et la puce peut griller.'), tl('Limitez le courant par une résistance, ou commandez la charge par un transistor ou un relais.')),
+  J0303: E(tl('Dans au moins un état, une broche de la carte reçoit une tension hors de sa plage.'), tl('Au-delà de sa tension logique, l’entrée est détruite (5 V sur une carte 3,3 V).'), tl('Passez par un pont diviseur, ou alimentez le module en 3,3 V.')),
+  J0304: E(tl('Dans au moins un état, une résistance dissipe plus de 1/4 W.'), tl('Elle chauffe, noircit, puis se coupe ou change de valeur.'), tl('Prenez une valeur plus grande, ou une résistance de puissance.')),
+  J0305: E(tl('Dans au moins un état, le transistor dépasse son courant de collecteur.'), tl('Un BC547 supporte 100 mA : au-delà il chauffe et claque.'), tl('Pour une charge plus forte, utilisez un transistor de puissance, un MOSFET ou un relais.')),
+  J0306: E(tl('Dans au moins un état, un module est alimenté au-delà de sa tension maximale.'), tl('Il est détruit, parfois sans signe visible.'), tl('Alimentez-le dans sa plage.')),
+  J0307: E(tl('Dans au moins un état, un condensateur dépasse sa tension de service.'), tl('Son isolant claque : il chauffe, gonfle, peut éclater.'), tl('Choisissez un condensateur de tension supérieure.')),
+  J0308: E(tl('Dans au moins un état, une diode dépasse son courant maximal.'), tl('Elle chauffe et se détruit.'), tl('Limitez le courant ou prenez une diode plus forte.')),
+  J0309: E(tl('Dans au moins un état, une voie du pilote L298N dépasse 2 A.'), tl('Le pilote chauffe puis coupe ou grille.'), tl('Un moteur plus petit, ou un pilote plus puissant.')),
+  J0310: E(tl('Dans au moins un état, les contacts du relais dépassent leur courant.'), tl('Les contacts brûlent et se soudent.'), tl('Utilisez un relais ou un contacteur plus fort.')),
+  J0311: E(tl('Dans au moins un état, un moteur reçoit plus que sa tension prévue.'), tl('Il tourne trop vite, chauffe et s’use ; un petit ventilateur ou un vibreur peut griller.'), tl('Alimentez-le à sa tension, ou baissez sa tension moyenne en PWM.')),
+  J0312: E(tl('Dans au moins un état, un servo reçoit moins de 4,2 V.'), tl('Il tremble, avance par à-coups ou ne bouge plus.'), tl('Alimentez-le en 5 V, avec une masse commune.')),
+  J0313: E(tl('Dans au moins un état, le haut-parleur reçoit plus que sa puissance.'), tl('La bobine chauffe et se coupe.'), tl('Ajoutez une résistance série ou baissez le volume.')),
+  J0314: E(tl('Dans au moins un état, le potentiomètre dissipe trop.'), tl('Sa piste chauffe et s’abîme : le curseur grésille.'), tl('Ne faites pas passer de courant de charge par le curseur ; ajoutez une résistance.')),
+  J0315: E(tl('Dans au moins un état, le buzzer reçoit trop de tension.'), tl('Son électronique chauffe et s’abîme.'), tl('Alimentez-le en 3 à 5 V.')),
+  J0316: E(tl('Dans au moins un état, un transistor dissipe plus que sa puissance (BC547 : 500 mW, PN2222A : 625 mW).'), tl('Il n’est pas saturé : il chauffe au lieu de commuter, puis grille.'), tl('Donnez plus de courant de base (résistance de base plus petite) pour le saturer, ou prenez un transistor plus gros.')),
+  J0317: E(tl('Dans au moins un état, le régulateur LM7805 dissipe trop sans radiateur.'), tl('Il perd en chaleur (tension d’entrée − 5 V) × courant. Au-delà de 1 W il brûle au toucher ; vers 1,3 W sa protection thermique coupe la sortie et le montage s’éteint.'), tl('Baissez la tension d’entrée (une pile 7,5 V plutôt que 12 V), réduisez le courant, ou vissez un radiateur.')),
+  J0401: E(tl('Une LED est montée à l’envers.'), tl('Elle reste éteinte.'), tl('Inversez ses fils : anode côté + , cathode côté masse.')),
+  J0402: E(tl('Un condensateur polarisé est monté à l’envers.'), tl('Il chauffe, gonfle et peut éclater.'), tl('Inversez ses fils : borne − côté masse.')),
+  J0403: E(tl('Un ventilateur est branché à l’envers.'), tl('Il ne tourne pas.'), tl('Inversez ses fils : rouge au +, noir au −.')),
+  J0501: E(tl('Un moteur est branché directement sur une broche de la carte.'), tl('Il demande des centaines de mA : la broche grille.'), tl('Passez par un pilote, un transistor ou un relais.')),
+  J0502: E(tl('Un moteur n’est pas relié à une alimentation commandée.'), tl('Il ne peut pas tourner.'), tl('Reliez-le à un pilote L298N, un transistor, un relais ou une pile.')),
+  J0212: E(tl('Une LED (ou une base de transistor) sans résistance série.'), tl('Rien ne limite le courant.'), tl('Insérez une résistance (220 Ω pour une LED, 1 kΩ pour une base).')),
+  J0601: E(tl('Deux sorties pilotent le même nœud.'), tl('Comme deux emprunts mutables : si l’une est à HIGH et l’autre à LOW, elles se court-circuitent et grillent.'), tl('Une seule sortie par nœud : reliez l’autre broche en entrée, ou séparez les nœuds.')),
+  J0602: E(tl('Dans au moins un état, le programme lit une entrée qui n’est reliée à aucun niveau.'), tl('Comme une variable non initialisée : l’entrée flotte et lit des 0 et des 1 au hasard.'), tl('Utilisez INPUT_PULLUP, ou ajoutez une résistance de tirage (10 kΩ).')),
+  J0603: E(tl('analogWrite sur une broche sans PWM.'), tl('La broche ne fait que tout ou rien : la vitesse ou la luminosité ne se règlent pas.'), tl('Choisissez une broche marquée PWM (~).')),
+  J0604: E(tl('analogRead sur une broche sans convertisseur.'), tl('La mesure ne veut rien dire.'), tl('Choisissez une entrée analogique (A0…).')),
+  J0605: E(tl('Le programme commande une broche reliée à rien.'), tl('Le code fait une chose que le montage ne voit pas.'), tl('Reliez le composant à cette broche, ou corrigez le numéro dans le code.')),
+  J0606: E(tl('Un composant est relié à la carte mais le programme ne s’en sert jamais.'), tl('Il ne fera rien : souvent un numéro de broche qui ne correspond pas.'), tl('Vérifiez le numéro de broche dans le code.')),
+  J0607: E(tl('digitalWrite sur une broche jamais mise en sortie.'), tl('Sur un AVR, HIGH n’active que le tirage interne : la LED s’allume à peine.'), tl('Ajoutez pinMode(broche, OUTPUT) dans setup().')),
+  J0608: E(tl('Une sortie de la carte est reliée à la sortie d’un capteur.'), tl('Les deux sorties se contredisent : court-circuit possible.'), tl('Mettez la broche en entrée (pinMode INPUT).')),
+  J0609: E(tl('Le programme utilise une broche que la carte n’a pas.'), tl('Rien ne se passe : la broche n’existe pas.'), tl('Utilisez un numéro de broche de cette carte.')),
+  J0610: E(tl('Deux modules I2C d’une même carte ont la même adresse.'), tl('Ils répondent ensemble : les données se mélangent et aucun ne fonctionne correctement.'), tl('Changez l’adresse de l’un (broche SDO du BMP280, AD0 du MPU6050, cavaliers A0–A2 de l’adaptateur LCD) ou mettez-le sur une autre carte.')),
+  J0903: E(tl('Une broche lue au démarrage est tirée au mauvais niveau par le montage.'), tl('ESP32 : D12 haut met la flash à 1,8 V, D2 haut empêche le téléversement. ESP8266 : D3 ou D4 bas, ou D8 haut, et le programme ne démarre pas.'), tl('Déplacez ce signal sur une autre broche ; gardez ces broches pour des sorties (LED) ou laissez-les libres.')),
+  J0901: E(tl('Un moteur commandé par un transistor sans diode de roue libre.'), tl('À l’arrêt, la bobine renvoie une pointe de tension qui peut détruire le transistor.'), tl('Ajoutez une diode 1N4007 en inverse aux bornes du moteur (cathode côté +).')),
+  J0902: E(tl('Une pile débite beaucoup.'), tl('Une pile 9 V se vide en quelques dizaines de minutes au-delà de 300 mA.'), tl('Utilisez des piles AA, une batterie 18650 ou un adaptateur.')),
+  J1001: E(tl('Erreur de syntaxe.'), tl('Le texte ne suit pas les règles du langage.'), tl('Regardez juste avant l’endroit indiqué : souvent une parenthèse ou une accolade.')),
+  J1002: E(tl('Un « ; » ou une parenthèse manque.'), tl('Chaque instruction se termine par un point-virgule.'), tl('Ajoutez-le à la fin de la ligne indiquée.')),
+  J1101: E(tl('Un nom n’est pas déclaré.'), tl('Le compilateur ne sait pas ce qu’il désigne.'), tl('Déclarez la variable avant de l’utiliser, ou corrigez l’orthographe (majuscules comprises).')),
+  J1102: E(tl('Un type est inconnu.'), tl('Souvent une bibliothèque manquante.'), tl('Ajoutez le #include de la bibliothèque, ou corrigez le nom du type.')),
+  J1103: E(tl('Mauvais nombre d’arguments.'), tl('La fonction attend un autre nombre de valeurs.'), tl('Comparez avec sa déclaration ou sa documentation.')),
+  J1104: E(tl('Conversion impossible entre deux types.'), tl('Un texte n’est pas un nombre, un tableau n’est pas une valeur.'), tl('Utilisez .toInt(), .toFloat() ou String().')),
+  J1105: E(tl('setup() ou loop() manque ou a la mauvaise forme.'), tl('Un programme Arduino commence par setup() puis répète loop().'), tl('Écrivez void setup() { } et void loop() { }.')),
+  J1106: E(tl('Un nom est déclaré deux fois.'), tl('Deux choses ne peuvent pas porter le même nom au même endroit.'), tl('Renommez l’une des deux.')),
+  J1107: E(tl('Une constante est modifiée.'), tl('Une const ne change jamais.'), tl('Retirez const, ou n’affectez pas cette valeur.')),
+  J1108: E(tl('return ne correspond pas au type de la fonction.'), tl('Une fonction void ne rend rien ; les autres doivent rendre une valeur.'), tl('Ajustez le type de la fonction ou le return.')),
+  J1109: E(tl('Une bibliothèque n’est pas simulée.'), tl('Le programme compile sur une vraie carte, mais la simulation ne la reproduit pas.'), tl('Testez cette partie sur la carte réelle.')),
+  J1110: E(tl('Méthode inconnue pour cet objet.'), tl('L’objet ne propose pas cette opération.'), tl('Vérifiez le nom dans la documentation de la bibliothèque.')),
+  J1111: E(tl('Bibliothèque absente sur cette carte.'), tl('Le Wi-Fi, le Bluetooth et Preferences n’existent que sur certaines cartes (ESP32, ESP8266) ; une bibliothèque peut aussi porter un autre nom selon la carte.'), tl('Choisissez une carte qui l’a, ou écrivez l’#include de la bibliothèque équivalente (ESP8266WiFi.h sur NodeMCU, WiFi.h sur ESP32).')),
+  J1199: E(tl('Erreur dans le programme.'), tl('Le compilateur ne peut pas continuer.'), tl('Lisez le message et corrigez la ligne indiquée.'))
+};
+/** Phrase commune aux explications : ce que vaut la garantie. */
+export const MODEL_NOTE = tl('Garantie dans le modèle de Jollof : calcul en courant continu (PWM moyennée, impulsions bornées par l’état haut), valeurs nominales des composants, servo et moteurs au pire, broches 5V et 3V3 des cartes tenues à leur tension (ce qui rend leurs sous-montages indépendants). Un montage vérifié ne grille aucun composant dans aucun état atteignable de ce modèle.');
+
+/** Page d'explication d'un code (HTML échappé par l'appelant). */
+export function explain(code) {
+  const c = CODES[code], e = EXPLAIN[code];
+  if (!c || !e) return null;
+  return { code, level: c.level, family: familyOf(code), ...e, model: MODEL_NOTE };
+}

@@ -1,0 +1,30 @@
+[package]
+name = "jollof-studio"
+version = "0.1.0"
+description = "Jollof Studio : conception et animation de circuits électroniques en 3D"
+authors = ["Mamadou Sarr"]
+license = "AGPL-3.0-or-later"
+edition = "2021"
+
+[lib]
+name = "jollof_studio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+percent-encoding = "2"
+# Déjà utilisé par Tauri (même version, mêmes options) : `block_in_place` pour écrire sans copie
+# les gros corps binaires reçus de la webview.
+tokio = { version = "1", features = ["rt-multi-thread"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
