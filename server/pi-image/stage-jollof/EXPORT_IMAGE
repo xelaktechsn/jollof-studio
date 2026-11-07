@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+# Exporte l'image de cette étape : <date>-jollof-ecole-arm64.img.xz dans deploy/.
+IMG_SUFFIX="-arm64"
+if [ "${USE_QEMU}" = "1" ]; then
+	export IMG_SUFFIX="${IMG_SUFFIX}-qemu"
+fi

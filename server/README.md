@@ -150,7 +150,7 @@ Fichiers compose :
 |---|---|
 | `docker-compose.yml` | production cloud : base sur un réseau interne (aucun port publié), API sur `127.0.0.1:3100` pour le proxy |
 | `docker-compose.dev.yml` | ajouté au précédent en développement : base sur le port 5433, base `jollof_test`, API en mode développement |
-| `docker-compose.box.yml` | boîtier école, à la place de `docker-compose.yml` : réglages 1 Go, API sur le réseau local, sauvegardes |
+| `docker-compose.box.yml` | boîtier école, à la place de `docker-compose.yml` : réglages 1 Go, API sur le réseau local, sauvegardes ; profil facultatif `toolchain` (miroir des fichiers de cartes) |
 
 Durcissement commun : systèmes de fichiers en lecture seule (`tmpfs` pour `/tmp` et le socket
 PostgreSQL), toutes les capacités Linux retirées (PostgreSQL garde les cinq dont son point d'entrée
@@ -225,6 +225,50 @@ On peut aussi y lancer le service `backup` du boîtier (voir plus bas).
 Un poste de la salle (ou un Raspberry Pi 4/5, 1 Go au minimum, 2 Go conseillés) sert l'espace classe
 aux autres postes du réseau local. Internet n'est utile que pour l'installation et les mises à jour.
 
+### Installation en une commande
+
+Sur Debian 12/13, Ubuntu 22.04/24.04 ou Raspberry Pi OS Lite 64 bits, depuis le dossier `server/`
+(clone git ou copie sur clé USB) :
+
+```sh
+sudo ./install.sh              # --yes : aucune question ; --seed : école de démonstration ; --help
+```
+
+[`install.sh`](install.sh) vérifie la machine (64 bits, 1 Go de mémoire au moins, 2 à 3 Go libres),
+installe Docker s'il manque (dépôt apt officiel de Docker), copie le serveur dans `/opt/jollof`
+(`--dir` pour un autre dossier ; le dossier `server/` lui-même : installation sur place), crée `.env`
+depuis `.env.example` avec des secrets tirés au hasard (un `.env` existant n'est jamais écrasé),
+charge ou construit les images, démarre `docker-compose.box.yml`, attend que `db` et `api` soient
+`healthy`, puis affiche les adresses à saisir sur les postes : `http://<nom>.local:3100` (avahi) et
+chaque adresse IP. Le relancer ne casse rien.
+
+- **Démarrage** : unité systemd `jollof.service` (`sudo systemctl status|restart|stop jollof`). Elle
+  lance la pile au démarrage et l'arrête proprement à l'extinction (60 s laissées à PostgreSQL) ;
+  `restart: unless-stopped` reste en place.
+- **Sauvegardes** : celles du service `backup` (plus bas), déjà quotidiennes. Pas de tâche cron en
+  plus (elle doublerait les fichiers et raccourcirait l'historique) ; une sauvegarde est faite avant
+  chaque mise à jour.
+- **Images** : sans Internet, déposer les archives `docker save` (`.tar`, `.tar.gz`) dans
+  `/opt/jollof/images/` ou passer `--images DOSSIER`. Sur un Raspberry Pi de moins de 2 Go, l'image
+  de l'API n'est pas construite sur place (trop peu de mémoire) : archive, registre (`JOLLOF_IMAGE`)
+  ou image Raspberry Pi toute prête.
+- **Démonstration** (`--seed`) : le mot de passe de l'administratrice est tiré au hasard (gardé dans
+  `/opt/jollof/demo-identifiants.txt`, lisible par root seulement), jamais le mot de passe public.
+- **Mise à jour** : relancer `sudo ./install.sh --yes` depuis le nouveau dossier `server/`
+  (sauvegarde, copie, image reconstruite si le code a changé, redémarrage ; `.env` gardé).
+- **Désinstallation** : `sudo /opt/jollof/install.sh --uninstall` arrête la pile et retire le
+  service, en gardant la base, `.env` et les sauvegardes ; avec `--purge`, tout est effacé
+  (confirmation au clavier).
+
+**Raspberry Pi : image toute prête.** [`pi-image/`](pi-image/README.md) construit avec pi-gen une
+image Raspberry Pi OS Lite 64 bits qui contient déjà Docker, le serveur et ses images : graver la
+carte avec Raspberry Pi Imager, brancher, attendre quelques minutes, puis
+`http://jollof-ecole.local:3100` sur les postes.
+
+### Installation pas à pas (à la main)
+
+Ce que fait `install.sh`, pour l'adapter ou le faire soi-même :
+
 1. **Système.** Debian 12, Ubuntu Server 24.04 ou Raspberry Pi OS Lite 64 bits (obligatoire sur
    Pi : l'image est arm64). Sur un Pi, préférer un SSD USB à la carte SD (plus sûr pour la base).
 2. **Docker** : `curl -fsSL https://get.docker.com | sh`, puis `sudo usermod -aG docker $USER`
@@ -251,6 +295,11 @@ aux autres postes du réseau local. Internet n'est utile que pour l'installation
    `docker compose exec api node dist/database/seed.js` pour une démonstration seulement).
 8. **Pare-feu** (si actif) : n'ouvrir que le port 3100 au réseau local, par exemple
    `sudo ufw allow from 192.168.1.0/24 to any port 3100 proto tcp`. PostgreSQL n'est pas publié.
+
+### Utilisation
+
+Après `install.sh`, les commandes `docker compose` ci-dessous se lancent dans `/opt/jollof`
+(`cd /opt/jollof`, avec `sudo` si l'utilisateur n'est pas dans le groupe `docker`).
 
 **Postes de la salle.** Dans Jollof Studio, écran de connexion à l'espace classe → « Serveur » →
 « Adresse du serveur de l'école » : `http://192.168.1.50:3100` (l'adresse du boîtier, port 3100,
@@ -287,7 +336,62 @@ docker compose ps && docker compose logs --tail 50 api
 
 Les migrations passent au démarrage de l'API. En cas de problème, revenir à l'image précédente
 (`JOLLOF_IMAGE=…` de la version d'avant) et restaurer la sauvegarde. `docker image prune` libère la
-place des anciennes images.
+place des anciennes images. Avec `install.sh`, relancer `sudo ./install.sh --yes` depuis le nouveau
+dossier `server/` fait tout cela (sur un Raspberry Pi : nouvelle archive de l'API dans
+`/opt/jollof/images/`, puis `sudo /opt/jollof/install.sh --yes`).
+
+### Miroir des fichiers de cartes (facultatif)
+
+Le mode « fidèle » compile le vrai programme avec arduino-cli, qui télécharge à la première
+utilisation les fichiers de la carte (cœur AVR pour Uno et Nano, RP2040 pour Pico, compilateurs :
+~100 Mo par poste pour l'AVR, ~500 Mo pour le Pico) et les bibliothèques. Le boîtier peut les servir
+lui-même (feuille de route 1.7) : profil `toolchain` de `docker-compose.box.yml` (nginx sans
+privilèges, fichiers statiques en lecture seule, port 8080), rempli par
+[`toolchain/mirror.sh`](toolchain/mirror.sh) :
+
+```sh
+toolchain/mirror.sh --dry-run                                   # liste et taille, sans rien télécharger
+toolchain/mirror.sh --base-url http://jollof-ecole.local:8080   # ~950 Mo (postes Windows et Linux)
+```
+
+Il prend les dernières versions de `arduino:avr` et `rp2040:rp2040` (`--platform` pour en choisir),
+leurs outils pour les systèmes des postes (`--hosts windows,linux` par défaut ; avec `macos`, ~1,7 Go ;
+`--platform arduino:avr --hosts windows` seul : ~105 Mo), les outils intégrés d'arduino-cli (détection
+des ports, ctags) et les bibliothèques de `LIBS` (`src/emu/compile.js`) avec leurs dépendances.
+Chaque archive est vérifiée (taille et SHA-256 des index officiels) ; les index réécrits
+(`package_jollof_index.json`, `library_index.json`) désignent le boîtier. Relancer ne télécharge que ce
+qui manque et supprime les anciennes versions. Prérequis : `curl` et `jq` (`sudo apt install jq`).
+
+Mieux vaut télécharger sur un PC bien connecté, copier `toolchain/mirror/` sur le boîtier
+(`/opt/jollof/toolchain/mirror/`), puis y réécrire les adresses, sans Internet et avec les mêmes
+`--hosts` et `--platform` : `sudo /opt/jollof/toolchain/mirror.sh --offline --base-url
+http://192.168.1.50:8080`. Activer ensuite le service : `COMPOSE_PROFILES=toolchain` dans
+`/opt/jollof/.env` (`TOOLCHAIN_DIR` si le miroir est ailleurs, `TOOLCHAIN_PORT` pour un autre port),
+puis `sudo systemctl reload jollof`. Vérifier : `http://jollof-ecole.local:8080/mirror-info.json`.
+Boîtier sans Internet : fournir aussi l'image nginx en archive (`pi-image/build.sh --with-toolchain`).
+
+Sur un poste, avec arduino-cli seul (en attendant que l'application le fasse) :
+
+```sh
+arduino-cli config init
+arduino-cli config add board_manager.additional_urls http://jollof-ecole.local:8080/package_jollof_index.json
+```
+
+Vérifié avec arduino-cli 1.5.1 :
+
+- **poste sans Internet** : `arduino-cli core install arduino:avr` prend tout sur le boîtier (cœur,
+  avr-gcc, avrdude, outils intégrés) et la compilation fonctionne. Seul `core update-index` finit en
+  erreur (« Some indexes could not be updated » : l'index d'Arduino est injoignable), bien que celui
+  du boîtier soit chargé ;
+- **poste avec Internet** : seule l'archive du cœur vient du boîtier ; pour les outils, arduino-cli
+  garde les adresses du premier index lu, celui d'Arduino.
+
+Reste à faire dans l'application (étape 1.7) pour que les postes s'en servent d'eux-mêmes : admettre
+l'adresse du boîtier parmi les index permis (seules les adresses officielles passent aujourd'hui), la
+passer à arduino-cli (aussi pour le Pico, où l'application impose l'index officiel), ne pas s'arrêter
+quand seul l'index d'Arduino est injoignable, et installer les bibliothèques depuis `libraries/`
+(l'adresse de l'index des bibliothèques n'est pas réglable dans arduino-cli : `lib install --zip-path`
+ou copie dans le dossier `libraries` du carnet de croquis).
 
 ## Sécurité
 
@@ -375,6 +479,9 @@ src/
   assignments/   devoirs, copies, correction automatique (grading.ts), carnet de notes
   groups/  projects/  messaging/  files/  notifications/  realtime/  health/
 docker/          initdb (base de test), backup.sh (sauvegardes du boîtier)
+install.sh       installation en une commande du boîtier école
+pi-image/        image Raspberry Pi toute prête (pi-gen : étape stage-jollof, build.sh)
+toolchain/       miroir des fichiers de cartes Arduino (mirror.sh, nginx.conf)
 test/            tests e2e (Jest + supertest + socket.io-client)
 ```
 

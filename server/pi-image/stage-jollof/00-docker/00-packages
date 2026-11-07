@@ -1,0 +1,4 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+# Prérequis du dépôt Docker (01-run-chroot.sh), de install.sh et de toolchain/mirror.sh.
+ca-certificates curl openssl jq avahi-daemon

@@ -13,3 +13,10 @@ docker-compose*.yml
 Dockerfile
 README.md
 API.md
+install.sh
+images
+pi-image
+toolchain
+.jollof-state
+.jollof-install
+demo-identifiants.txt

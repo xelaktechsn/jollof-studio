@@ -3,8 +3,10 @@
 #   - API sur le port 3100 de toutes les interfaces : les postes s'y connectent (http://<ip>:3100) ;
 #   - base interne seulement, réglée pour peu de mémoire ; volume persistant jollof_pgdata ;
 #   - sauvegarde quotidienne dans ./backups (14 gardées) ;
-#   - redémarrage automatique après une coupure de courant (Docker lancé au démarrage).
-# Utilisation : COMPOSE_FILE=docker-compose.box.yml dans .env, puis docker compose up -d.
+#   - redémarrage automatique après une coupure de courant (Docker lancé au démarrage) ;
+#   - facultatif, profil « toolchain » : miroir des fichiers de cartes Arduino (port 8080).
+# Installation en une commande : sudo ./install.sh (secrets, service systemd, démarrage).
+# À la main : COMPOSE_FILE=docker-compose.box.yml dans .env, puis docker compose up -d.
 name: jollof
 
 x-hardening: &hardening
@@ -152,6 +154,34 @@ services:
       timeout: 10s
       retries: 1
       start_period: 15m
+
+  # Facultatif (profil « toolchain ») : miroir local des fichiers de cartes Arduino (AVR, RP2040) et
+  # des bibliothèques, préparé par toolchain/mirror.sh, servi aux postes sur le port 8080.
+  # Activation : COMPOSE_PROFILES=toolchain dans .env, puis docker compose up -d (README, « Miroir
+  # des fichiers de cartes »). Fichiers statiques en lecture seule, serveur web sans privilèges.
+  toolchain:
+    <<: *hardening
+    profiles: [toolchain]
+    image: ${TOOLCHAIN_IMAGE:-nginxinc/nginx-unprivileged:1.30-alpine}
+    environment:
+      NGINX_ENTRYPOINT_QUIET_LOGS: "1"
+    volumes:
+      - ${TOOLCHAIN_DIR:-./toolchain/mirror}:/usr/share/nginx/html:ro
+      - ./toolchain/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "${API_BIND:-0.0.0.0}:${TOOLCHAIN_PORT:-8080}:8080"
+    # Pas d'accès à la base : seulement le réseau des postes.
+    networks: [frontend]
+    read_only: true
+    tmpfs: ["/tmp:size=8m"]
+    cap_drop: [ALL]
+    mem_limit: 64m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null || exit 1"]
+      interval: 5m
+      timeout: 5s
+      retries: 3
+      start_period: 30s
 
 networks:
   backend:

@@ -5,3 +5,11 @@ coverage/
 *.log
 .DS_Store
 backups/
+# Boîtier école : archives d'images, état et identifiants de install.sh, miroir, construction pi-gen
+images/
+.jollof-state/
+.jollof-install
+demo-identifiants.txt
+toolchain/mirror/
+pi-image/work/
+pi-image/deploy/

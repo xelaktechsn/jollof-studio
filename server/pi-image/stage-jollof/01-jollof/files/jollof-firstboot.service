@@ -1,0 +1,26 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+# Premier démarrage de l'image Raspberry Pi du boîtier école : /opt/jollof/install.sh --yes.
+# Après cloud-init (nom de la machine, compte choisis dans Raspberry Pi Imager) et l'agrandissement
+# de la partition (les images Docker y sont chargées). Désactivé après réussite.
+[Unit]
+Description=Jollof Studio : première installation du boîtier école
+Documentation=file:/opt/jollof/README.md
+Requires=docker.service
+After=docker.service rpi-resize.service cloud-init-local.service cloud-init-network.service cloud-init.service
+ConditionPathExists=!/var/lib/jollof/firstboot.done
+StartLimitIntervalSec=2h
+StartLimitBurst=5
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/jollof-firstboot
+Restart=on-failure
+RestartSec=2min
+TimeoutStartSec=1h
+StandardOutput=journal+console
+StandardError=journal+console
+
+[Install]
+WantedBy=multi-user.target
