@@ -1672,6 +1672,8 @@ const prog = createProgram({
 const screenLines = (c, list) => (c.type === 'lcd1602' ? [list[0], list[1] || ''] : [list[0], list.slice(1).join('  ')]);
 /** Onglet Simulation : télécommande, badges RFID, clavier, téléphones Bluetooth et GSM des modules câblés. */
 installPeripherals({ comps: () => S.comps, simOn: () => S.simOn, ins: () => S.insMap, net: () => prog.net(), netChanged: () => prog.netChanged() });
+/** Onglet Simulation : carte réelle en USB (StandardFirmata) qui recopie les sorties et montre ses vraies entrées. */
+import('./hil/panel.js').then(m => m.installHil({ comps: () => S.comps, simOn: () => S.simOn, rts: () => prog.rts, boardOf, status })).catch(e => console.error(e));
 function setSim(on) {
   S.simOn = on; S.simLast = performance.now() - 1000;
   $('#simBtn').innerHTML = icon(on ? 'stop' : 'play') + `<span>${on ? tl('Arrêter') : tl('Simuler')}</span>`;

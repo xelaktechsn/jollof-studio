@@ -9,6 +9,8 @@
 //! Les commandes qui touchent au disque sont asynchrones et font leur travail dans un fil à part
 //! (`blocking`) : la boucle d'événements de la fenêtre n'attend jamais une lecture ou une écriture.
 
+mod serial;
+
 use percent_encoding::percent_decode_str;
 use serde::de::IgnoredAny;
 use std::borrow::Cow;
@@ -619,6 +621,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(navigation_guard())
         .manage(Mutex::new(Grants::default()))
+        .manage(serial::Ports::default())
         .invoke_handler(tauri::generate_handler![
             pick_save,
             pick_open,
@@ -636,7 +639,12 @@ pub fn run() {
             build_paths,
             read_build,
             install_language,
-            open_external
+            open_external,
+            serial::serial_list,
+            serial::serial_open,
+            serial::serial_write,
+            serial::serial_reset,
+            serial::serial_close
         ])
         .run(tauri::generate_context!())
         .expect("Impossible de démarrer Jollof Studio");

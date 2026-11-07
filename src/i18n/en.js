@@ -3623,5 +3623,22 @@ export default {
   "Netlist KiCad téléchargée. Dans KiCad : Pcbnew, Fichier → Importer → Netlist.": "KiCad netlist downloaded. In KiCad: Pcbnew, File → Import → Netlist.",
   "Export KiCad impossible :": "KiCad export failed:",
   "Netlist pour KiCad : dessiner le circuit imprimé dans Pcbnew": "Netlist for KiCad: draw the circuit board in Pcbnew",
-  "KiCad": "KiCad"
+  "KiCad": "KiCad",
+  "Carte réelle (Firmata)": "Real board (Firmata)",
+  "Téléversez StandardFirmata sur la vraie carte (IDE Arduino : Exemples → Firmata), branchez-la, puis connectez : elle recopie les sorties de la carte simulée et montre ses vraies entrées.": "Upload StandardFirmata to the real board (Arduino IDE: Examples → Firmata), plug it in, then connect: it mirrors the simulated board's outputs and shows its real inputs.",
+  "Carte simulée à recopier": "Simulated board to mirror",
+  "Port série de la carte réelle": "Serial port of the real board",
+  "Choisir à la connexion": "Choose when connecting",
+  "Aucune carte branchée": "No board plugged in",
+  "Branchez la carte en USB, puis choisissez son port.": "Plug the board in over USB, then choose its port.",
+  "Connexion… (la carte redémarre, environ 2 s)": "Connecting… (the board restarts, about 2 s)",
+  "Carte réelle déconnectée.": "Real board disconnected.",
+  "Connectée : {0} (Firmata {1}, {2} broches). Lancez la simulation : les sorties sont recopiées.": "Connected: {0} (Firmata {1}, {2} pins). Start the simulation: outputs are mirrored.",
+  "Déconnecter": "Disconnect",
+  "aucune réponse Firmata : StandardFirmata est-il téléversé, à 57 600 bauds ?": "no Firmata reply: is StandardFirmata uploaded, at 57,600 baud?",
+  "Connexion impossible : {0}": "Could not connect: {0}",
+  "Lancez la simulation : la carte réelle suivra le programme de {0}.": "Start the simulation: the real board will follow {0}'s program.",
+  "sortie recopiée": "mirrored output",
+  "simulé {0} · réel {1}": "simulated {0} · real {1}",
+  "écart": "mismatch"
 };
