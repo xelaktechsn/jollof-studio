@@ -125,13 +125,14 @@ du 5 V et de la masse par les rails de la breadboard (posée à l’avance dans 
 transistor BC547 et sa résistance de base de 1 kΩ pour le buzzer (il tire 25 mA, plus que les 20 mA
 conseillés par broche).
 
-**Une exception, dans le projet 05** : la résistance de 1 kΩ entre le curseur du potentiomètre et
-GP28 a été ajoutée à la main après le câblage automatique. Le vérificateur ne lit pas les
-programmes MicroPython : par prudence, il suppose que chaque broche reliée peut devenir une sortie.
-Sans cette résistance, il signale une erreur (potentiomètre en butée et GP28 en sortie : 127 mA dans
-la broche). Avec elle, le courant reste sous 3,3 mA dans tous les cas, et la lecture du
-potentiomètre est inchangée. C’est aussi une bonne habitude sur une vraie carte. Les diapositives 9
-et 24 l’expliquent.
+**Dans le projet 05**, une résistance de 1 kΩ protège GP28, entre le curseur du potentiomètre et
+la broche. Le vérificateur lit les broches écrites en clair dans un programme MicroPython
+(`ADC(Pin(28))` est une entrée, `PWM(Pin(15))` une sortie) : sans la résistance, ce montage est
+accepté. Mais si les broches sont calculées (une boucle sur une liste de broches, `Pin.init()`), il
+redevient prudent et suppose que chaque broche reliée peut être une sortie : potentiomètre en
+butée et GP28 en sortie, 127 mA traverseraient la broche. La résistance borne ce courant à 3,3 mA
+dans tous les cas, sans changer la lecture : une bonne habitude sur une vraie carte. Les
+diapositives 9 et 24 en parlent.
 
 Les projets se vérifient aussi en ligne de commande, un fichier à la fois, depuis la racine du
 projet : `node src/check/cli.mjs docs/teacher-kit/projets/01-led-bouton.jollof` (code de sortie 1

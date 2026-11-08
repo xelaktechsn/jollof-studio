@@ -326,9 +326,9 @@ aside.notes { display: none; }
       </ul>
     </div>
   </div>
-  <div class="box small" style="margin-top:14px"><b>Exemple rencontré en préparant ce kit</b> (projet 05, Pico sous MicroPython) : sans résistance entre le curseur du potentiomètre et GP28, le vérificateur signale une erreur. Potentiomètre en butée et GP28 en sortie, 127 mA traverseraient la broche. Une résistance de 1 kΩ en série borne ce courant à 3,3 mA ; la lecture reste juste.</div>
+  <div class="box small" style="margin-top:14px"><b>Exemple rencontré en préparant ce kit</b> (projet 05, Pico sous MicroPython) : si le programme calcule ses broches, le vérificateur ne sait plus que GP28 est une entrée ; il l’essaie en sortie, potentiomètre en butée : 127 mA traverseraient la broche. Une résistance de 1 kΩ en série borne ce courant à 3,3 mA ; la lecture reste juste. Écrites en clair (<code>ADC(Pin(28))</code>), les broches sont lues et le montage passe même sans elle.</div>
   <p class="xsmall muted" style="margin-top:6px">Source : <code>docs/PROVEN.md</code> du projet (ce qui est prouvé, les modèles, la comparaison avec ngspice).</p>
-  <aside class="notes">Exemple concret, dans le projet 05 (MicroPython) : sans résistance entre le curseur du potentiomètre et GP28, le vérificateur signale une erreur. Il ne sait pas que le programme Python lit GP28 en entrée ; il essaie GP28 en sortie, potentiomètre en butée : 127 mA, la broche serait détruite. Une résistance de 1 kΩ en série borne ce courant à 3,3 mA. C’est une bonne protection en vrai aussi.</aside>
+  <aside class="notes">Exemple concret, dans le projet 05 (MicroPython) : le vérificateur lit les broches écrites en clair dans le programme Python (ADC(Pin(28)) est une entrée). Si elles sont calculées, il redevient prudent et essaie GP28 en sortie, potentiomètre en butée : 127 mA, la broche serait détruite. La résistance de 1 kΩ en série borne ce courant à 3,3 mA dans tous les cas. C’est une bonne protection en vrai aussi.</aside>
 </section>
 
 <!-- 10 --------------------------------------------------------------- -->
@@ -683,7 +683,7 @@ aside.notes { display: none; }
       <tr><td>« Rendre la vidéo » enregistre en temps réel</td><td>Le système ne sait pas encoder image par image (fréquent sous Linux). La vidéo est enregistrée pendant la lecture : ne pas toucher à la fenêtre.</td></tr>
       <tr><td>Le poste ne se connecte pas à l’espace classe</td><td>Adresse du serveur (Classe → Serveur), même réseau que le boîtier, Wi-Fi invités, pare-feu.</td></tr>
       <tr><td>Windows 7 ou 8</td><td>L’application demande Windows 10 ou plus. Une version web peut être servie sur le réseau local (voir le README du projet).</td></tr>
-      <tr><td>Une erreur en mode Fidèle ou MicroPython, alors que le programme semble juste</td><td>Le vérificateur ne lit pas ces programmes : il essaie chaque broche reliée en sortie. Ajouter une résistance série (1 kΩ) devant une entrée reliée directement à une alimentation, comme le curseur d’un potentiomètre.</td></tr>
+      <tr><td>Une erreur en mode Fidèle ou MicroPython, alors que le programme semble juste</td><td>Le vérificateur ne lit pas le C++ complet du mode Fidèle, ni les broches calculées en MicroPython : il essaie alors chaque broche reliée en sortie. En MicroPython, écrire les broches en clair (<code>ADC(Pin(28))</code>) ; sinon, ajouter une résistance série (1 kΩ) devant une entrée reliée directement à une alimentation, comme le curseur d’un potentiomètre.</td></tr>
     </tbody>
   </table>
   <aside class="notes">Garder une clé USB avec l’installateur de l’application, les 5 projets du kit et ce diaporama en PDF : c’est le plan de secours quand le réseau ne marche pas.</aside>
