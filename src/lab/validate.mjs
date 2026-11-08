@@ -15,6 +15,7 @@ import { PARTS } from '../sim/parts.js';
 import { analyze, bbGroups } from '../sim/circuit.js';
 import { compile } from '../prog/lang.js';
 import { checkWire, checkCode, checkQuiz, expectedMeasure } from './engine.js';
+import { pinKeys } from '../check/load.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tp');
 let solveDC = null;
@@ -26,7 +27,8 @@ function keysOf(c) {
   if (/^breadboard/.test(c.type)) return bbGroups(c).flatMap(g => g.keys);
   if (/^res-/.test(c.type)) return ['1', '2'];
   if (c.type === 'bat9v' || c.type === 'bat18650') return ['+', '-'];
-  const sp = PARTS[c.type]; return sp && sp.pins ? sp.pins.map(p => p.pin) : [];
+  // Composants sans fiche de broches (diode, condensateurs…) : mêmes broches que dans l'application.
+  const sp = PARTS[c.type]; return sp && sp.pins ? sp.pins.map(p => p.pin) : pinKeys(c.type);
 }
 function build(project, wires) {
   const comps = project.comps.map(c => ({ ...c, pins: Object.fromEntries(keysOf(c).map(k => [k, {}])), inp: { ...(c.inp || {}) } }));

@@ -1,0 +1,456 @@
+{
+ "id": "tp21-pwm-filtre-cna",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "PWM et filtre RC : une sortie analogique",
+  "en": "PWM and an RC filter: an analog output"
+ },
+ "summary": {
+  "fr": "La broche D9 produit une PWM à 490 Hz ; un filtre RC (10 kΩ, 100 µF) n’en garde que la valeur moyenne. L’Arduino relit la tension obtenue sur A0 et la trace : environ 2,5 V pour analogWrite(9, 128), atteints en 5 τ = 5 s. L’oscilloscope en Lab analogique montre l’ondulation résiduelle.",
+  "en": "Pin D9 produces 490 Hz PWM; an RC filter (10 kΩ, 100 µF) keeps only its mean value. The Arduino reads the resulting voltage back on A0 and plots it: about 2.5 V for analogWrite(9, 128), reached in 5 τ = 5 s. The oscilloscope in Analog lab mode shows the remaining ripple."
+ },
+ "objectives": [
+  {
+   "fr": "Relier rapport cyclique et valeur moyenne d’une PWM",
+   "en": "Relate a PWM signal’s duty cycle to its mean value"
+  },
+  {
+   "fr": "Filtrer une PWM avec un circuit RC",
+   "en": "Filter PWM with an RC circuit"
+  },
+  {
+   "fr": "Choisir R et C : temps d’établissement contre ondulation",
+   "en": "Choose R and C: settling time versus ripple"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – PWM filtrée",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": -24,
+    "z": 124,
+    "r": 0
+   },
+   {
+    "id": "cap-100u_1",
+    "type": "cap-100u",
+    "name": "C1",
+    "x": 14,
+    "z": 124,
+    "r": 0
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 112,
+    "z": 76,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "D9"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie PWM"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance du filtre"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Vers le condensateur"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#e5484d",
+    "role": "Condensateur +"
+   },
+   {
+    "a": [
+     "uno_1",
+     "A0"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#3fb27f",
+    "role": "Mesure sur A0"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : signal PWM"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "D16"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : tension filtrée"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : PWM + filtre RC = convertisseur numérique-analogique.\n// D9 produit une PWM à 490 Hz ; R1 (10 kΩ) et C1 (100 µF) n'en gardent que la valeur moyenne.\nconst int SORTIE = 9;\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(SORTIE, OUTPUT);\n  analogWrite(SORTIE, 128);                 // rapport cyclique 128/255 ≈ 50 % → environ 2,5 V\n}\n\nvoid loop() {\n  float u = analogRead(A0) * 5.0 / 1023;   // tension du condensateur, en volts\n  Serial.print(\"tension:\");\n  Serial.println(u);\n  delay(50);                                // 20 mesures par seconde\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Une sortie qui ne sait faire que 0 ou 5 V",
+    "en": "An output that can only do 0 or 5 V"
+   },
+   "text": {
+    "fr": "L’Uno n’a pas de vraie sortie analogique : `analogWrite(9, n)` fait **alterner** la broche D9 entre 0 et 5 V, 490 fois par seconde. La valeur n (0 à 255) fixe le **rapport cyclique** : la part du temps passée à 5 V.\nUn filtre RC lent (τ = R × C = 10 kΩ × 100 µF = 1 s) ne peut pas suivre ces créneaux : il n’en garde que la **valeur moyenne**. On obtient une tension continue réglable : un convertisseur numérique-analogique.",
+    "en": "The Uno has no true analog output: `analogWrite(9, n)` makes pin D9 **alternate** between 0 and 5 V, 490 times per second. The value n (0 to 255) sets the **duty cycle**: the share of time spent at 5 V.\nA slow RC filter (τ = R × C = 10 kΩ × 100 µF = 1 s) cannot follow these pulses: it keeps only their **mean value**. The result is an adjustable DC voltage: a digital-to-analog converter."
+   }
+  },
+  {
+   "title": {
+    "fr": "Valeur moyenne",
+    "en": "Mean value"
+   },
+   "text": {
+    "fr": "Avec `analogWrite(9, 128)`, le rapport cyclique vaut 128 / 255 ≈ 50 %. Quelle est la valeur moyenne de la tension de D9 ?",
+    "en": "With `analogWrite(9, 128)`, the duty cycle is 128 / 255 ≈ 50%. What is the mean value of D9’s voltage?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0 V",
+      "en": "0 V"
+     },
+     {
+      "fr": "Environ 1,25 V",
+      "en": "About 1.25 V"
+     },
+     {
+      "fr": "Environ 2,5 V",
+      "en": "About 2.5 V"
+     },
+     {
+      "fr": "5 V",
+      "en": "5 V"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le filtre",
+    "en": "Wire the filter"
+   },
+   "text": {
+    "fr": "- **D9** → la colonne 8 (A8), et une patte de **R1 (10 kΩ)** en B8.\n- L’autre patte de R1, la patte **+** de C1 et **A0** → la colonne 16 (A16, B16, C16).\n- La patte **−** de C1 et une **GND** de l’UNO → le rail **−** du haut.",
+    "en": "- **D9** → column 8 (A8), and one leg of **R1 (10 kΩ)** in B8.\n- The other leg of R1, the **+** leg of C1 and **A0** → column 16 (A16, B16, C16).\n- The **−** leg of C1 and a UNO **GND** → the top **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D9",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "C1.+",
+      "UNO.A0"
+     ],
+     [
+      "C1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Onglet **Code** : dans `setup()`, démarrez le port série, mettez D9 en sortie et appelez `analogWrite(9, 128)`. Dans `loop()`, toutes les 50 ms, lisez `analogRead(A0)`, convertissez en volts (`* 5.0 / 1023`) et affichez la valeur avec `Serial.print(\"tension:\")` puis `Serial.println(u)`. Téléversez.",
+    "en": "**Code** tab: in `setup()`, start the serial port, set D9 as an output and call `analogWrite(9, 128)`. In `loop()`, every 50 ms, read `analogRead(A0)`, convert to volts (`* 5.0 / 1023`) and print the value with `Serial.print(\"tension:\")` then `Serial.println(u)`. Upload."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "analogWrite\\s*\\(",
+     "analogRead\\s*\\(\\s*(A0|0)\\s*\\)",
+     "Serial\\.print(ln)?\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Tracer la montée",
+    "en": "Plot the rise"
+   },
+   "text": {
+    "fr": "Lancez la simulation, onglet **Code** puis **Traceur**, fenêtre de **10 s**. La tension part de 0 et monte en arrondi vers sa valeur finale, exactement comme la charge d’un condensateur : le filtre « cherche » la valeur moyenne de la PWM.",
+    "en": "Start the simulation, **Code** tab then **Plotter**, **10 s** window. The voltage starts from 0 and rises in a curve towards its final value, exactly like a charging capacitor: the filter “seeks” the PWM’s mean value."
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesurer la tension filtrée",
+    "en": "Measure the filtered voltage"
+   },
+   "text": {
+    "fr": "Au bout de quelques secondes, multimètre en mode **V ⎓** : pointe rouge sur **C1 · +**, pointe noire sur **C1 · −**. Entrez la tension lue (comparez avec la valeur du traceur).",
+    "en": "After a few seconds, multimeter in **V ⎓** mode: red probe on **C1 · +**, black probe on **C1 · −**. Enter the voltage you read (compare with the plotter’s value)."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "C1.+",
+     "C1.-"
+    ],
+    "state": {
+     "UNO.D9": {
+      "mode": 1,
+      "d": 1,
+      "pwm": 0.5
+     }
+    },
+    "tolerance": 0.08
+   }
+  },
+  {
+   "title": {
+    "fr": "Temps d’établissement",
+    "en": "Settling time"
+   },
+   "text": {
+    "fr": "Au bout de combien de temps la tension est-elle établie à moins de 1 % près ?",
+    "en": "After how long has the voltage settled to within 1%?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,1 s",
+      "en": "0.1 s"
+     },
+     {
+      "fr": "1 s (τ)",
+      "en": "1 s (τ)"
+     },
+     {
+      "fr": "5 s (5 τ)",
+      "en": "5 s (5 τ)"
+     },
+     {
+      "fr": "50 s",
+      "en": "50 s"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 8 (C8) : la PWM de D9.\n- **OSC1 · CH2** → la colonne 16 (D16) : la tension filtrée.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 8 (C8): D9’s PWM.\n- **OSC1 · CH2** → column 16 (D16): the filtered voltage.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "UNO.D9"
+     ],
+     [
+      "OSC1.CH2",
+      "C1.+"
+     ],
+     [
+      "OSC1.GND",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "L’ondulation résiduelle",
+    "en": "The remaining ripple"
+   },
+   "text": {
+    "fr": "Simulation lancée depuis plus de 5 s : **Instruments** → **Oscilloscope 2 voies**, source **Lab analogique**, base de temps **1 ms/div**, **2 V/div**, déclenchement sur **CH1**, front **↑**, niveau **2,5 V**, puis **Recalculer**.\nCH1 montre les créneaux de 0 à 5 V (période 2 ms) ; CH2 paraît plate à 2,5 V. Pourtant, le condensateur se charge un peu pendant chaque créneau haut et se décharge un peu pendant chaque créneau bas : lisez la mesure **c-c** (crête à crête) de CH2. Quel ordre de grandeur trouvez-vous ?",
+    "en": "Simulation running for more than 5 s: **Instruments** → **2-channel oscilloscope**, **Analog lab** source, time base **1 ms/div**, **2 V/div**, trigger on **CH1**, rising edge **↑**, level **2.5 V**, then **Recompute**.\nCH1 shows the 0 to 5 V pulses (2 ms period); CH2 looks flat at 2.5 V. Yet the capacitor charges a little during each high pulse and discharges a little during each low pulse: read CH2’s peak-to-peak reading. What order of magnitude do you find?"
+   },
+   "hint": {
+    "fr": "Ondulation ≈ 5 V × 0,5 × 0,5 / (490 Hz × 1 s) ≈ 2,5 mV.",
+    "en": "Ripple ≈ 5 V × 0.5 × 0.5 / (490 Hz × 1 s) ≈ 2.5 mV."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 2,5 mV",
+      "en": "About 2.5 mV"
+     },
+     {
+      "fr": "Environ 0,25 V",
+      "en": "About 0.25 V"
+     },
+     {
+      "fr": "Environ 2,5 V",
+      "en": "About 2.5 V"
+     },
+     {
+      "fr": "Exactement 0 V",
+      "en": "Exactly 0 V"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Choisir R et C",
+    "en": "Choosing R and C"
+   },
+   "text": {
+    "fr": "On remplace C1 par un condensateur dix fois plus petit (10 µF). Que se passe-t-il ?",
+    "en": "C1 is replaced with a capacitor ten times smaller (10 µF). What happens?"
+   },
+   "hint": {
+    "fr": "τ et l’ondulation dépendent tous deux de R × C, en sens contraires : il faut un compromis.",
+    "en": "τ and the ripple both depend on R × C, in opposite directions: a compromise is needed."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La tension s’établit 10 fois plus vite (0,5 s), mais l’ondulation est 10 fois plus grande (environ 25 mV)",
+      "en": "The voltage settles 10 times faster (0.5 s), but the ripple is 10 times larger (about 25 mV)"
+     },
+     {
+      "fr": "La tension s’établit 10 fois plus vite et l’ondulation diminue",
+      "en": "The voltage settles 10 times faster and the ripple decreases"
+     },
+     {
+      "fr": "La valeur moyenne passe à 0,25 V",
+      "en": "The mean value drops to 0.25 V"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

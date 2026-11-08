@@ -33,6 +33,7 @@ import { loadCadLibrary, REAL, setRealistic, cadManifest } from './cad/library.j
 import { FAMILIES, MODULE_ROLES, guessRole, parseBoardPin, buildBoardProfile, buildModuleSpec } from './sim/custom.js';
 import { createProgram } from './prog/panel.js';
 import { installPeripherals } from './sim/peripherals.js';
+import { installInstruments } from './sim/instruments.js';
 import { driveActuators, resetActuators } from './sim/actuators.js';
 import * as audio from './sim/audio.js';
 import { buildSchematic, frame as sheetFrame, SHEET_SCALE } from './schematic/sheet.js';
@@ -45,6 +46,7 @@ import { createBlocks, BLOCK_COLORS } from './ui/blocks.js';
 import { toSvg, toPdf, Draw, textWidth } from './schematic/draw.js';
 import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale } from './i18n/index.js';
 import { creditsHtml } from './library/credits.js';
+import * as parts from './library/parteditor.js'; // composants en paquet (.jpart) : éditeur, import, bibliothèque
 import * as TL from './video/timeline.js';
 import { createTimelineDock } from './video/dock.js';
 
@@ -1312,6 +1314,7 @@ function renderWizard(c) {
   }
   $('#cPins').innerHTML = rows.join('') || (d.kind === 'deco' ? '' : `<li class="note">${tl('Aucune broche posée.')}</li>`);
   $('#saveLibBtn').disabled = d.kind !== 'deco' && !d.pins.length;
+  parts.wizard(c); // nature « composant à décrire » : éditeur de paquet .jpart
 }
 
 /* ---------- Sélection ---------- */
@@ -1320,6 +1323,7 @@ function select(c) {
   if (c) selectWire(null);
   S.sel = c; $('#selBox').hidden = !c; if (!c) setPlacing(false);
   if (c) { $('#selTitle').textContent = c.name; $('#pinTools').hidden = c.type !== 'custom'; if (c.custom) renderWizard(c); $('#docSel').hidden = !BY_ID[c.type]; $('.selName small').textContent = BY_ID[c.type] ? BY_ID[c.type].name : tl('Modèle importé'); }
+  parts.selected(c); // composant en paquet : modifier, exporter, bibliothèque
   updateSel(); renderExplain(); renderBehavior(); renderSelBlock();
   if (S.view2d && sch) sch.redraw(); // cadre de sélection sur le schéma
 }
@@ -1672,6 +1676,8 @@ const prog = createProgram({
 const screenLines = (c, list) => (c.type === 'lcd1602' ? [list[0], list[1] || ''] : [list[0], list.slice(1).join('  ')]);
 /** Onglet Simulation : télécommande, badges RFID, clavier, téléphones Bluetooth et GSM des modules câblés. */
 installPeripherals({ comps: () => S.comps, simOn: () => S.simOn, ins: () => S.insMap, net: () => prog.net(), netChanged: () => prog.netChanged() });
+installInstruments({ bench: () => bench, comps: () => S.comps, wires: () => S.wires, analyze: () => S.simA || analyze(S.comps, S.wires), simOn: () => S.simOn, dc: () => S.dc, ctx: () => dcCtx(null), changed, invalidate,
+  freqOf: (c, k) => { const rt = prog.rts.get(c.id), p = rt && rt.pins.get(k); return (p && p.freq) || 490; } });
 /** Onglet Simulation : carte réelle en USB (StandardFirmata) qui recopie les sorties et montre ses vraies entrées. */
 import('./hil/panel.js').then(m => m.installHil({ comps: () => S.comps, simOn: () => S.simOn, rts: () => prog.rts, boardOf, status })).catch(e => console.error(e));
 function setSim(on) {
@@ -2257,9 +2263,9 @@ async function modelFromGlb(buf, keepScale) {
     const wrap = new THREE.Group(); wrap.add(m); resolve(wrap);
   }, reject));
 }
-const CUSTOM_KEYS = ['v', 'name', 'glb', 'kind', 'family', 'as'];
+const CUSTOM_KEYS = ['v', 'name', 'glb', 'kind', 'family', 'as', 'part'];
 async function addCustom(data, o = {}) {
-  const model = await modelFromGlb(b64ToBuf(data.glb), data.v >= 2);
+  const model = data.glb ? await modelFromGlb(b64ToBuf(data.glb), data.v >= 2) : parts.blockModel(data); // brouillon sans modèle : plaquette générique
   const custom = Object.fromEntries(CUSTOM_KEYS.filter(k => data[k] != null).map(k => [k, data[k]]));
   custom.kind = custom.kind || 'deco'; custom.pins = data.pins.map(p => ({ ...p }));
   return createComp('custom', { ...o, model, custom });
@@ -2274,6 +2280,7 @@ function applyDef(c) {
   const d = c.custom; c.prof = null; c.spec = null;
   if (d.kind === 'board') c.prof = buildBoardProfile(d.name, d.family || 'esp32', d.pins.map(p => p.name));
   if (d.kind === 'module') c.spec = buildModuleSpec(d.name, d.pins);
+  if (d.kind === 'part') c.spec = parts.specOf(d);
 }
 /** Reconstruit un composant importé (broches renommées, modèle redressé) en gardant ses fils encore valables. */
 async function rebuildCustom(c) {
@@ -2382,6 +2389,7 @@ function serialize() {
   return {
     app: 'jollof-studio', version: 1, name: S.projectName,
     comps: S.comps.map(c => ({ id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom, skin: c.skin, inp: Object.keys(c.inp).length ? c.inp : undefined })),
+    packages: parts.embed(S.comps), // composants en paquet utilisés : le projet s'ouvre ailleurs
     wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role })),
     blocks: blocks.data(),
     settings: {
@@ -2412,6 +2420,7 @@ async function restore(raw) {
   const data = sanitizeProject(raw); // projet reçu d'ailleurs : libellés nettoyés avant tout affichage
   invalidate(500);
   clearProject();
+  await parts.restoreEmbedded(data.packages); // paquets .jpart enregistrés dans le projet, avant ses composants
   const byId = {};
   for (const c of data.comps || []) {
     try {
@@ -2548,6 +2557,7 @@ function bindUI() {
   $('#placeBtn').onclick = () => setPlacing(!S.placing);
   $('#saveLibBtn').onclick = async () => {
     const c = S.sel; if (!c || !c.custom) return;
+    if (c.custom.kind === 'part') { parts.save(c); return; } // composant décrit : enregistré en paquet .jpart
     if (!c.custom.pins.length) { status(tl('Placez au moins une broche avant d’ajouter ce modèle à la bibliothèque.')); return; }
     const id = (norm(c.custom.name).replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'modele').slice(0, 48) + '-' + Date.now().toString(36);
     const { v, kind, family, as } = c.custom;
@@ -2962,7 +2972,10 @@ async function start() {
     document.querySelector('.brand').insertAdjacentHTML('beforeend', `<span class="proBadge">${tl('Pro')}</span>`);
   } else installProTeaser();
   const [userLib, , saved] = await loading;
-  S.userLib = userLib;
+  parts.install({ ...moduleApi, selected: () => S.sel, renderLibrary, renderExplain, changed, rebuildCustom,
+    refresh: async data => { S.restoring = true; try { await restore(data); } finally { S.restoring = false; } renderWires(); changed(); },
+    addDraft: async custom => { const c = await addCustom(custom); placeFree(c); select(c); refreshQuick(); changed(); frameComp(c); return c; } });
+  S.userLib = await parts.loadLibrary(userLib); // les paquets .jpart rejoignent la bibliothèque, le reste « Mes composants »
   renderUI();
   renderLibrary();
   let data = null;

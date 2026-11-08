@@ -7,6 +7,8 @@
 // à chaque image. Défilement continu (mode « roll ») ; fréquence, rapport cyclique et tension mesurés.
 // Multimètre : tension entre deux points du montage, ou courant dans un composant (calcul du
 // circuit en continu, sim/dc.js). Dessin en canevas 2D, cadencé, seulement quand c'est visible.
+// D'autres instruments s'y ajoutent en onglets (addTab : oscilloscope 2 voies de sim/instruments.js) ; la tension
+// alternative efficace du multimètre (V∿) vient d'eux (setAc), calculée sur une fenêtre de transitoire.
 import { tl } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { COLORS, si, paintGrid, divisions } from './plotkit.js';
@@ -26,13 +28,23 @@ export function createBench(host, ctx) {
   el.innerHTML = `<header class="bhHead"><div class="bhTabs" role="tablist"><button type="button" data-tab="scope" class="on">${icon('activity')}${tl('Oscilloscope')}</button><button type="button" data-tab="meter">${icon('gauge') || icon('zap')}${tl('Multimètre')}</button></div><span class="grow"></span><button type="button" class="tb" data-bclose aria-label="${tl('Fermer le banc de mesure')}">${icon('x')}</button></header>
     <div class="bhScope"><div class="chans"></div><canvas width="560" height="170"></canvas><div class="scopeBar"><label>${tl('Base de temps')} <select data-span>${SPANS.map(s => `<option value="${s}"${s === 50 ? ' selected' : ''}>${s < 1000 ? s + ' ms' : s / 1000 + ' s'}/div</option>`).join('')}</select></label><button type="button" class="btn small" data-hold>${icon('stop')}<span>${tl('Figer')}</span></button><span class="muted small" data-note></span></div></div>
     <div class="bhMeter" hidden><div class="dmm"><div class="lcd"><span data-read>——</span><small data-unit></small></div>
-      <div class="dmmModes"><button type="button" data-mode="V" class="on">V ⎓</button><button type="button" data-mode="mA">mA ⎓</button></div></div>
+      <div class="dmmModes"><button type="button" data-mode="V" class="on">V ⎓</button><button type="button" data-mode="VAC" data-tip="${tl('Tension alternative efficace (RMS), calculée sur une fenêtre de temps')}">V ∿</button><button type="button" data-mode="mA">mA ⎓</button></div></div>
       <div class="dmmProbes" data-v><label><i class="probe red"></i>${tl('Pointe rouge')}<select data-red></select></label><label><i class="probe black"></i>${tl('Pointe noire')}<select data-black></select></label></div>
       <div class="dmmProbes" data-i hidden><label>${tl('Composant traversé')}<select data-part></select></label></div>
       <p class="muted small dmmHint"></p></div>`;
   host.appendChild(el);
   const $ = s => el.querySelector(s), canvas = $('canvas'), g = canvas.getContext('2d');
   let tab = 'scope', hold = false, span = 50, mode = 'V', lastDraw = 0, lastMeter = 0;
+  const extra = []; // onglets ajoutés : { id, el, onShow(visible), draw(now) }
+  // Composants traversés par un courant : ceux du contexte, plus ceux qu'ajoute un instrument (api.extraParts).
+  const partsAll = () => { const a = ctx.parts(), ids = new Set(a.map(p => p.id)); return api.extraParts ? [...a, ...api.extraParts().filter(p => !ids.has(p.id))] : a; };
+  const showTab = id => {
+    tab = id;
+    el.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x.dataset.tab === id));
+    $('.bhScope').hidden = id !== 'scope'; $('.bhMeter').hidden = id !== 'meter';
+    for (const x of extra) { x.el.hidden = x.id !== id; if (x.onShow) x.onShow(!el.hidden && x.id === id); }
+    if (id === 'meter') paintProbes();
+  };
   const chans = [0, 1, 2, 3].map(i => ({ i, color: COLORS[i], board: null, key: null, buf: [], last: null }));
 
   /* ---------- Voies ---------- */
@@ -49,11 +61,11 @@ export function createBench(host, ctx) {
   });
   el.addEventListener('click', e => {
     const t = e.target.closest('[data-tab]');
-    if (t) { tab = t.dataset.tab; el.querySelectorAll('[data-tab]').forEach(x => x.classList.toggle('on', x === t)); $('.bhScope').hidden = tab !== 'scope'; $('.bhMeter').hidden = tab !== 'meter'; if (tab === 'meter') paintProbes(); return; }
+    if (t) { showTab(t.dataset.tab); return; }
     if (e.target.closest('[data-bclose]')) { api.toggle(false); return; }
     if (e.target.closest('[data-hold]')) { hold = !hold; $('[data-hold] span').textContent = hold ? tl('Reprendre') : tl('Figer'); return; }
     const m = e.target.closest('[data-mode]');
-    if (m) { mode = m.dataset.mode; el.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === m)); $('[data-v]').hidden = mode !== 'V'; $('[data-i]').hidden = mode !== 'mA'; meter(true); }
+    if (m) { mode = m.dataset.mode; el.querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === m)); $('[data-v]').hidden = mode === 'mA'; $('[data-i]').hidden = mode !== 'mA'; meter(true); }
   });
 
   /** Chaque carte signale les changements de ses sorties suivies. */
@@ -146,7 +158,7 @@ export function createBench(host, ctx) {
 
   /* ---------- Multimètre ---------- */
   function paintProbes() {
-    const P = ctx.probes(), parts = ctx.parts(), red = $('[data-red]').value, black = $('[data-black]').value, part = $('[data-part]').value;
+    const P = ctx.probes(), parts = partsAll(), red = $('[data-red]').value, black = $('[data-black]').value, part = $('[data-part]').value;
     const gnd = P.find(p => /\bGND\b/.test(p.label));
     $('[data-red]').innerHTML = `<option value="">${tl('— choisir —')}</option>` + P.map(p => `<option value="${esc(p.id)}"${p.id === red ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
     $('[data-black]').innerHTML = P.map(p => `<option value="${esc(p.id)}"${(black ? p.id === black : gnd && p.id === gnd.id) ? ' selected' : ''}>${esc(p.label)}</option>`).join('');
@@ -157,6 +169,7 @@ export function createBench(host, ctx) {
     if (el.hidden || tab !== 'meter') return;
     const now = performance.now(); if (!force && now - lastMeter < 200) return; lastMeter = now;
     const read = $('[data-read]'), unit = $('[data-unit]'), hint = $('.dmmHint');
+    if (mode === 'VAC') { meterAc(read, unit, hint); return; }
     const r = ctx.simOn() ? ctx.dc() : null;
     if (!r || !r.ok) { read.textContent = '——'; unit.textContent = ''; hint.textContent = ctx.simOn() ? tl('Aucune source d’alimentation dans le montage.') : tl('Lancez la simulation pour mesurer.'); return; }
     hint.textContent = '';
@@ -167,7 +180,7 @@ export function createBench(host, ctx) {
       if (va == null || vb == null) { read.textContent = 'OL'; unit.textContent = ''; hint.textContent = tl('Point non relié au circuit (en l’air).'); return; }
       const t = si(va - vb, 'V').split(' '); read.textContent = t[0]; unit.textContent = t[1];
     } else {
-      const p = ctx.parts().find(x => x.id === $('[data-part]').value);
+      const p = partsAll().find(x => x.id === $('[data-part]').value);
       if (!p) { read.textContent = '——'; unit.textContent = ''; hint.textContent = tl('Choisissez le composant dont mesurer le courant.'); return; }
       const i = r.current(p.comp);
       if (i == null) { read.textContent = '——'; unit.textContent = ''; return; }
@@ -177,10 +190,36 @@ export function createBench(host, ctx) {
     }
   }
 
+  /** Tension alternative efficace entre les pointes : fenêtre de transitoire calculée par l'instrument qui la fournit. */
+  function meterAc(read, unit, hint) {
+    const P = ctx.probes(), a = P.find(p => p.id === $('[data-red]').value), b = P.find(p => p.id === $('[data-black]').value);
+    if (!a) { read.textContent = '——'; unit.textContent = ''; hint.textContent = tl('Choisissez où poser la pointe rouge.'); return; }
+    const r = api.ac ? api.ac(a.ref, b ? b.ref : null) : null;
+    if (!r) { read.textContent = '——'; unit.textContent = ''; hint.textContent = tl('Mesure alternative indisponible.'); return; }
+    if (r.pending) { read.textContent = '…'; unit.textContent = ''; hint.textContent = tl('Calcul de la fenêtre de temps (ngspice)…'); return; }
+    if (r.error) { read.textContent = 'Err'; unit.textContent = ''; hint.textContent = r.error; return; }
+    const t = si(r.rms, 'V').split(' '); read.textContent = t[0]; unit.textContent = t[1] + '∿';
+    hint.textContent = tl('Efficace (RMS) de la partie alternative, moyenne {0}{1}.', si(r.mean, 'V'), r.f > 0 ? tl(', fréquence {0}', si(r.f, 'Hz')) : '');
+  }
+
   const api = {
-    el, sample, draw: now => { draw(now); meter(false); },
+    el, sample, draw: now => { draw(now); meter(false); for (const x of extra) if (x.id === tab && !el.hidden && x.draw) x.draw(now); },
+    /** Source de la tension alternative du multimètre : (ref rouge, ref noire | null) → { rms, mean, f } | { pending } | { error } | null. */
+    ac: null,
+    setAc(fn) { api.ac = fn; },
+    /** Composants de plus pour le courant du multimètre : () → [{ id, label, comp }]. */
+    extraParts: null,
+    /** Onglet de plus : def = { id, label, icon, el (panneau), onShow(visible), draw(now) }. */
+    addTab(def) {
+      if (extra.some(x => x.id === def.id)) return;
+      extra.push(def);
+      $('.bhTabs').insertAdjacentHTML('beforeend', `<button type="button" data-tab="${esc(def.id)}">${icon(def.icon || 'activity')}${esc(def.label)}</button>`);
+      def.el.hidden = true; el.appendChild(def.el);
+    },
+    show(id) { if (el.hidden) api.toggle(true); showTab(id); },
+    get tab() { return tab; },
     get visible() { return !el.hidden; },
-    toggle(on = el.hidden) { el.hidden = !on; if (on) { canvas.width = Math.max(300, Math.round(canvas.clientWidth || 560)); paintChans(); attachTraces(); if (tab === 'meter') paintProbes(); } else ctx.boards().forEach(b => b.rt && b.rt.setTrace && b.rt.setTrace(null)); if (ctx.onShow) ctx.onShow(on); },
+    toggle(on = el.hidden) { el.hidden = !on; if (on) { canvas.width = Math.max(300, Math.round(canvas.clientWidth || 560)); paintChans(); attachTraces(); if (tab === 'meter') paintProbes(); } else ctx.boards().forEach(b => b.rt && b.rt.setTrace && b.rt.setTrace(null)); for (const x of extra) if (x.onShow) x.onShow(on && x.id === tab); if (ctx.onShow) ctx.onShow(on); },
     /** Montage ou programmes changés : listes à jour, suivis rebranchés sur les nouveaux programmes. */
     refresh() { if (el.hidden) return; paintChans(); attachTraces(); if (tab === 'meter') paintProbes(); },
     reset() { chans.forEach(c => { c.buf = []; c.last = null; c.now = 0; }); attachTraces(); }

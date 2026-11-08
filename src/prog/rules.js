@@ -10,6 +10,7 @@ import { isMotor, motorPins } from '../sim/parts.js';
 import { driveOf, driveBoard } from '../sim/drive.js';
 import { FN, CONSTS } from './api.js';
 import { tl, quote, DEC, isEn, COLON } from '../i18n/index.js';
+import { pkgLed } from '../sim/pkgparts.js';
 
 /* ---------------- Ce que mesurent les capteurs et entrées ---------------- */
 // kind : num (valeur comparable) ou bool (oui / non). range : plage habituelle (pour « fait varier »).
@@ -274,7 +275,13 @@ export function createGenContext(board, cx) {
         }
         expr = `atan2(${o}_a.acceleration.x, ${o}_a.acceleration.z) * 180 / PI`; break;
       }
-      default: return null;
+      default: {
+        // Capteur en paquet (.jpart) : la broche de sa sortie déclarée, lue par analogRead ou digitalRead.
+        if (!sig.pin) return null;
+        const p = P(sig.pin); if (!p) return sig.opt ? null : missing(c); // sortie facultative non câblée : ignorée
+        if (sig.kind === 'bool') { setup.push(`pinMode(${p}, INPUT);`); expr = `digitalRead(${p}) == ${sig.low ? 'LOW' : 'HIGH'}`; } else expr = `analogRead(${p})`;
+        break;
+      }
     }
     used.add(c.id);
     const type = sig.kind === 'bool' ? 'bool' : sig.type === 'float' ? 'float' : 'int';
@@ -291,11 +298,12 @@ export function createGenContext(board, cx) {
     if (actors.has(c.id)) return actors.get(c.id);
     let a = null;
     const o = objName(c), P = (k, l) => pinConst(c, k, l);
-    if (/^led-(red|green|blue|yellow|white)$/.test(c.type)) {
-      const p = P('A');
+    const pl = pkgLed(c.type); // LED en paquet (.jpart) : commandée par son anode, comme une LED de la bibliothèque
+    if (/^led-(red|green|blue|yellow|white)$/.test(c.type) || pl) {
+      const p = P(pl ? pl.anode : 'A');
       if (p) {
         setup.push(`pinMode(${p}, OUTPUT);`);
-        const pwm = (() => { const g = cx.inspect(c).io.A; return g && boardOf(g.comp).gpio[g.key] && boardOf(g.comp).gpio[g.key].caps.has('pwm'); })();
+        const pwm = (() => { const g = cx.inspect(c).io[pl ? pl.anode : 'A']; return g && boardOf(g.comp).gpio[g.key] && boardOf(g.comp).gpio[g.key].caps.has('pwm'); })();
         a = (act, arg, x) => {
           if ((act === 'dim' || act === 'follow') && !pwm) notes.push(tl('// {0} est sur une broche sans PWM : analogWrite() n’y donnera que LOW ou HIGH.', c.name));
           if (act === 'on') return [`digitalWrite(${p}, HIGH);`];
@@ -311,7 +319,7 @@ export function createGenContext(board, cx) {
       if (r && g && b) a = (act, arg) => { const [R, G, B] = act === 'color' ? hex(arg) : [0, 0, 0]; return [`analogWrite(${r}, ${R});`, `analogWrite(${g}, ${G});`, `analogWrite(${b}, ${B});`]; };
     } else if (c.type === 'buzzer') {
       // Directement sur une broche, ou derrière un transistor (+ au 5 V, − au collecteur) : la base est la commande.
-      const d = P('+') ? null : driveOf(c, cx.A), p = P('+') || (d && d.kind === 'npn' && d.gpio && d.gpio.comp === board ? pinConst(d.npn, 'B') : null);
+      const d = P('+') ? null : driveOf(c, cx.A), p = P('+') || (d && d.kind === 'npn' && d.gpio && d.gpio.comp === board ? pinConst(d.npn, d.base || 'B') : null);
       if (p) { setup.push(d ? tl('pinMode({0}, OUTPUT); // base de {1} : HIGH, le transistor conduit et {2} sonne', p, d.npn.name, c.name) : `pinMode(${p}, OUTPUT);`); a = (act, arg) => (act === 'on' ? [`digitalWrite(${p}, HIGH);`] : act === 'off' ? [`digitalWrite(${p}, LOW);`] : [tl('digitalWrite({0}, (millis() / {1}) % 2 ? HIGH : LOW); // bip toutes les {2} ms', p, Math.max(1, arg | 0), arg | 0)]); }
     } else if (c.type === 'speaker') {
       const p = P('+');
@@ -347,17 +355,17 @@ export function createGenContext(board, cx) {
           } else missing(drv, tl('n’a pas ses entrées de commande reliées à ') + board.name);
         } else missing(drv);
       } else if (d && d.kind === 'npn') {
-        const p = d.gpio && d.gpio.comp === board ? pinConst(d.npn, 'B') : null;
+        const p = d.gpio && d.gpio.comp === board ? pinConst(d.npn, d.base || 'B') : null;
         if (p) {
           const pwm = d.gpio.g && d.gpio.g.caps.has('pwm');
-          setup.push(tl('pinMode({0}, OUTPUT); // base de {1} : HIGH, le transistor conduit et {2} tourne', p, d.npn.name, c.name));
+          setup.push(d.fet ? tl('pinMode({0}, OUTPUT); // grille de {1} : HIGH, le MOSFET conduit et {2} tourne', p, d.npn.name, c.name) : tl('pinMode({0}, OUTPUT); // base de {1} : HIGH, le transistor conduit et {2} tourne', p, d.npn.name, c.name));
           a = (act, arg, x) => {
             const m = motion(act, arg, x);
             if (m.stop) return [`digitalWrite(${p}, LOW);`];
             const pre = m.dir < 0 ? [tl('// un transistor ne fait tourner que dans un sens : il faut un pont en H (L298N) pour inverser')] : [];
             return [...pre, m.full || !pwm ? `digitalWrite(${p}, HIGH);` : tl('analogWrite({0}, {1}); // vitesse 0 à 255', p, m.v)];
           };
-        } else missing(d.npn, tl('n’a pas sa base reliée (par une résistance) à ') + board.name);
+        } else missing(d.npn, (d.fet ? tl('n’a pas sa grille reliée à ') : tl('n’a pas sa base reliée (par une résistance) à ')) + board.name);
       } else if (d && d.kind === 'relay') {
         const p = d.gpio && d.gpio.comp === board ? pinConst(d.relay, 'IN') : null;
         if (p) {
@@ -501,7 +509,12 @@ export function createGenContext(board, cx) {
         return fn('fn|mpu', isEn ? 'tilt' : 'inclinaison', n => [tl('// Inclinaison en degrés, calculée à partir de l’accéléromètre.'), `float ${n}(Adafruit_MPU6050 &${s}) {`,
           '  sensors_event_t a, g, t;', `  ${s}.getEvent(&a, &g, &t);`, '  return atan2(a.acceleration.x, a.acceleration.z) * 180 / PI;', '}']) + `(${o})`;
       }
-      default: return null;
+      default: {
+        if (!sig.pin) return null; // capteur en paquet (.jpart) : sa sortie déclarée
+        const p = P(sig.pin); if (!p) return sig.opt ? null : missing(c);
+        if (sig.kind === 'bool') { if (first) setup.push(`pinMode(${p}, INPUT);`); return `digitalRead(${p}) == ${sig.low ? 'LOW' : 'HIGH'}`; }
+        return `analogRead(${p})`;
+      }
     }
   }
 

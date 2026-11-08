@@ -8,6 +8,7 @@ import { BOARDS, volts, vrange } from '../sim/boards.js';
 import { PARTS, MOTORS } from '../sim/parts.js';
 import { limitRows } from '../check/limits.js';
 import { tl, COLON } from '../i18n/index.js';
+import { ANALOG_DOCS } from './analog-docs.js';
 
 const blink = (pin, note) => `void setup() {\n  pinMode(${pin}, OUTPUT);${note ? ' // ' + note : ''}\n}\n\nvoid loop() {\n  digitalWrite(${pin}, HIGH);\n  delay(500);\n  digitalWrite(${pin}, LOW);\n  delay(500);\n}`;
 const LED_DOC = {
@@ -377,7 +378,9 @@ export const DOCS = {
     how: tl('Un téléphone 2G sans écran : on lui envoie des commandes AT par la liaison série pour envoyer un SMS, appeler ou se connecter en GPRS.'),
     uses: [tl('Alerte par SMS (alarme, niveau d’eau)'), tl('Commande à distance par SMS')],
     mistakes: [tl('Alimentation trop faible : le voyant clignote, puis le module redémarre en boucle.'), tl('Réseau 2G arrêté dans votre pays : le module ne se connecte jamais.'), tl('Code PIN actif sur la carte SIM.')]
-  }
+  },
+  // Composants analogiques et instruments (analog-docs.js)
+  ...ANALOG_DOCS
 };
 
 /* ---------- Rendu d'une page ---------- */

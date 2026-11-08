@@ -21,6 +21,7 @@ A state assigns a value to everything that can change while the circuit runs (`s
 - each button released or pressed, and each relay at rest or energised;
 - each potentiometer at both ends and the middle;
 - each sensor output at both extremes of its datasheet range;
+- each function generator at both ends of its output (offset ± amplitude), and each NE555 with its output high and low;
 - each board pin the program drives, low and high.
 
 The high state also bounds PWM, because the current during a pulse is the high-state current.
@@ -52,6 +53,11 @@ The solver (`src/sim/dc.js`) finds the DC operating point of the circuit with mo
 | Capacitor | Open in DC; backward Euler companion model in transient | Ideal, no ESR |
 | PWM, tone(), servo pulses | The period is cut at each duty cycle and every slice is solved; the reading is their average, as a multimeter would show it | Peak current is checked separately in the high state |
 | Sensors and modules | Outputs are Norton sources over their datasheet range; supply current is a fixed `ma` | Typical consumption |
+| Inductor 10 mH | 24 Ω in DC (its wire); backward Euler companion model in transient, like capacitors | Ideal core: no saturation (flagged above 110 mA instead) |
+| MOSFET IRLZ44N | Switch: on above VGS(th) = 1.5 V; RDS(on) = 0.0875 / (VGS − 1.5) Ω, never below 22 mΩ (datasheet points at 4 V and 5 V); body diode | No saturation region; RDS(on) below 4 V is an extrapolation |
+| Op-amp LM358 | Ideal (gain 10⁵); output clamped to [5 mV, VCC − 1.5 V]; each input clamped to VCC − 1.5 V (common-mode range) | DC: no bandwidth or slew rate (ngspice macro-model has them) |
+| Timer NE555 | Internal 5 k / 10 k divider (CONT at 2/3 VCC); output VCC − 1.4 V behind 3 Ω or 0.05 V behind 7 Ω; discharge 0.05 V behind 12.5 Ω; RESET below 0.7 V. The flip-flop is a state: both values are proven | Comparators are read once per time step in live simulation |
+| Function generator | 50 Ω Thévenin source; in DC its mean (offset); proven at offset ± amplitude | Waveform averaged over each live step |
 
 ## 4. Validation against ngspice
 
@@ -67,6 +73,8 @@ The suite covers 80 circuits:
 |---|---|---|
 | **Same models** (`pwl`: the solver's own piecewise models given to ngspice) | The solver's arithmetic and state search are right | 272 nodes, maximum difference **2.1 mV**. Required: below 12 mV |
 | **Physical models** (`phys`: exponential diodes calibrated at 10 mA, a Gummel-Poon NPN, a level-1 MOSFET) | How far the simplified models are from physics | Per circuit: median **1 mV**, 90th percentile **2 mV**, maximum **278 mV**. Required: below 0.35 V or 8 % on every node that carries current |
+
+A third comparison covers the analog parts (18 circuits, 108 nodes): LM358 non-inverting, inverting and saturated, a follower outside its common-mode range, inductors, the IRLZ44N driven at 5 V and 3.3 V, and the NE555 in both flip-flop states. Same models: **2.0 mV** at most. Physical and macro-models (level-1 MOSFET with KP = 1 / k, an op-amp macro-model with a 0.7 MHz dominant pole and 0.3 V/µs slew rate, a behavioural NE555): **38 mV** at most. In transient, ngspice finds the RL time constant within 1.2 % of L / R, and the 1 kΩ / 10 kΩ / 100 nF astable at 672 Hz, 2 % below the datasheet formula 1.44 / ((RA + 2RB) C).
 
 The largest gaps come from LEDs at very low current. There a real LED conducts below its nominal threshold, while the fixed-threshold model says it is off. This changes nothing about overload findings, which happen at high current where the two models agree. It does mean that a "LED off" finding below about 0.1 mA is approximate.
 
@@ -112,5 +120,6 @@ Teaching margins (warn below max) are deliberate.
 | `node --test src/sim/dc.test.mjs` | Solver behaviour (LEDs, transistors, capacitors, PWM) |
 | `node --test src/sim/spice.test.mjs` | Agreement with ngspice (§4) |
 | `node --test src/sim/autowire.test.mjs` | The auto-wiring of every library part produces zero findings |
+| `node --test src/sim/analog-models.test.mjs` | Inductor, LM358, IRLZ44N, NE555 (live oscillation), generator and oscilloscope tap against textbook formulas |
 | `node src/check/cli.mjs exemples/*.jollof` | The checker on any project, from the command line |
 | `node --test src/emu/corpus.test.mjs` | Real Arduino sketches and libraries on the emulated boards (needs arduino-cli) |

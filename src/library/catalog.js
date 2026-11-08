@@ -8,8 +8,9 @@ import { M, V3, PITCH, mat, block, cyl, dome, decal, text, board, header, leg, s
 import { ownMaterial } from '../cad/library.js';
 import { tl } from '../i18n/index.js';
 import { stdMat } from '../quality.js';
+import { ANALOG_LIBRARY, ANALOG_CATEGORIES } from './analog.js';
 
-export const CATEGORIES = [tl('Cartes'), tl('Prototypage'), tl('Capteurs'), tl('Entrées'), tl('Affichage'), tl('Sorties'), tl('Moteurs'), tl('Passifs'), tl('Alimentation'), tl('Communication')];
+export const CATEGORIES = [tl('Cartes'), tl('Prototypage'), tl('Capteurs'), tl('Entrées'), tl('Affichage'), tl('Sorties'), tl('Moteurs'), tl('Passifs'), tl('Alimentation'), tl('Communication'), ...ANALOG_CATEGORIES];
 
 const BLUE = '#1b4f8c', GREEN = '#22603a', BLACK = '#17191c', RED = '#9b2226', PURPLE = '#4b2d7a';
 
@@ -649,6 +650,8 @@ export const LIBRARY = [
   { id: 'rc522', name: tl('Lecteur RFID RC522'), cat: tl('Communication'), pre: 'RFID', build: rc522 },
   { id: 'nrf24', name: tl('Radio nRF24L01'), cat: tl('Communication'), pre: 'RF', build: nrf24 },
   { id: 'sim800', name: 'GSM SIM800L', cat: tl('Communication'), pre: 'GSM', build: sim800 },
-  { id: 'lvlshift', name: tl('Adaptateur de niveau 3,3 V ↔ 5 V'), cat: tl('Communication'), pre: 'LS', build: lvlshift }
+  { id: 'lvlshift', name: tl('Adaptateur de niveau 3,3 V ↔ 5 V'), cat: tl('Communication'), pre: 'LS', build: lvlshift },
+  // Composants analogiques et instruments (analog.js)
+  ...ANALOG_LIBRARY
 ];
 export const BY_ID = Object.fromEntries(LIBRARY.map(e => [e.id, e]));

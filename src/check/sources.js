@@ -337,5 +337,31 @@ export const SOURCES = {
     publisher: 'Adafruit',
     url: 'https://www.adafruit.com/product/757',
     section: 'Description : « It works down to 1.8V on the low side, and up to 10V on the high side. »'
+  },
+
+  /* ---------- Analogique ---------- */
+  tiNe555: {
+    title: 'xx555 Precision Timers (SLFS022K, révision de mars 2026)',
+    publisher: 'Texas Instruments',
+    url: 'https://www.ti.com/lit/ds/symlink/ne555.pdf',
+    section: '§ 5.1 Absolute Maximum Ratings, p. 4 : VCC 18 V, « IO Output current ±225 mA » ; § 5.3 Recommended Operating Conditions, p. 4 : VCC 4.5 à 16 V (NE555), IO ±200 mA ; § 5.5 Electrical Characteristics, p. 5-6 : supply current, output low, no load, VCC = 5 V, 3 mA (typ.) ; VOH 3.3 V (typ.) à IOH = −100 mA sous 5 V ; VOL 0.1 V (typ.) à 5 mA ; DISCH switch on-state voltage 0.15 V (typ.) à 8 mA ; RESET voltage level 0.7 V (typ.) ; § 6.3.1-6.3.2 : tw = 1.1 × RA × C, f ≅ 1.44 / ((RA + 2RB) × C)'
+  },
+  tiLm358: {
+    title: 'LMx58, LMx58x, LM2904x Industry-Standard Dual Operational Amplifiers (SLOS068AB, révision d’octobre 2024)',
+    publisher: 'Texas Instruments',
+    url: 'https://www.ti.com/lit/ds/symlink/lm358.pdf',
+    section: '§ 5.1 Absolute Maximum Ratings, p. 4 : VS 32 V, VI −0.3 à 32 V ; § 5.3 Recommended Operating Conditions, p. 5 : VS 3 à 30 V ; § 5.7 Electrical Characteristics: LM358, p. 10 (VS = 5 V) : VCM de (V–) à (V+) – 1.5 V, voltage output swing from positive rail 1.5 V (max., RL ≥ 2 kΩ), from negative rail 5 mV (typ.), IQ 350 µA par ampli (typ.), AOL 100 V/mV (typ.), GBW 0.7 MHz, SR 0.3 V/µs, ISC ±40 mA (typ.)'
+  },
+  infineonIrlz44n: {
+    title: 'IRLZ44NPbF HEXFET Power MOSFET (PD-94831)',
+    publisher: 'Infineon Technologies (International Rectifier)',
+    url: 'https://www.infineon.com/assets/row/public/documents/24/49/infineon-irlz44n-datasheet-en.pdf',
+    section: 'p. 1, Absolute Maximum Ratings : VDSS 55 V, ID @ TC = 25 °C 47 A, ID @ TC = 100 °C 33 A, VGS ±16 V, TJ jusqu’à 175 °C ; Thermal Resistance : RθJA 62 °C/W ; p. 2, Electrical Characteristics : RDS(on) 0.022 Ω (VGS = 10 V), 0.025 Ω (5 V), 0.035 Ω (4 V), VGS(th) 1.0 à 2.0 V'
+  },
+  bourns5800: {
+    title: '5800 Series High Current Chokes (REV. 09/17)',
+    publisher: 'Bourns',
+    url: 'https://www.bourns.com/docs/Product-Datasheets/5800_series.pdf',
+    section: 'Electrical Specifications, ligne 5800-103-RC : 10,000 µH ±10 %, DCR 24.0 Ω max., I sat. 0.11 A (« current to cause 10 % max. inductance drop »), I rated 0.076 A (« current to cause 35 °C max. temperature rise »)'
   }
 };

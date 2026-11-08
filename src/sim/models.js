@@ -8,6 +8,7 @@
 // ou le niveau que chaque broche de sortie du capteur présente à la carte.
 import { volts } from './boards.js';
 import { tl, DEC } from '../i18n/index.js';
+import { GEN_DEFAULT } from './analog-parts.js';
 
 /** Grandeurs de l'environnement simulé, réglables par curseur. */
 export const QUANT = {
@@ -26,7 +27,8 @@ export const QUANT = {
 };
 export const ENV = Object.fromEntries(Object.entries(QUANT).map(([k, q]) => [k, q.def]));
 /** Commandes propres à certains composants d'entrée. */
-export const INPUTS = { button: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false } };
+// Générateur de fonctions : forme, fréquence (Hz), amplitude crête et décalage (V), réglés dans l'onglet Simulation.
+export const INPUTS = { button: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false }, siggen: { ...GEN_DEFAULT } };
 
 export const num = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d).replace('.', DEC).replace('-', '−');
 export const fmtQ = q => (QUANT[q].bool ? (ENV[q] ? 'oui' : 'non') : `${num(ENV[q], QUANT[q].dec || 0)} ${QUANT[q].unit}`);

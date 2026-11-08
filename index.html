@@ -55,6 +55,11 @@
     <div class="pfoot">
       <label class="btn subtle wide" for="glb" data-tip="STEP (.step, .stp) ou glTF (.glb, .gltf), en millimètres"><i data-icon="upload"></i><span>Importer une carte ou un modèle CAO</span></label>
       <input type="file" id="glb" accept=".step,.stp,.glb,.gltf" hidden>
+      <div class="row partRow">
+        <button type="button" class="btn subtle small" id="partNew" data-tip="Décrire un nouveau composant sur une plaquette : broches, rôles, limites, documentation"><i data-icon="plus"></i><span>Créer un composant</span></button>
+        <label class="btn subtle small" for="partFile" data-tip="Paquet Jollof (.jpart), pièce Fritzing (.fzpz) ou symbole KiCad (.kicad_sym)"><i data-icon="upload"></i><span>Importer un composant</span></label>
+      </div>
+      <input type="file" id="partFile" accept=".jpart,.fzpz,.kicad_sym" hidden>
     </div>
     <section class="selBox" id="selBox" hidden>
       <div class="selHead">
@@ -75,6 +80,7 @@
       <button type="button" class="btn primary wide" id="autoBtn" hidden><i data-icon="wand"></i><span>Câbler automatiquement</span></button>
       <div id="behav"></div>
       <div class="explain" id="explain"></div>
+      <div id="pkgTools" class="pkgTools" hidden></div>
       <div id="pinTools" class="wizard" hidden>
         <div class="wstep"><span class="wn">1</span><b>Ce modèle est…</b></div>
         <select id="cKind" class="sel" aria-label="Nature du modèle importé">
@@ -82,6 +88,7 @@
           <option value="skin">Un composant de la bibliothèque (apparence réelle)</option>
           <option value="board">Une carte à microcontrôleur</option>
           <option value="module">Un module ou un capteur</option>
+          <option value="part">Un composant à décrire (paquet .jpart)</option>
         </select>
         <select id="cAs" class="sel" aria-label="Composant de la bibliothèque représenté" hidden></select>
         <select id="cFam" class="sel" aria-label="Famille du microcontrôleur" hidden></select>
@@ -92,6 +99,7 @@
           <button type="button" class="btn wide" id="placeBtn">Placer des broches</button>
           <label class="field">Prochaine broche<input id="pinName" value="P1"></label>
           <ol class="cpins" id="cPins"></ol>
+          <div id="partEd" class="partEd" hidden></div>
         </div>
         <div class="wstep"><span class="wn">3</span><b>Utiliser</b></div>
         <button type="button" class="btn primary wide" id="applySkin" hidden><i data-icon="check"></i><span>Appliquer l’apparence au composant</span></button>

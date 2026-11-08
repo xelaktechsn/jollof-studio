@@ -1,0 +1,671 @@
+{
+ "id": "tp15-ne555-monostable",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Le NE555 en monostable : une impulsion d’une seconde",
+  "en": "The NE555 as a monostable: a one-second pulse"
+ },
+ "summary": {
+  "fr": "Un appui sur le bouton déclenche le NE555 : la LED s’allume pendant 1,1 s, quelle que soit la durée de l’appui. La durée se calcule avec T = 1,1 × R × C ; on mesure la broche de déclenchement au multimètre et on observe l’impulsion à l’oscilloscope.",
+  "en": "A press on the button triggers the NE555: the LED lights for 1.1 s, however long the press. The duration is calculated with T = 1.1 × R × C; the trigger pin is measured with the multimeter and the pulse observed on the oscilloscope."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un NE555 en monostable",
+   "en": "Wire an NE555 as a monostable"
+  },
+  {
+   "fr": "Calculer la durée d’une impulsion : T = 1,1 × R × C",
+   "en": "Calculate a pulse duration: T = 1.1 × R × C"
+  },
+  {
+   "fr": "Comprendre une entrée tirée vers le haut et déclenchée vers le bas",
+   "en": "Understand an input pulled high and triggered low"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Le NE555 en monostable",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "ne555_1",
+    "type": "ne555",
+    "name": "U1",
+    "x": -30,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": -6,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "cap-100u_1",
+    "type": "cap-100u",
+    "name": "C1",
+    "x": 16,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_2",
+    "type": "res-10k",
+    "name": "R2",
+    "x": 38,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "button_1",
+    "type": "button",
+    "name": "BTN1",
+    "x": -30,
+    "z": 146,
+    "r": 0,
+    "inp": {
+     "pressed": false
+    }
+   },
+   {
+    "id": "res-330_1",
+    "type": "res-330",
+    "name": "R3",
+    "x": -4,
+    "z": 146,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 20,
+    "z": 146,
+    "r": 0
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 112,
+    "z": 76,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+4"
+    ],
+    "color": "#e5484d",
+    "role": "VCC (broche 8)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "RESET"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+6"
+    ],
+    "color": "#e5484d",
+    "role": "RESET à VCC (broche 4)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-4"
+    ],
+    "color": "#3a3f45",
+    "role": "GND (broche 1)"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+10"
+    ],
+    "color": "#e5484d",
+    "role": "Tirage de TRIG vers 5 V"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f08a3c",
+    "role": "Tirage vers TRIG"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "TRIG"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#9b7be0",
+    "role": "TRIG (broche 2)"
+   },
+   {
+    "a": [
+     "button_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#3fb27f",
+    "role": "Bouton vers TRIG"
+   },
+   {
+    "a": [
+     "button_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Bouton à la masse"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+14"
+    ],
+    "color": "#e5484d",
+    "role": "R vers 5 V"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A14"
+    ],
+    "color": "#f08a3c",
+    "role": "R vers le condensateur"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "THR"
+    ],
+    "b": [
+     "breadboard_1",
+     "B14"
+    ],
+    "color": "#9b7be0",
+    "role": "THR (broche 6)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "DIS"
+    ],
+    "b": [
+     "breadboard_1",
+     "C14"
+    ],
+    "color": "#9b7be0",
+    "role": "DIS (broche 7)"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "D14"
+    ],
+    "color": "#e5484d",
+    "role": "Condensateur +"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur −"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A20"
+    ],
+    "color": "#f2c94c",
+    "role": "OUT (broche 3)"
+   },
+   {
+    "a": [
+     "res-330_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B20"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de la LED"
+   },
+   {
+    "a": [
+     "res-330_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Anode"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-16"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode à la masse"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C20"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : sortie OUT"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "E14"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : condensateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le monostable",
+    "en": "The monostable"
+   },
+   "text": {
+    "fr": "Un **monostable** n’a qu’un état stable : sortie basse. Une impulsion sur **TRIG** (broche 2) le fait basculer : la sortie **OUT** passe haute et le condensateur C1 (100 µF) se charge à travers R1 (10 kΩ). Quand sa tension atteint 2/3 de VCC (broche **THR**), la sortie redescend et la broche **DIS** vide le condensateur.\n- TRIG est tirée vers 5 V par **R2 (10 kΩ)** ; le bouton **BTN1** la relie à la masse quand on appuie.\n- La LED LED1 et sa résistance R3 (330 Ω) montrent la sortie.\nLa carte UNO ne fait que fournir le 5 V.",
+    "en": "A **monostable** has only one stable state: output low. A pulse on **TRIG** (pin 2) flips it: the **OUT** output goes high and capacitor C1 (100 µF) charges through R1 (10 kΩ). When its voltage reaches 2/3 of VCC (**THR** pin), the output goes back low and the **DIS** pin empties the capacitor.\n- TRIG is pulled up to 5 V by **R2 (10 kΩ)**; button **BTN1** connects it to ground when pressed.\n- LED LED1 and its resistor R3 (330 Ω) show the output.\nThe UNO board only supplies 5 V."
+   }
+  },
+  {
+   "title": {
+    "fr": "Alimentation et sortie",
+    "en": "Power and output"
+   },
+   "text": {
+    "fr": "- **5V** de l’UNO → le rail **+** du haut ; une **GND** de l’UNO → le rail **−**.\n- **U1 · VCC** et **U1 · RESET** → le rail **+** ; **U1 · GND** → le rail **−**.\n- **U1 · OUT** → la colonne 20 (A20), une patte de **R3** en B20 ; l’autre patte de R3 → l’**anode A** de LED1 ; la **cathode K** → le rail **−**.",
+    "en": "- The UNO’s **5V** → the top **+** rail; a UNO **GND** → the **−** rail.\n- **U1 · VCC** and **U1 · RESET** → the **+** rail; **U1 · GND** → the **−** rail.\n- **U1 · OUT** → column 20 (A20), one leg of **R3** in B20; the other leg of R3 → LED1’s **anode A**; the **cathode K** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "U1.VCC",
+      "U1.RESET"
+     ],
+     [
+      "UNO.GND*",
+      "U1.GND"
+     ],
+     [
+      "U1.OUT",
+      "R3.1|R3.2"
+     ],
+     [
+      "R3.1|R3.2",
+      "LED1.A"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le déclenchement",
+    "en": "The trigger"
+   },
+   "text": {
+    "fr": "- Une patte de **R2 (10 kΩ)** → le rail **+**.\n- L’autre patte de R2, **U1 · TRIG** et une patte de **BTN1** → la colonne 8 (A8, B8, C8).\n- L’autre patte de BTN1 → le rail **−**.",
+    "en": "- One leg of **R2 (10 kΩ)** → the **+** rail.\n- The other leg of R2, **U1 · TRIG** and one leg of **BTN1** → column 8 (A8, B8, C8).\n- The other leg of BTN1 → the **−** rail."
+   },
+   "hint": {
+    "fr": "Sans R2, TRIG serait en l’air au repos et la minuterie pourrait se déclencher toute seule.",
+    "en": "Without R2, TRIG would float at rest and the timer could trigger by itself."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "R2.1|R2.2"
+     ],
+     [
+      "R2.1|R2.2",
+      "U1.TRIG",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La temporisation",
+    "en": "The timing"
+   },
+   "text": {
+    "fr": "- Une patte de **R1 (10 kΩ)** → le rail **+**.\n- L’autre patte de R1, **U1 · THR**, **U1 · DIS** et la patte **+** de C1 → la colonne 14 (A14 à D14).\n- La patte **−** de C1 → le rail **−**.",
+    "en": "- One leg of **R1 (10 kΩ)** → the **+** rail.\n- The other leg of R1, **U1 · THR**, **U1 · DIS** and the **+** leg of C1 → column 14 (A14 to D14).\n- The **−** leg of C1 → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "U1.THR",
+      "U1.DIS",
+      "C1.+"
+     ],
+     [
+      "C1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Une impulsion par appui",
+    "en": "One pulse per press"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », lancez la simulation et appuyez sur **BTN1** (cliquez dessus dans la scène et maintenez un instant) : la LED doit s’allumer. Relâchez : elle reste allumée, puis s’éteint seule un peu plus d’une seconde après le début de l’appui.",
+    "en": "Click “Observe”, start the simulation and press **BTN1** (click it in the scene and hold for a moment): the LED must light up. Release: it stays on, then goes out by itself a little over a second after the press began."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer la durée",
+    "en": "Calculate the duration"
+   },
+   "text": {
+    "fr": "La sortie reste haute pendant T = 1,1 × R1 × C1. Avec R1 = 10 kΩ et C1 = 100 µF, que vaut T ?",
+    "en": "The output stays high for T = 1.1 × R1 × C1. With R1 = 10 kΩ and C1 = 100 µF, what is T?"
+   },
+   "hint": {
+    "fr": "Le condensateur part de 0 V et s’arrête à 2/3 de VCC : il lui faut ln 3 ≈ 1,1 constante de temps.",
+    "en": "The capacitor starts at 0 V and stops at 2/3 of VCC: it takes ln 3 ≈ 1.1 time constants."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,11 s",
+      "en": "0.11 s"
+     },
+     {
+      "fr": "1 s",
+      "en": "1 s"
+     },
+     {
+      "fr": "1,1 s",
+      "en": "1.1 s"
+     },
+     {
+      "fr": "11 s",
+      "en": "11 s"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "TRIG au repos",
+    "en": "TRIG at rest"
+   },
+   "text": {
+    "fr": "Bouton relâché, multimètre en mode **V ⎓** : pointe rouge sur **U1 · TRIG**, pointe noire sur **U1 · GND**. Entrez la tension lue.",
+    "en": "Button released, multimeter in **V ⎓** mode: red probe on **U1 · TRIG**, black probe on **U1 · GND**. Enter the voltage you read."
+   },
+   "hint": {
+    "fr": "L’entrée TRIG ne consomme presque rien : R2 la tire jusqu’à la tension d’alimentation.",
+    "en": "The TRIG input draws almost nothing: R2 pulls it all the way to the supply voltage."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "U1.TRIG",
+     "U1.GND"
+    ],
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "TRIG pendant l’appui",
+    "en": "TRIG while pressed"
+   },
+   "text": {
+    "fr": "Gardez **BTN1** appuyé (bouton « Appuyer » dans l’inspecteur du composant BTN1) et relisez la tension entre **U1 · TRIG** et **U1 · GND**. Elle passe sous 1/3 de VCC : c’est ce qui déclenche la minuterie.",
+    "en": "Keep **BTN1** pressed (“Press” button in the BTN1 inspector) and read the voltage between **U1 · TRIG** and **U1 · GND** again. It drops below 1/3 of VCC: that is what triggers the timer."
+   },
+   "hint": {
+    "fr": "Le bouton relie directement TRIG à la masse ; R2 limite le courant à 5 V / 10 kΩ = 0,5 mA.",
+    "en": "The button ties TRIG straight to ground; R2 limits the current to 5 V / 10 kΩ = 0.5 mA."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "U1.TRIG",
+     "U1.GND"
+    ],
+    "state": {
+     "BTN1": "pressed"
+    },
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 20 (C20) : la sortie OUT.\n- **OSC1 · CH2** → la colonne 14 (E14) : la tension du condensateur.\n- **OSC1 · GND** → le rail **−**.\nPuis **Instruments** → **Oscilloscope 2 voies**, source **Direct**, base de temps **0,5 s/div**, **1 V/div**, déclenchement sur **CH1**, front **↑**, niveau **2 V**, mode **Normal** : l’écran ne se redessine qu’à chaque déclenchement, c’est-à-dire à chaque appui.",
+    "en": "- **OSC1 · CH1** → column 20 (C20): the OUT output.\n- **OSC1 · CH2** → column 14 (E14): the capacitor voltage.\n- **OSC1 · GND** → the **−** rail.\nThen **Instruments** → **2-channel oscilloscope**, **Live** source, time base **0.5 s/div**, **1 V/div**, trigger on **CH1**, rising edge **↑**, level **2 V**, **Normal** mode: the screen is only redrawn on each trigger, that is on each press."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "U1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "C1.+"
+     ],
+     [
+      "OSC1.GND",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire l’impulsion",
+    "en": "Read the pulse"
+   },
+   "text": {
+    "fr": "Appuyez brièvement sur BTN1. Sur CH2, la tension du condensateur monte en arrondi pendant que CH1 est haute. Jusqu’où monte-t-elle avant de retomber d’un coup à 0 V ?",
+    "en": "Press BTN1 briefly. On CH2, the capacitor voltage rises in a curve while CH1 is high. How high does it go before dropping suddenly to 0 V?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Jusqu’à 1,67 V (1/3 de VCC)",
+      "en": "Up to 1.67 V (1/3 of VCC)"
+     },
+     {
+      "fr": "Jusqu’à 3,33 V (2/3 de VCC)",
+      "en": "Up to 3.33 V (2/3 of VCC)"
+     },
+     {
+      "fr": "Jusqu’à 5 V",
+      "en": "Up to 5 V"
+     },
+     {
+      "fr": "Elle reste à 0 V",
+      "en": "It stays at 0 V"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

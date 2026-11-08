@@ -19,7 +19,9 @@ export const SHEET_SCALE = 0.55;
 const LW = 0.3, WIRE = 0.25;
 const isBreadboard = c => /^breadboard/.test(c.type);
 const LED_COLOR = { 'led-red': tl('LED rouge'), 'led-green': tl('LED verte'), 'led-blue': tl('LED bleue'), 'led-yellow': tl('LED jaune'), 'led-white': tl('LED blanche') };
-const VALUE = { 'res-22': '22 Ω', 'res-220': '220 Ω', 'res-330': '330 Ω', 'res-1k': '1 kΩ', 'res-4k7': tl('4,7 kΩ'), 'res-10k': '10 kΩ', 'cap-100n': '100 nF', 'cap-100u': '100 µF', diode: '1N4007', npn: 'BC547', pn2222: 'PN2222A', bat9v: '9 V', bat18650: tl('3,7 V'), lm7805: 'LM7805', dcmotor: tl('Moteur CC'), buzzer: tl('Buzzer actif'), speaker: '8 Ω', fan: tl('Ventilateur 5 V'), pump: tl('Pompe 5 V'), vibro: tl('Vibreur 3 V') };
+// Composants analogiques : symbole et valeur affichée (le NE555 et le LM358 portent leur référence).
+const ANALOG_SYMBOL = { 'ind-10m': 'inductor', irlz44n: 'nmos', lm358: 'opamp', ne555: 'ic555', siggen: 'siggen' };
+const VALUE = { 'ind-10m': '10 mH', irlz44n: 'IRLZ44N', lm358: 'LM358', ne555: 'NE555', 'res-22': '22 Ω', 'res-220': '220 Ω', 'res-330': '330 Ω', 'res-1k': '1 kΩ', 'res-4k7': tl('4,7 kΩ'), 'res-10k': '10 kΩ', 'cap-100n': '100 nF', 'cap-100u': '100 µF', diode: '1N4007', npn: 'BC547', pn2222: 'PN2222A', bat9v: '9 V', bat18650: tl('3,7 V'), lm7805: 'LM7805', dcmotor: tl('Moteur CC'), buzzer: tl('Buzzer actif'), speaker: '8 Ω', fan: tl('Ventilateur 5 V'), pump: tl('Pompe 5 V'), vibro: tl('Vibreur 3 V') };
 
 /* ---------------- Symboles ----------------
  * Chaque symbole : { box: [x0, y0, x1, y1] (corps et textes), body: [x0, y0, x1, y1] (obstacle pour les fils),
@@ -175,11 +177,85 @@ const SYMBOLS = {
       d.circle(G * 1.6, 0, 0.45, { fill: '#000', w: 0.1 });
       refText(d, c, G * 0.4, -7.4); valText(d, 'RVB', G * 0.4, 2 * G + 3.4);
     }
-  })
+  }),
+  // Bobine (CEI 60617) : quatre demi-spires.
+  inductor: (c, v) => twoPin(c, v, d => { leads(d, -3.6, 3.6); for (let i = 0; i < 4; i++) d.arc(-2.7 + i * 1.8, 0, 0.9, Math.PI, 2 * Math.PI, { w: LW }); }, { body: [-3.6, -1.2, 3.6, 0.3], refY: -2.6 }),
+  // MOSFET canal N à enrichissement : grille isolée, canal en trois traits, flèche vers le canal, source reliée au substrat.
+  nmos: (c, v) => ({
+    pins: { G: { x: -2 * G, y: 0, dir: 'l' }, D: { x: G, y: -2 * G, dir: 'u' }, S: { x: G, y: 2 * G, dir: 'd' } },
+    spokes: { G: [[-2 * G, 0], [-1.2, 0]], D: [[G, -2 * G], [G, -1.5], [-0.4, -1.5]], S: [[G, 2 * G], [G, 1.5], [-0.4, 1.5]] },
+    box: [-2 * G, -2 * G, 14, 2 * G], body: [-2.2, -3.4, 4.6, 3.4],
+    draw(d) {
+      d.circle(0.8, 0, 3.4, { w: LW });
+      d.line([[-2 * G, 0], [-1.2, 0]], { w: LW }); d.line([[-1.2, -1.8], [-1.2, 1.8]], { w: LW });
+      [[-1.9, -1.1], [-0.4, 0.4], [1.1, 1.9]].forEach(([a, b]) => d.line([[-0.4, a], [-0.4, b]], { w: 0.45 }));
+      d.line([[-0.4, -1.5], [G, -1.5], [G, -2 * G]], { w: LW }); d.line([[-0.4, 1.5], [G, 1.5], [G, 2 * G]], { w: LW });
+      arrow(d, G, 0, -0.3, 0); d.line([[G, 0], [G, 1.5]], { w: LW });
+      refText(d, c, 5, -0.6, 'l'); valText(d, v, 5, 2, 'l');
+    }
+  }),
+  // Double ampli-op : deux triangles (A en haut, B en bas), VCC au-dessus, masse en dessous.
+  opamp: (c, v) => {
+    const yA = -3 * G, yB = 3 * G, tri = (d, y) => { d.line([[-2 * G, y - 1.8 * G], [-2 * G, y + 1.8 * G], [2 * G, y]], { w: LW, close: true }); d.text(-2 * G + 1.1, y - G + 0.6, '−', { s: 1.9, a: 'm' }); d.text(-2 * G + 1.1, y + G + 0.6, '+', { s: 1.9, a: 'm' }); };
+    const ins = (k, y) => ({ [k]: { x: -3 * G, y, dir: 'l' } });
+    return {
+      pins: { ...ins('1IN-', yA - G), ...ins('1IN+', yA + G), '1OUT': { x: 3 * G, y: yA, dir: 'r' }, ...ins('2IN-', yB - G), ...ins('2IN+', yB + G), '2OUT': { x: 3 * G, y: yB, dir: 'r' }, VCC: { x: 0, y: -6 * G, dir: 'u' }, GND: { x: 0, y: 6 * G, dir: 'd' } },
+      spokes: { '1IN-': [[-3 * G, yA - G], [-2 * G, yA - G]], '1IN+': [[-3 * G, yA + G], [-2 * G, yA + G]], '1OUT': [[3 * G, yA], [2 * G, yA]], '2IN-': [[-3 * G, yB - G], [-2 * G, yB - G]], '2IN+': [[-3 * G, yB + G], [-2 * G, yB + G]], '2OUT': [[3 * G, yB], [2 * G, yB]], VCC: [[0, -6 * G], [0, yA - 0.9 * G]], GND: [[0, 6 * G], [0, yB + 0.9 * G]] },
+      box: [-3 * G, -6 * G, 3 * G + 12, 6 * G], body: [-2 * G, yA - 1.8 * G, 2 * G, yB + 1.8 * G],
+      draw(d) {
+        tri(d, yA); tri(d, yB);
+        for (const y of [yA, yB]) { d.line([[-3 * G, y - G], [-2 * G, y - G]], { w: LW }); d.line([[-3 * G, y + G], [-2 * G, y + G]], { w: LW }); d.line([[2 * G, y], [3 * G, y]], { w: LW }); }
+        d.line([[0, -6 * G], [0, yA - 0.9 * G]], { w: LW }); d.line([[0, 6 * G], [0, yB + 0.9 * G]], { w: LW });
+        d.text(0.6, -6 * G + 1.4, 'VCC', { s: 1.4, a: 'l' }); d.text(0.6, 6 * G - 0.6, 'GND', { s: 1.4, a: 'l' });
+        d.text(0, yA + 0.5, 'A', { s: 1.4, a: 'm' }); d.text(0, yB + 0.5, 'B', { s: 1.4, a: 'm' });
+        refText(d, c, 3 * G + 1, yA - 2.4, 'l'); valText(d, v, 3 * G + 1, yB + 3, 'l');
+      }
+    };
+  },
+  // Minuterie NE555 : boîte, broches rangées par rôle (comparateurs à gauche, sortie et décharge à droite).
+  ic555: (c, v) => {
+    const W = 6 * G, H = 8 * G, x0 = -W / 2, y0 = -H / 2;
+    const P = { TRIG: [x0 - G, -2 * G, 'l'], THR: [x0 - G, 0, 'l'], CV: [x0 - G, 2 * G, 'l'], OUT: [-x0 + G, -2 * G, 'r'], DIS: [-x0 + G, 0, 'r'], VCC: [-G, y0 - G, 'u'], RESET: [G, y0 - G, 'u'], GND: [0, -y0 + G, 'd'] };
+    const pins = {}, spokes = {};
+    for (const [k, [x, y, dir]] of Object.entries(P)) { pins[k] = { x, y, dir }; const [dx, dy] = DIR[dir]; spokes[k] = [[x, y], [x - dx * G, y - dy * G]]; }
+    return {
+      pins, spokes, box: [x0 - G, y0 - G - 3.6, -x0 + G, -y0 + G + 3.4], body: [x0, y0, -x0, -y0],
+      draw(d) {
+        d.rect(x0, y0, W, H, { w: LW });
+        for (const [k, [x, y, dir]] of Object.entries(P)) {
+          const [dx, dy] = DIR[dir]; d.line([[x, y], [x - dx * G, y - dy * G]], { w: LW });
+          const tx = x - dx * (G + 0.6), ty = y - dy * (G + 1.6) + (dy ? 0 : 0.55);
+          d.text(tx, ty, k, { s: 1.35, a: dir === 'l' ? 'l' : dir === 'r' ? 'r' : 'm' });
+        }
+        refText(d, c, 0, y0 - G - 2, 'm'); valText(d, v, 0, -y0 - 1.6, 'm');
+      }
+    };
+  },
+  // Générateur de fonctions : source de tension alternative (cercle et sinusoïde), OUT en haut, GND en bas.
+  siggen: c => {
+    const g = c.inp || {}, wave = { sine: '∿', square: '⊓', triangle: '△', dc: '⎓' }[g.wave] || '∿';
+    const f = +g.freq || 0, val = g.wave === 'dc' ? `${String(+g.off || 0).replace('.', ',')} V` : `${wave} ${f >= 1000 ? `${String(Math.round(f / 10) / 100).replace('.', ',')} kHz` : `${String(f).replace('.', ',')} Hz`}`;
+    return {
+      pins: { OUT: { x: 0, y: -2 * G, dir: 'u' }, GND: { x: 0, y: 2 * G, dir: 'd' } },
+      spokes: { OUT: [[0, -2 * G], [0, -3]], GND: [[0, 2 * G], [0, 3]] },
+      box: [-3.4, -2 * G, 16, 2 * G], body: [-3, -3, 3, 3],
+      draw(d) {
+        d.circle(0, 0, 3, { w: LW }); d.line([[0, -2 * G], [0, -3]], { w: LW }); d.line([[0, 3], [0, 2 * G]], { w: LW });
+        const pts = []; for (let i = 0; i <= 16; i++) pts.push([-1.8 + i * 3.6 / 16, -1.1 * Math.sin(i / 16 * 2 * Math.PI)]); d.line(pts, { w: 0.25 });
+        d.text(0.7, -3.6, '+', { s: 1.6, a: 'l' });
+        refText(d, c, 4, -0.6, 'l'); valText(d, val, 4, 2, 'l');
+      }
+    };
+  }
 };
+/**
+ * Symboles des composants en paquet (.jpart, library/packages.js) : type → { kind, value } (symbole de la liste
+ * ci-dessous, avec sa valeur) ou { make(c) } (dessin du paquet ; null : bloc).
+ */
+export const PKG_SYMBOLS = {};
 const SYMBOL_OF = type => (/^res-/.test(type) ? 'resistor' : type === 'cap-100n' ? 'cap' : type === 'cap-100u' ? 'capPol' : type === 'diode' ? 'diode' : LED_COLOR[type] ? 'led'
   : type === 'led-rgb' ? 'ledRgb' : type === 'button' ? 'button' : type === 'pot' ? 'pot' : type === 'npn' || type === 'pn2222' ? 'npn' : /^bat/.test(type) ? 'battery' : type === 'dcmotor' ? 'motor'
-  : type === 'buzzer' ? 'buzzer' : type === 'speaker' ? 'speaker' : type === 'fan' || type === 'pump' || type === 'vibro' ? type : null);
+  : type === 'buzzer' ? 'buzzer' : type === 'speaker' ? 'speaker' : type === 'fan' || type === 'pump' || type === 'vibro' ? type : ANALOG_SYMBOL[type] || null);
 
 /** Petits pictogrammes dans les blocs (relais, servo, pas à pas). */
 const ICONS = {
@@ -537,9 +613,9 @@ function layoutOf(o) {
   // Symbole de chaque composant.
   const syms = new Map();
   for (const c of comps) {
-    const desc = o.describe(c), kind = SYMBOL_OF(c.type);
-    let s;
-    if (kind) s = SYMBOLS[kind](c, LED_COLOR[c.type] || VALUE[c.type] || '');
+    const desc = o.describe(c), pk = PKG_SYMBOLS[c.type], kind = SYMBOL_OF(c.type) || (pk && pk.kind);
+    let s = pk && pk.make ? pk.make(c) : null;
+    if (s) { /* symbole dessiné par le paquet */ } else if (kind) s = SYMBOLS[kind](c, LED_COLOR[c.type] || VALUE[c.type] || (pk && pk.value) || '');
     else { const mb = mainBoard(c); s = block(c, c.name, boardOf(c) ? boardOf(c).label : desc.title, mb && mb !== c ? pos(mb)[0] > pos(c)[0] : false); }
     // Place réservée aux étiquettes et symboles d'alimentation, dans le prolongement des broches.
     const box = [...s.box];

@@ -1,0 +1,560 @@
+{
+ "id": "tp20-mosfet-moteur",
+ "level": "pro",
+ "minutes": 60,
+ "title": {
+  "fr": "MOSFET IRLZ44N : commander un moteur en PWM",
+  "en": "IRLZ44N MOSFET: driving a motor with PWM"
+ },
+ "summary": {
+  "fr": "Un MOSFET logique IRLZ44N commute un moteur à courant continu alimenté par une pile 9 V ; la broche D9 de l’Arduino commande sa grille et règle la vitesse avec analogWrite. Mesures de la tension et du courant du moteur, de VDS, et rôle de la diode de roue libre.",
+  "en": "An IRLZ44N logic-level MOSFET switches a DC motor powered by a 9 V battery; the Arduino’s D9 pin drives its gate and sets the speed with analogWrite. Measurements of the motor voltage and current and of VDS, and the role of the flyback diode."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un MOSFET canal N en commutation côté bas",
+   "en": "Wire an N-channel MOSFET as a low-side switch"
+  },
+  {
+   "fr": "Régler la vitesse d’un moteur en PWM",
+   "en": "Set a motor’s speed with PWM"
+  },
+  {
+   "fr": "Justifier la diode de roue libre et calculer la puissance dissipée",
+   "en": "Justify the flyback diode and calculate the power dissipated"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – MOSFET et moteur",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "irlz44n_1",
+    "type": "irlz44n",
+    "name": "Q1",
+    "x": -4,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -34,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R2",
+    "x": -34,
+    "z": 144,
+    "r": 0
+   },
+   {
+    "id": "dcmotor_1",
+    "type": "dcmotor",
+    "name": "M1",
+    "x": 30,
+    "z": 128,
+    "r": 0
+   },
+   {
+    "id": "diode_1",
+    "type": "diode",
+    "name": "D1",
+    "x": 2,
+    "z": 146,
+    "r": 0
+   },
+   {
+    "id": "bat9v_1",
+    "type": "bat9v",
+    "name": "BAT1",
+    "x": 92,
+    "z": 90,
+    "r": 1.5708
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "D9"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande PWM"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de grille"
+   },
+   {
+    "a": [
+     "irlz44n_1",
+     "G"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#9b7be0",
+    "role": "Grille"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f08a3c",
+    "role": "Rappel de grille"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Rappel à la masse"
+   },
+   {
+    "a": [
+     "irlz44n_1",
+     "S"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Source à la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de la carte"
+   },
+   {
+    "a": [
+     "bat9v_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Pile − à la masse commune"
+   },
+   {
+    "a": [
+     "bat9v_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "A24"
+    ],
+    "color": "#e5484d",
+    "role": "Pile + (9 V)"
+   },
+   {
+    "a": [
+     "dcmotor_1",
+     "M+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B24"
+    ],
+    "color": "#e5484d",
+    "role": "Moteur +"
+   },
+   {
+    "a": [
+     "diode_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "C24"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode côté +"
+   },
+   {
+    "a": [
+     "dcmotor_1",
+     "M-"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Moteur −"
+   },
+   {
+    "a": [
+     "irlz44n_1",
+     "D"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#9b7be0",
+    "role": "Drain"
+   },
+   {
+    "a": [
+     "diode_1",
+     "A"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#f08a3c",
+    "role": "Anode de la diode côté drain"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : un MOSFET IRLZ44N commande un moteur alimenté par une pile 9 V.\n// La broche D9 ne fournit que la charge de la grille ; analogWrite règle la vitesse.\nconst int GRILLE = 9;\n\nvoid setup() {\n  pinMode(GRILLE, OUTPUT);\n}\n\nvoid loop() {\n  analogWrite(GRILLE, 255);   // pleine vitesse (rapport cyclique 100 %)\n  delay(3000);\n  analogWrite(GRILLE, 128);   // mi-vitesse (rapport cyclique 50 %)\n  delay(3000);\n  analogWrite(GRILLE, 0);     // arrêt\n  delay(2000);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Pourquoi un MOSFET ?",
+    "en": "Why a MOSFET?"
+   },
+   "text": {
+    "fr": "Le moteur M1, sous 9 V, demande près de 300 mA : trente fois ce qu’une broche d’Arduino peut fournir. Le **MOSFET Q1 (IRLZ44N)** sert d’interrupteur :\n- **G** (grille) : la commande, isolée, qui ne consomme qu’un courant de charge très bref ;\n- **D** (drain) : reçoit le − du moteur ;\n- **S** (source) : à la masse.\nQuand la tension grille-source VGS dépasse son seuil (1 à 2 V), le canal drain-source conduit, avec une résistance de quelques centièmes d’ohm.\n- **R1 (220 Ω)** limite la pointe de courant quand la broche charge la grille ;\n- **R2 (10 kΩ)** garde la grille à la masse tant que la carte démarre.",
+    "en": "Motor M1, on 9 V, needs nearly 300 mA: thirty times what an Arduino pin can supply. The **MOSFET Q1 (IRLZ44N)** acts as a switch:\n- **G** (gate): the control input, insulated, which only takes a very brief charging current;\n- **D** (drain): receives the motor’s −;\n- **S** (source): to ground.\nWhen the gate-source voltage VGS exceeds its threshold (1 to 2 V), the drain-source channel conducts, with a resistance of a few hundredths of an ohm.\n- **R1 (220 Ω)** limits the current spike when the pin charges the gate;\n- **R2 (10 kΩ)** holds the gate at ground while the board starts up."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit de grille",
+    "en": "The gate circuit"
+   },
+   "text": {
+    "fr": "- **D9** → une patte de **R1 (220 Ω)**.\n- L’autre patte de R1, **Q1 · G** et une patte de **R2 (10 kΩ)** → la colonne 8 (A8, B8, C8).\n- L’autre patte de R2, **Q1 · S** et une **GND** de l’UNO → le rail **−** du haut.",
+    "en": "- **D9** → one leg of **R1 (220 Ω)**.\n- The other leg of R1, **Q1 · G** and one leg of **R2 (10 kΩ)** → column 8 (A8, B8, C8).\n- The other leg of R2, **Q1 · S** and a UNO **GND** → the top **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D9",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "Q1.G",
+      "R2.1|R2.2"
+     ],
+     [
+      "R2.1|R2.2",
+      "Q1.S",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit de puissance",
+    "en": "The power circuit"
+   },
+   "text": {
+    "fr": "- **BAT1 · +** → la colonne 24 (A24), et **M1 · M+** en B24.\n- **M1 · M−** et **Q1 · D** → la colonne 16 (A16, B16).\n- **BAT1 · −** → le rail **−** : la pile, le MOSFET et la carte partagent la même masse.",
+    "en": "- **BAT1 · +** → column 24 (A24), and **M1 · M+** in B24.\n- **M1 · M−** and **Q1 · D** → column 16 (A16, B16).\n- **BAT1 · −** → the **−** rail: the battery, the MOSFET and the board share the same ground."
+   },
+   "hint": {
+    "fr": "Sans masse commune, la tension de grille n’aurait pas de référence : le MOSFET ne serait pas commandé.",
+    "en": "Without a common ground, the gate voltage would have no reference: the MOSFET would not be controlled."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BAT1.+",
+      "M1.M+"
+     ],
+     [
+      "M1.M-",
+      "Q1.D"
+     ],
+     [
+      "BAT1.-",
+      "Q1.S",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La diode de roue libre",
+    "en": "The flyback diode"
+   },
+   "text": {
+    "fr": "Posez la **diode D1** aux bornes du moteur, **à l’envers** : l’**anode A** côté drain (colonne 16, C16), la **cathode K** (côté bague) côté **+** de la pile (colonne 24, C24).",
+    "en": "Place **diode D1** across the motor, **reversed**: the **anode A** on the drain side (column 16, C16), the **cathode K** (banded end) on the battery **+** side (column 24, C24)."
+   },
+   "hint": {
+    "fr": "En marche normale, la diode est bloquée : elle ne sert qu’au moment de la coupure.",
+    "en": "In normal running, the diode is reverse-biased: it only acts at switch-off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "D1.K",
+      "BAT1.+"
+     ],
+     [
+      "D1.A",
+      "Q1.D"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Onglet **Code** : mettez D9 en sortie, puis, en boucle, faites tourner le moteur à pleine vitesse avec `analogWrite(9, 255)` pendant 3 s, à mi-vitesse avec `analogWrite(9, 128)` pendant 3 s, puis arrêtez-le avec `analogWrite(9, 0)` pendant 2 s. Téléversez.",
+    "en": "**Code** tab: set D9 as an output, then, in a loop, run the motor at full speed with `analogWrite(9, 255)` for 3 s, at half speed with `analogWrite(9, 128)` for 3 s, then stop it with `analogWrite(9, 0)` for 2 s. Upload."
+   },
+   "hint": {
+    "fr": "analogWrite produit une PWM : la broche alterne 0 et 5 V à 490 Hz, et la valeur (0 à 255) fixe la part du temps passée à 5 V.",
+    "en": "analogWrite produces PWM: the pin alternates between 0 and 5 V at 490 Hz, and the value (0 to 255) sets the share of time spent at 5 V."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "analogWrite\\s*\\(",
+     "delay\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Tension du moteur",
+    "en": "Motor voltage"
+   },
+   "text": {
+    "fr": "Lancez la simulation. Pendant la phase pleine vitesse (D9 en permanence à 5 V), multimètre en mode **V ⎓** : pointe rouge sur **M1 · M+**, pointe noire sur **M1 · M−**. Entrez la tension lue.",
+    "en": "Start the simulation. During the full-speed phase (D9 permanently at 5 V), multimeter in **V ⎓** mode: red probe on **M1 · M+**, black probe on **M1 · M−**. Enter the voltage you read."
+   },
+   "hint": {
+    "fr": "Un peu moins de 9 V : la pile a sa propre résistance interne (1,5 Ω).",
+    "en": "A little under 9 V: the battery has its own internal resistance (1.5 Ω)."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "M1.M+",
+     "M1.M-"
+    ],
+    "state": {
+     "UNO.D9": 1
+    },
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "Courant du moteur",
+    "en": "Motor current"
+   },
+   "text": {
+    "fr": "Toujours à pleine vitesse, multimètre en mode **mA ⎓**, composant traversé : **M1**. Entrez le courant lu.",
+    "en": "Still at full speed, multimeter in **mA ⎓** mode, component: **M1**. Enter the current you read."
+   },
+   "hint": {
+    "fr": "Le moteur se comporte ici comme une résistance d’environ 30 Ω.",
+    "en": "Here the motor behaves like a resistance of about 30 Ω."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "M1",
+    "state": {
+     "UNO.D9": 1
+    },
+    "tolerance": 0.08
+   }
+  },
+  {
+   "title": {
+    "fr": "Tension drain-source",
+    "en": "Drain-source voltage"
+   },
+   "text": {
+    "fr": "Multimètre en mode **V ⎓** : pointe rouge sur **Q1 · D**, pointe noire sur **Q1 · S**, D9 à 5 V. Entrez VDS.",
+    "en": "Multimeter in **V ⎓** mode: red probe on **Q1 · D**, black probe on **Q1 · S**, D9 at 5 V. Enter VDS."
+   },
+   "hint": {
+    "fr": "Quelques millivolts seulement : RDS(on) ≈ 0,025 Ω à VGS = 5 V.",
+    "en": "Only a few millivolts: RDS(on) ≈ 0.025 Ω at VGS = 5 V."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "Q1.D",
+     "Q1.S"
+    ],
+    "state": {
+     "UNO.D9": 1
+    },
+    "tolerance": 0.5
+   }
+  },
+  {
+   "title": {
+    "fr": "Puissance perdue dans le MOSFET",
+    "en": "Power lost in the MOSFET"
+   },
+   "text": {
+    "fr": "Le MOSFET dissipe P = RDS(on) × I². Avec RDS(on) ≈ 0,025 Ω et I ≈ 0,285 A, combien vaut P ?",
+    "en": "The MOSFET dissipates P = RDS(on) × I². With RDS(on) ≈ 0.025 Ω and I ≈ 0.285 A, what is P?"
+   },
+   "hint": {
+    "fr": "0,285 × 0,285 ≈ 0,081 ; × 0,025 ≈ 0,002 W.",
+    "en": "0.285 × 0.285 ≈ 0.081; × 0.025 ≈ 0.002 W."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 2 mW : aucun radiateur n’est nécessaire",
+      "en": "About 2 mW: no heatsink is needed"
+     },
+     {
+      "fr": "Environ 0,7 W",
+      "en": "About 0.7 W"
+     },
+     {
+      "fr": "Environ 2,6 W : radiateur obligatoire",
+      "en": "About 2.6 W: heatsink required"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi un MOSFET « logique » ?",
+    "en": "Why a “logic-level” MOSFET?"
+   },
+   "text": {
+    "fr": "Un IRFZ44N ordinaire n’est garanti bien passant qu’avec VGS = 10 V. Pourquoi l’IRLZ44N convient-il à une broche d’Arduino ?",
+    "en": "An ordinary IRFZ44N is only guaranteed fully on with VGS = 10 V. Why does the IRLZ44N suit an Arduino pin?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il supporte plus de courant",
+      "en": "It handles more current"
+     },
+     {
+      "fr": "Sa résistance RDS(on) est garantie faible dès VGS = 4 à 5 V : les 5 V d’une broche suffisent à le rendre bien passant",
+      "en": "Its RDS(on) is guaranteed low from VGS = 4 to 5 V: a pin’s 5 V is enough to turn it fully on"
+     },
+     {
+      "fr": "Il n’a pas besoin de masse commune",
+      "en": "It does not need a common ground"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À quoi sert la diode ?",
+    "en": "What is the diode for?"
+   },
+   "text": {
+    "fr": "Le moteur contient une bobine. Que se passerait-il, sans la diode D1, à chaque fois que le MOSFET se bloque (des centaines de fois par seconde en PWM) ?",
+    "en": "The motor contains a coil. What would happen, without diode D1, each time the MOSFET turns off (hundreds of times per second with PWM)?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : la diode ne sert qu’à protéger la pile",
+      "en": "Nothing: the diode only protects the battery"
+     },
+     {
+      "fr": "La bobine du moteur, qui refuse l’arrêt brutal de son courant, produirait une pointe de tension sur le drain ; la diode offre un chemin à ce courant et protège le MOSFET",
+      "en": "The motor coil, which resists the sudden stop of its current, would produce a voltage spike on the drain; the diode gives that current a path and protects the MOSFET"
+     },
+     {
+      "fr": "Le moteur tournerait à l’envers",
+      "en": "The motor would run backwards"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

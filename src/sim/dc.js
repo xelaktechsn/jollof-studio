@@ -11,9 +11,16 @@
 // topologie est refaite à chaque nouvelle analyse, ses éléments ne durent pas.
 // Pensé pour les vieux PC des écoles : la topologie est gardée tant que l'analyse (A) ne change
 // pas, et les tampons de calcul servent d'un appel à l'autre.
+// Composants analogiques (analog-parts.js) : bobine (modèle compagnon d'Euler implicite, comme les condensateurs ;
+// en continu, un fil de sa résistance), ampli-op LM358 (idéal, sortie bornée aux rails moins sa marge, entrées
+// bornées à leur plage de mode commun), MOSFET IRLZ44N (interrupteur, RDS(on) selon VGS), minuterie NE555
+// (comparateurs à 1/3 et 2/3 de VCC lus à chaque pas, bascule gardée d'un pas à l'autre, décharge, étage de
+// sortie), générateur de fonctions (source de 50 Ω qui suit le temps virtuel).
 import { DERIVED, SOURCES, base, boardOf, isGnd } from './boards.js';
 import { partOf, MOTORS, NPNS } from './parts.js';
 import { pid, ohms } from './circuit.js';
+import { TIMERS, OPAMPS, MOSFETS, INDUCTORS, GENERATORS, GEN_DEFAULT, genValue, rdsOn } from './analog-parts.js';
+import { pkgLed, pkgLoad } from './pkgparts.js';
 
 // Valeurs du modèle : assez proches du réel pour ce qu'affiche un multimètre, sans plus.
 const GMIN = 1e-9;     // fuite de chaque nœud vers la masse : un composant en l'air reste soluble
@@ -55,8 +62,11 @@ const DRIVEN = new Set(['in', 'adc', 'io', 'tx', 'miso', 'sda']);
 
 // Éléments : résistance, diode, source de tension (branche MNA), source de Norton (GPIO, capteur),
 // condensateur, transistor NPN (a = C, b = E, c = B ; on = 0 bloqué, 1 linéaire, 2 saturé),
-// MOSFET en interrupteur (a, b : drain et source, interchangeables ; c = grille ; on = 0 ou 1).
-const RES = 0, DIO = 1, SRC = 2, NOR = 3, CAP = 4, BJT = 5, FET = 6;
+// MOSFET en interrupteur (a, b : drain et source, interchangeables ; c = grille ; on = 0 ou 1),
+// bobine (a, b ; compagnon g·(Va − Vb − e) comme un condensateur), ampli-op (a = sortie, b = masse, c = entrée +,
+// d = entrée −, f = VCC ; branche MNA ; on = 0 linéaire, 1 bornée en haut, 2 bornée en bas ; cp, cn : entrée
+// bornée à sa plage de mode commun ; ret : courant de sortie pris sur VCC (1) ou rendu à la masse (0)).
+const RES = 0, DIO = 1, SRC = 2, NOR = 3, CAP = 4, BJT = 5, FET = 6, IND = 7, OPA = 8;
 // Sources MNA : raide, « à diode » (ne peut que fournir du courant), régulateur (courant pris sur IN).
 const STIFF = 0, OR = 1, REG = 2;
 
@@ -68,7 +78,9 @@ const fix = (v, eps) => (Math.abs(v) < eps ? 0 : v);
 // la broche EN d'un pilote (sortie coupée hors de l'impulsion) ; dis : sortie de pilote désactivée ; off : coupée dans la tranche.
 const mk = (k, comp, a, b) => ({ k, comp, a, b, c: -1, g: 0, e: 0, r: 0, on: 0, nq: 0, kind: STIFF, min: 0, br: -1, ia: -1, ib: -1, ic: -1, i: 0,
   cap: 0, vc: 0, live: false, act: false, gnd: false, gpio: false, out: false, pu: false, logic: 0, duty: -1, pot: 0, sw: null, key: null, ch: null,
-  pa: null, pb: null, pc: null, load: null, motor: false, gate: -1, dis: false, off: false, beta: BETA, gs: G_SAT });
+  pa: null, pb: null, pc: null, load: null, motor: false, gate: -1, dis: false, off: false, beta: BETA, gs: G_SAT,
+  d: -1, f: -1, idd: -1, iff: -1, pd: null, pf: null, ind: 0, rs: 0, il: 0, A: 0, head: 0, vol: 0, cmr: 0, cp: 0, cn: 0, ret: 0,
+  mos: null, gen: null, gt: 0, t5: null });
 const keys = (e, pa, pb, pc = null) => { e.pa = pa; e.pb = pb; e.pc = pc; return e; };
 
 /* ---------- Topologie : ne dépend que de l'analyse, gardée tant qu'elle ne change pas ---------- */
@@ -88,7 +100,8 @@ function topology(comps, A, profOf) {
     if (i === undefined) nets.set(m, (i = nn++));
     return i;
   };
-  const push = e => { if (e.a < 0 || (!e.gnd && e.b < 0) || ((e.kind === REG || e.k === BJT || e.k === FET) && e.c < 0)) return null; e.i = els.length; els.push(e); return e; };
+  const push = e => { if (e.a < 0 || (!e.gnd && e.b < 0) || ((e.kind === REG || e.k === BJT || e.k === FET || e.k === OPA) && e.c < 0) || (e.k === OPA && (e.d < 0 || e.f < 0))) return null; e.i = els.length; els.push(e); return e; };
+  const inds = [], opas = [], timers = [], gens = [], opaOf = new Map(), timerOf = new Map();
   const two = (k, c, ka, kb) => push(keys(mk(k, c, net(c, ka), net(c, kb)), ka, kb));
   const diode = (c, ka, kk, vf, r, ch = null) => { const e = keys(mk(DIO, c, net(c, ka), net(c, kk)), ka, kk); e.g = 1 / r; e.e = vf; e.ch = ch; return push(e); };
   const source = (c, ka, kb, v, r, kind) => { const e = keys(mk(SRC, c, net(c, ka), net(c, kb)), ka, kb); e.e = v; e.r = r; e.kind = kind; e.on = 1; return push(e); };
@@ -123,8 +136,13 @@ function topology(comps, A, profOf) {
   /** Composants modélisés physiquement ; false : ses sorties de module restent à traiter. */
   function part(c) {
     const t = c.type, r = ohms(t), vf = LED_VF[t], src = SOURCES[t], reg = DERIVED[t], cp = CAPS[t];
+    if (analog(c)) return true;
     if (r > 0) { const e = two(RES, c, '1', '2'); if (e) { e.g = 1 / r; byComp.set(c, e); } return true; }
     if (vf) { const e = diode(c, 'A', 'K', vf, R_LED); if (e) byComp.set(c, e); leds.push({ comp: c, els: e ? [e] : [], multi: false }); return true; }
+    // Composant en paquet (.jpart) : LED ou charge résistive déclarées (une charge entre 1 et 2 est une résistance, ci-dessus).
+    const pl = pkgLed(t), pr = !r && pkgLoad(t);
+    if (pl) { const e = diode(c, pl.anode, pl.cathode, pl.vf, R_LED); if (e) byComp.set(c, e); leds.push({ comp: c, els: e ? [e] : [], multi: false }); return true; }
+    if (pr) { const e = two(RES, c, pr.pin, pr.to); if (e) { e.g = 1 / pr.ohms; byComp.set(c, e); } }
     if (t === 'diode') { const e = diode(c, 'A', 'K', VF_DIODE, R_DIODE); if (e) byComp.set(c, e); return true; }
     if (cp) { const e = two(CAP, c, cp[1], cp[2]); if (e) { e.cap = cp[0]; byComp.set(c, e); } return true; }
     if (NPNS[t]) {
@@ -222,6 +240,60 @@ function topology(comps, A, profOf) {
     }
   }
 
+  /** Composants analogiques (analog-parts.js) ; false : pas l'un d'eux. */
+  function analog(c) {
+    const t = c.type;
+    if (t === 'scope') return true; // entrées idéales : l'oscilloscope ne prélève rien
+    if (INDUCTORS[t]) {
+      const m = INDUCTORS[t], e = two(IND, c, '1', '2');
+      if (e) { e.ind = m.L; e.rs = m.r || 1e-3; byComp.set(c, e); inds.push(e); }
+      return true;
+    }
+    if (MOSFETS[t]) {
+      // Interrupteur drain-source commandé par VGS (source fixée : S), et diode interne de la source vers le drain.
+      const m = MOSFETS[t], e = keys(mk(FET, c, net(c, 'D'), net(c, 'S')), 'D', 'S', 'G');
+      e.c = net(c, 'G'); e.e = m.vth; e.mos = m; e.g = 1 / rdsOn(m, 5);
+      if (push(e)) byComp.set(c, e);
+      diode(c, 'S', 'D', m.vfBody, m.rBody);
+      return true;
+    }
+    if (OPAMPS[t]) {
+      const m = OPAMPS[t], g = net(c, 'GND'), v = net(c, 'VCC'), list = [];
+      for (const [kp, kn, ko] of m.chans) {
+        if (![kp, kn, ko].some(k => c.pins[k] && A.members({ comp: c, key: k }).length > 1)) continue; // ampli inutilisé
+        const e = keys(mk(OPA, c, net(c, ko), g), ko, 'GND', kp);
+        e.c = net(c, kp); e.d = net(c, kn); e.f = v; e.pd = kn; e.pf = 'VCC';
+        e.A = m.gain; e.head = m.head; e.vol = m.vol; e.r = m.rOut; e.cmr = m.cmr;
+        if (push(e)) { list.push(e); opas.push(e); }
+      }
+      if (list.length) opaOf.set(c, list);
+      return true;
+    }
+    if (TIMERS[t]) {
+      // Pont interne (CONT à 2/3 de VCC), étage de sortie haut et bas, transistor de décharge : des éléments ordinaires
+      // que la bascule active ou coupe (off) ; les comparateurs se lisent après chaque pas (timerStep).
+      const m = TIMERS[t], top = two(RES, c, 'VCC', 'CV'), bot = two(RES, c, 'CV', 'GND');
+      if (top) top.g = 1 / m.rTop; if (bot) bot.g = 1 / m.rBot;
+      const hi = diode(c, 'VCC', 'OUT', m.ohDrop, m.rOh), lo = diode(c, 'OUT', 'GND', m.vol, m.rOl), dis = diode(c, 'DIS', 'GND', m.vDis, m.rDis);
+      if (hi && lo && dis) {
+        const x = { comp: c, m, hi, lo, dis, top, bot, q: 0, trig: net(c, 'TRIG'), thr: net(c, 'THR'), cv: net(c, 'CV'), rst: net(c, 'RESET'), gnd: net(c, 'GND'), vcc: net(c, 'VCC'), out: net(c, 'OUT'), dsn: net(c, 'DIS') };
+        for (const e of [hi, lo, dis, top, bot]) if (e) e.t5 = x;
+        timers.push(x); timerOf.set(c, x);
+      }
+      return true;
+    }
+    if (GENERATORS[t]) {
+      // Source de Thévenin entre OUT et GND ; sa masse sert de référence à un montage sans carte.
+      const m = GENERATORS[t], o = net(c, 'OUT'), g = net(c, 'GND');
+      if (g >= 0) cands.push(g, 1);
+      const e = keys(mk(NOR, c, o, g), 'OUT', 'GND');
+      e.g = 1 / m.r; e.gen = m; e.key = 'OUT';
+      if (push(e)) { byComp.set(c, e); gens.push(e); }
+      return true;
+    }
+    return false;
+  }
+
   for (const c of comps) {
     if (!c || !c.pins) continue;
     const p = profOf(c);
@@ -251,7 +323,7 @@ function topology(comps, A, profOf) {
   for (let i = 0; i < nn; i++) up[i] = i;
   const find = i => { while (up[i] !== i) i = up[i] = up[up[i]]; return i; };
   const join = (a, b) => { a = find(a); b = find(b); if (a !== b) up[a] = b; };
-  for (const e of els) if (!e.gnd) { join(e.a, e.b); if (e.c >= 0) join(e.c, e.b); }
+  for (const e of els) if (!e.gnd) { join(e.a, e.b); if (e.c >= 0) join(e.c, e.b); if (e.d >= 0) join(e.d, e.b); if (e.f >= 0) join(e.f, e.b); }
   const best = new Int32Array(nn).fill(-1), pri = new Int8Array(nn), sens = new Uint8Array(nn);
   for (let j = 0; j < cands.length; j += 2) {
     const root = find(cands[j]);
@@ -267,8 +339,9 @@ function topology(comps, A, profOf) {
   }
   const caps = els.filter(e => e.k === CAP), bjts = els.filter(e => e.k === BJT);
   const T = { comps, len: comps.length, nets, nn, els, byComp, regs, leds, drivers, isRef, solv, anyRef, idx: new Int32Array(nn),
-    sw: els.filter(e => e.k === DIO || e.k === BJT || e.k === FET || (e.k === SRC && e.kind !== STIFF)),
-    caps, bjts, dyn: caps.length > 0 || bjts.length > 0, duties: [] };
+    sw: els.filter(e => e.k === DIO || e.k === BJT || e.k === FET || e.k === OPA || (e.k === SRC && e.kind !== STIFF)),
+    caps, bjts, inds, opas, timers, gens, opaOf, timerOf,
+    dyn: caps.length > 0 || bjts.length > 0 || inds.length > 0 || timers.length > 0 || gens.length > 0, duties: [] };
   CACHE.set(A, T);
   return T;
 }
@@ -321,17 +394,33 @@ function prepare(T, ctx) {
     } else if (e.k === NOR) {
       e.act = false; e.duty = -1;
       if (e.gpio) { if (ps) pinDrive(e, ps(e.comp, e.key)); }
-      else if (sv) {
+      else if (e.gen) {
+        // Générateur : valeur imposée (vérificateur : extrêmes de sa plage) ou celle de l'instant (temps gardé sur le composant).
+        const s = e.comp.dcS, v = sv ? sv(e.comp, e.key) : null;
+        e.gt = s && Number.isFinite(s.t) ? s.t : 0; e.act = true; any = true;
+        // En continu : sa valeur moyenne (le décalage), comme la lirait un multimètre ; pas à pas, run() la fait évoluer.
+        e.e = typeof v === 'number' && Number.isFinite(v) ? v : genValue(e.comp.inp, e.gt, 1e9);
+        e.fixed = typeof v === 'number' && Number.isFinite(v);
+      } else if (sv) {
         const v = sv(e.comp, e.key);
         if (typeof v === 'number' && Number.isFinite(v)) { e.act = true; e.e = v; any = true; }
       }
     } else if (e.k === CAP) {
       const s = e.comp.dcS;
       e.vc = s && Number.isFinite(s.v) ? s.v : 0; // condensateur neuf : déchargé
+    } else if (e.k === IND) {
+      const s = e.comp.dcS;
+      e.il = s && Number.isFinite(s.i) ? s.i : 0; // bobine neuve : aucun courant
     } else if (e.k === BJT) {
       const s = e.comp.dcS;
       if (s && (s.q === 0 || s.q === 1 || s.q === 2)) e.on = s.q; // départ : l'état du pas précédent
     }
+  }
+  // Minuteries : état de la bascule imposé (vérificateur), sinon celui du pas précédent (sortie basse au départ).
+  for (const x of T.timers) {
+    const c = x.comp, s = c.dcS, f = sv ? sv(c, 'q') : null;
+    x.q = typeof f === 'number' ? (f ? 1 : 0) : c.timerQ != null ? (c.timerQ ? 1 : 0) : s && (s.q === 0 || s.q === 1) ? s.q : 0;
+    setTimer(x);
   }
   // Pilotes de moteurs : chaque sortie suit son entrée, EN coupe ou découpe (PWM) la voie.
   const level = (r, def) => (!r ? def : r.fixed != null ? r.fixed : ps ? highTime(ps(r.gpio.comp, r.gpio.key)) : 0);
@@ -394,10 +483,36 @@ function stamp(T, n, N) {
       if (b >= 0) { if (c >= 0) M[b * N + c] -= k; M[b * N + b] += k; X[b] -= kv; }
       continue;
     }
+    if (e.k === OPA) { stampOpa(e, N); continue; }
     if (e.k === FET) { if (e.on) cond(N, a, b, e.g, 0); continue; }
-    if (e.k === DIO && !e.on) continue;
+    if (e.k === DIO && (!e.on || e.off)) continue;
     cond(N, a, b, e.g, e.e);
   }
+}
+
+/**
+ * Ampli-op : courant de sortie I (branche k) injecté dans la sortie, pris sur VCC ou rendu à la masse.
+ * Linéaire : Va − Vb + r·I = A·(xp − xn), xp = V+ ou, hors de la plage de mode commun, VCC − cmr.
+ * Borné en haut : Va − Vvcc + r·I = −marge ; en bas : Va − Vb + r·I = vol.
+ */
+function stampOpa(e, N) {
+  const a = e.ia, b = e.ib, p = e.ic, n = e.idd, v = e.iff, k = e.br, kk = k * N, r = e.ret ? v : b;
+  if (a >= 0) M[a * N + k] -= 1;
+  if (r >= 0) M[r * N + k] += 1;
+  M[kk + k] = e.r;
+  if (a >= 0) M[kk + a] += 1;
+  if (e.on === 1) { if (v >= 0) M[kk + v] -= 1; X[k] = -e.head; return; }
+  if (b >= 0) M[kk + b] -= 1;
+  if (e.on === 2) { X[k] = e.vol; return; }
+  let rhs = 0;
+  if (e.cp) { if (v >= 0) M[kk + v] -= e.A; rhs -= e.A * e.cmr; } else if (p >= 0) M[kk + p] -= e.A;
+  if (e.cn) { if (v >= 0) M[kk + v] += e.A; rhs += e.A * e.cmr; } else if (n >= 0) M[kk + n] += e.A;
+  X[k] = rhs;
+}
+/** Bascule d'une minuterie : sortie haute (q = 1, décharge ouverte) ou basse (q = 0, décharge fermée). */
+function setTimer(x) {
+  x.hi.off = !x.q; x.lo.off = !!x.q; x.dis.off = !!x.q;
+  for (const e of [x.hi, x.lo, x.dis]) if (e.off) e.on = 0;
 }
 
 /** Élimination de Gauss avec pivot partiel, sur place : X reçoit la solution. */
@@ -452,22 +567,54 @@ function flip(T, worstOnly) {
         if (s > d) { d = s; nq = e.on === 1 ? 2 : 1; }
       }
     }
-    else if (e.k === FET) { d = pv(e.ic) - Math.min(pv(e.ia), pv(e.ib)) - e.e; if (e.on) d = -d; } // Vgs, côté le plus bas = source
+    else if (e.k === FET) {
+      // Vgs : côté le plus bas = source (adaptateur de niveau) ; MOSFET de puissance : la source S.
+      const vgs = e.mos ? pv(e.ic) - pv(e.ib) : pv(e.ic) - Math.min(pv(e.ia), pv(e.ib));
+      d = vgs - e.e; if (e.on) d = -d;
+      // RDS(on) suit VGS (fiche technique) : corrigée sur place, un tour de plus.
+      if (e.mos && (e.on ? d <= TOL : d > TOL)) { const g = 1 / rdsOn(e.mos, Math.max(vgs, e.e + 1e-3)); if (Math.abs(g - e.g) > 1e-3 * e.g) { e.g = g; if (e.on) n++; } }
+    }
+    else if (e.k === OPA) { const r = opaFlip(e); if (!r) continue; d = r[0]; nq = r[1]; }
     else if (e.kind === OR) d = e.on ? -X[e.br] * 1e3 : e.e - (pv(e.ia) - pv(e.ib));
     else { d = pv(e.ic) - pv(e.ib) - e.min; if (e.on) d = -d; } // régulateur : il lui faut min volts sur IN
     if (d <= TOL) continue;
     n++; e.nq = nq;
-    if (!worstOnly) e.on = nq;
+    if (!worstOnly) applyNq(e);
     else if (d > wv) { wv = d; we = e; }
   }
-  if (we) we.on = we.nq;
+  if (we) applyNq(we);
   return n;
+}
+/** Nouvel état d'un élément ; ampli-op : 10 + état de sortie, 20 / 21 entrée + / − bornée ou non, 30 retour du courant. */
+function applyNq(e) {
+  if (e.k !== OPA) { e.on = e.nq; return; }
+  if (e.nq >= 30) e.ret ^= 1;
+  else if (e.nq === 20) e.cp ^= 1;
+  else if (e.nq === 21) e.cn ^= 1;
+  else e.on = e.nq - 10;
+}
+/** Ampli-op dont l'état contredit la solution : [écart, nouvel état], ou null. */
+function opaFlip(e) {
+  const vp = pv(e.ic), vn = pv(e.idd), vv = pv(e.iff), vb = pv(e.ib), lim = vv - e.cmr;
+  if (!e.cp && vp > lim + TOL) return [vp - lim, 20];
+  if (e.cp && vp < lim - TOL) return [lim - vp, 20];
+  if (!e.cn && vn > lim + TOL) return [vn - lim, 21];
+  if (e.cn && vn < lim - TOL) return [lim - vn, 21];
+  const ideal = e.A * ((e.cp ? lim : vp) - (e.cn ? lim : vn)), hi = vv - e.head - vb;
+  if (e.on === 0) { if (ideal > hi + TOL) return [ideal - hi, 11]; if (ideal < e.vol - TOL) return [e.vol - ideal, 12]; }
+  else if (e.on === 1) { if (ideal < hi - TOL) return [hi - ideal, 10]; }
+  else if (ideal > e.vol + TOL) return [ideal - e.vol, 10];
+  // Courant de sortie : fourni, il vient de VCC ; absorbé, il part à la masse.
+  const I = X[e.br], want = I > 0 ? 1 : 0;
+  if (want !== e.ret && Math.abs(I) > 1e-9) return [2 * TOL, 30];
+  return null;
 }
 
 /** Courant de l'élément (A), de a vers b ; sortant par + pour une source ; Ic pour un transistor. */
 function amps(e) {
   if (e.k === SRC) return e.on && !e.off ? X[e.br] : 0;
-  if (e.k === DIO) return e.on ? Math.max(0, e.g * (pv(e.ia) - pv(e.ib) - e.e)) : 0;
+  if (e.k === OPA) return X[e.br];
+  if (e.k === DIO) return e.on && !e.off ? Math.max(0, e.g * (pv(e.ia) - pv(e.ib) - e.e)) : 0;
   if (e.k === BJT) return !e.on ? 0 : e.on === 1 ? e.beta * G_BE * (pv(e.ic) - pv(e.ib) - VBE) : e.gs * (pv(e.ia) - pv(e.ib) - VCE_SAT);
   if (e.k === FET) return e.on ? e.g * (pv(e.ia) - pv(e.ib)) : 0;
   // Résistance, condensateur (compagnon), GPIO et capteur (Norton) : g·(Va − Vb − e).
@@ -500,8 +647,8 @@ function phase(T, n, N, w, I, rec) {
   return it;
 }
 
-function run(T, Vn, I, dt, maxSub) {
-  const { els, idx, nn, caps, duties } = T, L = els.length;
+function run(T, Vn, I, dt, maxSub, tap = null) {
+  const { els, idx, nn, caps, duties, inds, gens, timers } = T, L = els.length;
   for (let i = 0; i < nn; i++) idx[i] = T.isRef[i] ? -1 : T.solv[i] ? -2 : -3;
   // Inconnues de cet instant : seuls les nœuds touchés par un élément actif entrent dans la matrice.
   // En continu, un condensateur est ouvert : il n'entre pas.
@@ -512,12 +659,15 @@ function run(T, Vn, I, dt, maxSub) {
     if (idx[e.a] === -2) idx[e.a] = n++;
     if (!e.gnd && idx[e.b] === -2) idx[e.b] = n++;
     if (e.c >= 0 && idx[e.c] === -2) idx[e.c] = n++;
+    if (e.d >= 0 && idx[e.d] === -2) idx[e.d] = n++;
+    if (e.f >= 0 && idx[e.f] === -2) idx[e.f] = n++;
   }
   let N = n;
   for (const e of els) {
     if (!e.live) continue;
     e.ia = idx[e.a]; e.ib = e.gnd ? -1 : idx[e.b]; e.ic = e.c >= 0 ? idx[e.c] : e.ib;
-    if (e.k === SRC) e.br = N++;
+    e.idd = e.d >= 0 ? idx[e.d] : -1; e.iff = e.f >= 0 ? idx[e.f] : -1;
+    if (e.k === SRC || e.k === OPA) e.br = N++;
   }
   room(N);
   // PWM : les sorties d'une carte montent ensemble en début de période. On découpe la période
@@ -530,29 +680,67 @@ function run(T, Vn, I, dt, maxSub) {
   for (let s = 0; s <= duties.length; s++) { const t1 = s < duties.length ? duties[s] : 1; if (t1 - t0 > wmax) { wmax = t1 - t0; rec = s; } t0 = t1; }
   // Transitoire : sous-pas d'au plus H_MAX, bornés par maxSub (sur un vieux PC, la fluidité passe
   // avant la précision ; Euler implicite reste stable avec de grands pas).
-  const nsub = dt > 0 && caps.length ? Math.min(maxSub, Math.ceil(dt / H_MAX)) : 1, h = dt / nsub;
+  const timed = caps.length + inds.length + gens.length + timers.length > 0;
+  const nsub = dt > 0 && timed ? Math.min(maxSub, Math.ceil(dt / H_MAX)) : 1, h = dt / nsub;
   for (const e of caps) if (e.live) e.g = e.cap / h;
+  // Bobine : en continu, un fil de sa résistance ; en transitoire, compagnon d'Euler implicite (L/h en série).
+  for (const e of inds) { e.g = dt > 0 ? 1 / (e.rs + e.ind / h) : 1 / e.rs; e.e = 0; }
+  if (tap) { tap.h = h; tap.n = nsub; for (let k = 0; k < tap.nets.length; k++) if (!tap.v[k] || tap.v[k].length < nsub) tap.v[k] = new Float64Array(Math.max(nsub, 32)); }
   let its = 0;
   for (let sub = 0; sub < nsub; sub++) {
     for (const e of caps) e.e = e.vc;
-    VACC.fill(0, 0, n); DET.fill(0, 0, n); I.fill(0);
+    for (const e of inds) if (dt > 0) e.e = -(e.ind / h) * e.il;
+    // Générateur : sa valeur moyenne sur le pas (pas de repliement quand la période est plus courte que le pas).
+    for (const e of gens) if (dt > 0 && !e.fixed) e.e = genValue(e.comp.inp, e.gt + sub * h, h);
     let it = 0;
-    t0 = 0;
-    for (let s = 0; s <= duties.length; s++) {
-      const t1 = s < duties.length ? duties[s] : 1;
-      if (t1 - t0 > 1e-9) {
-        for (const e of els) if (e.live) { if (e.duty >= 0) e.e = e.duty > t0 ? e.logic : 0; if (e.gate >= 0) e.off = !(e.gate > t0); }
-        it += phase(T, n, N, t1 - t0, I, s === rec);
+    // Minuterie : les comparateurs se lisent sur la solution du pas ; si la bascule change, le pas est refait.
+    for (let pass = 0; ; pass++) {
+      VACC.fill(0, 0, n); DET.fill(0, 0, n); I.fill(0);
+      t0 = 0;
+      for (let s = 0; s <= duties.length; s++) {
+        const t1 = s < duties.length ? duties[s] : 1;
+        if (t1 - t0 > 1e-9) {
+          for (const e of els) if (e.live) { if (e.duty >= 0) e.e = e.duty > t0 ? e.logic : 0; if (e.gate >= 0) e.off = !(e.gate > t0); }
+          it += phase(T, n, N, t1 - t0, I, s === rec);
+        }
+        t0 = t1;
       }
-      t0 = t1;
+      if (!(dt > 0 && timers.length && pass < 3 && timerStep(T))) break;
     }
     if (it > its) its = it;
-    // Le condensateur avance d'un pas : vc = e + I/g, avec le courant moyen du pas (PWM comprise).
+    // Le condensateur avance d'un pas : vc = e + I/g, avec le courant moyen du pas (PWM comprise) ; la bobine garde
+    // le courant du pas.
     for (const e of caps) if (e.live) e.vc = e.e + I[e.i] / e.g;
+    for (const e of inds) if (e.live && dt > 0) e.il = I[e.i];
+    if (tap) for (let k = 0; k < tap.nets.length; k++) tap.v[k][sub] = nodeV(T, tap.nets[k], true);
   }
+  for (const e of gens) e.gt += dt;
   for (const e of caps) I[L + e.i] = dt > 0 ? e.vc : NaN; // NaN : en continu, capV lit les potentiels
   for (let i = 0; i < nn; i++) { const j = idx[i]; if (j === -1) Vn[i] = 0; else if (j >= 0 && DET[j]) Vn[i] = VACC[j]; }
   return its;
+}
+/** Potentiel d'un nœud (indice de T.nets) dans la solution en cours (avg : moyenne des tranches PWM), NaN s'il n'est pas calculé. */
+function nodeV(T, i, avg) {
+  const j = i >= 0 && i < T.nn ? T.idx[i] : -3;
+  return j === -1 ? 0 : j >= 0 ? (avg ? (DET[j] ? VACC[j] : NaN) : X[j]) : NaN;
+}
+/**
+ * Comparateurs des minuteries sur la solution du pas : RESET sous son seuil force la sortie basse ; TRIG sous la
+ * moitié de CONT (1/3 de VCC) la met haute ; THR au-dessus de CONT (2/3 de VCC) la remet basse. Rend true si une
+ * bascule a changé.
+ */
+function timerStep(T) {
+  let changed = false;
+  for (const x of T.timers) {
+    if (!x.lo.live) continue;
+    const v = i => nodeV(T, i, false), g = v(x.gnd), cv = v(x.cv) - g, trig = v(x.trig) - g, thr = v(x.thr) - g, rst = v(x.rst) - g;
+    let q = x.q;
+    if (rst === rst && rst < x.m.vReset) q = 0;
+    else if (trig === trig && cv === cv && trig < cv / 2) q = 1;
+    else if (thr === thr && cv === cv && thr > cv) q = 0;
+    if (q !== x.q) { x.q = q; setTimer(x); changed = true; }
+  }
+  return changed;
 }
 
 /** Garde l'état sur le composant, sans allouer une fois créé. */
@@ -560,8 +748,12 @@ function save(c, v, q) {
   const s = c.dcS;
   if (s) { s.v = v; s.q = q; } else c.dcS = { v, q };
 }
+const stateOf = c => c.dcS || (c.dcS = { v: 0, q: 0 });
 function commit(T, Vn) {
   for (const e of T.caps) save(e.comp, e.vc, 0);
+  for (const e of T.inds) stateOf(e.comp).i = e.il;
+  for (const x of T.timers) stateOf(x.comp).q = x.q;
+  for (const e of T.gens) stateOf(e.comp).t = e.gt;
   for (const e of T.bjts) {
     if (!e.live) continue;
     const vce = Vn[e.a] - Vn[e.b];
@@ -578,6 +770,7 @@ function injections(T, I, ok) {
   for (const e of T.els) {
     const x = I[e.i] * 1e3, c = e.comp;
     if (e.k === SRC) { add(c, e.pa, x); add(c, e.kind === REG ? e.pc : e.pb, -x); }
+    else if (e.k === OPA) { add(c, e.pa, x); add(c, e.ret ? e.pf : e.pb, -x); }
     else if (e.k === BJT) { const ib = I[L + e.i] * 1e3; add(c, e.pa, -x); add(c, e.pc, -ib); add(c, e.pb, x + ib); }
     else { add(c, e.pa, -x); add(c, e.pb, x); } // entre par a, ressort par b
   }
@@ -607,6 +800,7 @@ function result(T, A, ok, Vn, I, its) {
     return v === v ? fix(v, 1e-6) : diff(e.a, e.b);
   };
   let inj = null;
+  const OPA_STATE = ['lin', 'high', 'low'];
   return {
     ok,
     dyn: T.dyn,
@@ -618,6 +812,17 @@ function result(T, A, ok, Vn, I, its) {
     current(comp) { const e = T.byComp.get(comp); return e ? mA(e) : null; },
     capV,
     across(comp) {
+      const t5 = T.timerOf.get(comp);
+      if (t5) {
+        // Minuteur : courant de sortie (fourni + / absorbé −), tension de sortie, état de la bascule.
+        const io = (t5.hi.live ? mA(t5.hi) : 0) - (t5.lo.live ? mA(t5.lo) : 0);
+        return { v: diff(t5.out, t5.gnd), mA: io, kind: 'timer', extra: { q: t5.q, out: io, dis: t5.dis.live ? mA(t5.dis) : 0, cv: diff(t5.cv, t5.gnd) } };
+      }
+      const ops = T.opaOf.get(comp);
+      if (ops) {
+        const chans = ops.map(e => ({ out: e.pa, v: diff(e.a, e.b), mA: mA(e), state: OPA_STATE[e.on] || 'lin', clip: !!(e.cp || e.cn), vp: diff(e.c, e.b), vn: diff(e.d, e.b) }));
+        return { v: chans[0].v, mA: chans[0].mA, kind: 'opamp', extra: { chans } };
+      }
       const e = T.byComp.get(comp) || T.regs.get(comp);
       if (!e) { const l = leds.get(comp); return l ? { v: null, mA: l.mA, kind: 'led', extra: { on: l.on, ch: l.ch || null } } : null; }
       const x = mA(e);
@@ -625,6 +830,12 @@ function result(T, A, ok, Vn, I, its) {
         case RES: return { v: diff(e.a, e.b), mA: x, kind: e.motor ? 'motor' : e.load || 'res', extra: { ohms: e.g > 0 ? 1 / e.g : Infinity } };
         case DIO: { const l = leds.get(comp); return { v: diff(e.a, e.b), mA: x, kind: l ? 'led' : 'diode', extra: l ? { on: l.on } : null }; }
         case CAP: return { v: capV(comp), mA: x, kind: 'cap', extra: { farads: e.cap } };
+        case IND: return { v: diff(e.a, e.b), mA: x, kind: 'ind', extra: { henry: e.ind, ohms: e.rs } };
+        case FET: {
+          const vgs = diff(e.c, e.b), vds = diff(e.a, e.b);
+          return { v: vds, mA: x, kind: 'mosfet', extra: { id: x, vgs, vds, rds: e.on && e.g > 0 ? 1 / e.g : Infinity, state: e.on ? 'on' : 'off' } };
+        }
+        case NOR: return { v: diff(e.a, e.b), mA: -x, kind: e.gen ? 'gen' : 'src', extra: null };
         case BJT: {
           const vce = diff(e.a, e.b);
           return { v: vce, mA: x, kind: 'npn', extra: { ic: x, ib: fix(I[L + e.i] * 1e3, 1e-4), vce, vbe: diff(e.c, e.b), state: STATE[I[2 * L + e.i]] || 'off' } };
@@ -657,8 +868,11 @@ export function solveDC(comps, A, ctx) {
     const dt = c.dt > 0 ? +c.dt : 0, maxSub = c.maxSub >= 1 ? Math.floor(c.maxSub) : SUB_MAX;
     const ok = prepare(T, c), L = T.els.length, Vn = new Float64Array(T.nn).fill(NaN), I = new Float64Array(3 * L);
     for (const e of T.caps) I[L + e.i] = dt > 0 ? e.vc : NaN;
-    const its = ok ? run(T, Vn, I, dt, maxSub) : 0;
+    // Simulation en direct (pas validé) : les points suivis par l'oscilloscope sont relevés à chaque sous-pas.
+    const tap = ok && dt > 0 && c.commit && TAP && TAP.refs.length ? tapOf(T, A) : null;
+    const its = ok ? run(T, Vn, I, dt, maxSub, tap) : 0;
     if (ok && dt > 0 && c.commit) commit(T, Vn);
+    if (tap) { try { TAP.push({ h: tap.h, n: tap.n, v: tap.v.map(a => a.slice(0, tap.n)) }); } catch (e) { /* affichage seulement */ } }
     return result(T, A, ok, Vn, I, its);
   } catch (err) {
     // Appelé à chaque image : un montage inattendu ne doit jamais casser l'affichage.
@@ -667,12 +881,38 @@ export function solveDC(comps, A, ctx) {
   }
 }
 
+/**
+ * Suivi par l'oscilloscope (sim/instruments.js) : refs, les broches à relever ; push({ h, n, v: [Float64Array…] }) reçoit
+ * à chaque calcul de la simulation en direct la tension de chaque broche à chacun des n sous-pas de h secondes
+ * (NaN : point non relié). null : aucun suivi.
+ */
+let TAP = null;
+export function setTap(t) { TAP = t && Array.isArray(t.refs) && typeof t.push === 'function' ? t : null; }
+const tapCache = new WeakMap();
+function tapOf(T, A) {
+  let o = tapCache.get(T);
+  if (!o || o.refs !== TAP.refs) {
+    const nets = TAP.refs.map(r => (r && r.comp && r.comp.pins && r.comp.pins[r.key] ? T.nets.get(A.members(r)) ?? -1 : -1));
+    o = { refs: TAP.refs, nets, v: [], h: 0, n: 0 }; tapCache.set(T, o);
+  }
+  return o;
+}
+
 /** Oublie l'état des condensateurs et transistors (arrêt de la simulation, autre projet). */
 export function resetDynamic(comps) {
   for (const c of comps || []) if (c && c.dcS) c.dcS = null;
 }
 
 /* ---------- Comparaison avec ngspice (src/sim/spice.test.mjs) ---------- */
+/** Source ngspice d'un générateur de fonctions (transitoire, phase 0 au début de la fenêtre). */
+function genSpice(inp) {
+  const g = { ...GEN_DEFAULT, ...(inp || {}) }, f = +g.freq || 0, A = Math.abs(+g.amp || 0), off = +g.off || 0;
+  if (g.wave === 'dc' || !(f > 0) || !A) return `DC ${off}`;
+  const P = 1 / f, e = x => x.toExponential(6);
+  if (g.wave === 'square') { const tr = Math.min(1e-6, P / 1000); return `PULSE(${off - A} ${off + A} 0 ${e(tr)} ${e(tr)} ${e(P / 2 - tr)} ${e(P)})`; }
+  if (g.wave === 'triangle') { const pw = P * 1e-6; return `PULSE(${off - A} ${off + A} 0 ${e((P - pw) / 2)} ${e((P - pw) / 2)} ${e(pw)} ${e(P)})`; }
+  return `SIN(${off} ${A} ${f} 0 0 0)`;
+}
 const VT = 0.025852; // tension thermique à 27 °C
 /**
  * Le montage, tel que le voit ce solveur, écrit pour ngspice (analyse .op). mode :
@@ -682,6 +922,10 @@ const VT = 0.025852; // tension thermique à 27 °C
  *            les mêmes paramètres : l'écart mesure l'erreur des modèles simplifiés.
  *   'tran' : transitoire (.tran) sur opts.tstop secondes (pas opts.tstep), modèles physiques, condensateurs avec leur
  *            charge, sorties PWM en impulsions (opts.freqOf(comp, clé) → Hz) : ce que montre l'oscilloscope.
+ * Composants analogiques : bobine (L et sa résistance), MOSFET (niveau 1, KP tiré de RDS(on)), ampli-op ('pwl' : son
+ * état ; 'phys' et 'tran' : macro-modèle à sources comportementales, gain, pôle dominant, vitesse de balayage, sortie
+ * et entrées bornées), NE555 ('pwl', 'phys' : ses éléments dans l'état de la bascule ; 'tran' : comparateurs et
+ * bascule en sources comportementales), générateur (SIN ou PULSE en transitoire, sa valeur moyenne sinon).
  * Rend { text, probes: [{ node, ref, members }] } (ref : une broche du nœud, pour solveDC().volts), ou null si une sortie
  * PWM découpe le temps hors transitoire (le solveur moyenne plusieurs états : pas de point de fonctionnement unique).
  */
@@ -696,14 +940,18 @@ export function spiceDeck(comps, A, ctx, mode = 'pwl', opts = {}) {
   const name = i => (i < 0 || T.isRef[i] ? '0' : `n${i}`), out = [`* Jollof Studio : ${tran ? 'transitoire' : `point de fonctionnement (${mode})`}`];
   const used = new Set();
   const line = s => out.push(s);
+  const use = n => { if (n >= 0 && !T.isRef[n]) used.add(n); };
+  const vv = n => (n === '0' ? '0' : `V(${n})`), num = x => +(+x).toPrecision(9);
   for (const e of T.els) {
+    if (tran && e.t5) continue; // minuterie : modèle comportemental, plus bas
     if (!e.live || e.off) continue;
     const i = e.i, a = name(e.a), b = e.gnd ? '0' : name(e.b), cc = e.c >= 0 ? name(e.c) : b;
-    [e.a, e.gnd ? -1 : e.b, e.c].forEach(n => { if (n >= 0 && !T.isRef[n]) used.add(n); });
+    [e.a, e.gnd ? -1 : e.b, e.c, e.d, e.f].forEach(use);
     if (e.k === RES) { if (e.g > 0) { if (e.e) { line(`R${i} ${a} x${i} ${1 / e.g}`); line(`V${i} x${i} ${b} DC ${e.e}`); } else line(`R${i} ${a} ${b} ${1 / e.g}`); } }
     else if (e.k === NOR) {
       line(`R${i} ${a} x${i} ${1 / e.g}`);
-      if (tran && e.duty > 0 && e.duty < 1) {
+      if (tran && e.gen && !e.fixed) line(`V${i} x${i} ${b} ${genSpice(e.comp.inp)}`);
+      else if (tran && e.duty > 0 && e.duty < 1) {
         // PWM, tone(), servo : impulsions à la fréquence de la broche (490 Hz par défaut, celle d'analogWrite sur l'Uno).
         const f = (opts.freqOf && opts.freqOf(e.comp, e.key)) || 490, T0 = 1 / f, rise = Math.min(1e-7, T0 / 1000);
         line(`V${i} x${i} ${b} PULSE(0 ${e.logic} 0 ${rise} ${rise} ${(e.duty * T0 - rise).toExponential(6)} ${T0.toExponential(6)})`);
@@ -711,8 +959,31 @@ export function spiceDeck(comps, A, ctx, mode = 'pwl', opts = {}) {
     } else if (e.k === CAP) {
       // Condensateur : sa charge de départ est celle que garde la simulation (c.dcS), déchargé sinon.
       if (tran) line(`C${i} ${a} ${b} ${e.cap} IC=${e.vc}`);
-    } else if (e.k === DIO) {
+    } else if (e.k === IND) {
+      // Bobine : en continu (.op) un court-circuit, il reste sa résistance ; en transitoire, son courant de départ.
+      line(`L${i} ${a} x${i} ${e.ind}${tran ? ` IC=${num(e.il)}` : ''}`); line(`R${i} x${i} ${b} ${e.rs}`);
+    } else if (e.k === OPA) {
+      const p = name(e.c), n = name(e.d), v = name(e.f), lim = `${vv(v)}-${e.cmr}`;
       if (mode === 'phys') {
+        // Macro-modèle : entrées bornées à V+ − cmr, transconductance 1 mS bornée (vitesse de balayage) sur 100 MΩ
+        // (gain A) et un condensateur (produit gain-bande), sortie bornée par deux diodes idéales, résistance de sortie.
+        const m = OPAMPS[e.comp.type], gm = 1e-3, C = gm / (2 * Math.PI * m.gbw), Is = m.slew * C;
+        line(`B${i}p p${i} 0 V = min(${vv(p)}, ${lim})`); line(`B${i}n q${i} 0 V = min(${vv(n)}, ${lim})`);
+        line(`B${i}g 0 g${i} I = max(${-Is}, min(${Is}, ${gm}*(V(p${i})-V(q${i}))))`);
+        line(`R${i}g g${i} 0 ${e.A / gm}`); line(`C${i}g g${i} 0 ${C.toExponential(4)}${tran ? ` IC=${num(Vn[e.a] - (e.gnd ? 0 : Vn[e.b]) || 0)}` : ''}`);
+        line(`B${i}h h${i} 0 V = ${vv(v)}-${vv(b)}-${e.head}`); line(`D${i}h g${i} h${i} DID`);
+        line(`V${i}l l${i} 0 DC ${e.vol}`); line(`D${i}l l${i} g${i} DID`);
+        line(`E${i} y${i} ${b} g${i} 0 1`); line(`R${i} y${i} ${a} ${e.r}`);
+      } else {
+        // État trouvé par le solveur : linéaire (source commandée), borné en haut ou en bas.
+        const xin = (node, clip, tag) => { if (!clip) return node; line(`B${i}${tag} ${tag}${i} 0 V = ${lim}`); return `${tag}${i}`; };
+        if (e.on === 1) line(`B${i} y${i} 0 V = ${vv(v)}-${e.head}`);
+        else if (e.on === 2) line(`B${i} y${i} 0 V = ${vv(b)}+${e.vol}`);
+        else line(`E${i} y${i} ${b} ${xin(p, e.cp, 'p')} ${xin(n, e.cn, 'q')} ${e.A}`);
+        line(`R${i} y${i} ${a} ${e.r}`);
+      }
+    } else if (e.k === DIO) {
+      if (mode === 'phys' && !e.t5) {
         // Exponentielle calée sur le seuil du solveur à 10 mA, sa résistance devient RS.
         const n = 1.8, is = 0.01 / Math.exp(e.e / (n * VT));
         line(`D${i} ${a} ${b} DX${i}`); line(`.model DX${i} D(IS=${is.toExponential(4)} N=${n} RS=${1 / e.g})`);
@@ -731,9 +1002,27 @@ export function spiceDeck(comps, A, ctx, mode = 'pwl', opts = {}) {
       if (e.on === 2) { line(`R${i} ${a} z${i} ${1 / e.gs}`); line(`V${i} z${i} ${b} DC ${VCE_SAT}`); }
       else line(`G${i} ${a} ${b} ${cc} y${i} ${e.beta * G_BE}`);
     } else if (e.k === FET) {
-      if (mode === 'phys') { line(`M${i} ${a} ${cc} ${b} ${b} MX${i}`); line(`.model MX${i} NMOS(LEVEL=1 VTO=${e.e} KP=${(e.g / Math.max(0.5, 5 - e.e)).toExponential(4)})`); continue; }
+      // MOSFET de puissance : RDS(on) = k / (VGS − VTO) en zone ohmique, soit KP = 1 / k.
+      if (mode === 'phys') { line(`M${i} ${a} ${cc} ${b} ${b} MX${i}`); line(`.model MX${i} NMOS(LEVEL=1 VTO=${e.e} KP=${(e.mos ? 1 / e.mos.k : e.g / Math.max(0.5, 5 - e.e)).toExponential(4)})`); continue; }
       if (e.on) line(`R${i} ${a} ${b} ${1 / e.g}`);
     }
+  }
+  // NE555 en transitoire : pont interne, comparateurs (rampes de 1 mV), bascule (source qui se maintient à travers un
+  // petit filtre RC, RESET prioritaire, puis TRIG, puis THR), étage de sortie et décharge selon la bascule.
+  if (tran) for (const x of T.timers) {
+    if (!x.lo.live) continue;
+    const i = x.lo.i, [vcc, gnd, trig, thr, cv, rst, o, dis] = [x.vcc, x.gnd, x.trig, x.thr, x.cv, x.rst, x.out, x.dsn].map(n => { use(n); return name(n); });
+    const G = vv(gnd), step = s => `min(1, max(0, 0.5+(${s})*1000))`, m = x.m;
+    line(`* NE555 ${x.comp.name}`);
+    line(`R${i}a ${vcc} ${cv} ${m.rTop}`); line(`R${i}b ${cv} ${gnd} ${m.rBot}`);
+    line(`B${i}s s${i} 0 V = ${step(`(${vv(cv)}-${G})/2-(${vv(trig)}-${G})`)}`);
+    line(`B${i}r r${i} 0 V = ${step(`(${vv(thr)}-${G})-(${vv(cv)}-${G})`)}`);
+    line(`B${i}z z${i} 0 V = ${step(`${m.vReset}-(${vv(rst)}-${G})`)}`);
+    line(`B${i}q k${i} 0 V = (1-V(z${i}))*max(V(s${i}), (1-V(r${i}))*min(1, max(0, 1.5*V(f${i})-0.25)))`);
+    line(`R${i}q k${i} f${i} 1k`); line(`C${i}q f${i} 0 10p IC=${x.q}`);
+    line(`B${i}h h${i} 0 V = ${G}+V(f${i})*(${vv(vcc)}-${G}-${m.ohDrop})-(1-V(f${i}))*2`); line(`D${i}h h${i} w${i} DID`); line(`R${i}h w${i} ${o} ${m.rOh}`);
+    line(`B${i}l l${i} 0 V = ${G}+${m.vol}+V(f${i})*(${vv(vcc)}-${G}+2)`); line(`R${i}l ${o} u${i} ${m.rOl}`); line(`D${i}l u${i} l${i} DID`);
+    line(`B${i}d m${i} 0 V = ${G}+${m.vDis}+V(f${i})*(${vv(vcc)}-${G}+2)`); line(`R${i}d ${dis} y${i} ${m.rDis}`); line(`D${i}d y${i} m${i} DID`);
   }
   // Même fuite vers la masse que le solveur (GMIN) : un nœud isolé garde une solution.
   for (const n of used) line(`RG${n} n${n} 0 ${1 / GMIN}`);

@@ -1,0 +1,553 @@
+{
+ "id": "tp17-ampli-non-inverseur",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Amplificateur non inverseur de gain 2",
+  "en": "Non-inverting amplifier with a gain of 2"
+ },
+ "summary": {
+  "fr": "Un LM358 alimenté en 5 V double un signal sinusoïdal de 0,5 à 1,5 V : la sortie va de 1 à 3 V, en phase avec l’entrée. Gain G = 1 + R2 / R1 avec deux résistances de 10 kΩ ; mesure de la valeur moyenne et étude de l’écrêtage à 3,5 V.",
+  "en": "An LM358 powered from 5 V doubles a sine wave going from 0.5 to 1.5 V: the output goes from 1 to 3 V, in phase with the input. Gain G = 1 + R2 / R1 with two 10 kΩ resistors; measuring the mean value and studying clipping at 3.5 V."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un amplificateur non inverseur",
+   "en": "Wire a non-inverting amplifier"
+  },
+  {
+   "fr": "Calculer le gain G = 1 + R2 / R1 et le vérifier à l’oscilloscope",
+   "en": "Calculate the gain G = 1 + R2 / R1 and check it on the oscilloscope"
+  },
+  {
+   "fr": "Prévoir l’écrêtage d’une sortie d’ampli-op",
+   "en": "Predict clipping at an op-amp output"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Amplificateur non inverseur",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "lm358_1",
+    "type": "lm358",
+    "name": "U1",
+    "x": -10,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": 16,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_2",
+    "type": "res-10k",
+    "name": "R2",
+    "x": 40,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "siggen_1",
+    "type": "siggen",
+    "name": "GEN1",
+    "x": -112,
+    "z": 76,
+    "r": 0,
+    "inp": {
+     "wave": "sine",
+     "freq": 100,
+     "amp": 0.5,
+     "off": 1
+    }
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 112,
+    "z": 76,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "lm358_1",
+     "VCC"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "lm358_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-4"
+    ],
+    "color": "#3a3f45",
+    "role": "GND (broche 4)"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie du générateur"
+   },
+   {
+    "a": [
+     "lm358_1",
+     "1IN+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#9b7be0",
+    "role": "Entrée non inverseuse 1IN+"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du générateur"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "A14"
+    ],
+    "color": "#f08a3c",
+    "role": "R1 (côté entrée −)"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-14"
+    ],
+    "color": "#3a3f45",
+    "role": "R1 à la masse"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B14"
+    ],
+    "color": "#f08a3c",
+    "role": "R2 (côté entrée −)"
+   },
+   {
+    "a": [
+     "lm358_1",
+     "1IN-"
+    ],
+    "b": [
+     "breadboard_1",
+     "C14"
+    ],
+    "color": "#9b7be0",
+    "role": "Entrée inverseuse 1IN−"
+   },
+   {
+    "a": [
+     "lm358_1",
+     "1OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A20"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie 1OUT"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "B20"
+    ],
+    "color": "#f08a3c",
+    "role": "R2 (côté sortie)"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : entrée"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "C20"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : sortie"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le montage non inverseur",
+    "en": "The non-inverting circuit"
+   },
+   "text": {
+    "fr": "Le signal arrive directement sur l’entrée **+** (**1IN+**) du **LM358 U1**. La sortie **1OUT** revient sur l’entrée **−** (**1IN−**) à travers le pont **R2 / R1** (deux 10 kΩ) :\n- l’ampli-op règle sa sortie pour que ses deux entrées soient à la même tension ;\n- le pont ne renvoie sur l’entrée − que la moitié de la sortie : la sortie doit donc valoir **deux fois** l’entrée.\nLe gain vaut G = 1 + R2 / R1, toujours positif : la sortie est **en phase** avec l’entrée.",
+    "en": "The signal goes straight to the **+** input (**1IN+**) of the **LM358 U1**. The **1OUT** output comes back to the **−** input (**1IN−**) through the **R2 / R1** divider (two 10 kΩ):\n- the op-amp sets its output so that its two inputs are at the same voltage;\n- the divider only sends half of the output back to the − input: so the output must be **twice** the input.\nThe gain is G = 1 + R2 / R1, always positive: the output is **in phase** with the input."
+   }
+  },
+  {
+   "title": {
+    "fr": "Alimenter l’ampli-op",
+    "en": "Power the op-amp"
+   },
+   "text": {
+    "fr": "- **5V** de l’UNO → **U1 · VCC**.\n- Une **GND** de l’UNO → le rail **−** du haut de la breadboard ; **U1 · GND** → le rail **−**.",
+    "en": "- The UNO’s **5V** → **U1 · VCC**.\n- A UNO **GND** → the top **−** rail of the breadboard; **U1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "U1.VCC"
+     ],
+     [
+      "UNO.GND*",
+      "U1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La contre-réaction",
+    "en": "The feedback"
+   },
+   "text": {
+    "fr": "- Une patte de **R1**, une patte de **R2** et **U1 · 1IN−** → la colonne 14 (A14, B14, C14).\n- L’autre patte de R1 → le rail **−**.\n- L’autre patte de R2 et **U1 · 1OUT** → la colonne 20 (A20, B20).",
+    "en": "- One leg of **R1**, one leg of **R2** and **U1 · 1IN−** → column 14 (A14, B14, C14).\n- The other leg of R1 → the **−** rail.\n- The other leg of R2 and **U1 · 1OUT** → column 20 (A20, B20)."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "U1.1IN-",
+      "R1.1|R1.2",
+      "R2.1|R2.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "UNO.GND*"
+     ],
+     [
+      "R2.1|R2.2",
+      "U1.1OUT"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le signal d’entrée",
+    "en": "The input signal"
+   },
+   "text": {
+    "fr": "- **GEN1 · OUT** → la colonne 8 (A8), et **U1 · 1IN+** en B8.\n- **GEN1 · GND** → le rail **−**.\nRéglages de GEN1 (onglet **Simulation**, section **Générateurs**) : **Sinus**, **100 Hz**, amplitude **0,5 V**, décalage **1 V** : l’entrée varie de 0,5 à 1,5 V.",
+    "en": "- **GEN1 · OUT** → column 8 (A8), and **U1 · 1IN+** in B8.\n- **GEN1 · GND** → the **−** rail.\nGEN1 settings (**Simulation** tab, **Generators** section): **Sine**, **100 Hz**, amplitude **0.5 V**, offset **1 V**: the input varies from 0.5 to 1.5 V."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "GEN1.OUT",
+      "U1.1IN+"
+     ],
+     [
+      "GEN1.GND",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer le gain",
+    "en": "Calculate the gain"
+   },
+   "text": {
+    "fr": "Que vaut le gain G = 1 + R2 / R1 avec R1 = R2 = 10 kΩ ?",
+    "en": "What is the gain G = 1 + R2 / R1 with R1 = R2 = 10 kΩ?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1",
+      "en": "1"
+     },
+     {
+      "fr": "2",
+      "en": "2"
+     },
+     {
+      "fr": "−1",
+      "en": "−1"
+     },
+     {
+      "fr": "10",
+      "en": "10"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 8 (C8) : l’entrée.\n- **OSC1 · CH2** → la colonne 20 (C20) : la sortie.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 8 (C8): the input.\n- **OSC1 · CH2** → column 20 (C20): the output.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "U1.1IN+"
+     ],
+     [
+      "OSC1.CH2",
+      "U1.1OUT"
+     ],
+     [
+      "OSC1.GND",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer entrée et sortie",
+    "en": "Observe input and output"
+   },
+   "text": {
+    "fr": "Lancez la simulation, **Instruments** → **Oscilloscope 2 voies**. Le calcul en direct avance par pas de quelques millisecondes : trop grossier pour tracer une sinusoïde de 100 Hz. Choisissez la source **Lab analogique**.\n- Base de temps **2 ms/div** (deux périodes à l’écran).\n- **0,5 V/div** sur les deux voies, zéro à **−4** divisions.\n- Déclenchement sur **CH1**, front **↑**, niveau **1 V**, puis **Recalculer**.\nLes deux sinusoïdes sont en phase. Entre quelles tensions varie la sortie ?",
+    "en": "Start the simulation, **Instruments** → **2-channel oscilloscope**. The live calculation moves in steps of a few milliseconds: too coarse to draw a 100 Hz sine wave. Choose the **Analog lab** source.\n- Time base **2 ms/div** (two periods on screen).\n- **0.5 V/div** on both channels, zero at **−4** divisions.\n- Trigger on **CH1**, rising edge **↑**, level **1 V**, then **Recompute**.\nThe two sine waves are in phase. Between which voltages does the output vary?"
+   },
+   "hint": {
+    "fr": "Le gain s’applique à toute la tension d’entrée, décalage compris : 2 × 0,5 V et 2 × 1,5 V.",
+    "en": "The gain applies to the whole input voltage, offset included: 2 × 0.5 V and 2 × 1.5 V."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "De 0,5 à 1,5 V",
+      "en": "From 0.5 to 1.5 V"
+     },
+     {
+      "fr": "De 1 à 3 V",
+      "en": "From 1 to 3 V"
+     },
+     {
+      "fr": "De 0 à 5 V",
+      "en": "From 0 to 5 V"
+     },
+     {
+      "fr": "De −1 à +1 V",
+      "en": "From −1 to +1 V"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "La valeur moyenne de la sortie",
+    "en": "The output’s mean value"
+   },
+   "text": {
+    "fr": "Passez la **Forme** de GEN1 sur **Continu** : le générateur ne délivre plus que son décalage, 1 V, qui est aussi la valeur moyenne de la sinusoïde. Multimètre (onglet **Multimètre** du banc) en mode **V ⎓** : pointe rouge sur **U1 · 1OUT**, pointe noire sur **U1 · GND**. Entrez la tension lue, puis repassez en **Sinus** : c’est aussi la valeur moyenne (**moy.**) de CH2 en Lab analogique.",
+    "en": "Set GEN1’s **Shape** to **DC**: the generator now only delivers its offset, 1 V, which is also the sine wave’s mean value. Multimeter (bench **Multimeter** tab) in **V ⎓** mode: red probe on **U1 · 1OUT**, black probe on **U1 · GND**. Enter the voltage you read, then switch back to **Sine**: it is also CH2’s mean reading in Analog lab."
+   },
+   "hint": {
+    "fr": "Le gain s’applique aussi au continu : 2 × 1 V.",
+    "en": "The gain applies to DC too: 2 × 1 V."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "U1.1OUT",
+     "U1.GND"
+    ],
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "Le plafond de 3,5 V",
+    "en": "The 3.5 V ceiling"
+   },
+   "text": {
+    "fr": "Alimenté en 5 V, le LM358 ne sort pas plus de **3,5 V** (VCC − 1,5 V). On règle le décalage de GEN1 à **2 V** (entrée de 1,5 à 2,5 V). Que montre CH2 en Lab analogique ?",
+    "en": "Powered from 5 V, the LM358 cannot output more than **3.5 V** (VCC − 1.5 V). GEN1’s offset is set to **2 V** (input from 1.5 to 2.5 V). What does CH2 show in Analog lab?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une sinusoïde de 3 à 5 V",
+      "en": "A sine wave from 3 to 5 V"
+     },
+     {
+      "fr": "Une sinusoïde qui part de 3 V mais dont le haut est écrêté à 3,5 V",
+      "en": "A sine wave starting at 3 V whose top is clipped at 3.5 V"
+     },
+     {
+      "fr": "Une tension nulle",
+      "en": "Zero voltage"
+     },
+     {
+      "fr": "La même sinusoïde qu’à l’entrée",
+      "en": "The same sine wave as the input"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Choisir le décalage",
+    "en": "Choosing the offset"
+   },
+   "text": {
+    "fr": "Pour amplifier par 2 sans écrêtage, la sortie doit rester entre 0 et 3,5 V. Avec une amplitude d’entrée de 0,5 V, quel décalage maximal peut-on donner au générateur ?",
+    "en": "To amplify by 2 without clipping, the output must stay between 0 and 3.5 V. With an input amplitude of 0.5 V, what is the highest offset the generator can have?"
+   },
+   "hint": {
+    "fr": "Sortie maximale = 2 × (décalage + 0,5 V) ≤ 3,5 V.",
+    "en": "Highest output = 2 × (offset + 0.5 V) ≤ 3.5 V."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,5 V",
+      "en": "0.5 V"
+     },
+     {
+      "fr": "1,25 V",
+      "en": "1.25 V"
+     },
+     {
+      "fr": "2 V",
+      "en": "2 V"
+     },
+     {
+      "fr": "3,5 V",
+      "en": "3.5 V"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

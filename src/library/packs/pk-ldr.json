@@ -1,0 +1,173 @@
+{
+ "format": 1,
+ "id": "pk-ldr",
+ "version": 1,
+ "name": "Module photorésistance (paquet)",
+ "category": "Capteurs",
+ "prefix": "LDR",
+ "description": "Module photorésistance : la résistance de la cellule baisse quand la lumière augmente. Sortie analogique AO et sortie tout-ou-rien DO.",
+ "pins": [
+  {
+   "name": "VCC",
+   "x": -3.81,
+   "y": 8.1,
+   "z": 13.8,
+   "kind": "pwr",
+   "why": "Alimenté à la tension logique de la carte, AO ne dépasse jamais la plage de l’ADC.",
+   "v": "logic"
+  },
+  {
+   "name": "GND",
+   "x": -1.27,
+   "y": 8.1,
+   "z": 13.8,
+   "kind": "gnd"
+  },
+  {
+   "name": "DO",
+   "x": 1.27,
+   "y": 8.1,
+   "z": 13.8,
+   "kind": "io",
+   "need": "in",
+   "role": "Seuil",
+   "why": "Sortie du comparateur : bascule quand la lumière franchit le seuil réglé par le potentiomètre bleu. Facultative quand AO est lue.",
+   "opt": true
+  },
+  {
+   "name": "AO",
+   "x": 3.81,
+   "y": 8.1,
+   "z": 13.8,
+   "kind": "io",
+   "need": "adc",
+   "role": "Analogique",
+   "why": "Pont diviseur photorésistance + 10 kΩ : plus il y a de lumière, plus la tension (et la valeur lue) baisse."
+  }
+ ],
+ "ma": 5,
+ "ds": "tiLm393",
+ "sources": {
+  "tiLm393": {
+   "title": "LM393B, LM2903B, LM193, LM293, LM393 and LM2903 Dual Comparators (SLCS005AH)",
+   "publisher": "Texas Instruments",
+   "url": "https://www.ti.com/lit/ds/symlink/lm393.pdf",
+   "section": "§ 5.8 Electrical Characteristics : ICC « VCC = 5V » 0.45 mA (typ.), 1 mA (max.) ; le reste des ≈ 5 mA d’un module va à ses LED et à son pont diviseur"
+  }
+ },
+ "docs": {
+  "text": "La photorésistance forme un pont diviseur avec une résistance fixe : la tension AO dépend de la lumière. Le comparateur compare AO au seuil du potentiomètre pour produire DO.",
+  "specs": [
+   [
+    "Alimentation",
+    "3,3 à 5 V"
+   ],
+   [
+    "Cellule",
+    "photorésistance GL5528 : ≈ 10 à 20 kΩ à 10 lx, ≈ 1 MΩ dans le noir"
+   ],
+   [
+    "Comparateur",
+    "LM393, seuil réglable"
+   ],
+   [
+    "Sorties",
+    "AO analogique · DO numérique (à LOW quand c’est éclairé)"
+   ]
+  ],
+  "uses": [
+   "Veilleuse automatique",
+   "Distinguer le jour de la nuit",
+   "Robot qui suit la lumière"
+  ],
+  "mistakes": [
+   "Attendre des lux précis : une photorésistance est lente et imprécise ; pour mesurer, prenez un BH1750.",
+   "Lire DO avec analogRead() ou AO avec digitalRead()."
+  ]
+ },
+ "behaviour": {
+  "analogOut": {
+   "pin": "AO",
+   "quantity": "lux",
+   "from": [
+    0,
+    2000
+   ],
+   "to": [
+    0.98,
+    0.035
+   ],
+   "ratio": true,
+   "curve": [
+    [
+     0,
+     0.98
+    ],
+    [
+     1,
+     0.8826
+    ],
+    [
+     2,
+     0.8223
+    ],
+    [
+     5,
+     0.709
+    ],
+    [
+     10,
+     0.6
+    ],
+    [
+     20,
+     0.4801
+    ],
+    [
+     50,
+     0.3271
+    ],
+    [
+     100,
+     0.2303
+    ],
+    [
+     200,
+     0.1556
+    ],
+    [
+     500,
+     0.0884
+    ],
+    [
+     1000,
+     0.0564
+    ],
+    [
+     2000,
+     0.0355
+    ]
+   ]
+  },
+  "digitalOut": {
+   "pin": "DO",
+   "quantity": "lux",
+   "threshold": 17.85,
+   "activeLow": true
+  },
+  "sample": {
+   "period": 0.2,
+   "tau": 0.3
+  }
+ },
+ "look": {
+  "kind": "module",
+  "color": "#1b4f8c",
+  "label": "LDR",
+  "size": [
+   14,
+   1.6,
+   32
+  ]
+ }
+}

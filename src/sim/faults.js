@@ -10,6 +10,7 @@ import { inspect, pid as pinId } from './circuit.js';
 import { planWiring } from './autowire.js';
 import { boardLimits } from '../check/limits.js';
 import { tl } from '../i18n/index.js';
+import { pkgLed } from './pkgparts.js';
 
 const LED = /^led-(red|green|blue|yellow|white)$/, BB = /^breadboard/;
 const pid = r => `${r.comp.id}|${r.key}`;
@@ -150,12 +151,14 @@ export function collectFaults(comps, wires, A, cx) {
   for (const c of comps) {
     const spec = partOf(c);
     if (!spec || !spec.pins || !Object.keys(c.pins).some(k => A.deg({ comp: c, key: k }))) continue;
-    if (LED.test(c.type)) {
-      const a = A.wnet({ comp: c, key: 'A' }), k = A.wnet({ comp: c, key: 'K' });
+    // LED de la bibliothèque (A, K) ou LED en paquet (.jpart), à l'anode et à la cathode qu'il déclare.
+    const pl = !LED.test(c.type) && pkgLed(c.type), ka = pl ? pl.anode : 'A', kk = pl ? pl.cathode : 'K';
+    if (LED.test(c.type) || pl) {
+      const a = A.wnet({ comp: c, key: ka }), k = A.wnet({ comp: c, key: kk });
       if (a.gnd.length && (k.gpio.length || k.src.length)) {
-        const pins = [{ comp: c, key: 'A' }, { comp: c, key: 'K' }];
+        const pins = [{ comp: c, key: ka }, { comp: c, key: kk }];
         out.push({ key: `reversed|${c.id}`, level: 'err', code: 'reversed', title: TEXT.reversed.title(c), where: tl('{0} A → masse, K → {1}', c.name, nm(k.gpio[0] || k.src[0])),
-          why: TEXT.reversed.why, fix: fixText('reversed'), pins, culprits: [], wires: pins.flatMap(A.wiresAt), comp: c, suggest: null, actions: ['see', 'swap'] });
+          why: TEXT.reversed.why, fix: fixText('reversed'), pins, culprits: [], wires: pins.flatMap(A.wiresAt), comp: c, suggest: null, actions: ['see', 'swap'], ...(ka !== 'A' || kk !== 'K' ? { swap: [ka, kk] } : {}) });
         continue;
       }
     }

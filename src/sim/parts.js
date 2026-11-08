@@ -17,6 +17,7 @@
 // ds : fiche technique (clé de SOURCES, check/sources.js, ou liste de clés) d'où viennent v sur une broche, ma sur une fiche.
 import { volts } from './boards.js';
 import { tl, DEC } from '../i18n/index.js';
+import { ANALOG_PARTS } from './analog-parts.js';
 
 /** Fiche de câblage d'un composant : celle de la bibliothèque, ou celle d'un module importé (c.spec). */
 export const partOf = c => (c && (c.spec || PARTS[c.type])) || null;
@@ -494,5 +495,8 @@ export const PARTS = {
 
   /* ---------- Prototypage ---------- */
   breadboard: { what: tl('Breadboard : dans chaque colonne, les trous a à e sont reliés entre eux, de même que f à j. Les rails + et − courent sur toute la longueur.') },
-  'breadboard-mini': { what: tl('Mini breadboard : dans chaque colonne, les trous a à e sont reliés entre eux, de même que f à j. Pas de rails d’alimentation.') }
+  'breadboard-mini': { what: tl('Mini breadboard : dans chaque colonne, les trous a à e sont reliés entre eux, de même que f à j. Pas de rails d’alimentation.') },
+
+  /* ---------- Analogique (analog-parts.js) ---------- */
+  ...ANALOG_PARTS
 };

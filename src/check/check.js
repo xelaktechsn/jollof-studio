@@ -20,8 +20,11 @@ import { tl } from '../i18n/index.js';
 import { CODES, BY_KEY } from './codes.js';
 import { EXPLAIN } from './explain.js';
 import { pinFacts, pinRole } from './program.js';
+import { pyPinFacts } from './pyfacts.js';
 import { stateVars, assignments, stateText, sensorOutputs, MAX_STATES } from './states.js';
 import * as LIM from './limits.js';
+import { OPAMPS } from '../sim/analog-parts.js';
+import { isResistor, pkgLed, pkgLimit } from '../sim/pkgparts.js';
 
 const FAMILY_KIND = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
 /** Famille de carte pour le compilateur (même règle que prog/panel.js). */
@@ -133,7 +136,8 @@ function* run(proj, opts) {
     let f = pinFacts(code, kind, prof);
     // Programme que l'analyse ne sait pas lire (C++ complet du mode fidèle) : preuve prudente, toute broche reliée
     // peut être une sortie à LOW ou à HIGH.
-    if (!f.ok && firmware) f = { ok: true, pins: new Map(), dynamic: true, uses: [] };
+    // MicroPython : ses broches lues dans le texte Python quand elles sont écrites en clair (pyfacts.js).
+    if (!f.ok && firmware) f = pyPinFacts(code, prof) || { ok: true, pins: new Map(), dynamic: true, uses: [] };
     if (!f.ok) continue;
     facts.set(b, f);
     // Broche inexistante sur la carte, PWM ou ADC absents, digitalWrite sans pinMode.
@@ -161,7 +165,7 @@ function* run(proj, opts) {
   for (const list of outsByNet.values()) if (list.length > 1) put('J0601', 'error', { comp: list[0].comp, key: list[0].key, pins: list }, { a: name(list[0]), b: name(list[1]) });
   // Composant relié à la carte mais jamais commandé ni lu (programme lisible seulement).
   for (const c of comps) {
-    if (boardOf(c) || /^breadboard|^res-/.test(c.type)) continue;
+    if (boardOf(c) || /^breadboard/.test(c.type) || isResistor(c.type)) continue;
     const spec = partOf(c); if (!spec || !spec.pins) continue;
     const ins = inspect(c, A, spec);
     for (const [k, g] of Object.entries(ins.io)) {
@@ -287,7 +291,11 @@ function probeList(comps, A, facts) {
     const P0 = P.length;
     if (isLed(c)) P.push((dc, R) => { const l = dc.leds.get(c); if (!l) return; lim(l.mA, LIM.LED, () => R('J0301', 'error', { comp: c, key: 'A' }, { name: c.name, value: l.mA, limit: LIM.LED.max }), () => R('J0301', 'warning', { comp: c, key: 'A' }, { name: c.name, value: l.mA, limit: LIM.LED.warn })); });
     if (t === 'led-rgb' || t === '7seg') P.push((dc, R) => { const l = dc.leds.get(c); if (!l || !l.ch) return; for (const [k, x] of Object.entries(l.ch)) lim(x.mA, LIM.LED, () => R('J0301', 'error', { comp: c, key: k }, { name: nm(c, k), value: x.mA, limit: LIM.LED.max }), () => R('J0301', 'warning', { comp: c, key: k }, { name: nm(c, k), value: x.mA, limit: LIM.LED.warn })); });
-    if (/^res-/.test(t)) P.push((dc, R) => { const a = dc.across(c); if (!a || a.v == null) return; const w = Math.abs(a.v * a.mA) / 1000; lim(w, LIM.POWER.res, () => R('J0304', 'error', { comp: c }, { name: c.name, value: w, limit: LIM.POWER.res.max }), () => R('J0304', 'warning', { comp: c }, { name: c.name, value: w, limit: LIM.POWER.res.warn })); });
+    // Résistance (bibliothèque ou paquet .jpart, qui peut citer sa propre limite de puissance).
+    if (isResistor(t)) { const PR = pkgLimit(t, 'power') || LIM.POWER.res; P.push((dc, R) => { const a = dc.across(c); if (!a || a.v == null) return; const w = Math.abs(a.v * a.mA) / 1000; lim(w, PR, () => R('J0304', 'error', { comp: c }, { name: c.name, value: w, limit: PR.max }), () => R('J0304', 'warning', { comp: c }, { name: c.name, value: w, limit: PR.warn })); }); }
+    // LED en paquet : courant limité comme une LED de la bibliothèque (ou par la limite citée dans le paquet).
+    const pl = pkgLed(t), PL = pl && (pkgLimit(t, 'current') || LIM.LED);
+    if (pl) P.push((dc, R) => { const l = dc.leds.get(c); if (!l) return; lim(l.mA, PL, () => R('J0301', 'error', { comp: c, key: pl.anode }, { name: c.name, value: l.mA, limit: PL.max }), () => R('J0301', 'warning', { comp: c, key: pl.anode }, { name: c.name, value: l.mA, limit: PL.warn })); });
     if (t === 'pot') P.push((dc, R) => {
       const inj = dc.injections(), v = k => dc.volts({ comp: c, key: k });
       const parts = [['1', 'W'], ['3', 'W']].map(([e, w]) => { const i = inj.get(pid(c, e)) || 0, a = v(e), b = v(w); return a == null || b == null ? 0 : Math.abs((a - b) * i) / 1000; });
@@ -319,6 +327,34 @@ function probeList(comps, A, facts) {
     if (t === 'servo') P.push((dc, R) => { const a = dc.across(c); if (a && a.v != null && a.v > 0.5 && a.v < 4.2) R('J0312', 'warning', { comp: c, key: 'VCC' }, { name: c.name, value: a.v }); });
     if (t === 'relay' && c.pins.COM) P.push((dc, R) => { const i = Math.abs(dc.injections().get(pid(c, 'COM')) || 0); if (i > LIM.RELAY_CONTACT) R('J0310', 'error', { comp: c, key: 'COM' }, { name: c.name, value: i, limit: LIM.RELAY_CONTACT }); });
     if (t === 'l298n') P.push((dc, R) => { const inj = dc.injections(); for (const k of ['OUT1', 'OUT2', 'OUT3', 'OUT4']) { const i = Math.abs(inj.get(pid(c, k)) || 0); lim(i, LIM.L298N_CH, () => R('J0309', 'error', { comp: c, key: k }, { name: c.name, value: i, limit: LIM.L298N_CH.max }), () => {}); } });
+    // Composants analogiques : MOSFET (courant, tensions, échauffement sans radiateur), sortie du NE555, entrées du
+    // LM358 (sous la masse, hors de la plage de mode commun), courant d'une bobine.
+    if (t === 'irlz44n') {
+      const L = LIM.IRLZ44N, W = LIM.IRLZ44N_W;
+      P.push((dc, R) => {
+        const a = dc.across(c); if (!a || a.kind !== 'mosfet' || !a.extra) return;
+        const x = a.extra, id = Math.abs(x.id || 0);
+        lim(id, L.id, () => R('J0318', 'error', { comp: c, key: 'D' }, { name: c.name, value: id, limit: L.id.max }), () => R('J0318', 'warning', { comp: c, key: 'D' }, { name: c.name, value: id, limit: L.id.warn }));
+        if (x.vgs != null && Math.abs(x.vgs) > L.vgs) R('J0319', 'error', { comp: c, key: 'G' }, { name: c.name, value: Math.abs(x.vgs), limit: L.vgs });
+        if (x.vds != null && x.vds > L.vds) R('J0320', 'error', { comp: c, key: 'D' }, { name: c.name, value: x.vds, limit: L.vds });
+        const w = Math.abs((x.vds || 0) * (x.id || 0)) / 1000;
+        lim(w, W, () => R('J0325', 'error', { comp: c, key: 'D' }, { name: c.name, value: w, limit: W.max }), () => R('J0325', 'warning', { comp: c, key: 'D' }, { name: c.name, value: w, limit: W.warn }));
+      });
+    }
+    if (t === 'ne555') P.push((dc, R) => { const a = dc.across(c); if (!a || a.kind !== 'timer') return; lim(a.mA, LIM.NE555_OUT, () => R('J0321', 'error', { comp: c, key: 'OUT' }, { name: c.name, value: Math.abs(a.mA), limit: LIM.NE555_OUT.max }), () => R('J0321', 'warning', { comp: c, key: 'OUT' }, { name: c.name, value: Math.abs(a.mA), limit: LIM.NE555_OUT.warn })); });
+    if (OPAMPS[t]) P.push((dc, R) => {
+      const a = dc.across(c); if (!a || a.kind !== 'opamp') return;
+      const g = dc.volts({ comp: c, key: 'GND' }), v = dc.volts({ comp: c, key: 'VCC' }), top = g != null && v != null ? v - g - LIM.LM358_IN.cmr : null;
+      for (const ch of a.extra.chans) {
+        const keys = OPAMPS[t].chans.find(x => x[2] === ch.out); if (!keys) continue;
+        for (const [k, x] of [[keys[0], ch.vp], [keys[1], ch.vn]]) {
+          if (x == null || !(A.members({ comp: c, key: k }).length > 1)) continue;
+          if (x < LIM.LM358_IN.min - 1e-3) R('J0324', 'error', { comp: c, key: k }, { name: nm(c, k), value: x, limit: LIM.LM358_IN.min });
+          else if (top != null && v - g > 0.5 && x > top + 1e-3) R('J0323', 'warning', { comp: c, key: k }, { name: nm(c, k), value: x, limit: top });
+        }
+      }
+    });
+    if (LIM.INDUCTOR[t]) P.push((dc, R) => { const a = dc.across(c); if (!a) return; const L = LIM.INDUCTOR[t]; lim(a.mA, L, () => R('J0322', 'error', { comp: c }, { name: c.name, value: Math.abs(a.mA), limit: L.max }), () => R('J0322', 'warning', { comp: c }, { name: c.name, value: Math.abs(a.mA), limit: L.warn })); });
     if (t === 'lm7805') P.push((dc, R) => {
       const a = dc.across(c); if (!a) return;
       lim(a.mA, LIM.LM7805, () => R('J0109', 'error', { comp: c, key: 'OUT' }, { name: c.name, value: a.mA, limit: LIM.LM7805.max }), () => {});

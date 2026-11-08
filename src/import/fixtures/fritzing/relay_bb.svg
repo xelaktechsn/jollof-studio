@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="40mm" height="20mm" viewBox="0 0 400 200">
+  <defs><linearGradient id="gr"><stop offset="0" stop-color="#2f62d8"/><stop offset="1" stop-color="#1b3f8c"/></linearGradient></defs>
+  <rect width="400" height="200" fill="url(#gr)"/>
+  <script>alert('ne doit jamais passer')</script>
+  <g transform="matrix(1 0 0 1 50 170)">
+    <circle id="connector0pin" cx="0" cy="0" r="8" fill="#d4a64a"/>
+    <g transform="translate(25.4,0)"><circle id="connector1pin" cx="0" cy="0" r="8" fill="#d4a64a"/></g>
+    <path id="connector2pin" d="M 42.8 -8 h 16 v 16 h -16 z" fill="#d4a64a"/>
+  </g>
+  <g transform="rotate(90 300 100)"><rect id="connector3pin" x="290" y="90" width="20" height="20" fill="#d4a64a"/></g>
+</svg>

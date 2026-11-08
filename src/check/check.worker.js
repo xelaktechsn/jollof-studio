@@ -17,6 +17,11 @@ self.onmessage = async e => {
   const { id, proj } = e.data;
   try {
     const { checkProject } = await ready;
+    // Composants en paquet (.jpart) : manifestes déjà vérifiés par l'application, installés ici s'ils ont changé.
+    if (proj.packages && proj.packages.length) {
+      const J = await import('../library/jpart.js');
+      for (const m of proj.packages) { const cur = J.INSTALLED.get(m.id); if (!cur || JSON.stringify(cur) !== JSON.stringify(m)) { const v = J.validateManifest(m); if (v.ok) J.registerSim(v.manifest); } }
+    }
     const comps = proj.comps.map(c => ({ id: c.id, type: c.type, name: c.name, pins: Object.fromEntries(c.pins.map(k => [k, {}])), inp: { ...(c.inp || {}) }, relayOn: c.relayOn, group: { position: { x: c.x, z: c.z } } }));
     const by = Object.fromEntries(comps.map(c => [c.id, c]));
     const wires = proj.wires.map(w => ({ a: { comp: by[w.a[0]], key: w.a[1] }, b: { comp: by[w.b[0]], key: w.b[1] }, progress: 1 }));

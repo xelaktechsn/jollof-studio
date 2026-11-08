@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dessin écrit à la main pour les tests : 0,6 × 1,2 pouce, 4 broches au pas de 0,1 pouce sur le bord du bas. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="0.6in" height="1.2in" viewBox="0 0 60 120">
+  <rect x="0" y="0" width="60" height="120" fill="#1b4f8c"/>
+  <circle cx="30" cy="25" r="9" fill="#c98a3a"/>
+  <text x="30" y="60" font-size="8" fill="#fff" text-anchor="middle">LDR</text>
+  <g transform="translate(15,100)">
+    <rect id="connector0pin" x="0" y="0" width="6" height="14" fill="#d4a64a"/>
+    <rect id="connector1pin" x="10" y="0" width="6" height="14" fill="#d4a64a"/>
+    <rect id="connector2pin" x="20" y="0" width="6" height="14" fill="#d4a64a"/>
+    <rect id="connector3pin" x="30" y="0" width="6" height="14" fill="#d4a64a"/>
+    <rect id="connector0terminal" x="0" y="14" width="6" height="0" fill="none"/>
+    <rect id="connector1terminal" x="10" y="14" width="6" height="0" fill="none"/>
+    <rect id="connector2terminal" x="20" y="14" width="6" height="0" fill="none"/>
+    <rect id="connector3terminal" x="30" y="14" width="6" height="0" fill="none"/>
+  </g>
+</svg>

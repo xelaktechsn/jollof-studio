@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Pièce écrite à la main pour les tests de Jollof Studio : unités en mm, transformations, nom en double, connecteur absent du dessin. -->
+<module moduleId="JollofTestRelayModule">
+  <title>Relay Module 1ch</title>
+  <label>K</label>
+  <author>Jollof Studio (fixture)</author>
+  <tags><tag>relay</tag></tags>
+  <views>
+    <breadboardView><layers image="breadboard/relay_bb.svg"><layer layerId="breadboard"/></layers></breadboardView>
+  </views>
+  <connectors>
+    <connector id="connector0" name="IN" type="male"><description>Control input</description>
+      <views><breadboardView><p layer="breadboard" svgId="connector0pin"/></breadboardView></views></connector>
+    <connector id="connector1" name="GND" type="male"><description>Ground</description>
+      <views><breadboardView><p layer="breadboard" svgId="connector1pin"/></breadboardView></views></connector>
+    <connector id="connector2" name="GND" type="male"><description>Ground (second pin)</description>
+      <views><breadboardView><p layer="breadboard" svgId="connector2pin"/></breadboardView></views></connector>
+    <connector id="connector3" name="VCC +5V" type="male"><description>Coil supply</description>
+      <views><breadboardView><p layer="breadboard" svgId="connector3pin"/></breadboardView></views></connector>
+    <connector id="connector4" name="NO" type="female"><description>Normally open contact</description>
+      <views><breadboardView><p layer="breadboard" svgId="connector4pin"/></breadboardView></views></connector>
+  </connectors>
+</module>

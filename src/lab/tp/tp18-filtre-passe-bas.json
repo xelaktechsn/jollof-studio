@@ -1,0 +1,449 @@
+{
+ "id": "tp18-filtre-passe-bas",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Filtre RC passe-bas",
+  "en": "RC low-pass filter"
+ },
+ "summary": {
+  "fr": "Une résistance de 1 kΩ et un condensateur de 100 nF forment un filtre passe-bas de fréquence de coupure 1,6 kHz. On fait varier la fréquence du générateur, on compare entrée et sortie à l’oscilloscope (Lab analogique) et au multimètre en V ∿ : −3 dB à la coupure, division par 10 une décade au-dessus.",
+  "en": "A 1 kΩ resistor and a 100 nF capacitor make a low-pass filter with a 1.6 kHz cut-off frequency. The generator frequency is varied, and input and output are compared on the oscilloscope (Analog lab) and with the multimeter in V ∿: −3 dB at cut-off, divided by 10 a decade above."
+ },
+ "objectives": [
+  {
+   "fr": "Calculer la fréquence de coupure fc = 1 / (2π·R·C)",
+   "en": "Calculate the cut-off frequency fc = 1 / (2π·R·C)"
+  },
+  {
+   "fr": "Mesurer une tension efficace au multimètre (V ∿)",
+   "en": "Measure an RMS voltage with the multimeter (V ∿)"
+  },
+  {
+   "fr": "Relever le comportement d’un filtre de part et d’autre de fc",
+   "en": "Record a filter’s behaviour on either side of fc"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Filtre passe-bas",
+  "comps": [
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "siggen_1",
+    "type": "siggen",
+    "name": "GEN1",
+    "x": -110,
+    "z": 0,
+    "r": 0,
+    "inp": {
+     "wave": "sine",
+     "freq": 100,
+     "amp": 1,
+     "off": 2.5
+    }
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 110,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R1",
+    "x": -22,
+    "z": 46,
+    "r": 0
+   },
+   {
+    "id": "cap-100n_1",
+    "type": "cap-100n",
+    "name": "C1",
+    "x": 18,
+    "z": 46,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "siggen_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie du générateur"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#f08a3c",
+    "role": "Entrée du filtre"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Vers le condensateur"
+   },
+   {
+    "a": [
+     "cap-100n_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#f08a3c",
+    "role": "Condensateur (sortie du filtre)"
+   },
+   {
+    "a": [
+     "cap-100n_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur à la masse"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-2"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du générateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : entrée du filtre"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : sortie du filtre"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le filtre passe-bas",
+    "en": "The low-pass filter"
+   },
+   "text": {
+    "fr": "Le **condensateur C1 de 100 nF** laisse passer les variations rapides et bloque le continu ; la **résistance R1 de 1 kΩ** s’oppose de la même façon à toutes les fréquences.\nDans un **passe-bas**, le signal traverse R1 et la sortie se prend aux bornes de C1 :\n- à basse fréquence, C1 ne se remarque pas : la sortie suit l’entrée ;\n- à haute fréquence, C1 court-circuite les variations : la sortie s’aplatit sur la valeur moyenne.\nLa frontière est la **fréquence de coupure** fc.",
+    "en": "The **100 nF capacitor C1** passes fast variations and blocks DC; the **1 kΩ resistor R1** opposes all frequencies alike.\nIn a **low-pass** filter, the signal goes through R1 and the output is taken across C1:\n- at low frequency, C1 goes unnoticed: the output follows the input;\n- at high frequency, C1 shorts out the variations: the output flattens onto the mean value.\nThe boundary is the **cut-off frequency** fc."
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer fc",
+    "en": "Calculate fc"
+   },
+   "text": {
+    "fr": "Calculez fc = 1 / (2π × R × C) avec R = 1 kΩ = 1000 Ω et C = 100 nF = 0,000 000 1 F.",
+    "en": "Calculate fc = 1 / (2π × R × C) with R = 1 kΩ = 1000 Ω and C = 100 nF = 0.0000001 F."
+   },
+   "hint": {
+    "fr": "R × C = 0,0001 s ; 2π × 0,0001 ≈ 0,000 628.",
+    "en": "R × C = 0.0001 s; 2π × 0.0001 ≈ 0.000628."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 159 Hz",
+      "en": "About 159 Hz"
+     },
+     {
+      "fr": "Environ 1,6 kHz",
+      "en": "About 1.6 kHz"
+     },
+     {
+      "fr": "Environ 10 kHz",
+      "en": "About 10 kHz"
+     },
+     {
+      "fr": "Environ 16 kHz",
+      "en": "About 16 kHz"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le filtre",
+    "en": "Wire the filter"
+   },
+   "text": {
+    "fr": "- **GEN1 · OUT** → la colonne 8 (A8), et une patte de R1 en B8.\n- L’autre patte de R1 et une patte de C1 → la colonne 16 (A16, B16).\n- L’autre patte de C1 et **GEN1 · GND** → le rail **−** du haut.",
+    "en": "- **GEN1 · OUT** → column 8 (A8), and one leg of R1 in B8.\n- The other leg of R1 and one leg of C1 → column 16 (A16, B16).\n- The other leg of C1 and **GEN1 · GND** → the top **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "GEN1.OUT",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "C1.1|C1.2"
+     ],
+     [
+      "C1.1|C1.2",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 8 (C8) : l’entrée du filtre.\n- **OSC1 · CH2** → la colonne 16 (C16) : la sortie du filtre.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 8 (C8): the filter input.\n- **OSC1 · CH2** → column 16 (C16): the filter output.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "GEN1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "R1.1|R1.2",
+      "C1.1|C1.2"
+     ],
+     [
+      "OSC1.GND",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "À 100 Hz, le signal passe",
+    "en": "At 100 Hz, the signal passes"
+   },
+   "text": {
+    "fr": "GEN1 : **Sinus**, **100 Hz**, amplitude **1 V**, décalage **2,5 V**. Lancez la simulation ; oscilloscope en **Lab analogique** (le calcul en direct, qui avance par pas de quelques millisecondes, ne peut pas tracer fidèlement ce signal) :\n- base de temps **5 ms/div** ;\n- **0,5 V/div** sur les deux voies, zéro à **−4** divisions ;\n- déclenchement sur **CH1**, front **↑**, niveau **2,5 V**, puis **Recalculer**.\nÀ 100 Hz, bien en dessous de fc, les deux courbes se superposent presque : la sortie suit l’entrée.",
+    "en": "GEN1: **Sine**, **100 Hz**, amplitude **1 V**, offset **2.5 V**. Start the simulation; oscilloscope in **Analog lab** (the live calculation, which moves in steps of a few milliseconds, cannot draw this signal faithfully):\n- time base **5 ms/div**;\n- **0.5 V/div** on both channels, zero at **−4** divisions;\n- trigger on **CH1**, rising edge **↑**, level **2.5 V**, then **Recompute**.\nAt 100 Hz, well below fc, the two curves almost overlap: the output follows the input."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le continu passe aussi",
+    "en": "DC passes too"
+   },
+   "text": {
+    "fr": "Une tension continue est un signal de fréquence nulle. Passez la **Forme** de GEN1 sur **Continu** : il ne délivre plus que son décalage, 2,5 V. Multimètre (onglet **Multimètre** du banc) en mode **V ⎓** : pointe rouge sur **OSC1 · CH2**, pointe noire sur **OSC1 · GND**. Entrez la tension de sortie, puis repassez en **Sinus**.",
+    "en": "A DC voltage is a signal with a frequency of zero. Set GEN1’s **Shape** to **DC**: it now only delivers its offset, 2.5 V. Multimeter (bench **Multimeter** tab) in **V ⎓** mode: red probe on **OSC1 · CH2**, black probe on **OSC1 · GND**. Enter the output voltage, then switch back to **Sine**."
+   },
+   "hint": {
+    "fr": "Une fois chargé, le condensateur ne prend plus de courant : R1 ne fait chuter aucune tension et la sortie égale l’entrée.",
+    "en": "Once charged, the capacitor takes no more current: R1 drops no voltage and the output equals the input."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "OSC1.CH2",
+     "OSC1.GND"
+    ],
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "À la fréquence de coupure",
+    "en": "At the cut-off frequency"
+   },
+   "text": {
+    "fr": "Réglez la **Fréquence** de GEN1 à **1592 Hz** (fc). Multimètre en mode **V ∿** (tension alternative efficace, calculée sur une fenêtre de temps) :\n- pointe rouge sur **OSC1 · CH1**, noire sur **OSC1 · GND** : notez l’entrée (environ 0,69 V) ;\n- pointe rouge sur **OSC1 · CH2** : entrez la tension efficace de sortie.",
+    "en": "Set GEN1’s **Frequency** to **1592 Hz** (fc). Multimeter in **V ∿** mode (AC RMS voltage, computed over a time window):\n- red probe on **OSC1 · CH1**, black on **OSC1 · GND**: note the input (about 0.69 V);\n- red probe on **OSC1 · CH2**: enter the output RMS voltage."
+   },
+   "hint": {
+    "fr": "L’entrée vaut 0,69 V et non 0,71 V (1 V crête / √2) : le filtre charge un peu le générateur et ses 50 Ω.",
+    "en": "The input is 0.69 V and not 0.71 V (1 V peak / √2): the filter loads the generator and its 50 Ω a little."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "expect": 0.49,
+    "tolerance": 0.1
+   }
+  },
+  {
+   "title": {
+    "fr": "−3 dB",
+    "en": "−3 dB"
+   },
+   "text": {
+    "fr": "Divisez la tension efficace de sortie par celle d’entrée. Quel rapport trouvez-vous à fc ?",
+    "en": "Divide the output RMS voltage by the input one. What ratio do you find at fc?"
+   },
+   "hint": {
+    "fr": "À fc, la résistance et le condensateur s’opposent autant l’un que l’autre au passage du signal.",
+    "en": "At fc, the resistor and the capacitor oppose the signal equally."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1",
+      "en": "1"
+     },
+     {
+      "fr": "Environ 0,71 (1/√2, soit −3 dB)",
+      "en": "About 0.71 (1/√2, i.e. −3 dB)"
+     },
+     {
+      "fr": "0,5",
+      "en": "0.5"
+     },
+     {
+      "fr": "Environ 0,1",
+      "en": "About 0.1"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Une décade au-dessus",
+    "en": "One decade above"
+   },
+   "text": {
+    "fr": "Réglez la fréquence à **15920 Hz** (10 × fc), base de temps **50 µs/div**, puis **Recalculer**. Sur CH2, la sinusoïde est devenue toute petite autour de 2,5 V. Mesurez en **V ∿** l’entrée et la sortie : par combien la sortie est-elle divisée ?",
+    "en": "Set the frequency to **15920 Hz** (10 × fc), time base **50 µs/div**, then **Recompute**. On CH2, the sine wave has become tiny around 2.5 V. Measure input and output in **V ∿**: by how much is the output divided?"
+   },
+   "hint": {
+    "fr": "Au-delà de fc, la sortie d’un filtre RC est divisée par 10 chaque fois que la fréquence est multipliée par 10.",
+    "en": "Above fc, an RC filter’s output is divided by 10 each time the frequency is multiplied by 10."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Par 2",
+      "en": "By 2"
+     },
+     {
+      "fr": "Par 10 environ (−20 dB)",
+      "en": "By about 10 (−20 dB)"
+     },
+     {
+      "fr": "Par 100",
+      "en": "By 100"
+     },
+     {
+      "fr": "Elle n’est pas divisée",
+      "en": "It is not divided"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À quoi sert un passe-bas ?",
+    "en": "What is a low-pass filter for?"
+   },
+   "text": {
+    "fr": "Parmi ces usages, lequel correspond à un filtre passe-bas ?",
+    "en": "Which of these uses matches a low-pass filter?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Garder la valeur moyenne d’un signal PWM pour en faire une tension continue",
+      "en": "Keep the mean value of a PWM signal to turn it into a DC voltage"
+     },
+     {
+      "fr": "Supprimer le décalage continu d’un signal",
+      "en": "Remove a signal’s DC offset"
+     },
+     {
+      "fr": "Augmenter l’amplitude d’un signal",
+      "en": "Increase a signal’s amplitude"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

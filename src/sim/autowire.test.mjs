@@ -21,6 +21,13 @@ const { INPUTS } = await import('./models.js');
 const { solveDC } = await import('./dc.js');
 const { checkProject } = await import('../check/check.js');
 const { generate } = await import('../prog/rules.js');
+// Composants en paquet (.jpart, src/library/packs) : installés dans la bibliothèque, ils passent le même audit.
+{
+  const fs = await import('node:fs'), J = await import('../library/jpart.js'), P = await import('../library/packages.js');
+  const dir = new URL('../library/packs/', import.meta.url);
+  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json'))) await P.installBytes(J.packJpart({ manifest: JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8')) }));
+}
+const { isResistor } = await import('./pkgparts.js');
 
 const V3 = THREE.Vector3;
 const same = (x, y) => !!x && !!y && x.comp === y.comp && x.key === y.key;
@@ -113,7 +120,8 @@ function verify(S, board, what) {
 }
 
 const BOARD_TYPES = ['uno', 'nano', 'esp32', 'nodemcu', 'pico'];
-const PARTS_TO_WIRE = LIBRARY.filter(e => !['Cartes', 'Prototypage'].includes(e.cat) && !/^(res-|diode$|mb102$|lm7805$|cap-)/.test(e.id)).map(e => e.id);
+const PARTS_TO_WIRE = LIBRARY.filter(e => !['Cartes', 'Prototypage'].includes(e.cat) && !/^(res-|diode$|mb102$|lm7805$|cap-)/.test(e.id) && !isResistor(e.id)).map(e => e.id);
+assert.ok(PARTS_TO_WIRE.includes('pk-led-red') && PARTS_TO_WIRE.includes('pk-ldr'), 'les paquets sont audités');
 // Combinaisons physiquement impossibles : le câblage est refusé avec une explication (rien n'est câblé à moitié).
 const REFUSED = new Set(['joystick@nodemcu', 'bat9v@pico', 'bat18650@uno', 'bat18650@nano', 'bat18650@esp32', 'bat18650@nodemcu']);
 

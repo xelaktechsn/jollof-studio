@@ -8,6 +8,7 @@ import { PARTS, partOf } from '../sim/parts.js';
 import { INPUTS } from '../sim/models.js';
 import { analyze, inspect, bbGroups } from '../sim/circuit.js';
 import { generate } from '../prog/rules.js';
+import { pkgPins } from '../sim/pkgparts.js';
 
 const LEGS = { diode: ['A', 'K'], 'cap-100n': ['1', '2'], 'cap-100u': ['+', '-'], npn: ['C', 'B', 'E'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'] };
 /** Broches d'un type de composant, comme les crée l'application. */
@@ -17,6 +18,7 @@ export function pinKeys(type) {
   if (/^breadboard/.test(type)) return bbGroups({ type }).flatMap(g => g.keys);
   if (/^res-/.test(type)) return ['1', '2'];
   if (LEGS[type]) return LEGS[type];
+  if (pkgPins(type)) return pkgPins(type); // composant en paquet (.jpart) : toutes ses broches
   const sp = PARTS[type];
   return sp && sp.pins ? sp.pins.map(p => p.pin) : [];
 }

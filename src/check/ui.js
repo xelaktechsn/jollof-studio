@@ -10,6 +10,7 @@ import { explain } from './explain.js';
 import { familyOf } from './codes.js';
 import { tl, LANG } from '../i18n/index.js';
 import { SOURCE_URL } from '../library/credits.js';
+import { INSTALLED } from '../library/jpart.js';
 /** Page publique : ce que la preuve couvre, les modèles, la comparaison avec ngspice, les sources des limites. */
 const PROVEN_URL = `${SOURCE_URL}/blob/main/docs/PROVEN.md`;
 
@@ -62,7 +63,9 @@ export function installCheck(app) {
       data: {
         comps: proj.comps.map(c => ({ id: c.id, type: c.type, name: c.name, pins: Object.keys(c.pins), inp: { ...(c.inp || {}) }, relayOn: c.relayOn, x: c.group.position.x, z: c.group.position.z })),
         wires: wires.map(w => ({ a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key] })),
-        programs: [...proj.programs], auto: [...(proj.auto || [])], firmware: [...(proj.firmware || [])], allow: proj.allow
+        programs: [...proj.programs], auto: [...(proj.auto || [])], firmware: [...(proj.firmware || [])], allow: proj.allow,
+        // Composants en paquet (.jpart) : leurs manifestes vérifiés, que le travailleur installe à son tour.
+        packages: [...new Set(proj.comps.map(c => c.type))].filter(t => INSTALLED.has(t)).map(t => INSTALLED.get(t))
       }
     };
   }

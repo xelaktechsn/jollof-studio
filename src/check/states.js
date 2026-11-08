@@ -8,6 +8,8 @@
 import { boardOf, base } from '../sim/boards.js';
 import { tl, DEC } from '../i18n/index.js';
 import { pinRole } from './program.js';
+import { pkgSensorOut } from '../sim/pkgparts.js';
+import { genRange } from '../sim/analog-parts.js';
 
 export const MAX_STATES = 4096;
 // Sorties des capteurs simulés (models.js) : broche → [min, max] en fraction de leur alimentation ; abs : volts fixes
@@ -16,7 +18,8 @@ const SENSOR_OUT = {
   pir: { OUT: [0, 3.3, true] }, ldr: { AO: [0.035, 0.98], DO: [0, 1] }, soil: { AOUT: [1.2, 3.0, true] }, hcsr04: { ECHO: [0, 1] },
   mq2: { AO: [0.049, 0.615], DO: [0, 1] }, sound: { AO: [0, 1], DO: [0, 1] }, joystick: { VRx: [0, 1], VRy: [0, 1] }
 };
-export const sensorOutputs = c => SENSOR_OUT[c.type] || null;
+// Générateur de fonctions : sa sortie parcourt [décalage − amplitude, décalage + amplitude], en volts.
+export const sensorOutputs = c => SENSOR_OUT[c.type] || (c.type === 'siggen' ? { OUT: [...genRange(c.inp), true] } : null) || pkgSensorOut(c.type) || null;
 
 /**
  * Variables d'état : [{ comp, key?, pin? (broche de carte), id, values: [...], text(v), apply(v, ctx) }].
@@ -31,8 +34,10 @@ export function stateVars(comps, facts, wired, supplyOf = () => 5) {
     if (c.type === 'button' && c.pins['1']) vars.push({ comp: c, id: `${c.id}|pressed`, values: [false, true], text: v => (v ? tl('{0} appuyé', n) : tl('{0} relâché', n)), apply: v => { c.inp.pressed = v; } });
     if (c.type === 'joystick' && c.pins.SW) vars.push({ comp: c, id: `${c.id}|sw`, values: [false, true], text: v => (v ? tl('{0} enfoncé', n) : tl('{0} relâché', n)), apply: v => { c.inp.sw = v; } });
     if (c.type === 'pot') vars.push({ comp: c, id: `${c.id}|pos`, values: [50, 0, 100], text: v => tl('{0} à {1} %', n, v), apply: v => { c.inp.pos = v; } });
+    // Minuterie NE555 : sa bascule, sortie basse (décharge fermée) ou haute ; imposée au calcul comme une sortie de capteur.
+    if (c.type === 'ne555' && ['OUT', 'DIS'].some(k => c.pins[k] && wired({ comp: c, key: k }))) vars.push({ comp: c, id: `${c.id}|q`, values: [0, 1], text: v => (v ? tl('{0} sortie haute', n) : tl('{0} sortie basse', n)), apply: (v, cx) => cx.sensors.set(`${c.id}|q`, v) });
     if (c.type === 'relay' && c.pins.COM && ['COM', 'NO', 'NC'].some(k => wired({ comp: c, key: k }))) vars.push({ comp: c, id: `${c.id}|on`, values: [false, true], text: v => (v ? tl('{0} collé', n) : tl('{0} au repos', n)), apply: v => { c.relayOn = v; } });
-    const so = SENSOR_OUT[c.type];
+    const so = sensorOutputs(c); // capteurs de la bibliothèque et capteurs en paquet (.jpart)
     if (so) for (const [k, [lo, hi, abs]] of Object.entries(so)) {
       if (!c.pins[k] || !wired({ comp: c, key: k })) continue;
       const sup = supplyOf(c), vs = abs ? [lo, hi] : [lo * sup, hi * sup].map(x => Math.round(x * 100) / 100);

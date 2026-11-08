@@ -4,10 +4,11 @@
 // (alimenté en permanence). Sert au code généré (règles, blocs) et à savoir quelle carte le pilote.
 // Pur : se teste sous Node (node --test src/sim/drive.test.mjs).
 import { loadPins, NPNS } from './parts.js';
+import { MOSFETS } from './analog-parts.js';
 
 /**
  * c : composant moteur ; A : analyse du montage (circuit.js).
- * Rend { kind: 'l298n', drv, keys: [IN, IN, EN], plusFirst } | { kind: 'npn', npn, gpio } |
+ * Rend { kind: 'l298n', drv, keys: [IN, IN, EN], plusFirst } | { kind: 'npn', npn, base, gpio, fet } |
  *      { kind: 'relay', relay, contact: 'NO' | 'NC', gpio } | { kind: 'direct' } | null (pas un moteur).
  * gpio : broche de carte qui commande ({ comp, key, prof… } d'analyze), ou null.
  */
@@ -25,7 +26,10 @@ export function driveOf(c, A) {
   // Transistor : une borne sur le collecteur, la base reliée (par sa résistance) à une broche de la carte.
   for (const k of [mm, mp]) {
     const q = A.members(ref(k)).find(m => NPNS[m.comp.type] && m.key === 'C');
-    if (q) return { kind: 'npn', npn: q.comp, gpio: A.wnet({ comp: q.comp, key: 'B' }).gpio[0] || null };
+    if (q) return { kind: 'npn', npn: q.comp, base: 'B', gpio: A.wnet({ comp: q.comp, key: 'B' }).gpio[0] || null };
+    // MOSFET côté masse (drain sur la charge) : même rôle, commandé par sa grille (fet : true).
+    const f = A.members(ref(k)).find(m => MOSFETS[m.comp.type] && m.key === 'D');
+    if (f) return { kind: 'npn', npn: f.comp, base: 'G', fet: true, gpio: A.wnet({ comp: f.comp, key: 'G' }).gpio[0] || null };
   }
   // Relais : une borne sur NO ou NC (contacts ouverts pour la recherche), son entrée IN sur une broche de la carte.
   for (const k of [mp, mm]) {

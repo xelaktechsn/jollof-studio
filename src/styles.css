@@ -1035,3 +1035,71 @@ canvas.picking { cursor: crosshair !important; }
 .edHl .sq.warn { background: linear-gradient(135deg, transparent 33%, var(--warn) 33% 66%, transparent 66%) 0 0 / 4px 3px repeat-x, linear-gradient(45deg, transparent 33%, var(--warn) 33% 66%, transparent 66%) 2px 0 / 4px 3px repeat-x; }
 .diag li .jcode { margin-right: 4px; }
 .diag li small { display: block; color: var(--ok); font-family: var(--mono); font-size: 11.5px; }
+
+/* ---------- Composants en paquet (.jpart) : éditeur, import, outils de la sélection ---------- */
+.partRow { margin-top: 6px; flex-direction: column; align-items: stretch; gap: 6px; }
+.partRow .btn { width: 100%; }
+.partEd { display: flex; flex-direction: column; gap: 6px; }
+.peRow { flex: 1; min-width: 0; height: 26px; font: 11.5px var(--mono); color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: 5px; padding: 0 6px; }
+.peErr { margin: 0; padding: 6px 8px 6px 22px; border-radius: var(--r-sm); background: var(--raise); color: var(--warn); font-size: 11.5px; line-height: 1.45; }
+.note.ok { color: var(--ok); }
+.cpins li.pk select { flex: 1; min-width: 0; }
+.cpins li.pk input { width: 64px; }
+.pkgTools { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border: 1px dashed var(--line-2); border-radius: var(--r-sm); }
+.pkgTools .row .btn { flex: 1 1 auto; }
+.partSheet { width: min(1080px, 100%); max-height: calc(100vh - 48px); overflow: hidden; }
+.partSheet .sheetHead h2, .pickSheet .sheetHead h2 { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.partBody { overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 4px; }
+.partBody section { display: flex; flex-direction: column; gap: 8px; }
+.partBody h3 { margin: 0; font-size: 12.5px; color: var(--fg); }
+.partBody h4 { margin: 4px 0 0; font-size: 11.5px; color: var(--fg-2); font-weight: 600; }
+.pgrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px 12px; }
+.pgrid .wide { grid-column: 1 / -1; }
+.partBody input:not([type]), .partBody input[type="color"], .partBody select, .partBody textarea { font: 12px var(--sans); color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 4px 8px; min-width: 0; }
+.partBody input[type="color"] { height: var(--ctl); padding: 2px; }
+.partBody textarea { resize: vertical; line-height: 1.4; }
+.ptable { overflow: auto; max-height: 320px; border: 1px solid var(--line); border-radius: var(--r-sm); }
+.ptable table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.ptable th, .ptable td { padding: 4px 6px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.ptable thead th { position: sticky; top: 0; background: var(--panel); color: var(--fg-2); font-weight: 600; }
+.ptable tbody th { font-family: var(--mono); }
+.ptable td select, .ptable td input { width: 100%; margin-bottom: 3px; }
+.ptable .pv { display: flex; gap: 4px; align-items: center; }
+.ptable .pv input { width: 52px; }
+.pchk { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--fg-2); white-space: nowrap; }
+.psrc { display: grid; grid-template-columns: 40px 1.4fr 1fr 1.4fr 2fr auto; gap: 6px; align-items: center; }
+.psrc b { font: 600 11.5px var(--mono); }
+.pout { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 11.5px; color: var(--fg-2); }
+.pout input:not([type]) { width: 70px; }
+.pickSheet { width: min(640px, 100%); max-height: calc(100vh - 48px); overflow: hidden; }
+.pickQ { font: inherit; height: var(--ctl); color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 8px; }
+.pickList { list-style: none; margin: 0; padding: 0; overflow: auto; display: flex; flex-direction: column; gap: 2px; }
+.pickList button { all: unset; box-sizing: border-box; width: 100%; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 6px 8px; border-radius: var(--r-sm); }
+.pickList button:hover, .pickList button:focus-visible { background: var(--raise); }
+.pickList small { color: var(--muted); font-size: 11px; }
+@media (max-width: 760px) { .pgrid { grid-template-columns: 1fr; } .psrc { grid-template-columns: 1fr; } }
+
+/* ---------- Instruments analogiques (sim/instruments.js) : oscilloscope 2 voies, générateurs ---------- */
+.bhScope2 canvas { display: block; width: 100%; height: 220px; background: #071012; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.s2chans { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px 6px; }
+.s2ch { display: flex; align-items: center; gap: 7px; min-width: 0; font-size: 12px; }
+.s2ch i { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.s2ch select, .s2bar select, .s2bar input, .s2pos input { height: 24px; font: inherit; font-size: 12px; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); border-radius: 6px; }
+.s2ch select[data-node] { max-width: 150px; }
+.s2pos { display: inline-flex; align-items: center; gap: 3px; color: var(--fg-2); }
+.s2pos input { width: 46px; }
+.s2ch { flex-wrap: wrap; }
+.s2ch .meas { flex: 1 1 100%; padding-left: 17px; font-family: var(--mono); font-size: 11px; color: var(--fg-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.s2ch .meas:empty { display: none; }
+.s2bar { flex-wrap: wrap; }
+.s2bar label { display: inline-flex; align-items: center; gap: 4px; }
+.s2bar input[data-tlevel] { width: 56px; }
+.s2bar .seg { display: inline-flex; gap: 3px; padding: 3px; border-radius: 9px; background: #0b0f13; }
+.s2bar .seg button { all: unset; display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 7px; cursor: pointer; color: var(--fg-2); font-size: 12px; }
+.s2bar .seg button.on { background: var(--raise-2); color: var(--fg); }
+.s2bar .seg .ic { width: 13px; height: 13px; }
+.gens .gctl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 4px; }
+.gens .gctl label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--fg-2); }
+.gens .gctl select, .gens .gctl input { height: 26px; font: inherit; font-size: 12.5px; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; min-width: 0; }
+.gens .gctl input:disabled { opacity: .45; }
+.gens [data-gnote] { margin: 4px 0 0; }

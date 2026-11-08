@@ -1,0 +1,87 @@
+{
+ "format": 1,
+ "id": "pk-res-220",
+ "version": 1,
+ "name": "Résistance 220 Ω (paquet)",
+ "category": "Passifs",
+ "prefix": "R",
+ "description": "Résistance 220 Ω (rouge, rouge, marron) : typique en série avec une LED. Pas de câblage type : elle s’insère dans un montage (limiter le courant d’une LED, tirer une entrée vers un niveau, pont diviseur).",
+ "pins": [
+  {
+   "name": "1",
+   "x": -5.08,
+   "y": 8,
+   "z": 2.3,
+   "kind": "passive",
+   "role": "Patte, sans polarité"
+  },
+  {
+   "name": "2",
+   "x": 5.08,
+   "y": 8,
+   "z": 2.3,
+   "kind": "passive",
+   "role": "Patte, sans polarité"
+  }
+ ],
+ "limits": {
+  "power": {
+   "warn": 0.2,
+   "max": 0.25
+  },
+  "src": "yageoCfr"
+ },
+ "sources": {
+  "yageoCfr": {
+   "title": "Product specification – Carbon Film Resistors, CFR, Through Hole Resistors (V.3, 2024)",
+   "publisher": "YAGEO",
+   "url": "https://yageogroup.com/content/datasheet/asset/file/YAGEO-CFR_DATASHEET",
+   "section": "Table 1, p. 3 : Power Rating at 70 °C, CFR-25 « 1/4W »"
+  }
+ },
+ "docs": {
+  "text": "Elle s’oppose au passage du courant : U = R × I (loi d’Ohm). L’énergie freinée devient de la chaleur : P = U × I.",
+  "specs": [
+   [
+    "Valeur",
+    "220 Ω"
+   ],
+   [
+    "Code couleur",
+    "rouge, rouge, marron, or"
+   ],
+   [
+    "Puissance",
+    "1/4 W"
+   ],
+   [
+    "Tolérance",
+    "±5 % (bague or)"
+   ]
+  ],
+  "uses": [
+   "En série avec une LED",
+   "Protéger une entrée"
+  ],
+  "mistakes": [
+   "Lire le code couleur à l’envers : la bague or (tolérance) se place à droite.",
+   "Dépasser 1/4 W : elle chauffe, noircit et change de valeur."
+  ]
+ },
+ "behaviour": {
+  "load": {
+   "pin": "1",
+   "to": "2",
+   "ohms": 220
+  }
+ },
+ "look": {
+  "kind": "resistor",
+  "bands": [
+   2,
+   2,
+   1,
+   "g"
+  ]
+ }
+}

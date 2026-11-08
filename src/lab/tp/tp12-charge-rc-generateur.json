@@ -1,0 +1,448 @@
+{
+ "id": "tp12-charge-rc-generateur",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Circuit RC au générateur et à l’oscilloscope",
+  "en": "RC circuit with the generator and the oscilloscope"
+ },
+ "summary": {
+  "fr": "Un générateur de fonctions envoie un signal carré de 0 à 5 V à un circuit RC (10 kΩ, 100 µF). L’oscilloscope 2 voies montre à la fois le signal et la tension du condensateur : on y lit la constante de temps τ = R·C. Aucune carte n’est nécessaire.",
+  "en": "A function generator sends a 0 to 5 V square wave to an RC circuit (10 kΩ, 100 µF). The 2-channel oscilloscope shows both the signal and the capacitor voltage: the time constant τ = R·C is read on it. No board is needed."
+ },
+ "objectives": [
+  {
+   "fr": "Régler un générateur de fonctions : forme, fréquence, amplitude, décalage",
+   "en": "Set up a function generator: shape, frequency, amplitude, offset"
+  },
+  {
+   "fr": "Observer deux tensions en même temps à l’oscilloscope",
+   "en": "Observe two voltages at once on the oscilloscope"
+  },
+  {
+   "fr": "Mesurer la constante de temps τ = R·C et relier la valeur moyenne au décalage",
+   "en": "Measure the time constant τ = R·C and relate the mean value to the offset"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Circuit RC au générateur",
+  "comps": [
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "siggen_1",
+    "type": "siggen",
+    "name": "GEN1",
+    "x": -110,
+    "z": 0,
+    "r": 0,
+    "inp": {
+     "wave": "square",
+     "freq": 0.1,
+     "amp": 2.5,
+     "off": 2.5
+    }
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 110,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": -22,
+    "z": 46,
+    "r": 0
+   },
+   {
+    "id": "cap-100u_1",
+    "type": "cap-100u",
+    "name": "C1",
+    "x": 18,
+    "z": 46,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "siggen_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie du générateur"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#f08a3c",
+    "role": "Entrée du circuit RC"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Vers le condensateur"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#e5484d",
+    "role": "Condensateur +"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur −"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-2"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du générateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : signal d’entrée"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : tension du condensateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le banc de mesure",
+    "en": "The test bench"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : un **générateur de fonctions GEN1**, un **oscilloscope 2 voies OSC1**, une **résistance R1 de 10 kΩ** et un **condensateur chimique C1 de 100 µF** (polarisé : patte **+** et patte **−**).\n- Le générateur produit une tension entre sa borne **OUT** et sa borne **GND**, derrière une résistance interne de 50 Ω.\n- L’oscilloscope trace la tension de ses voies **CH1** et **CH2** par rapport à sa borne **GND**, sans prélever de courant au montage.\nPas de carte Arduino ici : la masse du générateur sert de référence à tout le montage.",
+    "en": "On the workspace: a **function generator GEN1**, a **2-channel oscilloscope OSC1**, a **10 kΩ resistor R1** and a **100 µF electrolytic capacitor C1** (polarised: a **+** leg and a **−** leg).\n- The generator produces a voltage between its **OUT** terminal and its **GND** terminal, behind a 50 Ω internal resistance.\n- The oscilloscope plots the voltage of its channels **CH1** and **CH2** relative to its **GND** terminal, without drawing any current from the circuit.\nNo Arduino board here: the generator’s ground is the reference for the whole circuit."
+   }
+  },
+  {
+   "title": {
+    "fr": "Régler le générateur",
+    "en": "Set up the generator"
+   },
+   "text": {
+    "fr": "Onglet **Simulation**, section **Générateurs** : vérifiez les réglages de GEN1.\n- **Forme** : Carré\n- **Fréquence (Hz)** : 0,1 (une période dure 10 s)\n- **Amplitude (V)** : 2,5\n- **Décalage (V)** : 2,5\nL’amplitude est la valeur **crête**, comptée de part et d’autre du décalage. Entre quelles tensions le signal varie-t-il ?",
+    "en": "**Simulation** tab, **Generators** section: check GEN1’s settings.\n- **Shape**: Square\n- **Frequency (Hz)**: 0.1 (one period lasts 10 s)\n- **Amplitude (V)**: 2.5\n- **Offset (V)**: 2.5\nThe amplitude is the **peak** value, counted on either side of the offset. Between which voltages does the signal vary?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Entre −2,5 V et +2,5 V",
+      "en": "Between −2.5 V and +2.5 V"
+     },
+     {
+      "fr": "Entre 0 V et 5 V",
+      "en": "Between 0 V and 5 V"
+     },
+     {
+      "fr": "Entre 2,5 V et 5 V",
+      "en": "Between 2.5 V and 5 V"
+     },
+     {
+      "fr": "Entre 0 V et 2,5 V",
+      "en": "Between 0 V and 2.5 V"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer τ",
+    "en": "Calculate τ"
+   },
+   "text": {
+    "fr": "Calculez la constante de temps τ = R × C avec R = 10 kΩ = 10 000 Ω et C = 100 µF = 0,0001 F.",
+    "en": "Calculate the time constant τ = R × C with R = 10 kΩ = 10,000 Ω and C = 100 µF = 0.0001 F."
+   },
+   "hint": {
+    "fr": "Les 50 Ω du générateur s’ajoutent à R1 : 10 050 Ω, ce qui ne change presque rien.",
+    "en": "The generator’s 50 Ω add to R1: 10,050 Ω, which changes almost nothing."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,01 s",
+      "en": "0.01 s"
+     },
+     {
+      "fr": "0,1 s",
+      "en": "0.1 s"
+     },
+     {
+      "fr": "1 s",
+      "en": "1 s"
+     },
+     {
+      "fr": "10 s",
+      "en": "10 s"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le circuit RC",
+    "en": "Wire the RC circuit"
+   },
+   "text": {
+    "fr": "- **GEN1 · OUT** → une colonne de la breadboard (par exemple A8), et une patte de R1 dans la même colonne (B8).\n- L’autre patte de R1 et la patte **+** de C1 → une autre colonne (A16, B16).\n- La patte **−** de C1 et **GEN1 · GND** → le rail **−** du haut de la breadboard.",
+    "en": "- **GEN1 · OUT** → a breadboard column (for example A8), and one leg of R1 in the same column (B8).\n- The other leg of R1 and the **+** leg of C1 → another column (A16, B16).\n- The **−** leg of C1 and **GEN1 · GND** → the top **−** rail of the breadboard."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : l’oscilloscope viendra se brancher dans les trous libres des mêmes colonnes et du même rail.",
+    "en": "A pin takes only one wire: the oscilloscope will plug into the free holes of the same columns and rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "GEN1.OUT",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "C1.+"
+     ],
+     [
+      "C1.-",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne de GEN1 · OUT (C8) : la voie 1 montre le signal envoyé.\n- **OSC1 · CH2** → la colonne de C1 · + (C16) : la voie 2 montre la tension du condensateur.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → the column of GEN1 · OUT (C8): channel 1 shows the signal sent.\n- **OSC1 · CH2** → the column of C1 · + (C16): channel 2 shows the capacitor voltage.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "hint": {
+    "fr": "Sans sa masse reliée à celle du montage, un oscilloscope ne sait pas par rapport à quoi mesurer.",
+    "en": "Without its ground tied to the circuit’s ground, an oscilloscope does not know what to measure against."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "GEN1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "C1.+"
+     ],
+     [
+      "OSC1.GND",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer les deux voies",
+    "en": "Observe both channels"
+   },
+   "text": {
+    "fr": "Lancez la simulation, cliquez sur **Instruments** dans la barre d’outils, puis sur l’onglet **Oscilloscope 2 voies**. CH1 et CH2 se choisissent tout seuls.\n- Source **Direct** : le calcul en direct suit sans peine un signal aussi lent.\n- Base de temps **1 s/div** (10 s à l’écran : une période entière), **1 V/div** sur les deux voies.\n- Déclenchement sur **CH1**, front **↑**, niveau **2,5 V**.\nCH1 est un carré de 0 à 5 V ; CH2 monte en arrondi pendant que CH1 est à 5 V, puis redescend en arrondi.",
+    "en": "Start the simulation, click **Instruments** in the toolbar, then the **2-channel oscilloscope** tab. CH1 and CH2 are picked automatically.\n- **Live** source: the live calculation easily follows such a slow signal.\n- Time base **1 s/div** (10 s on screen: one whole period), **1 V/div** on both channels.\n- Trigger on **CH1**, rising edge **↑**, level **2.5 V**.\nCH1 is a 0 to 5 V square wave; CH2 rises in a curve while CH1 is at 5 V, then falls in a curve."
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesurer τ à l’oscilloscope",
+    "en": "Measure τ on the oscilloscope"
+   },
+   "text": {
+    "fr": "Au bout d’une durée τ, la tension du condensateur a fait **63 %** du chemin vers 5 V, soit **3,16 V**. Figez l’image (**Figer**), repérez sur la grille l’instant du front montant de CH1 et l’instant où CH2 atteint 3,16 V. L’écart est τ : entrez-le en secondes.",
+    "en": "After a time τ, the capacitor voltage has covered **63%** of the way to 5 V, that is **3.16 V**. Freeze the display (**Hold**), find on the grid the moment of CH1’s rising edge and the moment CH2 reaches 3.16 V. The gap is τ: enter it in seconds."
+   },
+   "hint": {
+    "fr": "Une division vaut 1 s : comptez les divisions entre les deux instants. La valeur attendue est proche de celle de l’étape 3.",
+    "en": "One division is 1 s: count the divisions between the two moments. The expected value is close to the one in step 3."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "s",
+    "expect": 1,
+    "tolerance": 0.15
+   }
+  },
+  {
+   "title": {
+    "fr": "La décharge",
+    "en": "Discharging"
+   },
+   "text": {
+    "fr": "Quand CH1 retombe à 0 V, le condensateur se décharge dans R1 et le générateur. Au bout d’une durée τ, il ne lui reste que **37 %** de sa tension de départ. Partant de 5 V, quelle tension lisez-vous sur CH2 au bout de τ ?",
+    "en": "When CH1 drops back to 0 V, the capacitor discharges through R1 and the generator. After a time τ, only **37%** of its starting voltage remains. Starting from 5 V, what voltage do you read on CH2 after τ?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0 V",
+      "en": "0 V"
+     },
+     {
+      "fr": "1,84 V",
+      "en": "1.84 V"
+     },
+     {
+      "fr": "2,5 V",
+      "en": "2.5 V"
+     },
+     {
+      "fr": "3,16 V",
+      "en": "3.16 V"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi 0,1 Hz ?",
+    "en": "Why 0.1 Hz?"
+   },
+   "text": {
+    "fr": "À 0,1 Hz, le signal reste 5 s à 5 V puis 5 s à 0 V. Combien de constantes de temps dure chaque palier, et qu’est-ce que cela permet ?",
+    "en": "At 0.1 Hz, the signal stays at 5 V for 5 s, then at 0 V for 5 s. How many time constants does each level last, and what does that allow?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,5 τ : le condensateur n’a pas le temps de se charger",
+      "en": "0.5 τ: the capacitor has no time to charge"
+     },
+     {
+      "fr": "5 τ : le condensateur se charge (et se décharge) presque complètement, à plus de 99 %",
+      "en": "5 τ: the capacitor charges (and discharges) almost completely, over 99%"
+     },
+     {
+      "fr": "50 τ : la charge est instantanée",
+      "en": "50 τ: charging is instantaneous"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Un signal trop rapide pour le condensateur",
+    "en": "A signal too fast for the capacitor"
+   },
+   "text": {
+    "fr": "Dans la section **Générateurs**, passez la **Fréquence** à **50 Hz** : chaque palier ne dure plus que 10 ms, cent fois moins que τ. Le condensateur n’a plus le temps de suivre : au bout de 5 s environ (5τ), sa tension se stabilise sur la **valeur moyenne** du signal, à une dizaine de millivolts près.\nMultimètre (onglet **Multimètre** du banc) en mode **V ⎓** : pointe rouge sur **C1 · +**, pointe noire sur **C1 · −**. Entrez la tension lue.",
+    "en": "In the **Generators** section, set the **Frequency** to **50 Hz**: each level now lasts only 10 ms, a hundred times less than τ. The capacitor can no longer keep up: after about 5 s (5τ), its voltage settles on the signal’s **mean value**, to within about ten millivolts.\nMultimeter (bench **Multimeter** tab) in **V ⎓** mode: red probe on **C1 · +**, black probe on **C1 · −**. Enter the voltage you read."
+   },
+   "hint": {
+    "fr": "Le signal passe autant de temps à 0 V qu’à 5 V : sa valeur moyenne est le décalage du générateur.",
+    "en": "The signal spends as much time at 0 V as at 5 V: its mean value is the generator’s offset."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "C1.+",
+     "C1.-"
+    ],
+    "tolerance": 0.08
+   }
+  }
+ ]
+}

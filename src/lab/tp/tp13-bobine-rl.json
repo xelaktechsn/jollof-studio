@@ -1,0 +1,449 @@
+{
+ "id": "tp13-bobine-rl",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "La bobine : établissement du courant dans un circuit RL",
+  "en": "The inductor: current build-up in an RL circuit"
+ },
+ "summary": {
+  "fr": "Une bobine de 10 mH et une résistance de 220 Ω reçoivent un signal carré du générateur. À l’oscilloscope, en mode Lab analogique, on voit le courant s’établir en quelques dizaines de microsecondes : τ = L / R. En continu, la bobine n’est plus que la résistance de son fil.",
+  "en": "A 10 mH inductor and a 220 Ω resistor receive a square wave from the generator. On the oscilloscope, in Analog lab mode, the current is seen building up in a few tens of microseconds: τ = L / R. In DC, the inductor is nothing more than the resistance of its wire."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un circuit RL et observer l’image du courant à l’oscilloscope",
+   "en": "Wire an RL circuit and observe the image of the current on the oscilloscope"
+  },
+  {
+   "fr": "Calculer et lire la constante de temps τ = L / R",
+   "en": "Calculate and read the time constant τ = L / R"
+  },
+  {
+   "fr": "Utiliser le mode Lab analogique pour un phénomène rapide",
+   "en": "Use Analog lab mode for a fast phenomenon"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – La bobine dans un circuit RL",
+  "comps": [
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "siggen_1",
+    "type": "siggen",
+    "name": "GEN1",
+    "x": -110,
+    "z": 0,
+    "r": 0,
+    "inp": {
+     "wave": "square",
+     "freq": 1000,
+     "amp": 2.5,
+     "off": 2.5
+    }
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 110,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "ind-10m_1",
+    "type": "ind-10m",
+    "name": "L1",
+    "x": -22,
+    "z": 46,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": 18,
+    "z": 46,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "siggen_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie du générateur"
+   },
+   {
+    "a": [
+     "ind-10m_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#f08a3c",
+    "role": "Entrée de la bobine"
+   },
+   {
+    "a": [
+     "ind-10m_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Bobine vers résistance"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance (côté bobine)"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Résistance à la masse"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-2"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du générateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : tension appliquée"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : image du courant (tension de R1)"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Une bobine s’oppose aux variations du courant",
+    "en": "An inductor opposes changes in current"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : une **bobine L1 de 10 mH** (son fil fait 24 Ω), une **résistance R1 de 220 Ω**, le **générateur GEN1** et l’**oscilloscope OSC1**.\nQuand on applique brusquement une tension, le courant dans la bobine ne s’établit pas d’un coup : il monte en arrondi, comme la tension d’un condensateur qui se charge.\nL’oscilloscope ne mesure que des tensions : on observera celle de R1, qui vaut R1 × i. C’est l’**image du courant**.",
+    "en": "On the workspace: a **10 mH inductor L1** (its wire is 24 Ω), a **220 Ω resistor R1**, the **generator GEN1** and the **oscilloscope OSC1**.\nWhen a voltage is suddenly applied, the current in the inductor does not appear all at once: it rises in a curve, like the voltage of a charging capacitor.\nThe oscilloscope only measures voltages: we will watch R1’s voltage, equal to R1 × i. It is the **image of the current**."
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer τ",
+    "en": "Calculate τ"
+   },
+   "text": {
+    "fr": "Dans un circuit RL, τ = L / R, où R est la résistance totale traversée par le courant : 220 Ω (R1) + 24 Ω (fil de la bobine) + 50 Ω (générateur) = 294 Ω. Avec L = 10 mH = 0,01 H, que vaut τ ?",
+    "en": "In an RL circuit, τ = L / R, where R is the total resistance the current flows through: 220 Ω (R1) + 24 Ω (inductor wire) + 50 Ω (generator) = 294 Ω. With L = 10 mH = 0.01 H, what is τ?"
+   },
+   "hint": {
+    "fr": "0,01 / 294 ≈ 0,000 034 s ; 1 µs = 0,000 001 s.",
+    "en": "0.01 / 294 ≈ 0.000034 s; 1 µs = 0.000001 s."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "3,4 µs",
+      "en": "3.4 µs"
+     },
+     {
+      "fr": "34 µs",
+      "en": "34 µs"
+     },
+     {
+      "fr": "45 µs",
+      "en": "45 µs"
+     },
+     {
+      "fr": "2,9 ms",
+      "en": "2.9 ms"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le circuit RL",
+    "en": "Wire the RL circuit"
+   },
+   "text": {
+    "fr": "- **GEN1 · OUT** → la colonne A8 de la breadboard, et une patte de L1 en B8.\n- L’autre patte de L1 et une patte de R1 → la colonne 16 (A16, B16).\n- L’autre patte de R1 et **GEN1 · GND** → le rail **−** du haut.",
+    "en": "- **GEN1 · OUT** → breadboard column A8, and one leg of L1 in B8.\n- The other leg of L1 and one leg of R1 → column 16 (A16, B16).\n- The other leg of R1 and **GEN1 · GND** → the top **−** rail."
+   },
+   "hint": {
+    "fr": "La bobine et la résistance ne sont pas polarisées : chacune se pose dans les deux sens.",
+    "en": "The inductor and the resistor are not polarised: each can go either way round."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "GEN1.OUT",
+      "L1.1|L1.2"
+     ],
+     [
+      "L1.1|L1.2",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 8 (C8) : la tension appliquée au circuit.\n- **OSC1 · CH2** → la colonne 16 (C16), entre L1 et R1 : la tension de R1, image du courant.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 8 (C8): the voltage applied to the circuit.\n- **OSC1 · CH2** → column 16 (C16), between L1 and R1: R1’s voltage, the image of the current.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "GEN1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "L1.1|L1.2",
+      "R1.1|R1.2"
+     ],
+     [
+      "OSC1.GND",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer en Lab analogique",
+    "en": "Observe in Analog lab"
+   },
+   "text": {
+    "fr": "Réglages de GEN1 (onglet **Simulation**, section **Générateurs**) : **Carré**, **1000 Hz**, amplitude **2,5 V**, décalage **2,5 V** (de 0 à 5 V). Chaque palier dure 500 µs, bien plus que 5τ.\nLe phénomène ne dure que quelques dizaines de microsecondes : le calcul en direct ne peut que moyenner un tel signal. Dans l’onglet **Oscilloscope 2 voies**, choisissez la source **Lab analogique** (ngspice calcule une fenêtre de temps exacte), puis :\n- base de temps **20 µs/div**, **1 V/div** sur les deux voies ;\n- déclenchement sur **CH1**, front **↑**, niveau **2,5 V** ;\n- **Recalculer**.\nCH2 monte en arrondi après chaque front montant de CH1. CH1 n’est pas un carré parfait : quand le courant passe, les 50 Ω du générateur prennent une partie de la tension.",
+    "en": "GEN1 settings (**Simulation** tab, **Generators** section): **Square**, **1000 Hz**, amplitude **2.5 V**, offset **2.5 V** (from 0 to 5 V). Each level lasts 500 µs, much longer than 5τ.\nThe phenomenon lasts only a few tens of microseconds: the live calculation can only average such a signal. In the **2-channel oscilloscope** tab, choose the **Analog lab** source (ngspice computes an exact time window), then:\n- time base **20 µs/div**, **1 V/div** on both channels;\n- trigger on **CH1**, rising edge **↑**, level **2.5 V**;\n- **Recompute**.\nCH2 rises in a curve after each rising edge of CH1. CH1 is not a perfect square wave: when current flows, the generator’s 50 Ω take part of the voltage."
+   }
+  },
+  {
+   "title": {
+    "fr": "Valeur finale",
+    "en": "Final value"
+   },
+   "text": {
+    "fr": "Une fois le courant établi, la bobine ne freine plus rien : seule compte la résistance de son fil. Le courant vaut alors 5 V / 294 Ω ≈ 17 mA. Vers quelle tension CH2 (la tension de R1) se stabilise-t-elle ?",
+    "en": "Once the current has built up, the inductor no longer holds anything back: only the resistance of its wire counts. The current is then 5 V / 294 Ω ≈ 17 mA. What voltage does CH2 (R1’s voltage) settle at?"
+   },
+   "hint": {
+    "fr": "Tension de R1 = 220 Ω × 0,017 A.",
+    "en": "R1’s voltage = 220 Ω × 0.017 A."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "5 V",
+      "en": "5 V"
+     },
+     {
+      "fr": "Environ 3,7 V",
+      "en": "About 3.7 V"
+     },
+     {
+      "fr": "0 V",
+      "en": "0 V"
+     },
+     {
+      "fr": "Environ 0,4 V",
+      "en": "About 0.4 V"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire τ sur l’écran",
+    "en": "Read τ on the screen"
+   },
+   "text": {
+    "fr": "Le courant atteint 63 % de sa valeur finale au bout de τ : CH2 vaut alors environ 0,63 × 3,7 ≈ 2,4 V. Figez l’image et comptez les divisions (20 µs chacune) entre le front montant de CH1 et l’instant où CH2 passe 2,4 V. Que trouvez-vous ?",
+    "en": "The current reaches 63% of its final value after τ: CH2 is then about 0.63 × 3.7 ≈ 2.4 V. Freeze the display and count the divisions (20 µs each) between CH1’s rising edge and the moment CH2 crosses 2.4 V. What do you find?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 3,4 µs (moins d’un dixième de division)",
+      "en": "About 3.4 µs (under a tenth of a division)"
+     },
+     {
+      "fr": "Environ 34 µs (un peu moins de 2 divisions)",
+      "en": "About 34 µs (a little under 2 divisions)"
+     },
+     {
+      "fr": "Environ 340 µs (17 divisions)",
+      "en": "About 340 µs (17 divisions)"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le courant moyen",
+    "en": "The mean current"
+   },
+   "text": {
+    "fr": "Revenez à la source **Direct** et laissez tourner la simulation : à 1000 Hz, elle ne suit plus chaque front, elle travaille sur la **valeur moyenne** du signal, 2,5 V. En continu, la bobine n’est qu’un fil de 24 Ω.\nMultimètre en mode **mA ⎓**, composant traversé : **R1**. Entrez le courant lu.",
+    "en": "Go back to the **Live** source and let the simulation run: at 1000 Hz it no longer follows each edge, it works on the signal’s **mean value**, 2.5 V. In DC, the inductor is just a 24 Ω wire.\nMultimeter in **mA ⎓** mode, component: **R1**. Enter the current you read."
+   },
+   "hint": {
+    "fr": "Courant moyen = 2,5 V / (220 + 24 + 50) Ω.",
+    "en": "Mean current = 2.5 V / (220 + 24 + 50) Ω."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "R1",
+    "tolerance": 0.1
+   }
+  },
+  {
+   "title": {
+    "fr": "La tension de la bobine en continu",
+    "en": "The inductor’s DC voltage"
+   },
+   "text": {
+    "fr": "Multimètre en mode **V ⎓** : pointe rouge sur **OSC1 · CH1**, pointe noire sur **OSC1 · CH2**. Les deux pointes encadrent la bobine L1 : vous lisez sa tension moyenne.",
+    "en": "Multimeter in **V ⎓** mode: red probe on **OSC1 · CH1**, black probe on **OSC1 · CH2**. The two probes sit on either side of inductor L1: you read its mean voltage."
+   },
+   "hint": {
+    "fr": "Loi d’Ohm sur le fil de la bobine : 24 Ω × le courant de l’étape précédente.",
+    "en": "Ohm’s law on the inductor wire: 24 Ω × the current from the previous step."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "OSC1.CH1",
+     "OSC1.CH2"
+    ],
+    "tolerance": 0.15
+   }
+  },
+  {
+   "title": {
+    "fr": "La bobine en continu",
+    "en": "The inductor in DC"
+   },
+   "text": {
+    "fr": "D’après vos mesures, comment se comporte une bobine traversée par un courant constant ?",
+    "en": "From your measurements, how does an inductor behave when a constant current flows through it?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Comme un circuit ouvert : aucun courant ne passe",
+      "en": "Like an open circuit: no current flows"
+     },
+     {
+      "fr": "Comme un simple fil, avec la petite résistance de son enroulement (24 Ω ici)",
+      "en": "Like a plain wire, with the small resistance of its winding (24 Ω here)"
+     },
+     {
+      "fr": "Comme un condensateur chargé",
+      "en": "Like a charged capacitor"
+     },
+     {
+      "fr": "Comme une pile qui ajoute sa tension",
+      "en": "Like a battery adding its voltage"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

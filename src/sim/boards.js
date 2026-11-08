@@ -130,7 +130,8 @@ export const BOARDS = {
 };
 
 /** Autres sources d'énergie : tension par broche, 0 pour la masse. */
-export const SOURCES = { bat9v: { '+': 9, '-': 0 }, bat18650: { '+': 3.7, '-': 0 }, mb102: { '+5V': 5, '+3V3': 3.3, GND: 0 } };
+// Générateur de fonctions : sa masse est une référence (sa sortie varie, elle n'est pas une source fixe).
+export const SOURCES = { bat9v: { '+': 9, '-': 0 }, bat18650: { '+': 3.7, '-': 0 }, mb102: { '+5V': 5, '+3V3': 3.3, GND: 0 }, siggen: { GND: 0 } };
 /** Régulateurs : la sortie existe si l'entrée reçoit assez de tension. */
 export const DERIVED = { lm7805: { from: 'IN', out: 'OUT', v: 5, min: 7 }, l298n: { from: '+12V', out: '+5V', v: 5, min: 7 } };
 

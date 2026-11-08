@@ -5,6 +5,10 @@
 // broche par broche qu'un composant est câblé comme sa fiche le demande.
 import { BOARDS, SOURCES, DERIVED, NEED_CAPS, CAP_WORDS, base, volts, vrange, boardOf, isGnd } from './boards.js';
 import { NPNS } from './parts.js';
+import { MOSFETS, ANALOG_PARTS } from './analog-parts.js';
+/** Broche de sortie d'un composant analogique qui fournit son propre signal (analog-parts.js, drives). */
+const drivesPin = m => { const sp = ANALOG_PARTS[m.comp.type], q = sp && sp.pins.find(x => x.pin === m.key); return !!(q && q.drives); };
+import { pkgOhms, isResistor } from './pkgparts.js';
 import { tl } from '../i18n/index.js';
 
 /** Identifiant d'une broche, « id|clé » : clé des nœuds, du graphe (adj) et des courants du solveur. */
@@ -25,13 +29,16 @@ class UF {
 }
 
 export const isBreadboard = c => c.type === 'breadboard' || c.type === 'breadboard-mini';
-/** Valeur d'une résistance d'après son type : res-220, res-4k7, res-10k, res-1M… (0 si ce n'en est pas une). */
+/** Valeur d'une résistance d'après son type : res-220, res-4k7, res-10k, res-1M…, résistance en paquet (0 si ce n'en est pas une). */
 export function ohms(type) {
   const m = /^res-(\d+)(?:([kKM])(\d*))?$/.exec(type);
-  if (!m) return 0;
+  if (!m) return pkgOhms(type);
   return parseFloat(m[1] + '.' + (m[3] || '0')) * (m[2] === 'M' ? 1e6 : m[2] ? 1e3 : 1);
 }
 const isQ = c => !!NPNS[c.type];
+// Interrupteur côté masse : collecteur d'un NPN ou drain d'un MOSFET ; sa commande est la base ou la grille.
+const isLowSide = m => (isQ(m.comp) && m.key === 'C') || (!!MOSFETS[m.comp.type] && m.key === 'D');
+const ctlKey = c => (MOSFETS[c.type] ? 'G' : 'B');
 /**
  * Groupes de trous reliés d'une breadboard : rails (+ ou −, 25 trous) puis bandes de 5 trous.
  * Dans une bande a–e, le trou E est au bord de la rainure centrale.
@@ -82,7 +89,7 @@ export function analyze(comps, wires, opts = {}) {
   for (const c of comps) {
     for (const g of internal(c)) for (let j = 1; j < g.length; j++) if (c.pins[g[0]] && c.pins[g[j]]) both(pid(c, g[0]), pid(c, g[j]));
     if (!allOpen) for (const [a, b] of closedContacts(c)) both(pid(c, a), pid(c, b));
-    if (/^res-/.test(c.type)) W.union(pid(c, '1'), pid(c, '2'));
+    if (isResistor(c.type)) W.union(pid(c, '1'), pid(c, '2'));
   }
   for (const w of wires) {
     if ((w.progress ?? 1) < 1) continue;
@@ -173,7 +180,7 @@ export function analyze(comps, wires, opts = {}) {
     const link = (a, b, k, c, shut = false) => { if (!rg.has(a)) rg.set(a, []); if (!rg.has(b)) rg.set(b, []); rg.get(a).push([b, k, c, shut]); rg.get(b).push([a, k, c, shut]); };
     for (const c of comps) {
       for (const g of internal(c)) for (let j = 1; j < g.length; j++) if (c.pins[g[0]] && c.pins[g[j]]) link(pid(c, g[0]), pid(c, g[j]), 'n');
-      if (c.pins['1'] && c.pins['2'] && /^res-/.test(c.type)) link(pid(c, '1'), pid(c, '2'), 'r', c);
+      if (c.pins['1'] && c.pins['2'] && isResistor(c.type)) link(pid(c, '1'), pid(c, '2'), 'r', c);
       for (const [a, b, shut] of contacts(c)) link(pid(c, a), pid(c, b), 'b', c, shut);
     }
     for (const w of wires) if ((w.progress ?? 1) >= 1 && ref.has(id(w.a)) && ref.has(id(w.b))) link(id(w.a), id(w.b), 'n');
@@ -258,10 +265,10 @@ export function inspect(comp, A, spec) {
     if (p.kind === 'gnd') {
       const net = p.via ? wn : n;
       // Masse commutée : la charge rejoint la masse par le collecteur d'un transistor NPN, dont la base dit quelle carte la commande.
-      const q = !net.gnd.length && (p.via ? A.wmembers : A.members)(r).find(m => isQ(m.comp) && m.key === 'C');
+      const q = !net.gnd.length && (p.via ? A.wmembers : A.members)(r).find(isLowSide);
       if (q) {
         out.flags.switched = true;
-        const g = A.wnet({ comp: q.comp, key: 'B' }).gpio[0];
+        const g = A.wnet({ comp: q.comp, key: ctlKey(q.comp) }).gpio[0];
         if (g && !out.board) { out.board = g.comp; out.prof = g.prof; }
         continue;
       }
@@ -289,6 +296,8 @@ export function inspect(comp, A, spec) {
       if (!required(p)) { out.pins[k].level = 'free'; continue; }
       // Alimentée à travers sa résistance par une pile ou le 5 V, sans programme : c'est voulu.
       if (p.via && wn.src.length && !n.src.length && !n.gnd.length) { out.flags.direct = true; continue; }
+      // Pareil depuis la sortie d'un composant qui pilote lui-même (NE555, ampli-op, générateur : drives dans sa fiche).
+      if ((p.via ? A.wmembers : A.members)(r).some(m => m.comp !== comp && drivesPin(m))) { out.flags.direct = true; continue; }
       // Pareil à travers un bouton monté en interrupteur (côté alimentation) : allumée tant qu'on appuie.
       if (p.via && !n.src.length && !n.gnd.length && !shut(r, true).gpio.length && shut(r, true).src.length) { out.flags.direct = out.flags.switched = true; continue; }
       // Buzzer actif sur une pile, le 5 V, un interrupteur ou un relais : il sonne tant qu'il est alimenté, c'est voulu.
@@ -441,7 +450,7 @@ function drvSide(A, r) {
   const m = A.reach ? A.reach(r, { closed: true, res: true }) : { src: A.net(r).src, gnd: A.net(r).gnd, members: A.members(r) };
   if (m.members.some(x => x.comp.type === 'l298n' && /^OUT/.test(x.key))) return 'drv';
   if (m.src.length) return 'src';
-  if (m.gnd.length || m.members.some(x => isQ(x.comp) && x.key === 'C')) return 'ret';
+  if (m.gnd.length || m.members.some(isLowSide)) return 'ret';
   return null;
 }
 

@@ -1,0 +1,97 @@
+{
+ "format": 1,
+ "id": "pk-led-red",
+ "version": 1,
+ "name": "LED 5 mm rouge (paquet)",
+ "category": "Sorties",
+ "prefix": "LED",
+ "description": "LED 5 mm : ne laisse passer le courant que de l’anode vers la cathode, et doit toujours être protégée par une résistance.",
+ "pins": [
+  {
+   "name": "A",
+   "x": -1.27,
+   "y": 8,
+   "z": 2.8,
+   "kind": "io",
+   "need": "out",
+   "role": "Anode",
+   "why": "Anode (patte longue) : reçoit le courant de la broche à travers la résistance.",
+   "via": "res-220"
+  },
+  {
+   "name": "K",
+   "x": 1.27,
+   "y": 8,
+   "z": 2.8,
+   "kind": "gnd",
+   "why": "Cathode (patte courte, côté méplat) vers la masse."
+  }
+ ],
+ "limits": {
+  "current": {
+   "warn": 20,
+   "max": 30
+  },
+  "src": [
+   "kingbrightWp7113id",
+   "kingbrightWp7113qbcd"
+  ]
+ },
+ "sources": {
+  "kingbrightWp7113id": {
+   "title": "WP7113ID T-1 3/4 (5mm) Solid State Lamp (Spec No DSAF0012, Rev V.14A)",
+   "publisher": "Kingbright",
+   "url": "https://www.kingbrightusa.com/images/catalog/SPEC/WP7113ID.pdf",
+   "section": "Absolute Maximum Ratings at TA=25°C : « DC Forward Current IF 30 mA » (LED rouge 5 mm)"
+  },
+  "kingbrightWp7113qbcd": {
+   "title": "WP7113QBC/D T-1 3/4 (5mm) Solid State Lamp (Spec No DSAG3481, Rev V.18B)",
+   "publisher": "Kingbright",
+   "url": "https://www.kingbrightusa.com/images/catalog/SPEC/WP7113QBC-D.pdf",
+   "section": "Absolute Maximum Ratings at TA=25°C : « DC Forward Current IF 30 mA » (LED bleue 5 mm)"
+  }
+ },
+ "docs": {
+  "text": "Une diode qui émet de la lumière quand le courant la traverse de l’anode vers la cathode. Au-delà de sa tension de seuil, le courant grimpe très vite : la résistance en série le limite. Valeur : R = (tension de la broche − tension de seuil) ÷ courant voulu.",
+  "specs": [
+   [
+    "Diamètre",
+    "5 mm"
+   ],
+   [
+    "Courant",
+    "20 mA maximum, 5 à 15 mA suffisent"
+   ],
+   [
+    "Tension de seuil",
+    "rouge ≈ 2,0 V · jaune et verte ≈ 2,1 V · bleue et blanche ≈ 3,0 V"
+   ],
+   [
+    "Repères",
+    "anode = patte longue · cathode = patte courte, côté méplat"
+   ]
+  ],
+  "uses": [
+   "Voyant d’état (marche, erreur, connexion)",
+   "Signalisation, feux tricolores de démonstration",
+   "Premier programme : faire clignoter une LED"
+  ],
+  "mistakes": [
+   "Pas de résistance en série : la LED et la broche de la carte souffrent.",
+   "LED montée à l’envers : elle reste éteinte.",
+   "LED bleue ou blanche sur 3,3 V avec 220 Ω : très peu lumineuse ; prenez 47 à 100 Ω."
+  ]
+ },
+ "behaviour": {
+  "led": {
+   "anode": "A",
+   "cathode": "K",
+   "color": "red",
+   "vf": 2
+  }
+ },
+ "look": {
+  "kind": "led",
+  "color": "#d8322f"
+ }
+}

@@ -33,7 +33,12 @@ export const FOOTPRINTS = {
   speaker: { lib: 'Device', part: 'Speaker', fp: PH(2), pads: { '+': '1', '-': '2' }, value: 'HP 8 Ω' },
   lm7805: { lib: 'Regulator_Linear', part: 'L7805', fp: 'Package_TO_SOT_THT:TO-220-3_Vertical', pads: { IN: '1', GND: '2', OUT: '3' }, value: 'LM7805' },
   bat9v: { lib: 'Device', part: 'Battery', fp: PH(2), pads: { '+': '1', '-': '2' }, value: '9V' },
-  bat18650: { lib: 'Device', part: 'Battery_Cell', fp: PH(2), pads: { '+': '1', '-': '2' }, value: '18650' }
+  bat18650: { lib: 'Device', part: 'Battery_Cell', fp: PH(2), pads: { '+': '1', '-': '2' }, value: '18650' },
+  // Lab analogique : brochage des boîtiers (DIP-8 du NE555 et du LM358, TO-220 G-D-S de l'IRLZ44N).
+  ne555: { lib: 'Timer', part: 'NE555P', fp: 'Package_DIP:DIP-8_W7.62mm', pads: { GND: '1', TRIG: '2', OUT: '3', RESET: '4', CV: '5', THR: '6', DIS: '7', VCC: '8' }, value: 'NE555' },
+  lm358: { lib: 'Amplifier_Operational', part: 'LM358', fp: 'Package_DIP:DIP-8_W7.62mm', pads: { '1OUT': '1', '1IN-': '2', '1IN+': '3', GND: '4', '2IN+': '5', '2IN-': '6', '2OUT': '7', VCC: '8' }, value: 'LM358' },
+  irlz44n: { lib: 'Transistor_FET', part: 'IRLZ44N', fp: 'Package_TO_SOT_THT:TO-220-3_Vertical', pads: { G: '1', D: '2', S: '3' }, value: 'IRLZ44N' },
+  'ind-10m': { lib: 'Device', part: 'L', fp: 'Inductor_THT:L_Axial_L9.5mm_D4.0mm_P15.24mm_Horizontal', pads: { 1: '1', 2: '2' }, value: '10m' }
 };
 
 const q = s => `"${String(s).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;

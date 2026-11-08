@@ -8,6 +8,7 @@ import { BOARDS, NEED_CAPS, base, volts, vrange, pickPower, pinName, codePin, bo
 import { PARTS, partOf, motorPins, loadPins } from './parts.js';
 import { inspect, bbGroups, isBreadboard } from './circuit.js';
 import { boardLimits } from '../check/limits.js';
+import { isResistor } from './pkgparts.js';
 import { tl } from '../i18n/index.js';
 
 const COL = { pwr: '#e5484d', gnd: '#3a3f45', io: '#f2c94c', in: '#f2c94c', out: '#f2c94c', pullup: '#f2c94c', pwm: '#f08a3c', adc: '#3fb27f', sda: '#3b82f6', scl: '#9b7be0', sck: '#f08a3c', mosi: '#3fb27f', miso: '#3b82f6', ss: '#e9e9e6', rx: '#e9e9e6', tx: '#f08a3c', res: '#f08a3c', drv: '#f08a3c' };
@@ -212,7 +213,7 @@ export function planWiring(comp, cx) {
   const busTaken = (k, need) => {
     if (!R.pinUsed(k)) return null;
     for (const m of A.members(on(k))) {
-      if (m.comp === board || isBreadboard(m.comp) || m.comp.type === 'lvlshift' || /^res-/.test(m.comp.type)) continue;
+      if (m.comp === board || isBreadboard(m.comp) || m.comp.type === 'lvlshift' || isResistor(m.comp.type)) continue;
       const q = partOf(m.comp) && partOf(m.comp).pins && partOf(m.comp).pins.find(x => x.pin === m.key);
       if (!q || q.kind !== 'io' || q.need !== need) return m;
     }
@@ -292,7 +293,8 @@ export function planWiring(comp, cx) {
     return bat;
   };
 
-  const todo = spec.pins.filter(p => required(p, comp, A) && !wired(p.pin)).sort((a, b) => (ORDER[a.kind] ?? 2) - (ORDER[b.kind] ?? 2));
+  // autowire : broche facultative pour le vérificateur (une LED peut s'y brancher), mais câblée vers la carte d'office.
+  const todo = spec.pins.filter(p => (required(p, comp, A) || (p.autowire && comp.pins[p.pin])) && !wired(p.pin)).sort((a, b) => (ORDER[a.kind] ?? 2) - (ORDER[b.kind] ?? 2));
   // Tension des signaux du module : celle de son alimentation.
   const vp = spec.pins.find(p => p.kind === 'pwr'), vMod = vp ? ((power(vp.v) || {}).v ?? prof.logic) : prof.logic;
   // Un module qui a un bus à adapter passe toutes ses broches à adapter par le même adaptateur (4 voies).
@@ -346,7 +348,7 @@ export function planWiring(comp, cx) {
       else R.connect(from, GND, COL.gnd, role);
     } else if (p.kind === 'io') {
       const fix0 = levelFix(p, prof, vMod, shiftAll);
-      const pull = p.pull || p.idle === 1 || p.need === 'sda' || p.need === 'scl' || fix0 === 'shift' ? 1 : fix0 === 'board' ? 0 : null;
+      const pull = p.pull || p.idle === 1 || p.need === 'sda' || p.need === 'scl' || fix0 === 'shift' ? 1 : fix0 === 'board' || p.pulldown ? 0 : null;
       const k = gpio(p.need, from, pull);
       if (!k) return { error: busErr || tl('{0} {1} : plus de broche libre adaptée sur {2} ({3}). Câblage annulé : libérez une broche ou prenez une carte qui en a davantage.', comp.name, p.pin, board.name, role) };
       const t = { type: 'pin', key: k }, fix = fix0;
@@ -369,10 +371,17 @@ export function planWiring(comp, cx) {
           if (!R.junction([H(top, '2'), H(bot, '1'), from], from, COL.res, why)) return P.needBreadboard ? { needBreadboard: true } : P;
         }
         R.connect(H(bot, '2'), GND, COL.gnd, tl('Bas du pont diviseur à la masse'), from);
-      } else if (p.via) {
-        const id = helper(comp.type === 'speaker' ? speakerRes(board, prof) : p.via);
+      } else if (p.via || p.wireVia) {
+        // wireVia : résistance série posée par le câblage, sans que le vérificateur l'exige (grille d'un MOSFET).
+        const id = helper(comp.type === 'speaker' ? speakerRes(board, prof) : p.via || p.wireVia);
         R.wire(from, H(id, '2'), COL.res, tl('Résistance série ({0})', role)); R.connect(H(id, '1'), t, COL[p.need], ROLE[p.need], from);
       } else R.connect(from, t, COL[p.need] || COL.io, role);
+      if (p.pulldown) {
+        // Rappel vers la masse côté carte : la sortie reste basse tant que le programme ne l'a pas configurée.
+        const id = helper(p.pulldown);
+        R.connect(H(id, '1'), t, COL.res, tl('Résistance de rappel'), from);
+        R.connect(H(id, '2'), GND, COL.gnd, tl('Résistance de rappel'), from);
+      }
       if (p.pull) {
         // Jonction DQ + broche + résistance : trois fils au même point, donc une bande de breadboard.
         const id = helper(p.pull), vt = power(spec.pins.find(x => x.pin === spec.pullTo).v);
@@ -382,7 +391,39 @@ export function planWiring(comp, cx) {
     }
     if (P.needBreadboard) return { needBreadboard: true };
   }
+  if (spec.network) return network(spec.network, { comp, P, R, me, H, helper, gpio, power, GND, wired }) || P;
   return P;
+}
+
+/**
+ * Montage d'application d'un composant (analog-parts.js network) : composants d'appoint, jonctions sur la breadboard
+ * (une bande par nœud de plus de deux broches), liaisons à l'alimentation, à la masse et à une broche de la carte.
+ * Rien n'est posé si l'une de ses broches est déjà câblée (montage de l'élève). Rend un plan ou null (tout va bien).
+ */
+function network(nw, x) {
+  const { comp, P, R, me, H, helper, gpio, power, GND, wired } = x;
+  if ((nw.own || []).some(k => wired(k))) return null;
+  const ids = {};
+  for (const [k, type] of Object.entries(nw.parts)) ids[k] = helper(type);
+  const ref = s => { const i = s.indexOf('.'); return i < 0 ? me(s) : H(ids[s.slice(0, i)], s.slice(i + 1)); };
+  const anchor = me(nw.own[0]);
+  for (const n of nw.nets) {
+    const refs = n.refs.map(ref);
+    const hub = R.junction(refs, anchor, COL.res, n.role);
+    if (!hub) return P.needBreadboard ? { needBreadboard: true } : P;
+    if (n.board) {
+      const k = gpio(n.board, anchor);
+      if (!k) return { error: tl('{0} : plus de broche libre adaptée sur la carte ({1}).', comp.name, ROLE[n.board]) };
+      R.connect(R.hole(hub, anchor, COL[n.board]), { type: 'pin', key: k }, COL[n.board] || COL.io, n.role, anchor);
+    }
+  }
+  for (const p of nw.power || []) {
+    const t = power(p.v);
+    if (!t) return { error: tl('{0} : pas d’alimentation adaptée sur la carte.', comp.name) };
+    R.connect(ref(p.ref), t, COL.pwr, p.role, anchor);
+  }
+  for (const g of nw.ground || []) R.connect(ref(g.ref), GND, COL.gnd, g.role, anchor);
+  return P.needBreadboard ? { needBreadboard: true } : null;
 }
 
 /** Relie à la masse de la carte une masse isolée (batterie…), en passant par la breadboard si besoin. */
@@ -412,7 +453,7 @@ function linkText(comp, p, A) {
   const r = { comp, key: p.pin };
   if (!A.deg(r)) return tl('non reliée');
   const mem = A.members(r).filter(m => m.comp !== comp && !BB.has(m.comp.type));
-  const board = boardPin(mem, p), others = mem.filter(m => !boardOf(m.comp)), res = others.find(m => /^res-/.test(m.comp.type));
+  const board = boardPin(mem, p), others = mem.filter(m => !boardOf(m.comp)), res = others.find(m => isResistor(m.comp.type));
   if (board) return `→ ${pinName(board)}${res ? `, ${res.comp.name}` : ''}`;
   const far = res && boardPin(A.wmembers(r), p);
   if (far) return `→ ${res.comp.name} → ${pinName(far)}`;

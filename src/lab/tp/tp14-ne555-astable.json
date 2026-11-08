@@ -1,0 +1,668 @@
+{
+ "id": "tp14-ne555-astable",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Le NE555 en astable : une LED clignote sans programme",
+  "en": "The NE555 as an astable: an LED blinks with no program"
+ },
+ "summary": {
+  "fr": "Une minuterie NE555, deux résistances et un condensateur forment un oscillateur : la LED clignote à environ 0,7 Hz. La carte ne sert qu’à fournir le 5 V. On calcule la fréquence et le rapport cyclique, puis on mesure la période à l’oscilloscope.",
+  "en": "An NE555 timer, two resistors and a capacitor make an oscillator: the LED blinks at about 0.7 Hz. The board only supplies 5 V. We calculate the frequency and the duty cycle, then measure the period on the oscilloscope."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un NE555 en astable",
+   "en": "Wire an NE555 as an astable"
+  },
+  {
+   "fr": "Calculer la fréquence et le rapport cyclique d’un oscillateur",
+   "en": "Calculate the frequency and duty cycle of an oscillator"
+  },
+  {
+   "fr": "Mesurer une période à l’oscilloscope",
+   "en": "Measure a period on the oscilloscope"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Le NE555 en astable",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "ne555_1",
+    "type": "ne555",
+    "name": "U1",
+    "x": -26,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R1",
+    "x": -2,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R2",
+    "x": 20,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "cap-100u_1",
+    "type": "cap-100u",
+    "name": "C1",
+    "x": 42,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-330_1",
+    "type": "res-330",
+    "name": "R3",
+    "x": -26,
+    "z": 144,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": 0,
+    "z": 144,
+    "r": 0
+   },
+   {
+    "id": "cap-100n_1",
+    "type": "cap-100n",
+    "name": "C2",
+    "x": 22,
+    "z": 144,
+    "r": 0
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 112,
+    "z": 76,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+4"
+    ],
+    "color": "#e5484d",
+    "role": "VCC (broche 8)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "RESET"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+6"
+    ],
+    "color": "#e5484d",
+    "role": "RESET à VCC (broche 4)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-4"
+    ],
+    "color": "#3a3f45",
+    "role": "GND (broche 1)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "CV"
+    ],
+    "b": [
+     "cap-100n_1",
+     "1"
+    ],
+    "color": "#9b7be0",
+    "role": "CV (broche 5)"
+   },
+   {
+    "a": [
+     "cap-100n_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur de CV à la masse"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+8"
+    ],
+    "color": "#e5484d",
+    "role": "RA vers 5 V"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A10"
+    ],
+    "color": "#f08a3c",
+    "role": "RA vers la décharge"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "DIS"
+    ],
+    "b": [
+     "breadboard_1",
+     "B10"
+    ],
+    "color": "#9b7be0",
+    "role": "DIS (broche 7)"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C10"
+    ],
+    "color": "#f08a3c",
+    "role": "RB (côté décharge)"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A15"
+    ],
+    "color": "#f08a3c",
+    "role": "RB vers le condensateur"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "THR"
+    ],
+    "b": [
+     "breadboard_1",
+     "B15"
+    ],
+    "color": "#9b7be0",
+    "role": "THR (broche 6)"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "TRIG"
+    ],
+    "b": [
+     "breadboard_1",
+     "C15"
+    ],
+    "color": "#9b7be0",
+    "role": "TRIG (broche 2)"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "D15"
+    ],
+    "color": "#e5484d",
+    "role": "Condensateur +"
+   },
+   {
+    "a": [
+     "cap-100u_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Condensateur −"
+   },
+   {
+    "a": [
+     "ne555_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A20"
+    ],
+    "color": "#f2c94c",
+    "role": "OUT (broche 3)"
+   },
+   {
+    "a": [
+     "res-330_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B20"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de la LED"
+   },
+   {
+    "a": [
+     "res-330_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Anode"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode à la masse"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C20"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : sortie OUT"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "E15"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : condensateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-16"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La minuterie NE555",
+    "en": "The NE555 timer"
+   },
+   "text": {
+    "fr": "Le **NE555 U1** est une puce à 8 broches (DIP-8) : 1 **GND**, 2 **TRIG**, 3 **OUT**, 4 **RESET**, 5 **CV**, 6 **THR**, 7 **DIS**, 8 **VCC**.\nÀ l’intérieur, trois résistances égales fixent deux seuils : 1/3 et 2/3 de VCC.\n- Le condensateur C1 (100 µF) se **charge** à travers RA = R1 (1 kΩ) et RB = R2 (10 kΩ) : la sortie OUT est haute.\n- Quand il atteint 2/3 de VCC (broche THR), la sortie passe basse et la broche DIS le **décharge** à travers RB seule.\n- Quand il redescend à 1/3 de VCC (broche TRIG), la sortie repasse haute… et ainsi de suite.\nUne LED et sa résistance R3 (330 Ω) sur OUT montrent l’oscillation. La carte UNO ne fait que fournir le 5 V : aucun programme.",
+    "en": "The **NE555 U1** is an 8-pin chip (DIP-8): 1 **GND**, 2 **TRIG**, 3 **OUT**, 4 **RESET**, 5 **CV**, 6 **THR**, 7 **DIS**, 8 **VCC**.\nInside, three equal resistors set two thresholds: 1/3 and 2/3 of VCC.\n- Capacitor C1 (100 µF) **charges** through RA = R1 (1 kΩ) and RB = R2 (10 kΩ): output OUT is high.\n- When it reaches 2/3 of VCC (THR pin), the output goes low and the DIS pin **discharges** it through RB alone.\n- When it falls back to 1/3 of VCC (TRIG pin), the output goes high again… and so on.\nAn LED and its resistor R3 (330 Ω) on OUT show the oscillation. The UNO board only supplies 5 V: no program."
+   }
+  },
+  {
+   "title": {
+    "fr": "Alimenter la minuterie",
+    "en": "Power the timer"
+   },
+   "text": {
+    "fr": "- **5V** de l’UNO → le rail **+** du haut de la breadboard ; une **GND** de l’UNO → le rail **−**.\n- **U1 · VCC** et **U1 · RESET** → le rail **+** (RESET relié à VCC laisse la minuterie fonctionner ; à la masse, il la bloque).\n- **U1 · GND** → le rail **−**.\n- Le condensateur **C2 (100 nF)** entre **U1 · CV** et le rail **−** : il protège le seuil interne des parasites.",
+    "en": "- The UNO’s **5V** → the top **+** rail of the breadboard; a UNO **GND** → the **−** rail.\n- **U1 · VCC** and **U1 · RESET** → the **+** rail (RESET tied to VCC lets the timer run; tied to ground, it stops it).\n- **U1 · GND** → the **−** rail.\n- Capacitor **C2 (100 nF)** between **U1 · CV** and the **−** rail: it protects the internal threshold from noise."
+   },
+   "hint": {
+    "fr": "RESET laissé en l’air est une erreur : la minuterie pourrait rester bloquée.",
+    "en": "Leaving RESET unconnected is an error: the timer could stay stuck."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "U1.VCC",
+      "U1.RESET"
+     ],
+     [
+      "UNO.GND*",
+      "U1.GND"
+     ],
+     [
+      "U1.CV",
+      "C2.1|C2.2"
+     ],
+     [
+      "C2.1|C2.2",
+      "U1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le réseau RC de temporisation",
+    "en": "The RC timing network"
+   },
+   "text": {
+    "fr": "- Une patte de **R1 (1 kΩ)** → le rail **+**.\n- L’autre patte de R1, **U1 · DIS** et une patte de **R2 (10 kΩ)** → la colonne 10 (A10, B10, C10).\n- L’autre patte de R2, **U1 · THR**, **U1 · TRIG** et la patte **+** de C1 → la colonne 15 (A15 à D15).\n- La patte **−** de C1 → le rail **−**.",
+    "en": "- One leg of **R1 (1 kΩ)** → the **+** rail.\n- The other leg of R1, **U1 · DIS** and one leg of **R2 (10 kΩ)** → column 10 (A10, B10, C10).\n- The other leg of R2, **U1 · THR**, **U1 · TRIG** and the **+** leg of C1 → column 15 (A15 to D15).\n- The **−** leg of C1 → the **−** rail."
+   },
+   "hint": {
+    "fr": "THR et TRIG sont reliées ensemble au condensateur : c’est ce qui fait osciller le montage.",
+    "en": "THR and TRIG are tied together to the capacitor: that is what makes the circuit oscillate."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "U1.VCC",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "U1.DIS",
+      "R2.1|R2.2"
+     ],
+     [
+      "R2.1|R2.2",
+      "U1.THR",
+      "U1.TRIG",
+      "C1.+"
+     ],
+     [
+      "C1.-",
+      "U1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La sortie et la LED",
+    "en": "The output and the LED"
+   },
+   "text": {
+    "fr": "- **U1 · OUT** → la colonne 20 (A20), et une patte de **R3 (330 Ω)** en B20.\n- L’autre patte de R3 → l’**anode A** de LED1.\n- La **cathode K** de LED1 → le rail **−**.",
+    "en": "- **U1 · OUT** → column 20 (A20), and one leg of **R3 (330 Ω)** in B20.\n- The other leg of R3 → LED1’s **anode A**.\n- LED1’s **cathode K** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "U1.OUT",
+      "R3.1|R3.2"
+     ],
+     [
+      "R3.1|R3.2",
+      "LED1.A"
+     ],
+     [
+      "LED1.K",
+      "U1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La LED clignote",
+    "en": "The LED blinks"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et lancez la simulation : sans aucun programme, la LED doit clignoter, un peu moins d’une fois par seconde.",
+    "en": "Click “Observe” and start the simulation: without any program, the LED must blink, a little less than once per second."
+   },
+   "check": {
+    "type": "watch",
+    "when": {},
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Le seuil interne CV",
+    "en": "The internal CV threshold"
+   },
+   "text": {
+    "fr": "La broche **CV** sort le point haut du pont interne : 2/3 de VCC, le seuil où la charge s’arrête. Multimètre en mode **V ⎓** : pointe rouge sur **U1 · CV**, pointe noire sur **U1 · GND**. Entrez la tension lue.",
+    "en": "The **CV** pin brings out the top point of the internal divider: 2/3 of VCC, the threshold where charging stops. Multimeter in **V ⎓** mode: red probe on **U1 · CV**, black probe on **U1 · GND**. Enter the voltage you read."
+   },
+   "hint": {
+    "fr": "2/3 × 5 V. Cette tension ne dépend pas de l’état de la sortie.",
+    "en": "2/3 × 5 V. This voltage does not depend on the output state."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "U1.CV",
+     "U1.GND"
+    ],
+    "tolerance": 0.06
+   }
+  },
+  {
+   "title": {
+    "fr": "Calculer la fréquence",
+    "en": "Calculate the frequency"
+   },
+   "text": {
+    "fr": "La sortie reste haute pendant tH = 0,693 × (RA + RB) × C et basse pendant tL = 0,693 × RB × C, soit une fréquence f ≈ 1,44 / ((RA + 2 RB) × C). Avec RA = 1 kΩ, RB = 10 kΩ et C = 100 µF, que vaut f ?",
+    "en": "The output stays high for tH = 0.693 × (RA + RB) × C and low for tL = 0.693 × RB × C, giving a frequency f ≈ 1.44 / ((RA + 2 RB) × C). With RA = 1 kΩ, RB = 10 kΩ and C = 100 µF, what is f?"
+   },
+   "hint": {
+    "fr": "RA + 2 RB = 21 000 Ω ; 21 000 × 0,0001 = 2,1 s.",
+    "en": "RA + 2 RB = 21,000 Ω; 21,000 × 0.0001 = 2.1 s."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 0,07 Hz",
+      "en": "About 0.07 Hz"
+     },
+     {
+      "fr": "Environ 0,69 Hz",
+      "en": "About 0.69 Hz"
+     },
+     {
+      "fr": "Environ 1,44 Hz",
+      "en": "About 1.44 Hz"
+     },
+     {
+      "fr": "Environ 6,9 Hz",
+      "en": "About 6.9 Hz"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le rapport cyclique",
+    "en": "The duty cycle"
+   },
+   "text": {
+    "fr": "Le rapport cyclique est la part de la période où la sortie est haute : tH / (tH + tL) = (RA + RB) / (RA + 2 RB). Que vaut-il ici ?",
+    "en": "The duty cycle is the share of the period during which the output is high: tH / (tH + tL) = (RA + RB) / (RA + 2 RB). What is it here?"
+   },
+   "hint": {
+    "fr": "Un astable NE555 ne descend jamais sous 50 % : la charge passe par RA et RB, la décharge par RB seule.",
+    "en": "An NE555 astable never goes below 50%: charging goes through RA and RB, discharging through RB alone."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 5 %",
+      "en": "About 5%"
+     },
+     {
+      "fr": "Environ 33 %",
+      "en": "About 33%"
+     },
+     {
+      "fr": "Environ 52 %",
+      "en": "About 52%"
+     },
+     {
+      "fr": "Exactement 100 %",
+      "en": "Exactly 100%"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 20 (C20) : la sortie OUT.\n- **OSC1 · CH2** → la colonne 15 (E15) : la tension du condensateur.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 20 (C20): the OUT output.\n- **OSC1 · CH2** → column 15 (E15): the capacitor voltage.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "U1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "C1.+"
+     ],
+     [
+      "OSC1.GND",
+      "U1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesurer la période",
+    "en": "Measure the period"
+   },
+   "text": {
+    "fr": "Simulation lancée : **Instruments** → **Oscilloscope 2 voies**, source **Direct** (le calcul en direct suit très bien ce signal lent), base de temps **1 s/div**, **1 V/div**, déclenchement sur **CH1**, front **↑**, niveau **2 V**.\n- CH1 : un créneau entre ≈ 0 V et ≈ 3,6 V (VCC − 1,4 V).\n- CH2 : une dent de scie arrondie entre 1,67 V et 3,33 V (1/3 et 2/3 de VCC).\nFigez l’image et mesurez la durée entre deux fronts montants de CH1 : c’est la période T. Entrez-la en secondes.",
+    "en": "Simulation running: **Instruments** → **2-channel oscilloscope**, **Live** source (the live calculation follows this slow signal very well), time base **1 s/div**, **1 V/div**, trigger on **CH1**, rising edge **↑**, level **2 V**.\n- CH1: a square wave between ≈ 0 V and ≈ 3.6 V (VCC − 1.4 V).\n- CH2: a rounded sawtooth between 1.67 V and 3.33 V (1/3 and 2/3 of VCC).\nFreeze the display and measure the time between two rising edges of CH1: that is the period T. Enter it in seconds."
+   },
+   "hint": {
+    "fr": "T = 1 / f : comparez avec la fréquence calculée.",
+    "en": "T = 1 / f: compare with the frequency you calculated."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "s",
+    "expect": 1.46,
+    "tolerance": 0.15
+   }
+  }
+ ]
+}

@@ -1,0 +1,419 @@
+{
+ "id": "tp19-filtre-passe-haut",
+ "level": "lycee",
+ "minutes": 45,
+ "title": {
+  "fr": "Filtre RC passe-haut",
+  "en": "RC high-pass filter"
+ },
+ "summary": {
+  "fr": "Mêmes composants que le passe-bas, dans l’autre ordre : le condensateur de 100 nF en tête, la résistance de 1 kΩ vers la masse. Le condensateur bloque le continu : la sortie est centrée sur 0 V. On mesure la tension continue, puis la tension efficace à la fréquence de coupure et une décade en dessous.",
+  "en": "The same components as the low-pass, in the other order: the 100 nF capacitor first, the 1 kΩ resistor to ground. The capacitor blocks DC: the output is centred on 0 V. We measure the DC voltage, then the RMS voltage at the cut-off frequency and one decade below."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un filtre passe-haut",
+   "en": "Wire a high-pass filter"
+  },
+  {
+   "fr": "Montrer que le condensateur bloque la composante continue",
+   "en": "Show that the capacitor blocks the DC component"
+  },
+  {
+   "fr": "Comparer le passe-haut au passe-bas autour de fc",
+   "en": "Compare the high-pass with the low-pass around fc"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Filtre passe-haut",
+  "comps": [
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "siggen_1",
+    "type": "siggen",
+    "name": "GEN1",
+    "x": -110,
+    "z": 0,
+    "r": 0,
+    "inp": {
+     "wave": "sine",
+     "freq": 16000,
+     "amp": 1,
+     "off": 2.5
+    }
+   },
+   {
+    "id": "scope_1",
+    "type": "scope",
+    "name": "OSC1",
+    "x": 110,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "cap-100n_1",
+    "type": "cap-100n",
+    "name": "C1",
+    "x": -22,
+    "z": 46,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 18,
+    "z": 46,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "siggen_1",
+     "OUT"
+    ],
+    "b": [
+     "breadboard_1",
+     "A8"
+    ],
+    "color": "#f2c94c",
+    "role": "Sortie du générateur"
+   },
+   {
+    "a": [
+     "cap-100n_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B8"
+    ],
+    "color": "#f08a3c",
+    "role": "Entrée du filtre"
+   },
+   {
+    "a": [
+     "cap-100n_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A16"
+    ],
+    "color": "#f08a3c",
+    "role": "Condensateur vers la résistance"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B16"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance (sortie du filtre)"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Résistance à la masse"
+   },
+   {
+    "a": [
+     "siggen_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-2"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du générateur"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH1"
+    ],
+    "b": [
+     "breadboard_1",
+     "C8"
+    ],
+    "color": "#f2c94c",
+    "role": "Voie 1 : entrée du filtre"
+   },
+   {
+    "a": [
+     "scope_1",
+     "CH2"
+    ],
+    "b": [
+     "breadboard_1",
+     "C16"
+    ],
+    "color": "#3b82f6",
+    "role": "Voie 2 : sortie du filtre"
+   },
+   {
+    "a": [
+     "scope_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse de l’oscilloscope"
+   }
+  ]
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le filtre passe-haut",
+    "en": "The high-pass filter"
+   },
+   "text": {
+    "fr": "Le **condensateur C1 de 100 nF** laisse passer les variations rapides et bloque le continu ; la **résistance R1 de 1 kΩ** s’oppose de la même façon à toutes les fréquences.\nDans un **passe-haut**, le signal traverse d’abord C1 et la sortie se prend aux bornes de R1, reliée à la masse :\n- à haute fréquence, C1 laisse tout passer : la sortie suit les variations de l’entrée ;\n- à basse fréquence, et surtout en continu, C1 bloque : la sortie tend vers 0 V.\nLa fréquence de coupure est la même que pour le passe-bas : fc = 1 / (2π × R × C) ≈ 1,6 kHz.",
+    "en": "The **100 nF capacitor C1** passes fast variations and blocks DC; the **1 kΩ resistor R1** opposes all frequencies alike.\nIn a **high-pass** filter, the signal first goes through C1 and the output is taken across R1, which goes to ground:\n- at high frequency, C1 lets everything through: the output follows the input’s variations;\n- at low frequency, and above all in DC, C1 blocks: the output tends to 0 V.\nThe cut-off frequency is the same as for the low-pass: fc = 1 / (2π × R × C) ≈ 1.6 kHz."
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le filtre",
+    "en": "Wire the filter"
+   },
+   "text": {
+    "fr": "- **GEN1 · OUT** → la colonne 8 (A8), et une patte de C1 en B8.\n- L’autre patte de C1 et une patte de R1 → la colonne 16 (A16, B16).\n- L’autre patte de R1 et **GEN1 · GND** → le rail **−** du haut.",
+    "en": "- **GEN1 · OUT** → column 8 (A8), and one leg of C1 in B8.\n- The other leg of C1 and one leg of R1 → column 16 (A16, B16).\n- The other leg of R1 and **GEN1 · GND** → the top **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "GEN1.OUT",
+      "C1.1|C1.2"
+     ],
+     [
+      "C1.1|C1.2",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’oscilloscope",
+    "en": "Connect the oscilloscope"
+   },
+   "text": {
+    "fr": "- **OSC1 · CH1** → la colonne 8 (C8) : l’entrée du filtre.\n- **OSC1 · CH2** → la colonne 16 (C16) : la sortie du filtre.\n- **OSC1 · GND** → le rail **−**.",
+    "en": "- **OSC1 · CH1** → column 8 (C8): the filter input.\n- **OSC1 · CH2** → column 16 (C16): the filter output.\n- **OSC1 · GND** → the **−** rail."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OSC1.CH1",
+      "GEN1.OUT"
+     ],
+     [
+      "OSC1.CH2",
+      "C1.1|C1.2",
+      "R1.1|R1.2"
+     ],
+     [
+      "OSC1.GND",
+      "GEN1.GND"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La sortie en continu",
+    "en": "The DC output"
+   },
+   "text": {
+    "fr": "GEN1 : **Sinus**, **16000 Hz**, amplitude **1 V**, décalage **2,5 V** : l’entrée a une valeur moyenne de 2,5 V. Lancez la simulation (source **Direct** : elle moyenne ce signal rapide). Multimètre en mode **V ⎓** : pointe rouge sur **OSC1 · CH2**, pointe noire sur **OSC1 · GND**. Entrez la tension continue de sortie.",
+    "en": "GEN1: **Sine**, **16000 Hz**, amplitude **1 V**, offset **2.5 V**: the input has a mean value of 2.5 V. Start the simulation (**Live** source: it averages this fast signal). Multimeter in **V ⎓** mode: red probe on **OSC1 · CH2**, black probe on **OSC1 · GND**. Enter the output DC voltage."
+   },
+   "hint": {
+    "fr": "Aucun courant continu ne traverse un condensateur : il n’y a donc aucune tension continue aux bornes de R1.",
+    "en": "No direct current flows through a capacitor: so there is no DC voltage across R1."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "OSC1.CH2",
+     "OSC1.GND"
+    ],
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer en Lab analogique",
+    "en": "Observe in Analog lab"
+   },
+   "text": {
+    "fr": "Oscilloscope en **Lab analogique** : base de temps **20 µs/div**, **0,5 V/div** sur les deux voies, zéro de CH1 à **−4** divisions et zéro de CH2 à **0** (au milieu), déclenchement sur **CH1**, front **↑**, niveau **2,5 V**, puis **Recalculer**.\nÀ 16 kHz (10 × fc), CH2 reproduit les variations de CH1, mais **centrées sur 0 V** : la sortie devient négative une demi-période sur deux. Pourquoi ?",
+    "en": "Oscilloscope in **Analog lab**: time base **20 µs/div**, **0.5 V/div** on both channels, CH1 zero at **−4** divisions and CH2 zero at **0** (in the middle), trigger on **CH1**, rising edge **↑**, level **2.5 V**, then **Recompute**.\nAt 16 kHz (10 × fc), CH2 reproduces CH1’s variations, but **centred on 0 V**: the output goes negative every other half-period. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le générateur est mal réglé",
+      "en": "The generator is set up wrongly"
+     },
+     {
+      "fr": "Le condensateur s’est chargé au décalage de 2,5 V : il retire la composante continue et ne transmet que les variations",
+      "en": "The capacitor has charged to the 2.5 V offset: it removes the DC component and only passes the variations"
+     },
+     {
+      "fr": "La résistance inverse le signal",
+      "en": "The resistor inverts the signal"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À la fréquence de coupure",
+    "en": "At the cut-off frequency"
+   },
+   "text": {
+    "fr": "Réglez la **Fréquence** à **1592 Hz** (fc). Multimètre en mode **V ∿** : notez l’entrée (pointe rouge sur **OSC1 · CH1**, noire sur **OSC1 · GND**), puis mesurez la sortie (pointe rouge sur **OSC1 · CH2**). Entrez la tension efficace de sortie.",
+    "en": "Set the **Frequency** to **1592 Hz** (fc). Multimeter in **V ∿** mode: note the input (red probe on **OSC1 · CH1**, black on **OSC1 · GND**), then measure the output (red probe on **OSC1 · CH2**). Enter the output RMS voltage."
+   },
+   "hint": {
+    "fr": "Comme pour le passe-bas, la sortie vaut 1/√2 ≈ 0,71 fois l’entrée (environ 0,69 V) à fc.",
+    "en": "As with the low-pass, the output is 1/√2 ≈ 0.71 times the input (about 0.69 V) at fc."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "expect": 0.49,
+    "tolerance": 0.1
+   }
+  },
+  {
+   "title": {
+    "fr": "Une décade en dessous",
+    "en": "One decade below"
+   },
+   "text": {
+    "fr": "Réglez la fréquence à **159 Hz** (fc / 10), base de temps **2 ms/div**, puis **Recalculer**. Comparez en **V ∿** l’entrée et la sortie. Que devient la sortie ?",
+    "en": "Set the frequency to **159 Hz** (fc / 10), time base **2 ms/div**, then **Recompute**. Compare input and output in **V ∿**. What happens to the output?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle est égale à l’entrée",
+      "en": "It equals the input"
+     },
+     {
+      "fr": "Elle est divisée par 10 environ (−20 dB)",
+      "en": "It is divided by about 10 (−20 dB)"
+     },
+     {
+      "fr": "Elle est multipliée par 10",
+      "en": "It is multiplied by 10"
+     },
+     {
+      "fr": "Elle est exactement nulle",
+      "en": "It is exactly zero"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Passe-haut ou passe-bas ?",
+    "en": "High-pass or low-pass?"
+   },
+   "text": {
+    "fr": "Les deux filtres utilisent la même résistance et le même condensateur. Qu’est-ce qui en fait un passe-haut plutôt qu’un passe-bas ?",
+    "en": "Both filters use the same resistor and the same capacitor. What makes this one a high-pass rather than a low-pass?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La valeur de la résistance",
+      "en": "The resistor’s value"
+     },
+     {
+      "fr": "L’endroit où l’on prend la sortie : aux bornes de R (passe-haut) ou aux bornes de C (passe-bas)",
+      "en": "Where the output is taken: across R (high-pass) or across C (low-pass)"
+     },
+     {
+      "fr": "La fréquence du générateur",
+      "en": "The generator frequency"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le condensateur de liaison",
+    "en": "The coupling capacitor"
+   },
+   "text": {
+    "fr": "En audio, on place souvent un condensateur entre deux étages (par exemple entre un micro et un ampli). À quoi sert-il ?",
+    "en": "In audio, a capacitor is often placed between two stages (for example between a microphone and an amplifier). What is it for?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "À bloquer la tension continue d’un étage tout en laissant passer le son",
+      "en": "To block one stage’s DC voltage while letting the sound through"
+     },
+     {
+      "fr": "À amplifier le son",
+      "en": "To amplify the sound"
+     },
+     {
+      "fr": "À supprimer les aigus",
+      "en": "To remove the treble"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

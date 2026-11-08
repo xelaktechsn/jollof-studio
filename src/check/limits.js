@@ -35,6 +35,19 @@ export const SOURCE = {
   mb102: { warn: 500, max: 700, src: ['mb102', 'ams1117'] }
 };
 export const SHORT_MA = 2000;
+/** NE555 : courant de sortie (mA), ±200 mA recommandés, ±225 mA au maximum absolu. */
+export const NE555_OUT = { warn: 200, max: 225, src: 'tiNe555' };
+/** LM358 : tension sur une entrée (V, maximum absolu) et marge de la plage de mode commun sous V+ (à 25 °C). */
+export const LM358_IN = { min: -0.3, max: 32, cmr: 1.5, src: 'tiLm358' };
+/** IRLZ44N : courant de drain (mA, 33 A à TC = 100 °C, 47 A à 25 °C), tensions drain-source et grille-source maximales (V). */
+export const IRLZ44N = { id: { warn: 33000, max: 47000 }, vds: 55, vgs: 16, src: 'infineonIrlz44n' };
+/**
+ * IRLZ44N en TO-220 sans radiateur : RθJA = 62 °C/W. À 40 °C ambiants, 1,37 W porte la jonction à 125 °C ; 2,18 W à
+ * 175 °C, sa température maximale.
+ */
+export const IRLZ44N_W = { warn: 1.37, max: 2.18, src: 'infineonIrlz44n' };
+/** Bobine 10 mH : courant (mA) qui l'échauffe de 35 °C (courant assigné), et courant de saturation (−10 % d'inductance). */
+export const INDUCTOR = { 'ind-10m': { warn: 76, max: 110, src: 'bourns5800' } };
 
 /**
  * Broches d'une carte : courant par GPIO (mA), total des GPIO, broches 5V et 3V3 (mA), tension admise sur une GPIO.
@@ -100,6 +113,10 @@ export function limitRows(type, prof, spec, MOTORS) {
   if (type === 'lm7805') rows.push([tl('Courant de sortie'), tl('{0} au plus', ma(LM7805.max))]);
   if (type === 'buzzer') rows.push([tl('Tension'), tl('{0} conseillés, {1} au plus', `${String(BUZZER_V.warn).replace('.', DEC)} V`, `${BUZZER_V.max} V`)]);
   if (SOURCE[type]) rows.push([tl('Courant débité'), both(SOURCE[type], ma)]);
+  if (type === 'ne555') rows.push([tl('Courant de sortie'), both(NE555_OUT, ma)]);
+  if (type === 'lm358') rows.push([tl('Tension sur une entrée'), tl('{0} à {1}', `${String(LM358_IN.min).replace('.', DEC)} V`, `${LM358_IN.max} V`)], [tl('Plage de mode commun'), tl('de la masse à VCC − {0}', `${String(LM358_IN.cmr).replace('.', DEC)} V`)]);
+  if (type === 'irlz44n') rows.push([tl('Courant de drain'), tl('{0} au plus', ma(IRLZ44N.id.max))], [tl('Tension drain-source'), `${IRLZ44N.vds} V`], [tl('Tension grille-source'), `±${IRLZ44N.vgs} V`], [tl('Puissance dissipée sans radiateur'), both(IRLZ44N_W, w)]);
+  if (INDUCTOR[type]) rows.push([tl('Courant'), both(INDUCTOR[type], ma)]);
   const m = MOTORS && MOTORS[type];
   if (m) rows.push([tl('Tension'), tl('{0} prévus, {1} au plus', `${m.vNom} V`, `${m.vMax} V`)]);
   if (prof) {
