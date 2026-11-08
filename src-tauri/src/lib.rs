@@ -9,6 +9,7 @@
 //! Les commandes qui touchent au disque sont asynchrones et font leur travail dans un fil à part
 //! (`blocking`) : la boucle d'événements de la fenêtre n'attend jamais une lecture ou une écriture.
 
+mod qemu;
 mod serial;
 
 use percent_encoding::percent_decode_str;
@@ -464,6 +465,9 @@ const CORE_URLS: [&str; 3] = [
     "https://arduino.esp8266.com/stable/package_esp8266com_index.json",
     "https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json",
 ];
+/// Cartes avec options acceptées telles quelles : l'ESP32 du mode fidèle se compile en flash DIO (le mode QIO par
+/// défaut ne démarre pas dans QEMU). Aucune autre option (ni `=`, ni `,`) ne passe.
+const FQBN_WITH_OPTIONS: [&str; 1] = ["esp32:esp32:esp32:FlashMode=dio"];
 fn word(s: &str, extra: &str) -> bool {
     !s.is_empty() && s.len() <= 80 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
 }
@@ -486,7 +490,7 @@ fn check_cli_args_in(sketch: &Path, build: &Path, args: &[String]) -> Result<(),
     let a: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let is_sketch = |p: &str| Path::new(p) == sketch;
     let is_build = |p: &str| Path::new(p) == build;
-    let fqbn = |s: &str| word(s, ":_-.") && s.split(':').count() >= 3;
+    let fqbn = |s: &str| (word(s, ":_-.") && s.split(':').count() >= 3) || FQBN_WITH_OPTIONS.contains(&s);
     let urls_ok = |rest: &[&str]| rest.is_empty() || (rest.len() == 2 && rest[0] == "--additional-urls" && CORE_URLS.contains(&rest[1]));
     let port = |s: &str| !s.is_empty() && s.len() <= 64 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || "/._-:".contains(c));
     let ok = match a.as_slice() {
@@ -533,21 +537,34 @@ fn build_paths(app: AppHandle) -> Result<(String, String), String> {
     ))
 }
 
-/// Programme machine produit par la dernière compilation : `hex` (Uno, Nano), `uf2` ou `bin` (Pico, ESP32).
-/// Seul le dossier de compilation est lu, et seulement ces extensions.
+/// Programme machine produit par la dernière compilation : `hex` (Uno, Nano), `uf2` ou `bin` (Pico), `merged.bin`
+/// (ESP32 : image complète de la flash, chargeur d'amorçage et partitions compris). Seul le dossier de
+/// compilation est lu, seulement ces extensions, 16 Mo au plus.
 #[tauri::command]
 async fn read_build(app: AppHandle, ext: String) -> Result<tauri::ipc::Response, String> {
-    if !["hex", "uf2", "bin", "elf"].contains(&ext.as_str()) {
+    if !["hex", "uf2", "bin", "elf", "merged.bin"].contains(&ext.as_str()) {
         return Err("Format refusé".into());
     }
     let path = build_dir(&app)?.join(format!("jollof_sketch.ino.{ext}"));
-    let bytes = blocking(move || fs::read(&path).map_err(|e| format!("Programme compilé introuvable : {e}"))).await?;
+    let bytes = blocking(move || {
+        let len = fs::metadata(&path).map_err(|e| format!("Programme compilé introuvable : {e}"))?.len();
+        if len > 16 * 1024 * 1024 {
+            return Err("Programme compilé trop gros".to_string());
+        }
+        fs::read(&path).map_err(|e| format!("Programme compilé introuvable : {e}"))
+    })
+    .await?;
     Ok(tauri::ipc::Response::new(bytes))
 }
 
+/// Cale du mode fidèle de l'ESP32 (entrées, ADC, interruptions vues par l'émulateur), compilée avec le croquis.
+const ESP32_SHIM: &str = include_str!("../../src/emu/esp32-shim/jollof_qemu_shim.cpp");
+const ESP32_SHIM_FILE: &str = "jollof_qemu_shim.cpp";
+
 /// Écrit le programme dans un croquis Arduino (dossier et fichier .ino du même nom) et renvoie son dossier.
+/// shim : ajoute la cale de l'ESP32 émulé (sinon elle est retirée : le dossier sert à toutes les cartes).
 #[tauri::command]
-async fn write_sketch(app: AppHandle, code: String) -> Result<String, String> {
+async fn write_sketch(app: AppHandle, code: String, shim: Option<bool>) -> Result<String, String> {
     if code.len() > 1024 * 1024 {
         return Err("Programme trop long".into());
     }
@@ -555,6 +572,11 @@ async fn write_sketch(app: AppHandle, code: String) -> Result<String, String> {
     blocking(move || {
         fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
         fs::write(dir.join("jollof_sketch.ino"), code).map_err(|e| e.to_string())?;
+        if shim == Some(true) {
+            fs::write(dir.join(ESP32_SHIM_FILE), ESP32_SHIM).map_err(|e| e.to_string())?;
+        } else {
+            let _ = fs::remove_file(dir.join(ESP32_SHIM_FILE));
+        }
         Ok(dir.to_string_lossy().into_owned())
     })
     .await
@@ -622,6 +644,7 @@ pub fn run() {
         .plugin(navigation_guard())
         .manage(Mutex::new(Grants::default()))
         .manage(serial::Ports::default())
+        .manage(qemu::Qemu::default())
         .invoke_handler(tauri::generate_handler![
             pick_save,
             pick_open,
@@ -644,10 +667,22 @@ pub fn run() {
             serial::serial_open,
             serial::serial_write,
             serial::serial_reset,
-            serial::serial_close
+            serial::serial_close,
+            qemu::qemu_status,
+            qemu::qemu_install,
+            qemu::qemu_flash,
+            qemu::qemu_start,
+            qemu::qemu_input,
+            qemu::qemu_stop
         ])
-        .run(tauri::generate_context!())
-        .expect("Impossible de démarrer Jollof Studio");
+        .build(tauri::generate_context!())
+        .expect("Impossible de démarrer Jollof Studio")
+        .run(|app, event| {
+            // Fermeture : les émulateurs ESP32 (programmes à part) s'arrêtent avec l'application.
+            if let tauri::RunEvent::Exit = event {
+                app.state::<qemu::Qemu>().kill_all();
+            }
+        });
 }
 
 #[cfg(test)]
@@ -679,6 +714,13 @@ mod tests {
         assert!(ok(&["core", "install", "rp2040:rp2040", "--additional-urls", CORE_URLS[2]]));
         assert!(ok(&["compile", "--fqbn", "rp2040:rp2040:rpipico", "--output-dir", &b, &d]));
         assert!(!ok(&["core", "install", "rp2040:rp2040", "--additional-urls", "https://github.com/evil/package_rp2040_index.json"]));
+        // Mode fidèle de l'ESP32 : cœur d'Espressif, flash DIO (seule option de carte acceptée).
+        assert!(ok(&["core", "install", "esp32:esp32", "--additional-urls", CORE_URLS[0]]));
+        assert!(ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=dio", "--output-dir", &b, &d]));
+        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=qio", "--output-dir", &b, &d]));
+        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=dio,PartitionScheme=x", "--output-dir", &b, &d]));
+        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:build.extra_flags=-include/etc/passwd", "--output-dir", &b, &d]));
+        assert!(!ok(&["upload", "-p", "COM3", "--fqbn", "esp32:esp32:esp32:FlashMode=dio --verbose", &d]));
         // Refusés : autres commandes, autres dossiers, options cachées, dépôts arbitraires.
         assert!(!ok(&["config", "set", "library.enable_unsafe_install", "true"]));
         assert!(!ok(&["lib", "install", "--git-url", "https://evil.example/x.git"]));

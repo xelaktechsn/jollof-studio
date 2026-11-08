@@ -12,3 +12,5 @@ coverage/
 .env.*.local
 # Modules Pro : dépôt privé à part (jollof-studio-pro), jamais dans ce dépôt.
 src/pro/
+# Construction locale de QEMU (scripts/esp32-qemu/build-qemu.sh)
+qemu-build/

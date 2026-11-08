@@ -346,3 +346,147 @@ Conditions:
 If condition 1 or 3 is unacceptable (no CI build of QEMU, or Wi-Fi is a must-have), the answer becomes
 **NO-GO**. In that case ESP32 should stay interpreter-only, with the effort going to the RP2040 and AVR
 faithful modes.
+
+## 13. Implementation: "ESP32 fidèle (bêta)"
+
+The decision was **GO**, and the MVP is built. The trial's conditions map onto the code as follows.
+
+**Our own QEMU** (`scripts/esp32-qemu/build-qemu.sh`, `.github/workflows/qemu-esp32.yml`)
+
+- Source: Espressif's fork pinned at tag `esp-develop-9.2.2-20250817`, commit `4f4148e2f68689eb8861bf9fce0b46ada9200fef`
+  (checked after fetch). Build revision `j1`; package `jollof-qemu-esp32-9.2.2-20250817-j1-<platform>.zip`.
+- Configuration: `xtensa-softmmu` only, `--without-default-features --enable-gcrypt --enable-pixman`, so no SDL,
+  GTK, Cocoa, VNC, slirp or tools. Windows (MSYS2) builds `--static`.
+- Build-system patches only, no emulator code changes; both are listed in each package's `SOURCE.md`:
+  - The fork declares the slirp dependency even when it is disabled, so `net/slirp.c` was compiled without
+    libslirp. It is now declared only when libslirp is found.
+  - Espressif's two macOS meson workarounds.
+- Packaging:
+  - The executable, the two ESP32 ROMs, and the non-system libraries, made relocatable
+    (`@executable_path/../lib` and `@loader_path` on macOS, `$ORIGIN` with patchelf on Linux, DLLs next to the
+    `.exe` on Windows).
+  - Ad hoc code signature, or Developer ID with hardened runtime plus `allow-jit` /
+    `allow-unsigned-executable-memory` when `CODESIGN_IDENTITY` is set.
+  - `COPYING`, `COPYING.LIB`, `LICENSE`, `SOURCE.md` and the build script itself.
+  - Then a `.zip`, `SHA256SUMS.txt`, and with `SOURCE_TARBALL=1` the complete source as `.tar.gz` (GPL §3).
+- Built here (Intel Mac, macOS 26.5): about 6 minutes.
+  - The zip is **6.75 MB**: the binary is 19.2 MB, plus 6 libraries totalling 3.8 MB (glib, pcre2, libintl,
+    pixman, libgcrypt, libgpg-error).
+  - The source tarball is 44 MB.
+  - No `/usr/local` or `/opt/homebrew` reference is left.
+  - Homebrew has no Intel bottle for the current libgcrypt, so this local build used the 1.12.3 bottle in a scratch
+    prefix (`EXTRA_PKG_CONFIG_PATH`). CI uses `brew install libgcrypt`.
+- CI (not run yet): macOS x86_64 (`macos-15-intel`) and arm64 (`macos-14`), Linux x86_64 and arm64
+  (`ubuntu-22.04`, `ubuntu-22.04-arm`), Windows (`windows-2022` + MSYS2). Each job smoke-tests the binary with a
+  clean environment. Publishing is a manual dispatch with `publish` checked. Caveats:
+  - The macOS packages link Homebrew bottles, so they require the runner's macOS version (15 on Intel, 14 on
+    arm64). Building glib, pixman and libgcrypt from source with a lower `MACOSX_DEPLOYMENT_TARGET` would lift
+    this.
+  - Linux needs glibc ≥ 2.35.
+  - On a private repository, the arm64 Linux runner may need a paid plan.
+
+**Download on first use** (`src-tauri/src/qemu.rs`)
+
+- `qemu_status` and `qemu_install` (with progress). Downloads come from the pinned GitHub release URL
+  (`RELEASE_URL`) with a pinned SHA-256 per platform (`PACKAGES`).
+- An **empty hash means "not published": install is refused** until the maintainer fills the hashes in.
+- Extraction rejects paths outside `qemu/` (no zip-slip). The installed binary's SHA-256 is recorded and
+  re-checked before every start.
+- Dev override: `JOLLOF_QEMU=/path/to/qemu-system-xtensa`.
+
+**Launching a board**
+
+- Commands:
+  - `qemu_flash`: raw body, the board in the `x-board` header. The ESP32 image is checked (size, 64 KiB
+    alignment, bootloader magic at 0x1000).
+  - `qemu_start`: four Channels (UART0, side-channel, trace, exit).
+  - `qemu_input`: port 0 is Serial, port 1 is the shim.
+  - `qemu_stop`.
+- One instance per board. All instances are killed on stop and on app exit.
+- Fixed argument template (`qemu_args`, mirrored in `src/emu/esp32-node.mjs` for tests):
+
+  ```
+  -machine esp32 -display none -monitor none -nodefaults
+  -global driver=timer.esp32.timg,property=wdt_disable,value=true
+  -L <share> -drive file=<flash>,if=mtd,format=raw
+  -chardev socket,id=uart0,host=127.0.0.1,port=P0 -serial chardev:uart0
+  -chardev socket,id=uart1,host=127.0.0.1,port=P1 -serial chardev:uart1
+  -trace memory_region_ops_write
+  ```
+
+  - QEMU connects to two loopback listeners owned by Rust.
+  - Rust parses stderr itself and forwards only GPIO and LEDC register writes, batched every 5 ms with
+    10 µs timestamps.
+  - Serial is on sockets rather than stdio because `-serial stdio` gave no output with `-nodefaults` in a
+    pipe, and sockets behave the same on Windows.
+- **The watchdog problem of section 6.4 is solved by `wdt_disable`**, a property of the fork's timer-group model.
+  The short form `-global timer.esp32.timg.wdt_disable=true` is silently mis-parsed because the type name contains
+  dots, so the long `driver=…,property=…,value=…` form is required. Same image, same machine:
+  - before: 4 of 6 boots hit TG1WDT/TG0WDT resets, with `setup()` taking from 1.8 s to more than 20 s;
+  - after: **8 of 8 clean boots**, `setup()` at 1.6 to 2.2 s (4.1 to 4.4 s when the host load average was 8 to 12).
+  - The shim still switches the watchdogs off itself, as a fallback.
+
+**Compile pipeline**
+
+- FQBN `esp32:esp32:esp32:FlashMode=dio`. The arduino-cli allowlist accepts exactly this string with options;
+  `=`, `,` and other options stay refused (tested).
+- `write_sketch(code, shim)` writes `src/emu/esp32-shim/jollof_qemu_shim.cpp` (embedded with `include_str!`), and
+  removes it for every other board.
+- `read_build('merged.bin')` returns the 4 MB flash image, at most 16 MB, from the build folder only.
+- Faithful compiles are queued, so two boards never share the sketch or build folders at once.
+- The core is installed on first use from the Espressif board-manager URL, as before.
+
+**Runtime** (`src/emu/esp32.js`): same interface as `avr.js` and `rp2040.js`
+
+- Outputs come from the register trace: GPIO levels and direction, `GPIO_FUNCn_OUT_SEL`, LEDC channels and
+  timers.
+  - LEDC duty and frequency are classified directly: fixed level, PWM, `tone()` (50 % duty), or servo (40 to 70 Hz
+    with 0.4 to 2.7 ms pulses → angle).
+  - `digitalWrite` signals go through the same edge analysis as `avr.js`.
+- Inputs: levels from `hw.read()` (or the internal pull-up) and ADC raw values for ADC-capable pins are sent to the
+  shim over UART1 when they change. The shim waits up to 200 ms in `initVariant()` for the first levels, so
+  `digitalRead()` in `setup()` already sees the circuit.
+- `clock()` is the guest's `millis()`, from the shim's 10 ms heartbeat, mapped onto the transport timestamps.
+- Serial:
+  - The ROM and bootloader banner is hidden.
+  - Resets are reported in French ("— l'ESP32 redémarre : … —").
+  - Panics become warnings.
+  - **3 resets in 15 s stop the board with a clear message.**
+  - A heartbeat missing for 3 s gives a "stuck program" warning.
+- `dispose()` stops QEMU. The panel's run map calls it whenever a runtime is replaced or removed.
+
+**UI** (`src/prog/panel.js`, `src/emu/boards.js`, `src/emu/esp32-limits.js`)
+
+- The engine select offers "Fidèle" for ESP32. `EMULATED` gains `esp32` only once `qemu_status` reports QEMU as
+  installed (`setQemuReady`).
+- Until then, a note under the bar explains the situation, with an **Installer** button (download progress shown)
+  or "application installée nécessaire" in the browser. The board meanwhile runs in Débutant mode.
+- Wi-Fi and Bluetooth sketches (`WiFi.h`, `WebServer.h`, `HTTPClient.h`, `BluetoothSerial.h`, `BLE*.h`,
+  `esp_now.h`, MQTT…) stay on the interpreter with a message.
+- Modules the device models handle (LCD, OLED, BMP280, MPU6050, DHT, DS18B20, HC-SR04, WS2812, keypad, IR, RC522,
+  nRF24, HC-05, SIM800) are listed in a warning: they do not respond yet.
+- The checker treats ESP32 faithful boards as dynamic through the existing firmware path.
+
+**Licensing**: the shim keeps the AGPL header and adds a section-7 permission (GCC-runtime-exception style):
+compiling it into a sketch does not make the sketch AGPL. This is noted in `NOTICE.md`.
+
+**Tests**
+
+- `src/emu/esp32.test.mjs`: 6 tests always run (decoder and classification, serial banner/reset/boot-loop
+  handling, shim protocol over a fake transport, Wi-Fi refusal, module list, compile pipeline).
+- 1 end-to-end test runs when QEMU (`JOLLOF_QEMU` or the app's install) and the esp32 core are present. It covers
+  blink at 250 ms, Serial both ways, `digitalRead` from `hw.read`, `attachInterrupt` (3 edges counted),
+  `analogRead` (1.65 V → 2048 ± 2), `analogWrite` (25 % at 1 kHz) and servo (1.5 ms → 93°).
+  - Here it measured `setup()` at 1.8 s and a 250.1 ms half-period.
+  - It also found a real arduino-esp32 behaviour: LEDC channels 0 and 1 share timer 0, so a second `ledcAttach`
+    re-timed the first pin.
+- Rust: 5 new cargo tests (argument template, trace parsing, flash checks, hashes, zip extraction staying inside).
+
+**Still missing**
+
+- Wi-Fi and Bluetooth.
+- Bridges for I2C, SPI and 1-Wire, and µs-timed protocols (section 7).
+- Pause or step of the guest: QEMU runs in real time; stopping the simulation kills it.
+- Windows, Linux and Apple Silicon runs.
+- macOS packages compatible with older macOS versions.
+- If the app itself crashes, QEMU can be left running (normal exits kill it).

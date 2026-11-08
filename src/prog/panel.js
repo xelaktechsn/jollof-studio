@@ -7,13 +7,14 @@
 import { driveBoard } from '../sim/drive.js';
 import { compile } from './lang.js';
 import { createRuntime } from './runtime.js';
-import { EMULATED } from '../emu/boards.js';
+import { EMULATED, QEMU_KINDS, setQemuReady } from '../emu/boards.js';
+import { esp32Refusal } from '../emu/esp32-limits.js';
 import { generate, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs } from './rules.js';
 import { QUANT, ENV, MODELS, NET_DEFAULT } from '../sim/models.js';
 import { createEditor } from './editor.js';
 import { createPlotter } from './plotter.js';
 import { Q, LIGHT } from '../quality.js';
-import { saveFile } from '../native.js';
+import { saveFile, qemuStatus, qemuInstall, qemuTransport } from '../native.js';
 import './debug.css';
 import './visual/mode.css';
 import { generateVisual, visualContext } from './visual/generator.js';
@@ -34,6 +35,16 @@ export const boardKind = c => (BOARDS[c.type] ? c.type : FAMILY_KIND[boardOf(c).
 const LOG_MAX = 40000;
 
 /**
+ * Moteurs des cartes lancées. Un moteur remplacé ou retiré est arrêté (dispose) : celui de l'ESP32 fait tourner
+ * un émulateur à part (QEMU), qui doit s'arrêter avec lui.
+ */
+class Runs extends Map {
+  set(k, v) { const o = super.get(k); if (o && o !== v && o.dispose) o.dispose(); return super.set(k, v); }
+  delete(k) { const o = super.get(k); if (o && o.dispose) o.dispose(); return super.delete(k); }
+  clear() { for (const v of super.values()) if (v.dispose) v.dispose(); super.clear(); }
+}
+
+/**
  * app : { comps(), wires(), sim() → { A, ins, drive, pinComps }, simOn(), setSim(on), setTab(name),
  *         status(text, kind), markDirty(), refreshSel() }
  */
@@ -41,7 +52,9 @@ export function createProgram(app) {
   // mem : EEPROM et Preferences de chaque carte (survivent au redémarrage et sont enregistrées avec le projet) ;
   // net : réseaux Wi-Fi simulés et journal (journal.jollof).
   let P = { rules: [], boards: {}, states: {}, mem: {}, net: null };
-  const rts = new Map(), logs = new Map(), diag = new Map(), uploaded = new Map();
+  const rts = new Runs(), logs = new Map(), diag = new Map(), uploaded = new Map();
+  // Émulateur de l'ESP32 (QEMU) : état de l'installation (null tant que pas demandé), téléchargement en cours.
+  let qemu = null, qemuJob = null;
   // Mode fidèle : compilation en cours (jeton par carte : une compilation dépassée est ignorée) et erreurs d'arduino-cli.
   const fwJobs = new Map(), fwDiag = new Map();
   // MicroPython (Pico) : erreur Python de chaque carte (Traceback), fichier à exécuter sans l'enregistrer au lancement.
@@ -216,7 +229,12 @@ export function createProgram(app) {
   /** Compile et lance le programme d'une carte ; false s'il ne compile pas. */
   function launch(b, sn = snapshot()) {
     if (engineOf(b) === 'micropython') return launchPython(b);
-    if (engineOf(b) === 'firmware') return launchFirmware(b, codeOf(b, sn));
+    if (engineOf(b) === 'firmware') {
+      const fw = codeOf(b, sn), why = boardKind(b) === 'esp32' ? esp32Refusal(fw) : null;
+      if (!why) return launchFirmware(b, fw);
+      // Wi-Fi ou Bluetooth sur l'ESP32 : pas de radio dans l'émulateur, le programme tourne sur l'interpréteur.
+      log(b, `\n! ${why}\n`); app.status(`${b.name} : ${why}`, 'warn');
+    }
     const code = codeOf(b, sn), res = compile(code, { ...ctxOf(b), debug: wantsDebug(b) });
     diag.set(b.id, { errors: res.errors, warnings: res.warnings });
     rts.delete(b.id); clearScreens(b);
@@ -245,9 +263,9 @@ export function createProgram(app) {
     fwDiag.set(b.id, { errors: [], warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
     log(b, tl('{0}— {1} : compilation du vrai programme (mode fidèle)… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
     // Compilateur et processeur émulé chargés à la demande : ils ne pèsent rien tant que le mode fidèle ne sert pas.
-    // Pico : RP2040 (rp2040js) ; Uno, Nano : ATmega328P (avr8js).
-    const pico = boardKind(b) === 'pico';
-    Promise.all([import('../emu/compile.js'), pico ? import('../emu/rp2040.js') : import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
+    // Pico : RP2040 (rp2040js) ; Uno, Nano : ATmega328P (avr8js) ; ESP32 : QEMU, programme à part (esp32.js).
+    const pico = boardKind(b) === 'pico', esp = boardKind(b) === 'esp32';
+    Promise.all([import('../emu/compile.js'), pico ? import('../emu/rp2040.js') : esp ? import('../emu/esp32.js') : import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
       if (fwJobs.get(b.id) !== token) return; // relancé ou arrêté entre-temps
       fwJobs.delete(b.id);
       if (!res.ok) {
@@ -261,10 +279,12 @@ export function createProgram(app) {
         return;
       }
       let rt;
-      try { rt = pico ? E.createRp2040Runtime(res.image, makeHw(b)) : E.createAvrRuntime(res.hex, makeHw(b)); } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
+      try {
+        rt = pico ? E.createRp2040Runtime(res.image, makeHw(b)) : esp ? E.createEsp32Runtime(res.image, makeHw(b), { transport: qemuTransport(b.id) }) : E.createAvrRuntime(res.hex, makeHw(b));
+      } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
       rts.set(b.id, attach(b, rt));
       uploaded.set(b.id, code);
-      log(b, tl('— {0} démarre : vrai programme sur processeur émulé —\n', b.name));
+      log(b, esp ? tl('— {0} démarre : vrai programme dans l’émulateur de l’ESP32 (QEMU, bêta) —\n', b.name) : tl('— {0} démarre : vrai programme sur processeur émulé —\n', b.name));
       // Serial du Pico : l'USB, que le PC n'ouvre qu'après le démarrage ; ce qui est écrit avant est perdu.
       if (pico && /\bSerial\s*\.\s*print/.test(code) && !/!\s*Serial\b/.test(code)) log(b, tl('Pico : Serial passe par l’USB, que le PC n’ouvre qu’une vingtaine de millisecondes après le démarrage ; ce qui est écrit avant est perdu, comme sur la vraie carte. Ajoutez while (!Serial) delay(10); après Serial.begin().\n'));
       if (b.id === cur) renderDiag();
@@ -438,12 +458,14 @@ export function createProgram(app) {
     const sel = $('#progBoard');
     sel.hidden = bs.length < 2;
     sel.innerHTML = bs.map(x => `<option value="${esc(x.id)}"${x === b ? ' selected' : ''}>${esc(x.name)} · ${esc(boardOf(x).label)}</option>`).join('');
-    const eng = $('#progEngine');
+    const eng = $('#progEngine'), kind = boardKind(b), wantFw = !!(entry(b) && entry(b).engine === 'firmware');
     if (eng) {
-      eng.hidden = !EMULATED.has(boardKind(b));
-      const mp = eng.querySelector('option[value="micropython"]'); if (mp) mp.hidden = mp.disabled = boardKind(b) !== 'pico';
-      eng.value = engineOf(b);
+      eng.hidden = !EMULATED.has(kind) && !QEMU_KINDS.has(kind);
+      const mp = eng.querySelector('option[value="micropython"]'); if (mp) mp.hidden = mp.disabled = kind !== 'pico';
+      // ESP32 en mode fidèle sans émulateur installé : le choix reste affiché, la note explique (et propose de l'installer).
+      eng.value = wantFw && QEMU_KINDS.has(kind) ? 'firmware' : engineOf(b);
     }
+    qemuNote(b);
     renderRules();
     if (!editor) editor = createEditor($('#editor'), { onChange: onEdit, onRun: upload, onGutter: toggleBp });
     syncShown(b);
@@ -1001,8 +1023,55 @@ export function createProgram(app) {
     setSerialView(v, true);
   }
 
+  /* ---------- Émulateur de l'ESP32 (QEMU) : installation à la première utilisation ---------- */
+  function qemuUi() {
+    if ($('#qemuNote')) return;
+    $('#progMain .progBar').insertAdjacentHTML('afterend', `<p class="note rule qemuNote" id="qemuNote" hidden>${icon('info')}<span></span>
+      <button type="button" class="btn small" id="qemuInstall" hidden>${icon('upload')}<span>${tl('Installer')}</span></button></p>`);
+    $('#qemuInstall').onclick = installQemu;
+  }
+  /** Note sous la barre : ESP32 en mode fidèle, émulateur absent (installer) ou présent (limites de la bêta). */
+  function qemuNote(b) {
+    qemuUi();
+    const el = $('#qemuNote'), btn = $('#qemuInstall'), kind = b ? boardKind(b) : '';
+    const want = !!b && QEMU_KINDS.has(kind) && !!entry(b) && entry(b).engine === 'firmware';
+    el.hidden = !want; btn.hidden = true;
+    if (!want) return;
+    let text;
+    if (EMULATED.has(kind)) text = tl('Mode fidèle de l’ESP32 (bêta) : le vrai programme tourne dans QEMU, l’émulateur d’Espressif. Pas de Wi-Fi ni de Bluetooth ; les modules I2C, SPI et 1-Wire ne répondent pas encore.');
+    else if (qemuJob) text = qemuJob.text;
+    else if (!qemu) text = tl('Recherche de l’émulateur de l’ESP32…');
+    else if (!qemu.desktop) text = tl('Le mode fidèle de l’ESP32 fait tourner le vrai programme dans un émulateur (QEMU) : il demande l’application installée. La carte tourne en mode Débutant.');
+    else if (!qemu.available) text = tl('L’émulateur de l’ESP32 (QEMU) n’est pas encore disponible pour cet ordinateur. La carte tourne en mode Débutant.');
+    else { text = tl('Le mode fidèle de l’ESP32 (bêta) fait tourner le vrai programme dans QEMU, l’émulateur d’Espressif : un programme à part d’environ 7 Mo, téléchargé une seule fois. En attendant, la carte tourne en mode Débutant.'); btn.hidden = false; }
+    el.querySelector('span').textContent = text;
+  }
+  async function checkQemu() {
+    qemu = await qemuStatus();
+    setQemuReady(!!qemu.installed);
+    if (!$('#pane-prog').hidden) render();
+  }
+  async function installQemu() {
+    if (qemuJob) return;
+    qemuJob = { text: tl('Téléchargement de l’émulateur de l’ESP32…') };
+    render();
+    try {
+      qemu = await qemuInstall((got, total) => { if (!qemuJob) return; qemuJob.text = total ? tl('Téléchargement de l’émulateur de l’ESP32… {0} %', Math.round(got / total * 100)) : tl('Téléchargement de l’émulateur de l’ESP32… {0} Mo', (got / 1e6).toFixed(1)); qemuNote(board()); });
+      setQemuReady(!!qemu.installed);
+      app.status(tl('Émulateur de l’ESP32 installé : le mode fidèle est prêt.'), 'ok');
+      qemuJob = null;
+      const b = board();
+      if (b && app.simOn() && engineOf(b) === 'firmware') launch(b);
+    } catch (e) {
+      qemuJob = null;
+      app.status(tl('Installation de l’émulateur de l’ESP32 impossible : {0}', (e && e.message) || e), 'err');
+    }
+    render();
+  }
+
   /* ---------- Liaisons ---------- */
   function bind() {
+    checkQemu();
     $('#progBoard').onchange = e => { cur = e.target.value; render(); };
     $('#progRun').onclick = upload;
     if ($('#progEngine')) $('#progEngine').onchange = e => {

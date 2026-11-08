@@ -1,0 +1,149 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+#
+# Émulateur de l'ESP32 du mode fidèle : construit QEMU (fork d'Espressif, GPL-2.0) pour chaque plateforme avec
+# scripts/esp32-qemu/build-qemu.sh, puis, sur demande, publie les archives, l'archive des sources et les empreintes
+# dans la publication GitHub « qemu-esp32-<version> ». L'application télécharge ces archives à la première
+# utilisation : leurs empreintes (SHA256SUMS.txt) sont à recopier dans PACKAGES de src-tauri/src/qemu.rs.
+#
+# Lancement : onglet Actions → « QEMU ESP32 » → Run workflow (cocher « publish » pour publier).
+name: QEMU ESP32
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publier les archives dans la publication GitHub
+        type: boolean
+        default: false
+  push:
+    paths:
+      - scripts/esp32-qemu/build-qemu.sh
+      - .github/workflows/qemu-esp32.yml
+
+permissions:
+  contents: write
+
+env:
+  # Doit correspondre à QEMU_TAG + JOLLOF_REV de build-qemu.sh et à VERSION / RELEASE_URL de src-tauri/src/qemu.rs.
+  QEMU_RELEASE: qemu-esp32-9.2.2-20250817-j1
+
+jobs:
+  build:
+    name: QEMU ${{ matrix.platform }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Les bibliothèques de Homebrew suivent la version du système de la machine de construction :
+          # le paquet macOS demande au moins cette version (voir docs/ESP32-QEMU-TRIAL.md, « Implementation »).
+          - platform: x86_64-apple-darwin
+            runs-on: macos-15-intel
+          - platform: aarch64-apple-darwin
+            runs-on: macos-14
+          - platform: x86_64-linux-gnu
+            runs-on: ubuntu-22.04
+            source: '1'
+          - platform: aarch64-linux-gnu
+            runs-on: ubuntu-22.04-arm
+          - platform: x86_64-w64-mingw32
+            runs-on: windows-2022
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prérequis (macOS)
+        if: runner.os == 'macOS'
+        run: brew install glib pixman libgcrypt ninja pkgconf
+
+      - name: Prérequis (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential git python3 python3-venv ninja-build \
+            pkg-config libglib2.0-dev libpixman-1-dev libgcrypt20-dev patchelf
+
+      - name: Prérequis (Windows, MSYS2 MINGW64)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            git
+            diffutils
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-glib2
+            mingw-w64-x86_64-libgcrypt
+            mingw-w64-x86_64-libiconv
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pixman
+            mingw-w64-x86_64-pkg-config
+            mingw-w64-x86_64-python
+
+      - name: Construction (macOS, Linux)
+        if: runner.os != 'Windows'
+        env:
+          WORK: ${{ github.workspace }}/qemu-build
+          PLATFORM: ${{ matrix.platform }}
+          SOURCE_TARBALL: ${{ matrix.source || '0' }}
+          # Signature ad hoc (suffisante pour un programme téléchargé par l'application). Avec un certificat
+          # Developer ID importé dans le trousseau, mettre ici son nom : runtime renforcé et droits JIT.
+          CODESIGN_IDENTITY: '-'
+        run: bash scripts/esp32-qemu/build-qemu.sh
+
+      - name: Construction (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        env:
+          PLATFORM: ${{ matrix.platform }}
+        run: WORK="$(cygpath -u "$GITHUB_WORKSPACE")/qemu-build" bash scripts/esp32-qemu/build-qemu.sh
+
+      - name: Essai de l'émulateur (sans Homebrew ni bibliothèques de développement dans le chemin)
+        if: runner.os != 'Windows'
+        run: |
+          Q=qemu-build/pkg/qemu/bin/qemu-system-xtensa
+          env -i PATH=/usr/bin:/bin "$Q" --version
+          env -i PATH=/usr/bin:/bin "$Q" -machine help | grep -q '^esp32 '
+          if [ "$RUNNER_OS" = macOS ]; then otool -L "$Q" qemu-build/pkg/qemu/lib/*.dylib | grep -E '/(usr/local|opt/homebrew)/' && exit 1 || true; fi
+          if [ "$RUNNER_OS" = Linux ]; then ldd "$Q" | grep 'not found' && exit 1 || true; fi
+
+      - name: Essai de l'émulateur (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: qemu-build/pkg/qemu/bin/qemu-system-xtensa.exe -machine help | grep -q '^esp32 '
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: qemu-esp32-${{ matrix.platform }}
+          path: |
+            qemu-build/dist/*.zip
+            qemu-build/dist/*.tar.gz
+          if-no-files-found: error
+
+  publish:
+    name: Publication
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Empreintes
+        run: |
+          cd dist
+          sha256sum *.zip *.tar.gz > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Publication GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view "$QEMU_RELEASE" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$QEMU_RELEASE" -R "$GITHUB_REPOSITORY" \
+            --title "QEMU ESP32 ($QEMU_RELEASE)" \
+            --notes "Émulateur de l'ESP32 du mode fidèle de Jollof Studio : QEMU, fork d'Espressif (GPL-2.0), construit par scripts/esp32-qemu/build-qemu.sh. Les sources complètes correspondantes sont dans l'archive *-source.tar.gz ; chaque paquet contient SOURCE.md (commit exact, options, bibliothèques incluses), COPYING et LICENSE. Empreintes : SHA256SUMS.txt."
+          gh release upload "$QEMU_RELEASE" dist/* -R "$GITHUB_REPOSITORY" --clobber

@@ -3,7 +3,7 @@
 // Pont entre l'interface et le cœur Rust. Dans l'application Tauri, tout passe
 // par les commandes natives et les boîtes de dialogue du système. Lancé dans un
 // simple navigateur (`npm run dev`), chaque fonction a un repli web.
-import { invoke } from '@tauri-apps/api/core';
+import { invoke, Channel } from '@tauri-apps/api/core';
 import { tl } from './i18n/index.js';
 
 export const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -155,9 +155,10 @@ export async function arduinoCli(args) {
   if (!isTauri()) throw new Error('desktop-only');
   return invoke('arduino_cli', { args });
 }
-export async function writeSketch(code) {
+/** Écrit le croquis ; opts.shim : avec la cale de l'ESP32 émulé (src/emu/esp32-shim), sinon elle est retirée. */
+export async function writeSketch(code, opts = {}) {
   if (!isTauri()) throw new Error('desktop-only');
-  return invoke('write_sketch', { code });
+  return invoke('write_sketch', { code, shim: !!opts.shim });
 }
 /** Dossiers du croquis et de sa compilation : [sketch, build]. */
 export async function buildPaths() {
@@ -169,6 +170,46 @@ export async function readBuild(ext) {
   if (!isTauri()) throw new Error('desktop-only');
   const r = await invoke('read_build', { ext });
   return r instanceof ArrayBuffer ? new Uint8Array(r) : new Uint8Array(r);
+}
+/* Émulateur de l'ESP32 (QEMU d'Espressif, programme à part) : installé à la première utilisation, lancé par Rust. */
+const u8 = m => (m instanceof ArrayBuffer ? new Uint8Array(m) : ArrayBuffer.isView(m) ? new Uint8Array(m.buffer, m.byteOffset, m.byteLength) : Uint8Array.from(m));
+/** { installed, available (paquet publié pour cette plateforme), dev, version, platform, desktop }. */
+export async function qemuStatus() {
+  if (!isTauri()) return { installed: false, available: false, desktop: false };
+  try { return { ...(await invoke('qemu_status')), desktop: true }; } catch (e) { return { installed: false, available: false, desktop: true, error: String(e) }; }
+}
+/** Télécharge et installe l'émulateur ; onProgress(octets reçus, total ou 0). Rend le nouvel état. */
+export async function qemuInstall(onProgress) {
+  const ch = new Channel();
+  ch.onmessage = p => { if (onProgress) onProgress(p[0], p[1]); };
+  return { ...(await invoke('qemu_install', { onProgress: ch })), desktop: true };
+}
+/**
+ * Transport du moteur ESP32 (src/emu/esp32.js) vers l'émulateur de la carte board, lancé par Rust : image de la
+ * flash, puis messages horodatés (en ms depuis le lancement) du port série, de la cale et de la trace des registres.
+ */
+export function qemuTransport(id) {
+  // Clé de la carte côté Rust : lettres, chiffres, - et _ (un projet importé peut avoir d'autres identifiants).
+  const board = String(id).replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 64) || 'carte';
+  const ch = fn => { const c = new Channel(); c.onmessage = fn; return c; };
+  const stamped = fn => m => { const b = u8(m); if (b.length < 4) return; fn(((b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0) / 100, b.subarray(4)); };
+  return {
+    async start({ image, onUart, onSide, onTrace, onExit }) {
+      await invoke('qemu_flash', image, { headers: { 'x-board': board } });
+      await invoke('qemu_start', {
+        board, onUart: ch(stamped(onUart)), onSide: ch(stamped(onSide)),
+        onTrace: ch(m => {
+          const b = u8(m), dv = new DataView(b.buffer, b.byteOffset, b.byteLength), recs = [];
+          for (let o = 0; o + 12 <= b.length; o += 12) recs.push([dv.getUint32(o, true), dv.getUint32(o + 4, true), dv.getUint32(o + 8, true) / 100]);
+          onTrace(recs);
+        }),
+        onExit: ch(e => onExit(e.code, e.log))
+      });
+    },
+    uart: bytes => { invoke('qemu_input', { board, port: 0, bytes: Array.from(bytes) }).catch(() => {}); },
+    side: bytes => { invoke('qemu_input', { board, port: 1, bytes: Array.from(bytes) }).catch(() => {}); },
+    stop: () => { invoke('qemu_stop', { board }).catch(() => {}); }
+  };
 }
 /** Langue choisie à l'installation (Windows), sinon null. */
 export async function installLanguage() {

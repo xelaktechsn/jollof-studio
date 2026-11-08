@@ -24,6 +24,11 @@ percent-encoding = "2"
 tokio = { version = "1", features = ["rt-multi-thread"] }
 # Carte réelle en USB (simulation avec du vrai matériel, protocole Firmata).
 serialport = "4"
+# Mode fidèle de l'ESP32 : téléchargement de l'émulateur (QEMU, programme à part) à la première utilisation,
+# vérification de son empreinte et décompression.
+ureq = { version = "3", default-features = false, features = ["rustls"] }
+sha2 = "0.10"
+zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
 
 [profile.release]
 codegen-units = 1
