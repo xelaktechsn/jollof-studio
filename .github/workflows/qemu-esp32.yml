@@ -9,6 +9,8 @@
 # Lancement : onglet Actions → « QEMU ESP32 » → Run workflow (cocher « publish » pour publier).
 name: QEMU ESP32
 
+# Lancement à la main seulement (Actions → QEMU ESP32) : cinq constructions, dont deux sur macOS, coûtent cher
+# en minutes sur un dépôt privé.
 on:
   workflow_dispatch:
     inputs:
@@ -16,10 +18,6 @@ on:
         description: Publier les archives dans la publication GitHub
         type: boolean
         default: false
-  push:
-    paths:
-      - scripts/esp32-qemu/build-qemu.sh
-      - .github/workflows/qemu-esp32.yml
 
 permissions:
   contents: write
