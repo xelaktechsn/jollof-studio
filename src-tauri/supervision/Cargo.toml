@@ -1,0 +1,21 @@
+[package]
+name = "jollof-supervision"
+version = "0.1.0"
+description = "Jollof Studio : supervision MA-ISA d'un circuit simulé (maisa-core), sans dépendance à Tauri"
+authors = ["Mamadou Sarr"]
+license = "AGPL-3.0-or-later"
+edition = "2021"
+publish = false
+
+[dependencies]
+# Moniteur MA-ISA publié : utilisé tel quel, jamais modifié ni réécrit ici.
+maisa-core = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[lints.rust]
+unsafe_code = "forbid"
+
+[lints.clippy]
+# `!(x > 0.0)` est voulu : la comparaison niée refuse aussi NaN (même choix que maisa-core).
+neg_cmp_op_on_partial_ord = "allow"

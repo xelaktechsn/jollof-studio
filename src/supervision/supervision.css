@@ -1,0 +1,182 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Supervision MA-ISA : onglet de l'inspecteur et page d'aide. Une couleur fixe par état, toujours doublée de son nom
+   et d'une icône ; une bannière « que faire » ; la reprise en trois étapes ; des règles écrites comme des phrases. */
+.svPane { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 12px; overflow: auto; --sv: #8b97a1; }
+.app[data-kind="logic"] .svTab { display: none !important; }
+.app.pneuMode .svTab { display: inline-flex !important; }
+.svHead { display: flex; align-items: center; gap: 6px; }
+.svHead > b { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; }
+.svHead > b .ic { width: 16px; height: 16px; color: var(--accent); }
+.svHead .tb { width: 28px; height: 28px; }
+.svSec { display: flex; flex-direction: column; gap: 8px; }
+.svSec h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.svSec h3 .ic { width: 14px; height: 14px; }
+.svSec h3 .btn { text-transform: none; letter-spacing: 0; }
+.svSmall { margin: 0; font-size: 12px; line-height: 1.45; color: var(--fg-2); }
+.link { all: unset; color: #93c5fd; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------- Accueil : aucune surveillance ---------- */
+.svIntro { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 18px 16px; border-radius: 14px; border: 1px solid var(--line-2); background: linear-gradient(180deg, #3b82f614, transparent); }
+.svIntro > .ic { width: 28px; height: 28px; color: var(--accent); }
+.svIntro > b { font-size: 16px; }
+.svIntro p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-2); }
+.svIntroBtns { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- État ---------- */
+.svState { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 14px; border: 1px solid var(--sv); background: var(--raise); border: 1px solid color-mix(in srgb, var(--sv) 50%, transparent); background: color-mix(in srgb, var(--sv) 12%, transparent); }
+.svBadge { display: inline-flex; align-items: center; gap: 9px; font-size: 19px; color: var(--sv); }
+.svBadge .ic { width: 22px; height: 22px; }
+.svBadge b { color: var(--fg); }
+.svSay { font-size: 13px; color: var(--fg-2); }
+.s-idle, .s-unknown { --sv: #8b97a1; } .s-normal { --sv: #3fb27f; } .s-degraded { --sv: #f2c94c; } .s-corrective { --sv: #f2994a; }
+.s-safe_requested { --sv: #ef4444; } .s-safe_confirmed { --sv: #3b82f6; } .s-locked_recovery { --sv: #a78bfa; }
+.svMeta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.svChip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 11px; background: var(--raise); border: 1px solid var(--line-2); font-size: 11.5px; color: var(--fg-2); }
+.svChip .ic { width: 12px; height: 12px; }
+.svChip.on { color: #fca5a5; border-color: #ef444466; } .svChip.warn { color: #f2c94c; border-color: #f2c94c55; }
+.svChip.mono { font-family: var(--mono); }
+
+/* ---------- Que faire maintenant ---------- */
+.svGuide { display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-items: start; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--raise); font-size: 13px; line-height: 1.45; color: var(--fg); }
+.svGuide > .ic { width: 16px; height: 16px; margin-top: 2px; }
+.svGuide .btn { grid-column: 2; justify-self: start; }
+.svGuide.go { border-color: #3b82f666; background: #3b82f612; } .svGuide.go > .ic { color: var(--accent); }
+.svGuide.ok > .ic { color: #3fb27f; }
+.svGuide.warn { border-color: #f2c94c55; background: #f2c94c10; } .svGuide.warn > .ic { color: #f2c94c; }
+.svGuide.bad { border-color: #ef444466; background: #ef444412; } .svGuide.bad > .ic { color: #ef4444; }
+.svGuide.info { border-color: #a78bfa55; background: #a78bfa10; } .svGuide.info > .ic { color: #a78bfa; }
+
+/* ---------- Reprise en trois étapes ---------- */
+.svSteps { display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: 12px; border: 1px solid #a78bfa55; }
+.svSteps[hidden] { display: none; }
+.svSteps h3 { margin: 0; display: flex; align-items: center; gap: 6px; font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.svSteps h3 .ic { width: 14px; height: 14px; }
+.svSteps ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.svSteps li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; opacity: .55; }
+.svSteps li.cur { opacity: 1; background: #ffffff08; } .svSteps li.done { opacity: .9; }
+.svSteps li > div { flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.svSteps li b { font-size: 13px; } .svSteps li small { font-size: 12px; color: var(--fg-2); }
+.svNum { flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); font: 700 12px var(--mono); color: var(--fg-2); }
+.svNum .ic { width: 13px; height: 13px; }
+.svSteps li.cur .svNum { border-color: var(--accent); color: var(--accent); }
+.svSteps li.done .svNum { border-color: #3fb27f; background: #3fb27f; color: #0f1418; }
+
+/* ---------- Surveillances ---------- */
+.svChans, .svFaults, .svLog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.svChan { padding: 9px 11px; border-radius: 10px; background: var(--raise); border: 1px solid var(--line); cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+.svChan:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.svChan.sel { border-color: var(--accent); }
+.svChan.inv { border-style: dashed; }
+.svChHead { display: flex; align-items: center; gap: 8px; font-size: 13px; min-width: 0; }
+.svChHead b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.svChHead .tb { width: 24px; height: 24px; }
+.svRule { margin: 0; font-size: 12px; line-height: 1.4; color: var(--fg-2); }
+.svTag { font-size: 11px; padding: 1px 7px; border-radius: 7px; white-space: nowrap; }
+.svTag.ok { background: #3fb27f22; color: #8fdcb7; } .svTag.warn { background: #f2c94c26; color: #f2c94c; }
+.svTag.crit { background: #ef444426; color: #fca5a5; } .svTag.inv { background: #8b97a126; color: #c9d3da; }
+.svBar { position: relative; height: 8px; border-radius: 4px; background: #ffffff12; }
+.svBar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: #3fb27f; transition: width .1s linear; }
+.svChan.warn .svBar i { background: #f2c94c; } .svChan.crit .svBar i { background: #ef4444; }
+.svBar u { position: absolute; top: -3px; bottom: -3px; width: 2px; text-decoration: none; }
+.svBar u.enter { background: #f2c94c; } .svBar u.crit { background: #ef4444; }
+
+/* ---------- Courbe ---------- */
+.svChart { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; }
+.svLegend { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11.5px; color: var(--fg-2); }
+.svLegend span { display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin-right: -6px; }
+.svLegend .l { background: #60a5fa; } .svLegend .e { background: repeating-linear-gradient(90deg, #f2c94c 0 5px, transparent 5px 8px); }
+.svLegend .c { background: repeating-linear-gradient(90deg, #ef4444 0 5px, transparent 5px 8px); } .svLegend .g { background: #ffffff30; height: 10px; }
+
+/* ---------- Pannes simulées ---------- */
+.svKinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.svKind { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-2); cursor: pointer; }
+.svKind input { position: absolute; opacity: 0; pointer-events: none; }
+.svKind b { font-size: 12.5px; } .svKind small { font-size: 11.5px; line-height: 1.35; color: var(--fg-2); }
+.svKind.on { border-color: var(--accent); background: #3b82f612; }
+.svKind:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.svParams { display: flex; flex-wrap: wrap; gap: 8px; }
+.svFaults li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: #f2c94c10; border: 1px solid #f2c94c33; }
+.svFaults li .ic { width: 14px; height: 14px; color: #f2c94c; }
+.svFaults li.all { background: none; border: 0; padding: 0; }
+.svFaults span { color: var(--fg-2); }
+[data-sv="fform"] { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+[data-sv="fform"] .svF.wide { align-self: stretch; }
+
+/* ---------- Historique ---------- */
+.svLogSec summary { list-style: none; cursor: pointer; } .svLogSec summary::-webkit-details-marker { display: none; }
+.svLog { max-height: 220px; overflow: auto; font-size: 12px; gap: 2px; margin-top: 6px; }
+.svLog li { display: flex; gap: 8px; padding: 2px 0; color: var(--fg-2); }
+.svLog time { flex: 0 0 52px; font-family: var(--mono); color: var(--muted); text-align: right; }
+.svLog .warn span { color: #f2c94c; } .svLog .crit span { color: #fca5a5; }
+.svFoot { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
+
+/* ---------- Modifier une surveillance ---------- */
+.svEdit { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid var(--accent); background: #3b82f60a; }
+.svEdit > header { display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.svEdit > header .tb { width: 24px; height: 24px; }
+.svSentence { margin: 0; font-size: 13px; line-height: 2.1; color: var(--fg); }
+.svSentence .sel { height: 28px; max-width: 100%; vertical-align: middle; }
+.svSentence .inp.n { width: 72px; height: 28px; padding: 0 6px; vertical-align: middle; }
+.svEst { margin: 0; display: flex; gap: 7px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.45; }
+.svEst .ic { flex: 0 0 auto; width: 14px; height: 14px; margin-top: 2px; }
+.svEst.ok { background: #3fb27f14; color: #8fdcb7; border: 1px solid #3fb27f44; } .svEst.bad { background: #ef444412; color: #ffa3a5; border: 1px solid #ef444444; }
+.svMore summary { cursor: pointer; font-size: 12.5px; color: var(--fg-2); }
+.svMore[open] summary { margin-bottom: 6px; }
+.svGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin: 6px 0; }
+.svF { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--muted); min-width: 0; }
+.svF .inp, .svF .sel { height: 28px; min-width: 0; width: 100%; }
+.svParams .svF .inp { width: 110px; }
+.svEdit .check { font-size: 12.5px; color: var(--fg-2); }
+
+/* ---------- Aide ---------- */
+.svDoc { display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 1.55; color: var(--fg-2); max-height: 62vh; overflow: auto; padding-right: 4px; }
+.svDoc .lead { font-size: 14px; color: var(--fg); margin: 0; }
+.svDoc h4 { margin: 8px 0 0; font-size: 13px; color: var(--fg); }
+.svDoc p, .svDoc ul { margin: 0; } .svDoc ul { padding-left: 1.2em; }
+.svFlow { list-style: none; margin: 4px 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; counter-reset: f; }
+.svFlow li { position: relative; display: flex; flex-direction: column; gap: 3px; padding: 10px; border-radius: 10px; background: var(--raise); border: 1px solid var(--line-2); counter-increment: f; }
+.svFlow li::before { content: counter(f); font: 700 11px var(--mono); color: var(--accent); }
+.svFlow li:not(:last-child)::after { content: "→"; position: absolute; right: -10px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+.svFlow b { color: var(--fg); font-size: 12.5px; } .svFlow span { font-size: 11.5px; line-height: 1.35; }
+.svStates { list-style: none; padding: 0 !important; display: flex; flex-direction: column; gap: 4px; }
+.svStates li { display: grid; grid-template-columns: 12px 150px 1fr; gap: 8px; align-items: baseline; }
+.svDot { width: 10px; height: 10px; border-radius: 50%; background: var(--sv); display: inline-block; }
+.svStates b { color: var(--fg); font-size: 12.5px; }
+.svDoc .note { font-size: 11.5px; color: var(--muted); }
+@media (max-width: 760px) { .svFlow { grid-template-columns: 1fr 1fr; } .svFlow li::after { display: none; } }
+@media (prefers-reduced-motion: reduce) { .svBar i { transition: none; } }
+
+/* ---------- Accueil : le principe en trois idées ---------- */
+.svIdeas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: i; align-self: stretch; }
+.svIdeas li { display: grid; grid-template-columns: 24px 1fr; column-gap: 8px; counter-increment: i; font-size: 12.5px; }
+.svIdeas li::before { content: counter(i); grid-row: span 2; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #3b82f626; color: #93c5fd; font: 700 11.5px var(--mono); }
+.svIdeas b { color: var(--fg); } .svIdeas span { color: var(--fg-2); }
+
+/* ---------- Assistant « nouvelle surveillance » ---------- */
+.svWiz { display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 12px; border: 1px solid var(--accent); background: #3b82f60d; align-self: stretch; }
+.svWiz[hidden] { display: none; }
+.svWiz > header, .svWiz > footer { display: flex; align-items: center; gap: 6px; }
+.svWiz > header b { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; } .svWiz > header .ic { width: 14px; height: 14px; color: var(--accent); }
+.svWiz > header .tb { width: 24px; height: 24px; }
+.svWiz h4 { margin: 0; font-size: 14px; color: var(--fg); }
+.svDots { list-style: none; margin: 0; padding: 0; display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); }
+.svDots li { display: inline-flex; align-items: center; gap: 5px; }
+.svDots span { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-2); font: 700 10.5px var(--mono); }
+.svDots span .ic { width: 11px; height: 11px; }
+.svDots li.cur { color: var(--fg); } .svDots li.cur span { border-color: var(--accent); color: var(--accent); }
+.svDots li.done span { background: #3fb27f; border-color: #3fb27f; color: #0f1418; }
+.svThings { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.svThing, .svProb { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 10px; background: var(--raise); border: 1px solid var(--line-2); cursor: pointer; min-width: 0; }
+.svThing:hover, .svProb:hover, .svThing:focus-visible, .svProb:focus-visible { border-color: var(--accent); }
+.svThing .ic { width: 16px; height: 16px; color: var(--accent); }
+.svThing b, .svProb b { font-size: 12.5px; color: var(--fg); overflow: hidden; text-overflow: ellipsis; }
+.svThing small { font: 500 11px var(--mono); color: var(--muted); }
+.svProbs { display: flex; flex-direction: column; gap: 6px; }
+.svProb small { font-size: 11.5px; line-height: 1.4; color: var(--fg-2); }
+.svProb.on { border-color: var(--accent); background: #3b82f61a; }
+.svFields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.svFields .svF { font-size: 12px; color: var(--fg-2); }
+.svIn { display: flex; align-items: center; gap: 6px; } .svIn .inp { flex: 1 1 auto; } .svIn i { font-style: normal; color: var(--muted); }
+.svSummary { margin: 0; padding: 10px 12px; border-radius: 10px; background: var(--raise); font-size: 13.5px; line-height: 1.5; color: var(--fg); border-left: 3px solid var(--accent); }
