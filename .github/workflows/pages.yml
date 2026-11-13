@@ -1,0 +1,55 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+#
+# Site de présentation (dossier site/, statique, bilingue) publié sur GitHub Pages à chaque poussée sur main qui le
+# modifie, ou à la main (Actions → Site → Run workflow). Aucune construction : le dossier est publié tel quel.
+# Réglage du dépôt : Settings → Pages → Source = « GitHub Actions ».
+name: Site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'site/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Une seule publication à la fois ; une publication en cours n'est pas annulée.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Vérifier le site (fichiers référencés présents)
+        run: |
+          set -e
+          cd site
+          missing=0
+          for f in $(grep -oE '(src|href|poster)="assets/[^"]+"' index.html | sed -E 's/^[a-z]+="//; s/"$//' | sort -u); do
+            [ -f "$f" ] || { echo "manquant : $f"; missing=1; }
+          done
+          for l in fr en; do
+            for f in assets/video/jollof-$l.mp4 assets/img/poster-$l.jpg; do [ -f "$f" ] || { echo "manquant : $f"; missing=1; }; done
+            for s in $(grep -oE 'data-img="[a-z]+"' index.html | sed -E 's/data-img="//; s/"//' | sort -u); do
+              [ -f "assets/img/$s-$l.jpg" ] || { echo "manquant : assets/img/$s-$l.jpg"; missing=1; }
+            done
+          done
+          exit $missing
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deployment
+        uses: actions/deploy-pages@v4

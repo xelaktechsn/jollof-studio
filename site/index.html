@@ -1,0 +1,320 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!-- Copyright (C) 2026 Mamadou Sarr -->
+<!-- Site de présentation de Jollof Studio (édition gratuite). Texte français dans la page, anglais dans i18n.js. -->
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jollof Studio — un labo d’électronique, sans labo</title>
+  <meta name="description" content="Jollof Studio : application gratuite et open source pour câbler, programmer et simuler l’électronique, la logique, la pneumatique et l’électropneumatique en 3D, avec un vérificateur qui prouve que rien ne grille et 57 TP guidés.">
+  <meta name="theme-color" content="#0b0e11">
+  <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
+  <link rel="alternate" hreflang="fr" href="https://xelaktechsn.github.io/jollof-studio/?lang=fr">
+  <link rel="alternate" hreflang="en" href="https://xelaktechsn.github.io/jollof-studio/?lang=en">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Jollof Studio — un labo d’électronique, sans labo">
+  <meta property="og:description" content="Électronique, logique, pneumatique et électropneumatique en 3D. Gratuit et open source.">
+  <meta property="og:image" content="https://xelaktechsn.github.io/jollof-studio/assets/img/poster-fr.jpg">
+  <meta property="og:url" content="https://xelaktechsn.github.io/jollof-studio/">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preload" href="assets/fonts/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Aller au contenu</a>
+
+  <header class="nav" id="top">
+    <div class="wrap navIn">
+      <a class="brand" href="#top" aria-label="Jollof Studio">
+        <img src="assets/img/icon.svg" alt="" width="34" height="34">
+        <img class="wm" src="assets/img/logo-dark.svg" alt="Jollof Studio" width="150" height="25">
+      </a>
+      <nav class="links" aria-label="Sections" id="links">
+        <a href="#features" data-i18n="nav.features">Fonctions</a>
+        <a href="#video" data-i18n="nav.video">Vidéo</a>
+        <a href="#labs" data-i18n="nav.labs">TP</a>
+        <a href="#start" data-i18n="nav.start">Démarrer</a>
+        <a href="#open" data-i18n="nav.open">Open source</a>
+      </nav>
+      <div class="navEnd">
+        <div class="lang" role="group" aria-label="Langue / Language">
+          <button type="button" data-lang="fr" aria-pressed="true">FR</button>
+          <button type="button" data-lang="en" aria-pressed="false">EN</button>
+        </div>
+        <a class="gh" href="https://github.com/xelaktechsn/jollof-studio" aria-label="GitHub">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
+        </a>
+        <button type="button" class="menu" aria-controls="links" aria-expanded="false" aria-label="Menu"><span></span><span></span></button>
+      </div>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Accroche -->
+    <section class="hero">
+      <svg class="traces" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+        <path d="M0 90H180L240 150H330"/><path d="M0 300H120L170 250H290"/><path d="M0 470H210L260 420H340"/><path d="M1000 110H830L770 170H690"/>
+        <path d="M1000 300H880L840 340H720"/><path d="M1000 500H800L750 450H660"/><path d="M300 0V60L350 110V150"/><path d="M700 600V540L650 490V450"/>
+        <circle cx="330" cy="150" r="5"/><circle cx="290" cy="250" r="5"/><circle cx="340" cy="420" r="5"/><circle cx="690" cy="170" r="5"/><circle cx="720" cy="340" r="5"/><circle cx="660" cy="450" r="5"/>
+      </svg>
+      <div class="wrap heroIn">
+        <p class="badge"><span class="led" aria-hidden="true"></span><span data-i18n="hero.badge">Gratuit · Open source · AGPL-3.0</span></p>
+        <h1><span data-i18n="hero.h1a">Un labo d’électronique.</span> <em data-i18n="hero.h1b">Sans labo.</em></h1>
+        <p class="lead" data-i18n="hero.lead">Câblez, programmez et simulez l’électronique, la logique, la pneumatique et l’électropneumatique en 3D. Un vérificateur prouve que rien ne grille avant de passer à une vraie carte.</p>
+        <div class="ctas">
+          <a class="btn primary" href="#start" data-i18n="hero.cta1">Démarrer</a>
+          <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio" data-i18n="hero.cta2">Code source</a>
+        </div>
+        <div class="term" aria-label="Terminal">
+          <div class="termBar"><i></i><i></i><i></i></div>
+          <pre><code><span class="p">$</span> git clone https://github.com/xelaktechsn/jollof-studio
+<span class="p">$</span> cd jollof-studio &amp;&amp; npm install
+<span class="p">$</span> npm run tauri dev</code></pre>
+          <button type="button" class="copy" data-copy="git clone https://github.com/xelaktechsn/jollof-studio&#10;cd jollof-studio && npm install&#10;npm run tauri dev" data-i18n="copy">Copier</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Vidéo -->
+    <section class="video" id="video">
+      <div class="wrap">
+        <div class="frame">
+          <video controls playsinline preload="none" poster="assets/img/poster-fr.jpg" data-video aria-label="Jollof Studio en 21 secondes">
+            <source src="assets/video/jollof-fr.mp4" type="video/mp4">
+          </video>
+        </div>
+        <p class="cap" data-i18n="video.cap">21 secondes, tournées dans l’application réelle.</p>
+      </div>
+    </section>
+
+    <!-- Pourquoi -->
+    <section class="why">
+      <div class="wrap two">
+        <div>
+          <p class="kicker" data-i18n="why.k">Pourquoi</p>
+          <h2 data-i18n="why.h">La salle de TP quand il n’y a pas de matériel</h2>
+        </div>
+        <div class="prose">
+          <p data-i18n="why.p1">Beaucoup d’élèves et d’apprentis ingénieurs n’ont ni paillasse, ni cartes, ni vérins. Jollof Studio leur donne tout cela sur un ordinateur, même ancien : on câble, on programme, on simule et on mesure comme en vrai.</p>
+          <p data-i18n="why.p2">Comme le compilateur Rust refuse un programme dangereux, Jollof Studio ne laisse rien partir vers le monde réel tant que le montage ou son programme ont une erreur. La simulation, elle, montre les fautes : c’est en voyant fumer qu’on apprend.</p>
+        </div>
+      </div>
+      <div class="wrap stats">
+        <div><b>111</b><span data-i18n="stats.parts">composants</span></div>
+        <div><b>57</b><span data-i18n="stats.labs">TP guidés et vérifiés</span></div>
+        <div><b>5</b><span data-i18n="stats.kinds">types de projet</span></div>
+        <div><b>10</b><span data-i18n="stats.boards">cartes : Arduino, ESP32, Pico…</span></div>
+        <div><b>FR · EN</b><span data-i18n="stats.langs">interface bilingue</span></div>
+      </div>
+    </section>
+
+    <!-- Fonctions -->
+    <section class="features" id="features">
+      <div class="wrap">
+        <p class="kicker center" data-i18n="feat.k">Fonctions</p>
+        <h2 class="center" data-i18n="feat.h">Tout un laboratoire dans une seule application</h2>
+        <div class="grid">
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
+            <h3 data-i18n="f1.h">Montage en 3D</h3>
+            <p data-i18n="f1.p">Breadboards, cartes et capteurs en 3D, câblage direct ou automatique, courant animé dans les fils, vue schéma en direct.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
+            <h3 data-i18n="f2.h">Vérificateur</h3>
+            <p data-i18n="f2.p">Chaque état atteignable est essayé et comparé aux fiches techniques. Diagnostics à la manière de rustc, avec code, cause et correction en un clic.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 4l-4 16"/></svg>
+            <h3 data-i18n="f3.h">Programmation</h3>
+            <p data-i18n="f3.p">Règles « quand… alors… », blocs ou C++ Arduino ; MicroPython sur le Pico ; débogueur pas à pas, traceur et moniteur série.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5a5 5 0 0 1 0 10H3zM8 13h3M14 9h3M14 17h3M17 9v8M17 13h4"/></svg>
+            <h3 data-i18n="f4.h">Logique numérique</h3>
+            <p data-i18n="f4.p">51 éléments : portes, bascules, compteurs, mémoires, bus, afficheurs. Table de vérité et chronogramme, blocs réutilisables.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="14" height="8" rx="1"/><path d="M8 12h14M5 8v8"/></svg>
+            <h3 data-i18n="f5.h">Pneumatique et GRAFCET</h3>
+            <p data-i18n="f5.p">Distributeurs, vérins, capteurs, symboles inspirés de l’ISO 1219, GRAFCET qui génère le programme et machine en 3D qui bouge.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 14h6v6h-6zM10 7h4a3 3 0 0 1 3 3v4M7 10v4a3 3 0 0 0 3 3h4"/></svg>
+            <h3 data-i18n="f6.h">Électropneumatique</h3>
+            <p data-i18n="f6.p">Une carte commande une machine pneumatique : vue partagée, électrovannes 24 V, capteurs de fin de course, tout simulé ensemble.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <h3 data-i18n="f7.h">Supervision MA-ISA</h3>
+            <p data-i18n="f7.p">Un gardien observe le circuit à chaque pas et demande la mise en sécurité quand un vérin se bloque. Trois questions suffisent pour le régler.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="m9 9 2 2 4-4"/></svg>
+            <h3 data-i18n="f8.h">57 TP guidés</h3>
+            <p data-i18n="f8.p">Électronique, pneumatique et logique, avec étapes vérifiées automatiquement, quiz, mesures et un tutoriel qui part de zéro.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
+            <h3 data-i18n="f9.h">Vraies cartes</h3>
+            <p data-i18n="f9.p">Téléversement par USB avec arduino-cli, moniteur série, Firmata, guide de montage en PDF, export KiCad. Bloqué tant qu’une erreur reste.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3l2-6 4 12 3-9 2 3h6"/></svg>
+            <h3 data-i18n="f10.h">Lab analogique</h3>
+            <p data-i18n="f10.p">NE555, amplis, MOSFET, bobines, générateur et oscilloscope ; formes d’onde rapides calculées par ngspice.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>
+            <h3 data-i18n="f11.h">Assistants IA</h3>
+            <p data-i18n="f11.p">Claude, Cursor, VS Code… pilotent l’application par le protocole MCP : poser, câbler, vérifier, simuler. Désactivé par défaut, local seulement.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+            <h3 data-i18n="f12.h">Vieux ordinateurs</h3>
+            <p data-i18n="f12.p">Mode léger automatique, rendu à la demande, démarrage rapide. Windows, macOS et Linux.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Démonstrations -->
+    <section class="show">
+      <div class="wrap">
+        <div class="row">
+          <div class="txt">
+            <p class="kicker" data-i18n="s1.k">Électronique</p>
+            <h2 data-i18n="s1.h">Câblez et programmez en 3D</h2>
+            <p data-i18n="s1.p">Posez un ESP32, un capteur et un écran, reliez les broches : l’application choisit la bonne broche, écrit le code et fait tourner le programme en temps virtuel. Les mesures s’affichent en direct.</p>
+            <ul class="ticks"><li data-i18n="s1.l1">Arduino Uno, Nano, Mega, ESP32, ESP8266, Pico</li><li data-i18n="s1.l2">Mode « Fidèle » : le vrai programme compilé</li><li data-i18n="s1.l3">Export vidéo pédagogique image par image</li></ul>
+          </div>
+          <figure class="shot"><img data-img="bench" src="assets/img/bench-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+        <div class="row rev">
+          <div class="txt">
+            <p class="kicker" data-i18n="s2.k">Vérificateur</p>
+            <h2 data-i18n="s2.h">Il prouve que rien ne grille</h2>
+            <p data-i18n="s2.p">Boutons appuyés ou relâchés, relais collés, potentiomètres aux butées, chaque sortie à LOW et à HIGH : dans chaque état, le circuit est calculé et chaque composant comparé à ses valeurs nominales.</p>
+            <pre class="diag"><code><b class="e">erreur[J0301]</b>: <span data-i18n="s2.d1">LED1 traversée par 75 mA (30 mA au plus)</span>
+  <i>--&gt;</i> <span data-i18n="s2.d2">quand UNO D7 = HIGH</span>
+  <i>=</i> <span data-i18n="s2.d3">aide : ajoutez une résistance de 220 Ω</span></code></pre>
+          </div>
+          <figure class="shot"><img data-img="check" src="assets/img/check-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+        <div class="row">
+          <div class="txt">
+            <p class="kicker" data-i18n="s3.k">Électropneumatique</p>
+            <h2 data-i18n="s3.h">Électronique et pneumatique, ensemble</h2>
+            <p data-i18n="s3.p">Le montage à gauche, le schéma pneumatique à droite : la carte commande l’électrovanne, le vérin sort, son capteur répond au programme. Le projet dit lui-même quels plans de travail il montre.</p>
+          </div>
+          <figure class="shot"><img data-img="epneu" src="assets/img/epneu-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+        <div class="row rev">
+          <div class="txt">
+            <p class="kicker" data-i18n="s4.k">GRAFCET et 3D</p>
+            <h2 data-i18n="s4.h">Une machine qui bouge vraiment</h2>
+            <p data-i18n="s4.p">Écrivez le GRAFCET, l’application en tire le programme. Porte de TER, pantographe, porte de bus : la machine en 3D suit le vérin, étape par étape.</p>
+          </div>
+          <figure class="shot"><img data-img="door" src="assets/img/door-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+        <div class="row">
+          <div class="txt">
+            <p class="kicker" data-i18n="s5.k">Logique</p>
+            <h2 data-i18n="s5.h">Des portes jusqu’à la mémoire</h2>
+            <p data-i18n="s5.p">Un plan de travail 2D pour les circuits logiques : horloges, compteurs, ROM, bus et afficheurs, avec des TP qui vérifient la table de vérité, la chronologie ou l’équation.</p>
+          </div>
+          <figure class="shot"><img data-img="logic" src="assets/img/logic-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+        <div class="row rev">
+          <div class="txt">
+            <p class="kicker" data-i18n="s6.k">Supervision MA-ISA</p>
+            <h2 data-i18n="s6.h">Un gardien qui met en sécurité</h2>
+            <p data-i18n="s6.p">Le moniteur suit le circuit pendant la simulation, sans rien y changer. Un vérin bloqué ? Il demande l’état sûr et guide la reprise en trois étapes. Le calcul vient de la caisse Rust publiée maisa-core.</p>
+            <ul class="ticks"><li data-i18n="s6.l1">Quoi surveiller, quel problème, vérifier : trois questions</li><li data-i18n="s6.l2">Démonstration prête à lancer</li><li data-i18n="s6.l3">Pannes simulées pour s’entraîner</li></ul>
+          </div>
+          <figure class="shot"><img data-img="superv" src="assets/img/superv-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- TP -->
+    <section class="labs" id="labs">
+      <div class="wrap two">
+        <div class="txt">
+          <p class="kicker" data-i18n="labs.k">Travaux pratiques</p>
+          <h2 data-i18n="labs.h">57 TP guidés, vérifiés pas à pas</h2>
+          <p data-i18n="labs.p">Chaque étape est validée par l’application : un fil posé, une mesure juste, une sortie qui s’allume. Les TP « À retenir » résument l’essentiel, et un tutoriel monte un premier projet électropneumatique à partir de zéro.</p>
+          <div class="pills">
+            <span><b>28</b> <span data-i18n="labs.e">électronique</span></span>
+            <span><b>15</b> <span data-i18n="labs.n">pneumatique, avec machine 3D</span></span>
+            <span><b>14</b> <span data-i18n="labs.l">logique</span></span>
+          </div>
+          <p class="note" data-i18n="labs.t">Des TP tirés du transport : pantographe du TER, porte de bus du BRT, passage à niveau, feu prioritaire, compteur de voyageurs.</p>
+        </div>
+        <figure class="shot"><img data-img="labs" src="assets/img/labs-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+      </div>
+    </section>
+
+    <!-- Démarrer -->
+    <section class="start" id="start">
+      <div class="wrap">
+        <p class="kicker center" data-i18n="start.k">Démarrer</p>
+        <h2 class="center" data-i18n="start.h">Installez-le, ou construisez-le</h2>
+        <div class="cols">
+          <div class="card big">
+            <h3 data-i18n="start.d.h">Télécharger</h3>
+            <p data-i18n="start.d.p">Les installateurs de Windows, macOS et Linux sont publiés sur la page des versions du dépôt. L’installateur Windows demande la langue.</p>
+            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="start.d.b">Voir les versions</a>
+          </div>
+          <div class="card big">
+            <h3 data-i18n="start.s.h">Depuis les sources</h3>
+            <p data-i18n="start.s.p">Il faut Node.js 20 ou plus récent et Rust. Sous Linux, les bibliothèques de WebKitGTK ; sous macOS, les outils Xcode.</p>
+            <pre class="code"><code>npm install
+npm run tauri dev    <span class="c" data-i18n="start.s.c1"># lancer l’application</span>
+npm run tauri build  <span class="c" data-i18n="start.s.c2"># installateurs</span></code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Open source -->
+    <section class="open" id="open">
+      <div class="wrap two">
+        <div>
+          <p class="kicker" data-i18n="open.k">Open source</p>
+          <h2 data-i18n="open.h">Libre, et le restera</h2>
+          <p data-i18n="open.p">Jollof Studio est publié sous licence AGPL-3.0 : utilisez-le, étudiez-le, améliorez-le. Les contributions sont bienvenues ; une licence commerciale existe pour qui ne peut pas suivre l’AGPL.</p>
+          <div class="ctas left">
+            <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio/blob/main/CONTRIBUTING.md" data-i18n="open.c">Contribuer</a>
+            <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio/issues" data-i18n="open.i">Signaler un problème</a>
+          </div>
+        </div>
+        <div>
+          <p class="kicker" data-i18n="built.k">Construit avec</p>
+          <ul class="stack">
+            <li>Tauri 2</li><li>Rust</li><li>Three.js</li><li>ngspice</li><li>rp2040js</li><li>MicroPython</li><li>maisa-core</li><li>Blockly</li><li>arduino-cli</li><li>Vite</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <div class="wrap footIn">
+      <div>
+        <img src="assets/img/logo-dark.svg" alt="Jollof Studio" width="170" height="28">
+        <p data-i18n="foot.t">Un labo d’électronique, sans labo.</p>
+      </div>
+      <div class="fcols">
+        <div><h4 data-i18n="foot.p">Projet</h4><a href="https://github.com/xelaktechsn/jollof-studio">GitHub</a><a href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="foot.r">Versions</a><a href="https://github.com/xelaktechsn/jollof-studio/issues" data-i18n="foot.i">Problèmes</a></div>
+        <div><h4 data-i18n="foot.d">Documentation</h4><a href="https://github.com/xelaktechsn/jollof-studio#readme" data-i18n="foot.readme">Lisez-moi</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/PROVEN.md" data-i18n="foot.proven">Ce que prouve le vérificateur</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/ARCHITECTURE.md" data-i18n="foot.arch">Architecture</a></div>
+        <div><h4 data-i18n="foot.l">Licence</h4><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/LICENSE">AGPL-3.0</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/COMMERCIAL.md" data-i18n="foot.com">Licence commerciale</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/THIRD_PARTY.md" data-i18n="foot.third">Logiciels tiers</a></div>
+      </div>
+    </div>
+    <div class="wrap legal"><span>© 2026 Mamadou Sarr · Xelaktech</span><a href="#top" data-i18n="foot.top">Haut de page ↑</a></div>
+  </footer>
+  <script src="i18n.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
