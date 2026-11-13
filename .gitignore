@@ -14,3 +14,6 @@ coverage/
 src/pro/
 # Construction locale de QEMU (scripts/esp32-qemu/build-qemu.sh)
 qemu-build/
+
+# Vidéo de présentation : sorties et fichiers de travail (la vidéo publiée est copiée dans site/)
+brag-output/

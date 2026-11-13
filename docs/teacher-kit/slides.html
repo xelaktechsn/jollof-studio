@@ -11,7 +11,7 @@
    1280 × 720 px (16:9), mises à l'échelle de la fenêtre ; une diapositive par page à l'impression. */
 :root {
   --paper: #faf8f4; --ink: #1c2127; --muted: #56606a; --line: #ddd5c8; --soft: #f2ebe1;
-  --accent: #c2541c; --accent-2: #e0703a; --ok: #1d7a4f; --ok-soft: #e3f2ea; --warn: #9a620e; --warn-soft: #fbf0d9;
+  --accent: #1d4ed8; --accent-2: #3b82f6; --ok: #1d7a4f; --ok-soft: #e3f2ea; --warn: #9a620e; --warn-soft: #fbf0d9;
   --err: #b0331d; --err-soft: #f9e2dc; --code-bg: #1f252b; --code-ink: #e6e9eb; --back: #2b3036;
   --sans: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, "Noto Sans", "Helvetica Neue", Arial, sans-serif;
   --mono: ui-monospace, "Cascadia Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
@@ -69,7 +69,7 @@ tbody tr:nth-child(odd) td { background: rgba(242, 235, 225, .55); }
 td.time { white-space: nowrap; font-family: var(--mono); font-size: 17px; color: var(--accent); font-weight: 700; }
 pre { margin: 0; background: var(--code-bg); color: var(--code-ink); border-radius: 10px; padding: 12px 16px; font: 16px/1.45 var(--mono); white-space: pre; overflow: hidden; }
 pre .c { color: #8fa1ad; }
-pre .k { color: #f0a36b; }
+pre .k { color: #93c5fd; }
 /* Repères numérotés posés sur une capture */
 .mark { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border-radius: 50%; background: var(--accent-2); color: #fff;
   font: 700 19px/34px var(--sans); text-align: center; box-shadow: 0 0 0 3px #fff, 0 3px 8px rgba(0, 0, 0, .35); }
@@ -95,7 +95,7 @@ pre .k { color: #f0a36b; }
 .ui.notes { left: 50%; transform: translateX(-50%); bottom: 40px; width: min(980px, 94vw); max-height: 38vh; overflow: auto; background: rgba(20, 23, 27, .94);
   border: 1px solid #444b52; border-radius: 10px; padding: 14px 18px; font-size: 16px; line-height: 1.45; display: none; }
 .ui.notes.on { display: block; }
-.ui.notes h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #f0a36b; }
+.ui.notes h4 { margin: 0 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .08em; color: #93c5fd; }
 aside.notes { display: none; }
 @media print {
   @page { size: 13.333in 7.5in; margin: 0; }
@@ -218,7 +218,7 @@ aside.notes { display: none; }
       <li><b>Bas du plan</b> : vues, rendu Simple / Réaliste, Instruments, Courant, mode léger ⚡.</li>
     </ol>
   </div>
-  <aside class="notes">Ouvrir <code>projets/02-feu-tricolore.jollof</code> (Ctrl+O) et montrer chaque zone en direct. Les captures viennent de l’édition Pro (badge « PRO » en haut à gauche) ; l’édition gratuite a les mêmes écrans, seuls quelques boutons marqués d’un cadenas diffèrent (Enseigner, Guide de montage, téléversement sur une carte).</aside>
+  <aside class="notes">Ouvrir <code>projets/02-feu-tricolore.jollof</code> (Ctrl+O) et montrer chaque zone en direct. Les captures viennent de l’édition Pro (badge « PRO » en haut à gauche) ; l’édition gratuite a les mêmes écrans, sans les boutons Classe et Enseigner (espace classe et mode Enseignement : les seules fonctions de l’édition Pro).</aside>
 </section>
 
 <!-- 6 ---------------------------------------------------------------- -->
@@ -291,7 +291,7 @@ aside.notes { display: none; }
       <p><span class="chip ok">✓ Vérifié</span> <span class="chip err">✕ 5 erreurs</span> <span class="chip warn">! 1 avertissement</span></p>
       <ul class="small">
         <li><kbd>F7</kbd> ouvre le rapport : un code stable (<code>J0301</code>…), l’endroit, <b>l’état qui déclenche la faute</b> (« BTN1 appuyé »), une aide, souvent une correction en un clic.</li>
-        <li><b>Erreur</b> : jamais acceptée. Elle bloque l’envoi d’une copie et le téléversement sur une vraie carte (Pro).</li>
+        <li><b>Erreur</b> : jamais acceptée. Elle bloque l’envoi d’une copie et le téléversement sur une vraie carte.</li>
         <li><b>Avertissement</b> : peut être accepté <b>avec une raison écrite</b>, gardée dans le projet et affichée dans le rapport.</li>
         <li>La simulation tourne quand même : voir fumer, c’est aussi apprendre.</li>
       </ul>
@@ -525,7 +525,7 @@ aside.notes { display: none; }
         <li>L’envoi est <b>bloqué tant qu’une erreur reste</b> (sauf l’envoi automatique à l’échéance).</li>
         <li>Montage corrigé automatiquement ; note et commentaires de l’enseignant.</li>
       </ul>
-      <p class="xsmall muted">Élèves : édition gratuite. Créer classes et devoirs, corriger, « Envoyer ce TP à une classe » : édition Pro.</p>
+      <p class="xsmall muted">Espace classe (élèves et enseignants), « Envoyer ce TP à une classe » : édition Pro.</p>
     </div>
   </div>
   <aside class="notes">Pour démarrer, la voie hors ligne suffit : compte-rendu PDF du TP et fichier .jollof. L’espace classe demande un serveur, sur Internet ou sur un boîtier dans l’établissement (diapositive suivante).</aside>

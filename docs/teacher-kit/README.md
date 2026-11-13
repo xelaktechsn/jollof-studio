@@ -156,11 +156,10 @@ Mesure : la vidéo du projet 02 (80 s, 720p) pèse 28 Mo ; recompressée avec `f
 ## À savoir sur les captures d’écran
 
 Les captures ont été prises avec la version de développement de l’**édition Pro** (badge « PRO »
-en haut à gauche, interface en français). L’édition gratuite a les mêmes écrans ; seuls quelques
-boutons diffèrent et portent un cadenas : *Enseigner*, *Guide de montage*, téléversement sur une
-vraie carte. Les fonctions présentées dans les ateliers sont toutes dans l’édition gratuite. Créer
-des classes et des devoirs dans l’espace classe demande l’édition Pro ; les élèves utilisent
-l’édition gratuite.
+en haut à gauche, interface en français). L’édition gratuite a les mêmes écrans, sans les boutons
+*Classe* et *Enseigner* : l’espace classe et le mode Enseignement sont les seules fonctions de
+l’édition Pro. Tout le reste présenté dans les ateliers (simulation, vérificateur, TP, guide de
+montage, téléversement sur une vraie carte) est dans l’édition gratuite.
 
 ## Licence et crédit
 
