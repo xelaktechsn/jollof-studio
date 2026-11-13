@@ -10,7 +10,7 @@ import { analyze, inspect, bbGroups } from '../sim/circuit.js';
 import { generate } from '../prog/rules.js';
 import { pkgPins } from '../sim/pkgparts.js';
 
-const LEGS = { diode: ['A', 'K'], 'cap-100n': ['1', '2'], 'cap-100u': ['+', '-'], npn: ['C', 'B', 'E'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'] };
+const LEGS = { diode: ['A', 'K'], 'cap-100n': ['1', '2'], 'cap-100u': ['+', '-'], npn: ['C', 'B', 'E'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], psu24: ['+', '-'], bat9v: ['+', '-'], bat18650: ['+', '-'] };
 /** Broches d'un type de composant, comme les crée l'application. */
 export function pinKeys(type) {
   const prof = BOARDS[type];
@@ -22,6 +22,13 @@ export function pinKeys(type) {
   const sp = PARTS[type];
   return sp && sp.pins ? sp.pins.map(p => p.pin) : [];
 }
+
+/**
+ * Nombre de broches d'un composant de la bibliothèque, pour sa fiche : sans construire son modèle 3D (le démarrage
+ * n'en construit aucun). Les cartes le donnent dans leur entrée (pins : broches de leurs connecteurs), les autres
+ * types ont exactement les broches de pinKeys (vérifié contre les modèles 3D par src/sim/autowire.test.mjs).
+ */
+export const pinCountOf = e => e.pins ?? pinKeys(e.id).length;
 
 /**
  * data : projet (comps, wires, settings) ; code : { NOM_DE_CARTE: texte } (solution d'un TP) facultatif.

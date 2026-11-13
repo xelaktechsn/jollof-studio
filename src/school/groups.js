@@ -3,7 +3,7 @@
 // Groupes de travail (créés par les élèves d'une même classe, ou par l'enseignant) et leurs
 // projets partagés : chaque enregistrement est une version ; une seule personne a la main à la
 // fois (verrou de 2 minutes, renouvelé tant qu'elle travaille), les autres ouvrent en lecture.
-import { tl } from '../i18n/index.js';
+import { tl, CANCEL } from '../i18n/index.js';
 import * as api from './api.js';
 import * as rt from './rt.js';
 import { icon, esc, avatar, avatars, relTime, dateTime, empty, toast, confirm, dialog, ask, COLORS } from './ui.js';
@@ -43,7 +43,7 @@ export function installGroups(hub, sessions) {
       <div class="sField"><span>${tl('Membres ({0} au plus, vous compris)', detail.settings.maxGroupSize)}</span><div class="pickList checks">${others().map(m => `<label class="pick">${me.role === 'student' || true ? `<input type="checkbox" value="${m.userId}">` : ''}${avatar(m, 28)}<span><b>${esc(m.displayName)}</b></span></label>`).join('') || `<p class="muted">${tl('Aucun autre élève dans cette classe.')}</p>`}</div></div><p class="formErr" hidden></p>`;
     const g = await dialog({
       title: tl('Nouveau groupe'), width: 460, body: body(),
-      actions: [{ label: tl('Annuler'), value: null }, { label: tl('Créer le groupe'), value: 'ok', kind: 'primary' }],
+      actions: [{ label: CANCEL, value: null }, { label: tl('Créer le groupe'), value: 'ok', kind: 'primary' }],
       onOpen: el => {
         el.addEventListener('click', e => { const s = e.target.closest('[data-c]'); if (s) { color = s.dataset.c; el.querySelectorAll('.swatch').forEach(x => x.classList.toggle('on', x === s)); } });
         el.addEventListener('change', async e => { if (e.target.dataset.f === 'cls') { cls = classes.find(c => c.id === e.target.value); detail = await api.get(`/classrooms/${cls.id}`); el.innerHTML = body(); } });
@@ -80,7 +80,7 @@ export function installGroups(hub, sessions) {
     if (q('[data-add]')) q('[data-add]').onclick = async () => {
       const cand = c.members.filter(m => m.role === 'student' && !group.members.some(x => x.userId === m.userId));
       if (!cand.length) { toast(tl('Tous les élèves de la classe sont déjà dans le groupe.'), 'warn'); return; }
-      const ids = await dialog({ title: tl('Ajouter des membres'), width: 420, body: `<div class="pickList checks">${cand.map(m => `<label class="pick"><input type="checkbox" value="${m.userId}">${avatar(m, 28)}<span><b>${esc(m.displayName)}</b></span></label>`).join('')}</div>`, actions: [{ label: tl('Annuler'), value: null }, { label: tl('Ajouter'), value: 'ok', kind: 'primary' }], onAction: (v, el) => (v === 'ok' ? [...el.querySelectorAll('input:checked')].map(i => i.value) : undefined) });
+      const ids = await dialog({ title: tl('Ajouter des membres'), width: 420, body: `<div class="pickList checks">${cand.map(m => `<label class="pick"><input type="checkbox" value="${m.userId}">${avatar(m, 28)}<span><b>${esc(m.displayName)}</b></span></label>`).join('')}</div>`, actions: [{ label: CANCEL, value: null }, { label: tl('Ajouter'), value: 'ok', kind: 'primary' }], onAction: (v, el) => (v === 'ok' ? [...el.querySelectorAll('input:checked')].map(i => i.value) : undefined) });
       if (ids && ids.length) { try { await api.post(`/groups/${group.id}/members`, { userIds: ids }); hub.go('group', ctx.params); } catch (e) { toast(api.errorText(e), 'err'); } }
     };
     ctx.el.querySelectorAll('[data-rm]').forEach(b => (b.onclick = async () => { if (await confirm(tl('Retirer du groupe'), tl('Cette personne n’aura plus accès aux projets du groupe.'), tl('Retirer'), true)) { await api.del(`/groups/${group.id}/members/${b.dataset.rm}`).catch(e => toast(api.errorText(e), 'err')); hub.go('group', ctx.params); } }));
@@ -105,7 +105,7 @@ export function installGroups(hub, sessions) {
       title: tl('Nouveau projet partagé'), width: 440,
       body: `<label class="sField"><span>${tl('Titre')}</span><input class="sInput" data-f="t" maxlength="80" value="${esc(app.projectTitle())}"></label><label class="sField"><span>${tl('Description (facultatif)')}</span><textarea class="sInput" data-f="d" rows="2" maxlength="500"></textarea></label>
         <div class="sField"><span>${tl('Contenu de départ')}</span><label class="radioRow"><input type="radio" name="src" value="mine" checked><span><b>${tl('Mon montage actuel')}</b><small>${tl('{0} composants, {1} fils', app.comps().length, app.wires().length)}</small></span></label><label class="radioRow"><input type="radio" name="src" value="empty"><span><b>${tl('Projet vide')}</b></span></label></div>`,
-      actions: [{ label: tl('Annuler'), value: null }, { label: tl('Créer'), value: 'ok', kind: 'primary' }],
+      actions: [{ label: CANCEL, value: null }, { label: tl('Créer'), value: 'ok', kind: 'primary' }],
       onAction: async (v, el) => {
         if (v !== 'ok') return;
         const title = el.querySelector('[data-f="t"]').value.trim(); if (!title) return false;
@@ -138,7 +138,7 @@ export function installGroups(hub, sessions) {
       catch (e) {
         if (e.code !== 'LOCKED') { toast(api.errorText(e), 'err'); return; }
         const holder = (e.body && e.body.lock) || p.lock || {};
-        const choice = await dialog({ title: tl('Projet utilisé'), body: `<p class="dlgText">${tl('{0} a la main sur « {1} » en ce moment.', `<b>${esc(holder.displayName || '?')}</b>`, esc(p.title))}</p><p class="muted">${tl('Vous pouvez l’ouvrir en lecture, ou prendre la main : {0} ne pourra plus enregistrer.', esc(holder.displayName || ''))}</p>`, actions: [{ label: tl('Annuler'), value: null }, { label: tl('Ouvrir en lecture'), value: 'read' }, { label: tl('Prendre la main'), value: 'force', kind: 'primary' }] });
+        const choice = await dialog({ title: tl('Projet utilisé'), body: `<p class="dlgText">${tl('{0} a la main sur « {1} » en ce moment.', `<b>${esc(holder.displayName || '?')}</b>`, esc(p.title))}</p><p class="muted">${tl('Vous pouvez l’ouvrir en lecture, ou prendre la main : {0} ne pourra plus enregistrer.', esc(holder.displayName || ''))}</p>`, actions: [{ label: CANCEL, value: null }, { label: tl('Ouvrir en lecture'), value: 'read' }, { label: tl('Prendre la main'), value: 'force', kind: 'primary' }] });
         if (!choice) return;
         if (choice === 'force') { try { lock = await api.post(`/projects/${p.id}/lock`, { force: true }); } catch (err) { toast(api.errorText(err), 'err'); return; } }
         else readOnly = true;
@@ -208,7 +208,7 @@ export function installGroups(hub, sessions) {
       },
       beforeEnd: async () => {
         if (readOnly || !dirty) return true;
-        const v = await dialog({ title: tl('Modifications non enregistrées'), body: `<p class="dlgText">${tl('Enregistrer une version avant de fermer le projet ?')}</p>`, actions: [{ label: tl('Annuler'), value: null }, { label: tl('Fermer sans enregistrer'), value: 'drop', kind: 'danger' }, { label: tl('Enregistrer'), value: 'save', kind: 'primary' }] });
+        const v = await dialog({ title: tl('Modifications non enregistrées'), body: `<p class="dlgText">${tl('Enregistrer une version avant de fermer le projet ?')}</p>`, actions: [{ label: CANCEL, value: null }, { label: tl('Fermer sans enregistrer'), value: 'drop', kind: 'danger' }, { label: tl('Enregistrer'), value: 'save', kind: 'primary' }] });
         if (!v) return false;
         if (v === 'save') return (await save()) === true;
         return true;

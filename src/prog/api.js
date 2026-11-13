@@ -107,10 +107,31 @@ export const BOARD_CONSTS = {
     T0: 4, T1: 0, T2: 2, T3: 15, T4: 13, T5: 12, T6: 14, T7: 27, T8: 33, T9: 32, DAC1: 25, DAC2: 26
   },
   nodemcu: { LED_BUILTIN: 2, D0: 16, D1: 5, D2: 4, D3: 0, D4: 2, D5: 14, D6: 12, D7: 13, D8: 15, A0: 17, RX: 3, TX: 1, SDA: 4, SCL: 5 },
-  pico: { LED_BUILTIN: 25, A0: 26, A1: 27, A2: 28, SDA: 4, SCL: 5 }
+  pico: { LED_BUILTIN: 25, A0: 26, A1: 27, A2: 28, SDA: 4, SCL: 5 },
+  // ESP32-S3 (variante esp32s3 du cœur arduino-esp32) : LED_BUILTIN désigne la LED RVB de la carte (48 + nombre de GPIO),
+  // A0 à A19 = GPIO 1 à 20, entrées tactiles T1 à T14 = GPIO 1 à 14.
+  esp32s3: {
+    LED_BUILTIN: 97, RGB_BUILTIN: 97, TX: 43, RX: 44, SDA: 8, SCL: 9, SS: 10, MOSI: 11, MISO: 13, SCK: 12,
+    ...Object.fromEntries(Array.from({ length: 20 }, (_, i) => [`A${i}`, i + 1])), ...Object.fromEntries(Array.from({ length: 14 }, (_, i) => [`T${i + 1}`, i + 1]))
+  },
+  // ESP32-C3 SuperMini (variante nologo_esp32c3_super_mini) : LED bleue sur GPIO 8.
+  esp32c3: { LED_BUILTIN: 8, TX: 21, RX: 20, SDA: 8, SCL: 9, SS: 7, MOSI: 6, MISO: 5, SCK: 4, A0: 0, A1: 1, A2: 2, A3: 3, A4: 4, A5: 5 },
+  mega: {
+    LED_BUILTIN: 13, ...Object.fromEntries(Array.from({ length: 16 }, (_, i) => [`A${i}`, 54 + i])),
+    SDA: 20, SCL: 21, SS: 53, MOSI: 51, MISO: 50, SCK: 52
+  }
 };
 /** Taille de int selon la carte : 16 bits sur les AVR, 32 bits ailleurs. */
-export const INT_BITS = { uno: 16, nano: 16 };
+export const INT_BITS = { uno: 16, nano: 16, mega: 16 };
+/**
+ * Cartes AVR : numéro de A0 (analogRead(0) lit A0), nombre d'entrées analogiques, broches des interruptions externes
+ * dans l'ordre de leur numéro (attachInterrupt(0, …) : la première) et taille de l'EEPROM en octets.
+ */
+export const AVR_INFO = {
+  uno: { a0: 14, an: 8, irq: [2, 3], ee: 1024 },
+  nano: { a0: 14, an: 8, irq: [2, 3], ee: 1024 },
+  mega: { a0: 54, an: 16, irq: [2, 3, 21, 20, 19, 18], ee: 4096 }
+};
 
 
 /**
@@ -140,8 +161,8 @@ const GFX = {
 export const CLASSES = {
   HardwareSerial: SERIAL,
   SoftwareSerial: { ...SERIAL, listen: m('bool'), isListening: m('bool') },
-  TwoWire: { begin: m('void'), setClock: m('void'), setPins: m('bool'), beginTransmission: m('void'), endTransmission: m('u8'), requestFrom: m('u8'), available: m('int'), read: m('int'), write: m('u32') },
-  SPIClass: { begin: m('void'), end: m('void'), transfer: m('u8'), beginTransaction: m('void'), endTransaction: m('void') },
+  TwoWire: { begin: m('void'), setClock: m('void'), setPins: m('bool'), beginTransmission: m('void'), endTransmission: m('u8'), requestFrom: m('u8'), available: m('int'), read: m('int'), peek: m('int'), write: m('u32') },
+  SPIClass: { begin: m('void'), end: m('void'), transfer: m('u8'), transfer16: m('u16'), beginTransaction: m('void'), endTransaction: m('void') },
   DHT: { begin: m('void'), readTemperature: m('float'), readHumidity: m('float'), computeHeatIndex: m('float'), convertCtoF: m('float'), convertFtoC: m('float'), read: m('bool') },
   OneWire: { reset: m('u8'), search: m('bool'), reset_search: m('void'), crc8: m('u8'), select: m('void'), skip: m('void'), write: m('void'), read: m('u8') },
   DallasTemperature: {
@@ -152,6 +173,17 @@ export const CLASSES = {
     toFahrenheit: m('float', { static: true }), toCelsius: m('float', { static: true })
   },
   Adafruit_BMP280: { begin: m('bool'), readTemperature: m('float'), readPressure: m('float'), readAltitude: m('float'), setSampling: m('void'), sensorID: m('u32'), takeForcedMeasurement: m('bool'), getStatus: m('u8') },
+  Adafruit_BME280: {
+    begin: m('bool'), readTemperature: m('float'), readPressure: m('float'), readHumidity: m('float'), readAltitude: m('float'), seaLevelForAltitude: m('float'),
+    setSampling: m('void'), sensorID: m('u32'), takeForcedMeasurement: m('bool'), setTemperatureCompensation: m('void'), getTemperatureCompensation: m('float')
+  },
+  BH1750: { begin: m('bool'), configure: m('bool'), setMTreg: m('bool'), measurementReady: m('bool'), readLightLevel: m('float') },
+  // HX711 (bibliothèque de Bogdan Necula) : 10 mesures par seconde ; une lecture attend la suivante si elle n'est pas prête.
+  HX711: {
+    begin: m('void'), is_ready: m('bool'), wait_ready: m('void', { block: true }), wait_ready_retry: m('bool', { block: true }), wait_ready_timeout: m('bool', { block: true }),
+    set_gain: m('void'), read: m('i32', { block: true }), read_average: m('i32', { block: true }), get_value: m('float', { block: true }), get_units: m('float', { block: true }),
+    tare: m('void', { block: true }), set_scale: m('void'), get_scale: m('float'), set_offset: m('void'), get_offset: m('i32'), power_down: m('void'), power_up: m('void')
+  },
   Adafruit_MPU6050: {
     begin: m('bool'), getEvent: m('bool'), setAccelerometerRange: m('void'), setGyroRange: m('void'), setFilterBandwidth: m('void'),
     getAccelerometerRange: m('u8'), getGyroRange: m('u8'), getFilterBandwidth: m('u8')
@@ -259,22 +291,26 @@ export const CLASSES = {
 CLASSES.ESP8266WebServer = CLASSES.WebServer;
 /** Objets globaux prédéfinis. */
 export const OBJECTS = {
-  Serial: 'HardwareSerial', Serial1: 'HardwareSerial', Serial2: 'HardwareSerial', Wire: 'TwoWire', SPI: 'SPIClass', IrReceiver: 'IRrecv',
+  Serial: 'HardwareSerial', Serial1: 'HardwareSerial', Serial2: 'HardwareSerial', Serial3: 'HardwareSerial', Wire: 'TwoWire', SPI: 'SPIClass', IrReceiver: 'IRrecv',
   EEPROM: 'EEPROMClass', WiFi: 'WiFiClass', MDNS: 'MDNSResponder'
 };
 /**
  * Bibliothèques, objets et classes propres à certaines cartes : un programme pour une autre carte ne compile pas
  * (code J1111). Valeur : cartes qui les ont, et conseil quand la carte choisie ne les a pas.
  */
-const WIFI_BOARDS = ['esp32', 'nodemcu'];
+/** Familles de code des cartes ESP32 : l'ESP32 d'origine, l'ESP32-S3 et l'ESP32-C3 (Wi-Fi, même cœur arduino-esp32). */
+export const ESP32_KINDS = ['esp32', 'esp32s3', 'esp32c3'];
+export const isEsp32 = kind => ESP32_KINDS.includes(kind);
+const ESP = ESP32_KINDS, WIFI_BOARDS = [...ESP32_KINDS, 'nodemcu'];
 export const BOARD_ONLY = {
   include: {
-    'WiFi.h': ['esp32'], 'WebServer.h': ['esp32'], 'HTTPClient.h': ['esp32'], 'esp_now.h': ['esp32'], 'BluetoothSerial.h': ['esp32'], 'Preferences.h': ['esp32'], 'ESPmDNS.h': ['esp32'],
+    // Bluetooth classique (BluetoothSerial) : l'ESP32 d'origine seulement ; l'ESP32-S3 et l'ESP32-C3 n'ont que le BLE.
+    'WiFi.h': ESP, 'WebServer.h': ESP, 'HTTPClient.h': ESP, 'esp_now.h': ESP, 'BluetoothSerial.h': ['esp32'], 'Preferences.h': ESP, 'ESPmDNS.h': ESP,
     'ESP8266WiFi.h': ['nodemcu'], 'ESP8266WebServer.h': ['nodemcu'], 'ESP8266HTTPClient.h': ['nodemcu'], 'espnow.h': ['nodemcu'], 'ESP8266mDNS.h': ['nodemcu'],
     'WiFiClient.h': WIFI_BOARDS
   },
   object: { WiFi: WIFI_BOARDS, MDNS: WIFI_BOARDS },
-  class: { BluetoothSerial: ['esp32'], WebServer: ['esp32'], ESP8266WebServer: ['nodemcu'], HTTPClient: WIFI_BOARDS, WiFiClient: WIFI_BOARDS, Preferences: ['esp32'] },
+  class: { BluetoothSerial: ['esp32'], WebServer: ESP, ESP8266WebServer: ['nodemcu'], HTTPClient: WIFI_BOARDS, WiFiClient: WIFI_BOARDS, Preferences: ESP },
   fn: /^esp_now_/
 };
 /** Même bibliothèque sous un autre nom sur l'autre carte Wi-Fi. */
@@ -289,6 +325,16 @@ export const CLASS_CONSTS = {
     SAMPLING_NONE: 0, SAMPLING_X1: 1, SAMPLING_X2: 2, SAMPLING_X4: 3, SAMPLING_X8: 4, SAMPLING_X16: 5,
     FILTER_OFF: 0, FILTER_X2: 1, FILTER_X4: 2, FILTER_X8: 3, FILTER_X16: 4,
     STANDBY_MS_1: 0, STANDBY_MS_63: 1, STANDBY_MS_125: 2, STANDBY_MS_250: 3, STANDBY_MS_500: 4, STANDBY_MS_1000: 5, STANDBY_MS_2000: 6, STANDBY_MS_4000: 7
+  },
+  Adafruit_BME280: {
+    MODE_SLEEP: 0, MODE_FORCED: 1, MODE_NORMAL: 3,
+    SAMPLING_NONE: 0, SAMPLING_X1: 1, SAMPLING_X2: 2, SAMPLING_X4: 3, SAMPLING_X8: 4, SAMPLING_X16: 5,
+    FILTER_OFF: 0, FILTER_X2: 1, FILTER_X4: 2, FILTER_X8: 3, FILTER_X16: 4,
+    STANDBY_MS_0_5: 0, STANDBY_MS_10: 6, STANDBY_MS_20: 7, STANDBY_MS_62_5: 1, STANDBY_MS_125: 2, STANDBY_MS_250: 3, STANDBY_MS_500: 4, STANDBY_MS_1000: 5
+  },
+  BH1750: {
+    UNCONFIGURED: 0, CONTINUOUS_HIGH_RES_MODE: 0x10, CONTINUOUS_HIGH_RES_MODE_2: 0x11, CONTINUOUS_LOW_RES_MODE: 0x13,
+    ONE_TIME_HIGH_RES_MODE: 0x20, ONE_TIME_HIGH_RES_MODE_2: 0x21, ONE_TIME_LOW_RES_MODE: 0x23
   },
   MFRC522: {
     PICC_TYPE_UNKNOWN: 0, PICC_TYPE_ISO_14443_4: 1, PICC_TYPE_ISO_18092: 2, PICC_TYPE_MIFARE_MINI: 3, PICC_TYPE_MIFARE_1K: 4, PICC_TYPE_MIFARE_4K: 5,
@@ -310,7 +356,7 @@ export const TYPE_ALIASES = {
 
 /** Bibliothèques connues : #include accepté sans avertissement. */
 export const KNOWN_INCLUDES = new Set([
-  'Arduino.h', 'Wire.h', 'SPI.h', 'DHT.h', 'DHT_U.h', 'Adafruit_Sensor.h', 'OneWire.h', 'DallasTemperature.h', 'Adafruit_BMP280.h',
+  'Arduino.h', 'Wire.h', 'SPI.h', 'DHT.h', 'DHT_U.h', 'Adafruit_Sensor.h', 'OneWire.h', 'DallasTemperature.h', 'Adafruit_BMP280.h', 'Adafruit_BME280.h', 'BH1750.h', 'HX711.h',
   'Adafruit_MPU6050.h', 'LiquidCrystal_I2C.h', 'Adafruit_GFX.h', 'Adafruit_SSD1306.h', 'Servo.h', 'ESP32Servo.h', 'Adafruit_NeoPixel.h',
   'Stepper.h', 'SoftwareSerial.h', 'math.h', 'stdlib.h', 'string.h', 'stdint.h', 'avr/pgmspace.h', 'pgmspace.h',
   'IRremote.h', 'IRremote.hpp', 'MFRC522.h', 'RF24.h', 'nRF24L01.h', 'Keypad.h', 'printf.h', 'MPU6050.h', 'I2Cdev.h',

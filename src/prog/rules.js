@@ -5,12 +5,14 @@
 // « Quand BTN1 est appuyé, LED1 s'allume, sinon elle s'éteint ». Les règles ne sont
 // jamais exécutées telles quelles : elles produisent un vrai programme Arduino, lisible
 // et commenté, que l'élève peut ensuite modifier à la main.
-import { BOARDS, boardOf, codePin } from '../sim/boards.js';
-import { isMotor, motorPins } from '../sim/parts.js';
+import { boardOf, kindOf, codePin } from '../sim/boards.js';
+import { isMotor, motorPins, PARTS, COILS } from '../sim/parts.js';
 import { driveOf, driveBoard } from '../sim/drive.js';
-import { FN, CONSTS } from './api.js';
+import { FN, CONSTS, AVR_INFO, isEsp32 } from './api.js';
 import { tl, quote, DEC, isEn, COLON } from '../i18n/index.js';
-import { pkgLed } from '../sim/pkgparts.js';
+import { pkgLed, pkgI2c, pkgSpi } from '../sim/pkgparts.js';
+import { i2cAddress } from '../sim/pkgbus.js';
+import { HX711_PER_G } from '../sim/models.js';
 
 /* ---------------- Ce que mesurent les capteurs et entrées ---------------- */
 // kind : num (valeur comparable) ou bool (oui / non). range : plage habituelle (pour « fait varier »).
@@ -28,8 +30,25 @@ export const SIGNALS = {
   sound: { level: { label: tl('volume (écart lu)'), adc: true, def: 0.1, range01: [0, 0.5], v: 'volume' } },
   mpu6050: { tilt: { label: 'inclinaison', unit: '°', def: 30, range: [-90, 90], v: 'inclinaison', type: 'float' } },
   button: { pressed: { label: tl('est appuyé'), neg: tl('n’est pas appuyé'), kind: 'bool', v: 'appuye', short: tl('Bouton') } },
+  cylsensor: { pressed: { label: tl('détecte le piston'), neg: tl('ne détecte pas le piston'), kind: 'bool', v: 'piston', short: tl('Piston') } },
+  pressostat: { pressed: { label: tl('détecte la pression'), neg: tl('ne détecte pas la pression'), kind: 'bool', v: 'pression', short: tl('Pression') } },
   pot: { pos: { label: tl('position (valeur lue)'), adc: true, def: 0.5, v: 'position' } },
-  joystick: { x: { label: tl('axe X (valeur lue)'), adc: true, def: 0.75, v: 'x' }, y: { label: tl('axe Y (valeur lue)'), adc: true, def: 0.75, v: 'y' }, sw: { label: tl('a son bouton appuyé'), neg: tl('a son bouton relâché'), kind: 'bool', v: 'bouton', short: tl('Bouton du manche') } }
+  joystick: { x: { label: tl('axe X (valeur lue)'), adc: true, def: 0.75, v: 'x' }, y: { label: tl('axe Y (valeur lue)'), adc: true, def: 0.75, v: 'y' }, sw: { label: tl('a son bouton appuyé'), neg: tl('a son bouton relâché'), kind: 'bool', v: 'bouton', short: tl('Bouton du manche') } },
+  'tilt-sw': { tilted: { label: tl('est penché'), neg: tl('est droit'), kind: 'bool', v: 'penche', short: tl('Penché') } },
+  hall: { magnet: { label: tl('détecte un aimant'), neg: tl('ne détecte pas d’aimant'), kind: 'bool', v: 'aimant', short: 'Hall' } },
+  flame: { fire: { label: tl('détecte une flamme'), neg: tl('ne détecte pas de flamme'), kind: 'bool', v: 'flamme', short: tl('Flamme') }, ir: { label: tl('infrarouge (valeur lue)'), adc: true, def: 0.5, v: 'infrarouge', short: 'IR', note: tl('plus de flamme = valeur plus basse') } },
+  rain: { raining: { label: tl('détecte la pluie'), neg: tl('reste sec'), kind: 'bool', v: 'pluie', short: tl('Pluie') }, wet: { label: tl('humidité de la plaque (valeur lue)'), adc: true, def: 0.6, v: 'mouille', short: tl('Pluie'), note: tl('plaque plus mouillée = valeur plus basse') } },
+  water: { level: { label: tl('niveau d’eau (valeur lue)'), adc: true, def: 0.3, range01: [0, 0.7], v: 'niveau', short: tl('Niveau'), note: tl('plus d’eau = valeur plus haute') } },
+  irobst: { obstacle: { label: tl('détecte un obstacle'), neg: tl('ne voit rien devant'), kind: 'bool', v: 'obstacle', short: tl('Obstacle') } },
+  line: { black: { label: tl('voit la ligne noire'), neg: tl('voit le fond clair'), kind: 'bool', v: 'surLaLigne', short: tl('Ligne') } },
+  lm35: { temp: { label: tl('température'), unit: '°C', def: 30, range: [0, 50], v: 'temperature', type: 'float' } },
+  shock: { shaken: { label: tl('détecte une secousse'), neg: tl('est au repos'), kind: 'bool', v: 'secousse', short: tl('Secousse') } },
+  bme280: { temp: { label: tl('température'), unit: '°C', def: 30, range: [0, 50], v: 'temperature', type: 'float' }, hum: { label: tl('humidité'), unit: '%', def: 70, range: [0, 100], v: 'humidite', type: 'float' }, press: { label: 'pression', unit: 'hPa', def: 1000, range: [950, 1050], v: 'pression', type: 'float' } },
+  bh1750: { lux: { label: tl('éclairement'), unit: 'lx', def: 300, range: [0, 2000], v: 'eclairement', type: 'float', short: tl('Lum') } },
+  hx711: { weight: { label: tl('masse'), unit: 'g', def: 500, range: [0, 5000], v: 'masse', type: 'float', short: tl('Poids') } },
+  ttp223: { touched: { label: tl('est touché'), neg: tl('n’est pas touché'), kind: 'bool', v: 'doigt', short: tl('Toucher') } },
+  rcwl0516: { motion: { label: tl('détecte un mouvement'), neg: tl('ne détecte rien'), kind: 'bool', v: 'mouvement', short: tl('Mouvement') } },
+  mq135: { air: { label: tl('pollution de l’air (valeur lue)'), adc: true, def: 0.3, range01: [0.2, 0.39], v: 'pollution', note: tl('air plus pollué = valeur plus haute'), short: tl('Air') } }
 };
 /* ---------------- Ce que savent faire les effecteurs ---------------- */
 // arg : réglage de l'action. follow : l'action peut suivre une mesure (sortie de out[0] à out[1]).
@@ -42,7 +61,7 @@ const LED_ACTS = {
 export const ACTIONS = {
   'led-red': LED_ACTS, 'led-green': LED_ACTS, 'led-blue': LED_ACTS, 'led-yellow': LED_ACTS, 'led-white': LED_ACTS,
   'led-rgb': { color: { label: tl('prend la couleur'), arg: { kind: 'color', def: '#ff8800' } }, off: { label: tl('s’éteint') } },
-  buzzer: { on: { label: 'sonne' }, off: { label: tl('se tait') }, beep: { label: 'bipe', arg: { kind: 'num', def: 300, min: 50, max: 3000, step: 50, unit: 'ms' } } },
+  buzzer: { on: { label: tl('sonne') }, off: { label: tl('se tait') }, beep: { label: tl('bipe'), arg: { kind: 'num', def: 300, min: 50, max: 3000, step: 50, unit: 'ms' } } },
   speaker: { note: { label: tl('joue la note'), arg: { kind: 'num', def: 440, min: 31, max: 4000, unit: 'Hz' } }, off: { label: tl('se tait') }, follow: { label: tl('joue selon la mesure'), follow: [200, 2000] } },
   relay: { on: { label: tl('se ferme (allume l’appareil)') }, off: { label: tl('s’ouvre (éteint l’appareil)') } },
   servo: { angle: { label: tl('tourne à'), arg: { kind: 'num', def: 90, min: 0, max: 180, unit: '°' } }, follow: { label: tl('suit la mesure'), follow: [0, 180] } },
@@ -56,12 +75,27 @@ export const ACTIONS = {
     stop: { label: tl('s’arrête') }, follow: { label: tl('accélère selon la mesure'), follow: [0, 100] }
   },
   pump: { on: { label: tl('pompe l’eau') }, stop: { label: tl('s’arrête') } },
+  coil24: { on: { label: tl('est excitée') }, off: { label: tl('est coupée') } },
+  laser: { on: { label: tl('s’allume') }, off: { label: tl('s’éteint') }, blink: { label: 'clignote', arg: { kind: 'num', def: 500, min: 50, max: 5000, step: 50, unit: 'ms' } } },
+  traffic: { red: { label: tl('passe au rouge') }, yellow: { label: tl('passe à l’orange') }, green: { label: tl('passe au vert') }, off: { label: tl('s’éteint') } },
   vibro: { on: { label: tl('vibre') }, stop: { label: tl('s’arrête') } },
   stepper: { cw: { label: tl('tourne dans le sens horaire') }, ccw: { label: tl('tourne dans le sens antihoraire') }, stop: { label: tl('s’arrête') } },
   '7seg': { digit: { label: tl('affiche le chiffre'), arg: { kind: 'num', def: 5, min: 0, max: 9 } }, off: { label: tl('s’éteint') }, follow: { label: tl('affiche la mesure (0 à 9)'), follow: [0, 9] } },
   ws2812: { color: { label: tl('s’allume en'), arg: { kind: 'color', def: '#3fb27f' } }, off: { label: tl('s’éteint') }, follow: { label: tl('jauge selon la mesure'), follow: [0, 8], arg: { kind: 'color', def: '#3fb27f' } } },
   lcd1602: { text: { label: tl('affiche le texte'), arg: { kind: 'text', def: tl('Alerte !') } }, value: { label: tl('affiche la mesure') } },
   oled: { text: { label: tl('affiche le texte'), arg: { kind: 'text', def: tl('Alerte !') } }, value: { label: tl('affiche la mesure') } }
+};
+/**
+ * Capteurs simples : pour chaque mesure, la broche lue et le niveau qui veut dire « oui » (tout-ou-rien),
+ * ou rien (analogique : analogRead). Partagé par le code des règles et celui des blocs.
+ */
+/** Broche facultative d'un module (sortie AO à côté de DO) : non câblée, sa mesure est simplement absente. */
+const optPin = (c, k) => !!((PARTS[c.type] || {}).pins || []).find(p => p.pin === k && p.opt);
+const SIMPLE = {
+  'tilt-sw': { tilted: ['S', 'HIGH'] }, hall: { magnet: ['S', 'LOW'] }, flame: { fire: ['DO', 'LOW'], ir: ['AO'] },
+  rain: { raining: ['DO', 'LOW'], wet: ['AO'] }, water: { level: ['S'] }, irobst: { obstacle: ['OUT', 'LOW'] },
+  line: { black: ['DO', 'HIGH'] }, shock: { shaken: ['DO', 'HIGH'] },
+  ttp223: { touched: ['SIG', 'HIGH'] }, rcwl0516: { motion: ['OUT', 'HIGH'] }, mq135: { air: ['AO'] }
 };
 export const OPS = { '>': tl('dépasse'), '<': tl('est sous'), '>=': tl('atteint au moins'), '<=': tl('vaut au plus'), '==': 'vaut', '!=': tl('ne vaut pas'), follow: tl('fait varier') };
 
@@ -167,7 +201,15 @@ export function ruleText(r, byId, prof) {
 }
 /** États par défaut proposés pour un effecteur (sans mesure). */
 export const defaultActs = type => actsFor(type, 'always');
-const TIMED = new Set(['blink', 'beep']);
+export const TIMED = new Set(['blink', 'beep']);
+/**
+ * Capteurs lents ou bloquants : lus à leur rythme (ms), pas à chaque tour de loop(). La mesure est gardée
+ * dans une variable globale entre deux lectures. Les entrées rapides (bouton, potentiomètre…) restent lues à chaque tour.
+ */
+const SAMPLE = {
+  dht11: [1000, () => tl('le rythme du capteur')], dht22: [2000, () => tl('le rythme du capteur')],
+  bmp280: [500, () => tl('assez pour la météo')], bme280: [500, () => tl('assez pour la météo')], bh1750: [200, () => tl('il mesure toutes les 120 ms')], hcsr04: [60, () => tl('l’écho précédent doit s’être éteint')], mpu6050: [20, () => tl('50 fois par seconde')]
+};
 
 /* ---------------- Génération du code ---------------- */
 export const RESERVED = new Set([...Object.keys(FN), ...Object.keys(CONSTS), 'int', 'float', 'long', 'char', 'byte', 'bool', 'void', 'String', 'setup', 'loop', 'Serial', 'Wire', 'SPI', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'LED_BUILTIN']);
@@ -183,8 +225,8 @@ const DIGITS = ['0b0111111', '0b0000110', '0b1011011', '0b1001111', '0b1100110',
  * cx : { comps, A (analyse), inspect(comp) → ins, rules, states (états par défaut) }.
  */
 export function createGenContext(board, cx) {
-  const prof = boardOf(board), kind = BOARDS[board.type] ? board.type : prof.family === 'atmega328p' ? 'uno' : /^esp32/.test(prof.family || '') ? 'esp32' : prof.family === 'esp8266' ? 'nodemcu' : 'pico';
-  const avr = kind === 'uno' || kind === 'nano', baud = avr ? 9600 : 115200, max = adcMax(prof);
+  const prof = boardOf(board), kind = kindOf(board);
+  const avr = !!AVR_INFO[kind], baud = avr ? 9600 : 115200, max = adcMax(prof);
   const byId = id => cx.comps.find(c => c.id === id);
   const inc = new Set(), glob = [], setup = [], pre = [], body = [], tail = [], helpers = [], notes = [], printed = [];
   const declared = new Map(), used = new Set();
@@ -210,7 +252,107 @@ export function createGenContext(board, cx) {
   const objName = c => { const id = c.id + '|obj'; if (!declared.has(id)) declared.set(id, uniq(ident(c.name.toLowerCase()))); return declared.get(id); };
   const missing = (c, what) => { const m = tl('// {0} {1} : utilisez « Câbler automatiquement ».', c.name, what || tl('n’est pas encore câblé(e) à ') + board.name); if (!notes.includes(m)) notes.push(m); return null; };
   const sigVar = new Map();
+  /** Texte fixe : en mémoire flash avec F() sur les cartes AVR (2 Ko de RAM seulement), tel quel ailleurs. */
+  const flash = text => (avr ? `F(${cstr(text)})` : cstr(text));
+  /** Lectures à intervalle d'un capteur lent : { period, why, timer, lines }. */
+  const timed = new Map(), frames = [];
+  function timedOf(c) {
+    if (!timed.has(c.id)) {
+      const [period, why] = SAMPLE[c.type] || [250, () => tl('assez pour suivre la mesure sans occuper le bus')], timer = uniq(`${objName(c)}_lecture`);
+      glob.push(`unsigned long ${timer} = 0;`);
+      timed.set(c.id, { c, period, why: why(), timer, lines: [] });
+    }
+    return timed.get(c.id);
+  }
 
+  /**
+   * Capteur en paquet (.jpart) sur un bus I2C ou SPI, ou à impulsions : une fonction de lecture écrite pour lui, sans
+   * bibliothèque (Wire, SPI, interruption), d'après ses registres, commandes ou trames déclarés. Rend son appel.
+   */
+  const pkgFns = new Map();
+  function pkgRead(c, sig, P) {
+    const id = `${c.id}|${sig.v}`;
+    if (pkgFns.has(id)) return pkgFns.get(id);
+    const o = objName(c), name = uniq(`${o}_${sig.v}`), lines = [];
+    const lit = x => (Number.isInteger(x) ? `${x}.0` : String(+(+x).toPrecision(10)));
+    const hex = x => `0x${x.toString(16).toUpperCase().padStart(2, '0')}`;
+    const size = it => (it.bytes ? it.bytes.length : it.crc ? 1 : (it.bits || 16) / 8);
+    const offsetOf = list => { let off = 0; for (const x of list) { if (x.quantity === sig.quantity) return off; off += size(x); } return 0; };
+    const once = line => { if (!setup.includes(line)) setup.push(line); };
+    // Octets b[off…] → valeur : ordre, signe, décalage, puis (brut − offset) / scale.
+    const decode = (it, off) => {
+      const n = (it.bits || 16) / 8;
+      return [
+        `  ${it.bits === 32 && !it.signed ? 'unsigned long' : 'long'} v = 0;`,
+        it.endian === 'little' ? `  for (int i = ${n - 1}; i >= 0; i--) v = (v << 8) | b[${off} + i];` : `  for (int i = 0; i < ${n}; i++) v = (v << 8) | b[${off} + i];`,
+        ...(it.signed && it.bits < 32 ? [`  if (v >= ${2 ** (it.bits - 1)}L) v -= ${2 ** it.bits}L;`] : []),
+        ...(it.shift ? [`  v >>= ${it.shift};`] : []),
+        `  return (v - ${lit(it.offset || 0)}) / ${lit(it.scale ?? 1)};`
+      ];
+    };
+    if (sig.bus === 'i2c') {
+      const I = pkgI2c(c.type); if (!I) return null;
+      const high = !!I.addressPin && !!cx.A && cx.A.net({ comp: c, key: I.addressPin }).src.length > 0, a = hex(i2cAddress(I, high));
+      inc.add('Wire.h'); once('Wire.begin();');
+      const reg = (I.registers || []).find(r => r.quantity === sig.quantity);
+      if (reg) {
+        const n = reg.bits / 8;
+        lines.push(tl('// {0} : {1}, registre {2} ({3} bits).', c.name, sig.label, hex(reg.at), reg.bits), `float ${name}() {`, `  Wire.beginTransmission(${a});`,
+          ...(I.regBytes === 2 ? [`  Wire.write(${hex(reg.at >> 8)});`] : []), `  Wire.write(${hex(reg.at & 255)});`,
+          tl('  Wire.endTransmission(false); // départ répété : la lecture suit'), `  Wire.requestFrom(${a}, ${n});`, `  uint8_t b[${n}];`,
+          `  for (int i = 0; i < ${n}; i++) b[i] = Wire.read();`, ...decode(reg, 0), '}');
+      } else {
+        const cmd = (I.commands || []).find(k => k.reply.some(x => x.quantity === sig.quantity)); if (!cmd) return null;
+        const it = cmd.reply.find(x => x.quantity === sig.quantity), n = cmd.reply.reduce((t, x) => t + size(x), 0);
+        lines.push(tl('// {0} : {1}, commande {2} puis {3} octets lus.', c.name, sig.label, cmd.write.map(hex).join(' '), n), `float ${name}() {`,
+          `  Wire.beginTransmission(${a});`, ...cmd.write.map(x => `  Wire.write(${hex(x)});`), '  Wire.endTransmission();', tl('  delay(20); // le temps de la mesure'),
+          `  Wire.requestFrom(${a}, ${n});`, `  uint8_t b[${n}];`, `  for (int i = 0; i < ${n}; i++) b[i] = Wire.read();`, ...decode(it, offsetOf(cmd.reply)), '}');
+      }
+    } else if (sig.bus === 'spi') {
+      const S = pkgSpi(c.type); if (!S) return null;
+      const cs = P(S.cs); if (!cs) return missing(c);
+      inc.add('SPI.h'); once('SPI.begin();'); once(`pinMode(${cs}, OUTPUT);`); once(`digitalWrite(${cs}, HIGH);`);
+      if (S.mode === 'frame') {
+        const it = S.frame.find(x => x.quantity === sig.quantity), n = S.frame.reduce((t, x) => t + size(x), 0);
+        lines.push(tl('// {0} : {1}, trame SPI de {2} octets.', c.name, sig.label, n), `float ${name}() {`, `  digitalWrite(${cs}, LOW);`, `  uint8_t b[${n}];`,
+          `  for (int i = 0; i < ${n}; i++) b[i] = SPI.transfer(0x00);`, `  digitalWrite(${cs}, HIGH);`, ...decode(it, offsetOf(S.frame)), '}');
+      } else {
+        const reg = S.registers.find(r => r.quantity === sig.quantity), n = reg.bits / 8, base = reg.at & S.addrMask;
+        const first = S.readWhenSet ? base | S.readBit : base & ~S.readBit & 255;
+        lines.push(tl('// {0} : {1}, registre SPI {2} ({3} bits).', c.name, sig.label, hex(reg.at), reg.bits), `float ${name}() {`, `  digitalWrite(${cs}, LOW);`,
+          tl('  SPI.transfer({0}); // adresse, bit de lecture compris', hex(first)), `  uint8_t b[${n}];`, `  for (int i = 0; i < ${n}; i++) b[i] = SPI.transfer(0x00);`,
+          `  digitalWrite(${cs}, HIGH);`, ...decode(reg, 0), '}');
+      }
+    } else if (sig.pulse) {
+      const p = P(sig.pulse.pin); if (!p) return missing(c);
+      const cnt = uniq(`${o}_impulsions`), isr = uniq(`${o}_compter`);
+      glob.push(`volatile unsigned long ${cnt} = 0;`);
+      helpers.push([tl('// {0} : une impulsion de plus, comptée par interruption (aucune n’est perdue).', c.name), `void ${isr}() {`, `  ${cnt}++;`, '}'].join('\n'));
+      setup.push(`pinMode(${p}, INPUT);`, `attachInterrupt(digitalPinToInterrupt(${p}), ${isr}, RISING);`);
+      lines.push(tl('// {0} : {1}, d’après les impulsions comptées pendant une seconde ({2} Hz par unité).', c.name, sig.label, lit(sig.pulse.hzPer)), `float ${name}() {`,
+        '  static unsigned long debut = 0;', '  static float valeur = 0;', '  unsigned long maintenant = millis();', '  if (maintenant - debut >= 1000) {', '    noInterrupts();',
+        `    unsigned long n = ${cnt};`, `    ${cnt} = 0;`, '    interrupts();', `    valeur = n * 1000.0 / (maintenant - debut) / ${lit(sig.pulse.hzPer)};`, '    debut = maintenant;', '  }',
+        '  return valeur;', '}');
+    } else return null;
+    helpers.push(lines.join('\n'));
+    const call = `${name}()`;
+    pkgFns.set(id, call);
+    return call;
+  }
+  /** BH1750 : bus I2C démarré par le programme (la bibliothèque ne le fait pas), mesure continue en haute résolution. */
+  function bh1750Setup(c, o) {
+    inc.add('Wire.h'); inc.add('BH1750.h');
+    const addr = cx.A && cx.A.net({ comp: c, key: 'ADDR' }).src.length ? '0x5C' : '0x23';
+    glob.push(`BH1750 ${o};`);
+    if (!setup.includes('Wire.begin();')) setup.push('Wire.begin();');
+    setup.push(tl('if (!{0}.begin(BH1750::CONTINUOUS_HIGH_RES_MODE, {1})) Serial.println("{2} introuvable : vérifiez SDA, SCL et l’adresse");', o, addr, c.name));
+  }
+  /** HX711 : balance étalonnée en grammes, mise à zéro au démarrage. */
+  function hx711Setup(o, dt, sck) {
+    inc.add('HX711.h');
+    glob.push(`HX711 ${o};`);
+    setup.push(`${o}.begin(${dt}, ${sck});`, tl('{0}.set_scale({1}); // étalonnage : coups par gramme, à ajuster avec une masse connue', o, HX711_PER_G.toFixed(1)), tl('{0}.tare(); // la balance doit être vide au démarrage', o));
+  }
   /** Déclare un capteur et retourne la variable qui contient sa mesure (lue au début de loop()). */
   function readSignal(c, key) {
     const id = `${c.id}|${key}`;
@@ -235,6 +377,24 @@ export function createGenContext(board, cx) {
         }
         used.add(c.id); sigVar.set(id, v); printed.push([`${c.name} ${sig.label}`, v, sig.unit, false, c, sig]); return v;
       }
+      case 'bme280': {
+        if (!used.has(c.id)) {
+          inc.add('Wire.h'); inc.add('Adafruit_BME280.h');
+          const addr = cx.A && cx.A.net({ comp: c, key: 'SDO' }).gnd.length ? '0x76' : '0x77';
+          glob.push(`Adafruit_BME280 ${o};`);
+          setup.push(tl('if (!{0}.begin({1})) Serial.println("{2} introuvable : vérifiez SDA, SCL et l’adresse");', o, addr, c.name));
+        }
+        expr = key === 'press' ? `${o}.readPressure() / 100.0` : key === 'hum' ? `${o}.readHumidity()` : `${o}.readTemperature()`; break;
+      }
+      case 'bh1750': {
+        if (!used.has(c.id)) bh1750Setup(c, o);
+        expr = `${o}.readLightLevel()`; break;
+      }
+      case 'hx711': {
+        const dt = P('DT'), sck = P('SCK'); if (!dt || !sck) return missing(c);
+        if (!used.has(c.id)) { hx711Setup(o, dt, sck); glob.push(`float ${v} = 0;`); pre.push(tl('if ({0}.is_ready()) {1} = {0}.get_units(1); // 10 mesures par seconde : lue dès qu’une mesure est prête, sans attendre', o, v)); }
+        used.add(c.id); sigVar.set(id, v); printed.push([`${c.name} ${sig.label}`, v, sig.unit, false, c, sig]); return v;
+      }
       case 'bmp280': {
         if (!used.has(c.id)) {
           inc.add('Wire.h'); inc.add('Adafruit_BMP280.h');
@@ -247,7 +407,7 @@ export function createGenContext(board, cx) {
       case 'hcsr04': {
         const t = P('TRIG'), e = P('ECHO'); if (!t || !e) return missing(c);
         setup.push(`pinMode(${t}, OUTPUT);`, `pinMode(${e}, INPUT);`);
-        if (!helpers.some(h => h.startsWith('float mesurerDistance'))) helpers.push([
+        if (!helpers.some(h => h.includes('float mesurerDistance('))) helpers.push([
           tl('// Distance en cm : une impulsion de 10 µs sur TRIG, puis la durée de l’écho (aller-retour du son).'),
           'float mesurerDistance(int trig, int echo) {',
           '  digitalWrite(trig, LOW);', '  delayMicroseconds(2);', '  digitalWrite(trig, HIGH);', '  delayMicroseconds(10);', '  digitalWrite(trig, LOW);',
@@ -256,9 +416,17 @@ export function createGenContext(board, cx) {
       }
       case 'pir': { const p = P('OUT'); if (!p) return missing(c); setup.push(`pinMode(${p}, INPUT);`); expr = `digitalRead(${p}) == HIGH`; break; }
       case 'button': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(b.high ? tl('pinMode({0}, INPUT); // résistance de rappel : relâché LOW, appuyé HIGH', p) : tl('pinMode({0}, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW', p)); expr = `digitalRead(${p}) == ${b.high ? 'HIGH' : 'LOW'}`; break; }
+      case 'cylsensor': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(tl('pinMode({0}, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW', p)); expr = `digitalRead(${p}) == LOW`; break; }
+      case 'pressostat': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(tl('pinMode({0}, INPUT_PULLUP); // sous le seuil : HIGH, pression atteinte : LOW', p)); expr = `digitalRead(${p}) == LOW`; break; }
       case 'ldr': { const p = P('AO'); if (!p) return missing(c); expr = `analogRead(${p})`; break; }
       case 'soil': { const p = P('AOUT'); if (!p) return missing(c); expr = `analogRead(${p})`; break; }
       case 'mq2': { const p = P('AO'); if (!p) return missing(c); expr = `analogRead(${p})`; break; }
+      case 'tilt-sw': case 'hall': case 'flame': case 'rain': case 'water': case 'irobst': case 'line': case 'shock': case 'ttp223': case 'rcwl0516': case 'mq135': {
+        const [k, on] = SIMPLE[c.type][key], p = P(k); if (!p) return optPin(c, k) ? null : missing(c); // sortie facultative (AO) non câblée : ignorée
+        if (on) { setup.push(`pinMode(${p}, INPUT);`); expr = `digitalRead(${p}) == ${on}`; } else expr = `analogRead(${p})`;
+        break;
+      }
+      case 'lm35': { const p = P('VOUT'); if (!p) return missing(c); expr = tl('analogRead({0}) * ({1} / {2}.0) * 100.0 // 10 mV par °C', p, prof.vref.toFixed(1), max); break; }
       case 'pot': { const p = P('W'); if (!p) return missing(c); expr = `analogRead(${p})`; break; }
       case 'sound': { const p = P('AO'); if (!p) return missing(c); expr = tl('abs(analogRead({0}) - {1}) // écart au silence (moitié de l’échelle)', p, Math.round(max / 2)); break; }
       case 'joystick': {
@@ -271,12 +439,14 @@ export function createGenContext(board, cx) {
           inc.add('Wire.h'); inc.add('Adafruit_MPU6050.h'); inc.add('Adafruit_Sensor.h');
           glob.push(`Adafruit_MPU6050 ${o};`);
           setup.push(tl('if (!{0}.begin()) Serial.println("{1} introuvable : vérifiez SDA et SCL");', o, c.name));
-          pre.push(`sensors_event_t ${o}_a, ${o}_g, ${o}_t;`, `${o}.getEvent(&${o}_a, &${o}_g, &${o}_t);`);
+          timedOf(c).lines.push(`sensors_event_t ${o}_a, ${o}_g, ${o}_t;`, `${o}.getEvent(&${o}_a, &${o}_g, &${o}_t);`);
         }
         expr = `atan2(${o}_a.acceleration.x, ${o}_a.acceleration.z) * 180 / PI`; break;
       }
       default: {
-        // Capteur en paquet (.jpart) : la broche de sa sortie déclarée, lue par analogRead ou digitalRead.
+        // Capteur en paquet (.jpart) : sur un bus ou à impulsions, sa fonction de lecture ; sinon la broche de sa sortie
+        // déclarée, lue par analogRead ou digitalRead.
+        if (sig.bus || sig.pulse) { const e = pkgRead(c, sig, P); if (!e) return null; expr = sig.kind === 'bool' ? `${e} >= 0.5` : e; break; }
         if (!sig.pin) return null;
         const p = P(sig.pin); if (!p) return sig.opt ? null : missing(c); // sortie facultative non câblée : ignorée
         if (sig.kind === 'bool') { setup.push(`pinMode(${p}, INPUT);`); expr = `digitalRead(${p}) == ${sig.low ? 'LOW' : 'HIGH'}`; } else expr = `analogRead(${p})`;
@@ -285,8 +455,9 @@ export function createGenContext(board, cx) {
     }
     used.add(c.id);
     const type = sig.kind === 'bool' ? 'bool' : sig.type === 'float' ? 'float' : 'int';
-    const [e, comment] = expr.split(' // ');
-    pre.push(`${type} ${v} = ${e};${comment ? ' // ' + comment : sig.note ? ' // ' + sig.note : ''}`);
+    const [e, comment] = expr.split(' // '), note = comment ? ' // ' + comment : sig.note ? ' // ' + sig.note : '';
+    if (SAMPLE[c.type] || sig.bus) { const t = timedOf(c); glob.push(`${type} ${v} = 0;${note}`); t.lines.push(`${v} = ${e};`); } // gardée entre deux lectures
+    else pre.push(`${type} ${v} = ${e};${note}`);
     sigVar.set(id, v);
     printed.push([`${c.name} ${sig.label}`, v, sig.unit || '', sig.kind === 'bool', c, sig]);
     return v;
@@ -296,7 +467,7 @@ export function createGenContext(board, cx) {
   const actors = new Map();
   function actor(c) {
     if (actors.has(c.id)) return actors.get(c.id);
-    let a = null;
+    let a = null, lcdMemo = null, frame = null;
     const o = objName(c), P = (k, l) => pinConst(c, k, l);
     const pl = pkgLed(c.type); // LED en paquet (.jpart) : commandée par son anode, comme une LED de la bibliothèque
     if (/^led-(red|green|blue|yellow|white)$/.test(c.type) || pl) {
@@ -314,6 +485,19 @@ export function createGenContext(board, cx) {
           return [];
         };
       }
+    } else if (c.type === 'laser') {
+      const p = P('S');
+      if (p) {
+        setup.push(`pinMode(${p}, OUTPUT);`);
+        a = (act, arg) => (act === 'on' ? [`digitalWrite(${p}, HIGH);`] : act === 'off' ? [`digitalWrite(${p}, LOW);`]
+          : act === 'blink' ? [tl('digitalWrite({0}, (millis() / {1}) % 2 ? HIGH : LOW); // change d’état toutes les {2} ms', p, Math.max(1, arg | 0), arg | 0)] : []);
+      }
+    } else if (c.type === 'traffic') {
+      const r = P('R'), y = P('Y'), g = P('G');
+      if (r && y && g) {
+        setup.push(`pinMode(${r}, OUTPUT);`, `pinMode(${y}, OUTPUT);`, `pinMode(${g}, OUTPUT);`);
+        a = act => { const on = { red: r, yellow: y, green: g }[act]; return [r, y, g].map(q => `digitalWrite(${q}, ${q === on ? 'HIGH' : 'LOW'});`); }; // une seule couleur à la fois
+      }
     } else if (c.type === 'led-rgb') {
       const r = P('R'), g = P('G'), b = P('B');
       if (r && g && b) a = (act, arg) => { const [R, G, B] = act === 'color' ? hex(arg) : [0, 0, 0]; return [`analogWrite(${r}, ${R});`, `analogWrite(${g}, ${G});`, `analogWrite(${b}, ${B});`]; };
@@ -321,6 +505,10 @@ export function createGenContext(board, cx) {
       // Directement sur une broche, ou derrière un transistor (+ au 5 V, − au collecteur) : la base est la commande.
       const d = P('+') ? null : driveOf(c, cx.A), p = P('+') || (d && d.kind === 'npn' && d.gpio && d.gpio.comp === board ? pinConst(d.npn, d.base || 'B') : null);
       if (p) { setup.push(d ? tl('pinMode({0}, OUTPUT); // base de {1} : HIGH, le transistor conduit et {2} sonne', p, d.npn.name, c.name) : `pinMode(${p}, OUTPUT);`); a = (act, arg) => (act === 'on' ? [`digitalWrite(${p}, HIGH);`] : act === 'off' ? [`digitalWrite(${p}, LOW);`] : [tl('digitalWrite({0}, (millis() / {1}) % 2 ? HIGH : LOW); // bip toutes les {2} ms', p, Math.max(1, arg | 0), arg | 0)]); }
+    } else if (COILS[c.type]) {
+      // Bobine d'électrovanne : derrière un transistor (+ au 24 V, − au collecteur), la base est la commande.
+      const d = driveOf(c, cx.A), p = d && d.kind === 'npn' && d.gpio && d.gpio.comp === board ? pinConst(d.npn, d.base || 'B') : null;
+      if (p) { setup.push(tl('pinMode({0}, OUTPUT); // base de {1} : HIGH, le transistor conduit et {2} est excitée', p, d.npn.name, c.name)); a = act => [`digitalWrite(${p}, ${act === 'on' ? 'HIGH' : 'LOW'});`]; }
     } else if (c.type === 'speaker') {
       const p = P('+');
       if (p) a = (act, arg, x) => (act === 'note' ? [`tone(${p}, ${arg | 0});`] : act === 'off' ? [`noTone(${p});`] : [`tone(${p}, ${x});`]);
@@ -329,7 +517,7 @@ export function createGenContext(board, cx) {
       if (p) { setup.push(tl('digitalWrite({0}, HIGH); // relais au repos (module actif à l’état bas)', p), `pinMode(${p}, OUTPUT);`); a = act => (act === 'on' ? [tl('digitalWrite({0}, LOW); // LOW colle le relais', p)] : [`digitalWrite(${p}, HIGH);`]); }
     } else if (c.type === 'servo') {
       const p = P('SIG');
-      if (p) { inc.add(kind === 'esp32' ? 'ESP32Servo.h' : 'Servo.h'); glob.push(`Servo ${o};`); setup.push(`${o}.attach(${p});`); a = (act, arg, x) => [`${o}.write(${act === 'follow' ? x : arg | 0});`]; }
+      if (p) { inc.add(isEsp32(kind) ? 'ESP32Servo.h' : 'Servo.h'); glob.push(`Servo ${o};`); setup.push(`${o}.attach(${p});`); a = (act, arg, x) => [`${o}.write(${act === 'follow' ? x : arg | 0});`]; }
     } else if (isMotor(c)) {
       // Moteur, ventilateur, pompe, vibreur : par un pilote L298N (sens et vitesse), un transistor (marche, vitesse en PWM)
       // ou un relais (tout ou rien) ; alimenté en permanence, il n'y a rien à commander.
@@ -420,22 +608,26 @@ export function createGenContext(board, cx) {
         inc.add('Wire.h');
         if (c.type === 'lcd1602') {
           inc.add('LiquidCrystal_I2C.h'); glob.push(`LiquidCrystal_I2C ${o}(0x27, 16, 2);`); setup.push(`${o}.init();`, `${o}.backlight();`);
-          if (!helpers.some(h => h.includes('void ecrireLigne'))) helpers.push([tl('// Écrit une ligne entière du LCD, complétée par des espaces pour effacer l’ancien texte.'),
-            'void ecrireLigne(LiquidCrystal_I2C &ecran, int ligne, String texte) {', '  ecran.setCursor(0, ligne);', '  ecran.print(texte);', '  for (int i = texte.length(); i < 16; i++) ecran.print(\' \');', '}'].join('\n'));
+          lcdMemo = uniq(`${o}_lignes`); glob.push(tl('String {0}[2]; // ce que montre chaque ligne : on ne réécrit que ce qui change', lcdMemo));
+          if (!helpers.some(h => h.includes('void ecrireLigne'))) helpers.push([tl('// Écrit une ligne du LCD si son texte a changé (l’écran est lent), complétée par des espaces pour effacer l’ancien texte.'),
+            'void ecrireLigne(LiquidCrystal_I2C &ecran, String lignes[], int ligne, String texte) {', '  if (texte == lignes[ligne]) return;', '  lignes[ligne] = texte;', '  ecran.setCursor(0, ligne);', '  ecran.print(texte);', '  for (int i = texte.length(); i < 16; i++) ecran.print(\' \');', '}'].join('\n'));
         } else {
           inc.add('Adafruit_GFX.h'); inc.add('Adafruit_SSD1306.h'); glob.push(`Adafruit_SSD1306 ${o}(128, 64, &Wire, -1);`);
           setup.push(tl('if (!{0}.begin(SSD1306_SWITCHCAPVCC, 0x3C)) Serial.println("{1} introuvable : vérifiez SDA et SCL");', o, c.name), `${o}.setTextColor(SSD1306_WHITE);`);
-          pre.push(`${o}.clearDisplay();`, `${o}.setTextSize(1);`, `${o}.setCursor(0, 0);`);
-          tail.push(`${o}.display();`);
+          // Image : dessinée en mémoire à chaque tour et envoyée 5 fois par seconde (assemble), sauf si le programme
+          // la dessine et l'envoie lui-même (frame.own : écran qui affiche les mesures, blocs).
+          frame = { o, name: c.name, sent: uniq(`${o}_envoi`), own: false, used: false }; frames.push(frame); // minuterie déclarée si elle sert
         }
         let row = 0;
+        // label : texte d'une mesure (screenText) ou expression C++ (nom du composant).
         a = (act, arg, x, label) => {
-          const txt = act === 'text' ? cstr(arg) : label;
-          if (c.type === 'lcd1602') return [`ecrireLigne(${o}, ${a.row}, ${txt});`];
-          return [`${o}.println(${txt});`];
+          if (c.type === 'lcd1602') return [`ecrireLigne(${o}, ${a.memo}, ${a.row}, ${act === 'text' ? cstr(arg) : label && label.str ? label.str : label});`];
+          if (act === 'text') return [`${o}.println(${flash(arg)});`];
+          if (label && label.parts) return label.parts.map(([k, v, d], i) => { const end = i === label.parts.length - 1 ? 'println' : 'print'; return `${o}.${end}(${k === 'lit' ? flash(v) : k === 'bool' ? `${v} ? ${flash(tl('oui'))} : ${flash(tl('non'))}` : d ? `${v}, ${d}` : v});`; });
+          return [`${o}.println(${label});`];
         };
         a.nextRow = () => (a.row = row++ % 2);
-        a.row = 0;
+        a.row = 0; a.memo = lcdMemo; a.frame = frame;
       } else missing(c);
     }
     if (!a && !actors.has(c.id) && ACTIONS[c.type] && !notes.some(n => n.includes(c.name))) missing(c);
@@ -470,6 +662,25 @@ export function createGenContext(board, cx) {
           `float ${n}() {`, '  static float t = 0;', '  static unsigned long lecture = 0;', '  if (lecture == 0 || millis() - lecture >= 1000) {',
           `    t = ${o}.getTempCByIndex(0);`, `    ${o}.requestTemperatures();`, '    lecture = millis();', '  }', '  return t;', '}']) + '()';
       }
+      case 'bme280': {
+        if (first) {
+          inc.add('Wire.h'); inc.add('Adafruit_BME280.h');
+          const addr = cx.A && cx.A.net({ comp: c, key: 'SDO' }).gnd.length ? '0x76' : '0x77';
+          glob.push(`Adafruit_BME280 ${o};`);
+          setup.push(tl('if (!{0}.begin({1})) Serial.println("{2} introuvable : vérifiez SDA, SCL et l’adresse");', o, addr, c.name));
+        }
+        return key === 'press' ? `${o}.readPressure() / 100.0` : key === 'hum' ? `${o}.readHumidity()` : `${o}.readTemperature()`;
+      }
+      case 'bh1750': {
+        if (first) bh1750Setup(c, o);
+        return `${o}.readLightLevel()`;
+      }
+      case 'hx711': {
+        const dt = P('DT'), sck = P('SCK'); if (!dt || !sck) return missing(c);
+        if (first) hx711Setup(o, dt, sck);
+        return fn(c.id + '|fn', `${o}_masse`, n => [tl('// {0} : masse en grammes, lue dès qu’une mesure est prête (10 par seconde), sans bloquer le programme.', c.name),
+          `float ${n}() {`, '  static float m = 0;', `  if (${o}.is_ready()) m = ${o}.get_units(1);`, '  return m;', '}']) + '()';
+      }
       case 'bmp280': {
         if (first) {
           inc.add('Wire.h'); inc.add('Adafruit_BMP280.h');
@@ -482,7 +693,7 @@ export function createGenContext(board, cx) {
       case 'hcsr04': {
         const t = P('TRIG'), e = P('ECHO'); if (!t || !e) return missing(c);
         setup.push(`pinMode(${t}, OUTPUT);`, `pinMode(${e}, INPUT);`);
-        if (!helpers.some(h => h.startsWith('float mesurerDistance'))) helpers.push([
+        if (!helpers.some(h => h.includes('float mesurerDistance('))) helpers.push([
           tl('// Distance en cm : une impulsion de 10 µs sur TRIG, puis la durée de l’écho (aller-retour du son).'),
           'float mesurerDistance(int trig, int echo) {',
           '  digitalWrite(trig, LOW);', '  delayMicroseconds(2);', '  digitalWrite(trig, HIGH);', '  delayMicroseconds(10);', '  digitalWrite(trig, LOW);',
@@ -491,6 +702,8 @@ export function createGenContext(board, cx) {
       }
       case 'pir': { const p = P('OUT'); if (!p) return missing(c); setup.push(`pinMode(${p}, INPUT);`); return `digitalRead(${p}) == HIGH`; }
       case 'button': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(b.high ? tl('pinMode({0}, INPUT); // résistance de rappel : relâché LOW, appuyé HIGH', p) : tl('pinMode({0}, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW', p)); return `digitalRead(${p}) == ${b.high ? 'HIGH' : 'LOW'}`; }
+      case 'cylsensor': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(tl('pinMode({0}, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW', p)); return `digitalRead(${p}) == LOW`; }
+      case 'pressostat': { const b = button(c), p = b && P(b.key); if (!p) return missing(c); setup.push(tl('pinMode({0}, INPUT_PULLUP); // sous le seuil : HIGH, pression atteinte : LOW', p)); return `digitalRead(${p}) == LOW`; }
       case 'ldr': case 'mq2': case 'soil': case 'pot': case 'sound': {
         const p = P({ soil: 'AOUT', pot: 'W' }[c.type] || 'AO'); if (!p) return missing(c);
         return c.type === 'sound' ? `abs(analogRead(${p}) - ${Math.round(max / 2)})` : `analogRead(${p})`;
@@ -499,6 +712,12 @@ export function createGenContext(board, cx) {
         if (key === 'sw') { const p = P('SW'); if (!p) return missing(c); setup.push(`pinMode(${p}, INPUT_PULLUP);`); return `digitalRead(${p}) == LOW`; }
         const p = P(key === 'x' ? 'VRx' : 'VRy'); if (!p) return missing(c); return `analogRead(${p})`;
       }
+      case 'tilt-sw': case 'hall': case 'flame': case 'rain': case 'water': case 'irobst': case 'line': case 'shock': case 'ttp223': case 'rcwl0516': case 'mq135': {
+        const [k, on] = SIMPLE[c.type][key], p = P(k); if (!p) return optPin(c, k) ? null : missing(c); // sortie facultative (AO) non câblée : ignorée
+        if (on) { setup.push(`pinMode(${p}, INPUT);`); return `digitalRead(${p}) == ${on}`; }
+        return `analogRead(${p})`;
+      }
+      case 'lm35': { const p = P('VOUT'); if (!p) return missing(c); return `analogRead(${p}) * (${prof.vref.toFixed(1)} / ${max}.0) * 100.0`; }
       case 'mpu6050': {
         if (first) {
           inc.add('Wire.h'); inc.add('Adafruit_MPU6050.h'); inc.add('Adafruit_Sensor.h');
@@ -510,6 +729,7 @@ export function createGenContext(board, cx) {
           '  sensors_event_t a, g, t;', `  ${s}.getEvent(&a, &g, &t);`, '  return atan2(a.acceleration.x, a.acceleration.z) * 180 / PI;', '}']) + `(${o})`;
       }
       default: {
+        if (sig.bus || sig.pulse) { const e = pkgRead(c, sig, P); return e && sig.kind === 'bool' ? `${e} >= 0.5` : e; }
         if (!sig.pin) return null; // capteur en paquet (.jpart) : sa sortie déclarée
         const p = P(sig.pin); if (!p) return sig.opt ? null : missing(c);
         if (sig.kind === 'bool') { if (first) setup.push(`pinMode(${p}, INPUT);`); return `digitalRead(${p}) == ${sig.low ? 'LOW' : 'HIGH'}`; }
@@ -525,6 +745,7 @@ export function createGenContext(board, cx) {
    */
   function assemble({ header, starter, loopDelay = true, setupBody = [], keep } = {}) {
     const lines = [];
+    for (const f of frames) if (!f.own || f.used) glob.push(`unsigned long ${f.sent} = 0;`); // minuteries d'envoi des écrans qui en ont une
     if (header) lines.push(...header);
     else {
       lines.push(tl('// Programme de {0} ({1}), généré par Jollof Studio {2}.', board.name, prof.label, starter ? tl('à partir du montage') : tl('à partir des règles')));
@@ -538,21 +759,31 @@ export function createGenContext(board, cx) {
     const seen = new Set(), setupLines = setup.filter(l => l.startsWith('//') || (!seen.has(l) && seen.add(l)));
     lines.push('', 'void setup() {', `  Serial.begin(${baud});`, ...setupLines.map(l => '  ' + l), ...setupBody.map(l => (l ? '  ' + l : l)), '}');
     lines.push('', 'void loop() {');
-    if (pre.length) lines.push(tl('  // Mesures'), ...pre.map(l => '  ' + l));
+    for (const f of frames.filter(f => !f.own)) {
+      pre.push(`${f.o}.clearDisplay();`, `${f.o}.setTextSize(1);`, `${f.o}.setCursor(0, 0);`);
+      tail.push(tl('// {0} : l’image part vers l’écran 5 fois par seconde (chaque envoi prend environ 25 ms)', f.name), `if (millis() - ${f.sent} >= 200) {`, `  ${f.sent} = millis();`, `  ${f.o}.display();`, '}');
+    }
+    const reads = [...timed.values()].filter(t => t.lines.length).flatMap(t => [
+      tl('// {0} : une mesure toutes les {1} ms ({2})', t.c.name, t.period, t.why), `if (${t.timer} == 0 || millis() - ${t.timer} >= ${t.period}) {`, `  ${t.timer} = millis();`, ...t.lines.map(l => '  ' + l), '}']);
+    if (pre.length || reads.length) lines.push(tl('  // Mesures'), ...[...reads, ...pre].map(l => '  ' + l));
     lines.push(...body.map(l => (l ? '  ' + l : '')));
     if (tail.length) lines.push('', ...tail.map(l => '  ' + l));
     if (printed.length) {
       lines.push('', tl('  // Mesures sur le moniteur série, une fois par seconde'), '  if (millis() - dernierAffichage >= 1000) {', '    dernierAffichage = millis();');
       printed.forEach(([lab, v, unit, bool], i) => {
-        const after = (unit ? ' ' + unit : '') + (i < printed.length - 1 ? ' | ' : '');
-        lines.push(`    Serial.print(${cstr(lab.replace(/ \(.*\)$/, '') + COLON)});`, `    Serial.print(${bool ? `${v} ? ${cstr(tl('oui'))} : ${cstr(tl('non'))}` : v});`);
-        if (after) lines.push(`    Serial.print(${cstr(after)});`);
+        const last = i === printed.length - 1, after = (unit ? ' ' + unit : '') + (last ? '' : ' | ');
+        const val = bool ? `${v} ? ${cstr(tl('oui'))} : ${cstr(tl('non'))}` : v;
+        lines.push(`    Serial.print(${cstr(lab.replace(/ \(.*\)$/, '') + COLON)});`, `    Serial.${last && !after ? 'println' : 'print'}(${val});`);
+        if (after) lines.push(`    Serial.${last ? 'println' : 'print'}(${cstr(after)});`);
       });
-      lines.push('    Serial.println();', '  }');
+      lines.push('  }');
     }
-    if (loopDelay) lines.push('  delay(10);');
+    if (loopDelay) lines.push(tl('  delay(10); // une centaine de tours par seconde : assez pour réagir, sans calcul inutile'));
     lines.push('}', '');
-    return isEn ? englishNames(lines.join('\n'), keep) : lines.join('\n');
+    let code = lines.join('\n');
+    // Cartes AVR : un texte fixe imprimé reste en mémoire flash (F), sans prendre de RAM.
+    if (avr) code = code.replace(/\.(print|println)\(("(?:[^"\\\n]|\\.)*")\)/g, '.$1(F($2))');
+    return isEn ? englishNames(code, keep) : code;
   }
 
   return {
@@ -566,12 +797,12 @@ export function createGenContext(board, cx) {
  * qui lit chaque capteur relié et l'affiche sur le moniteur série et les écrans.
  * cx : { comps, A (analyse), inspect(comp) → ins, rules, states (états par défaut) }.
  */
-export function generate(board, cx) {
-  const g = createGenContext(board, cx);
-  const { prof, byId, setup, body, printed, actors, uniq, objName, actor, readSignal } = g;
-
-  /* --- Règles, états par défaut et montage --- */
-  // Moteurs : la carte qui commande leur pilote, transistor ou relais.
+/**
+ * Ce que la carte exécute : ses composants (mine) et ses règles, celles de ses effecteurs (un moteur par
+ * son pilote, transistor ou relais), sinon celles de sa mesure. Partagé par le code des règles et leurs blocs.
+ */
+export function boardRules(board, cx) {
+  const byId = id => cx.comps.find(c => c.id === id);
   const drvBoard = d => driveBoard(d, cx.A, cx.inspect);
   const boardOfComp = c => (isMotor(c) ? drvBoard(c) : cx.inspect(c).board);
   const mine = cx.comps.filter(c => (isMotor(c) ? drvBoard(c) === board || (!drvBoard(c) && boardsOf(cx) === 1) : cx.inspect(c).board === board));
@@ -582,6 +813,15 @@ export function generate(board, cx) {
     const s = r.src && byId(r.src.comp), sb = s && cx.inspect(s).board;
     return sb ? sb === board : boardsOf(cx) === 1;
   });
+  return { rules, mine, boardOfComp };
+}
+
+export function generate(board, cx) {
+  const g = createGenContext(board, cx);
+  const { prof, byId, setup, body, printed, actors, uniq, objName, actor, readSignal } = g;
+
+  /* --- Règles, états par défaut et montage --- */
+  const { rules, mine, boardOfComp } = boardRules(board, cx);
   const nums = numberRules(rules), indent = ls => ls.map(l => (l ? '  ' + l : l));
   const ruledActs = new Set(); rules.forEach(r => actsOf(r).forEach(a => ruledActs.add(a.comp)));
 
@@ -657,8 +897,16 @@ export function generate(board, cx) {
   mine.filter(c => (c.type === 'lcd1602' || c.type === 'oled') && !ruledActs.has(c.id) && !(states[c.id] && states[c.id].act)).forEach(sc => {
     const a = actor(sc); if (!a) return;
     const list = printed.slice(0, sc.type === 'lcd1602' ? 2 : 6);
-    if (list.length) body.push('', tl('// {0} affiche les mesures', sc.name));
-    list.forEach(([, v, , , src, sig]) => { a.nextRow(); body.push(...a('value', null, null, screenText(src, sig, v))); });
+    if (!list.length) return;
+    const lines = list.flatMap(([, v, , , src, sig]) => { a.nextRow(); return a('value', null, null, screenText(src, sig, v)); }), o = objName(sc);
+    if (sc.type === 'oled') {
+      a.frame.own = true; a.frame.used = true;
+      body.push('', tl('// {0} affiche les mesures, 5 fois par seconde (chaque envoi prend environ 25 ms)', sc.name), `if (millis() - ${a.frame.sent} >= 200) {`, `  ${a.frame.sent} = millis();`,
+        `  ${o}.clearDisplay();`, `  ${o}.setTextSize(1);`, `  ${o}.setCursor(0, 0);`, ...indent(lines), `  ${o}.display();`, '}');
+    } else {
+      const t = uniq(`${o}_envoi`); g.glob.push(`unsigned long ${t} = 0;`);
+      body.push('', tl('// {0} affiche les mesures, 4 fois par seconde (seules les lignes qui changent sont réécrites)', sc.name), `if (millis() - ${t} >= 250) {`, `  ${t} = millis();`, ...indent(lines), '}');
+    }
   });
   if (starter) {
     const outs = mine.filter(c => isActuator(c) && c.type !== 'lcd1602' && c.type !== 'oled');
@@ -675,10 +923,23 @@ export function generate(board, cx) {
   return g.assemble({ starter });
 }
 
+/**
+ * Programme de départ pour écrire son code soi-même : bibliothèques, broches et objets des composants de la carte,
+ * setup() qui les prépare, loop() vide. Rien n'est lu ni affiché d'avance.
+ */
+export function skeleton(board, cx) {
+  const g = createGenContext(board, cx), { mine } = boardRules(board, cx);
+  mine.forEach(c => { if (isActuator(c)) g.actor(c); if (isSensor(c)) Object.keys(SIGNALS[c.type]).forEach(k => g.sensorExpr(c, k)); });
+  g.actors.forEach(a => { if (a && a.frame) a.frame.own = true; }); // écrans : le programme les dessine lui-même
+  g.body.push(tl('// Écrivez ici ce que la carte doit faire, encore et encore.'));
+  return g.assemble({ header: [tl('// Programme de {0} ({1}) : vos composants sont déclarés, à vous d’écrire la suite.', board.name, g.prof.label)], loopDelay: false });
+}
+
 /** Interface en anglais : les noms de variables du code généré passent aussi en anglais. */
 const ID_EN = { appuye: 'pressed', bouton: 'button', gaz: 'gas', humidite: 'humidity', inclinaison: 'tilt', lumiere: 'light', mouvement: 'motion', pression: 'pressure', secheresse: 'dryness',
-  lecture: 'lastRead', consigne: 'setpoint', allume: 'lit', chiffre: 'digit', couleur: 'color', dernierAffichage: 'lastPrint', duree: 'duration', ecran: 'screen', ecrireLigne: 'writeLine',
-  ligne: 'line', mesurerDistance: 'measureDistance', sens: 'direction', texte: 'text', valeur: 'value', vitesse: 'speed' };
+  lecture: 'lastRead', envoi: 'lastSend', lignes: 'lines', consigne: 'setpoint', allume: 'lit', chiffre: 'digit', couleur: 'color', dernierAffichage: 'lastPrint', duree: 'duration', ecran: 'screen', ecrireLigne: 'writeLine',
+  ligne: 'line', mesurerDistance: 'measureDistance', sens: 'direction', texte: 'text', valeur: 'value', vitesse: 'speed',
+  penche: 'tilted', aimant: 'magnet', eclairement: 'illuminance', masse: 'mass', doigt: 'finger', debut: 'start', maintenant: 'now', impulsions: 'pulses', compter: 'count', flamme: 'flame', infrarouge: 'infrared', pluie: 'rain', mouille: 'wetness', niveau: 'level', surLaLigne: 'onLine', secousse: 'shaken' };
 export function englishNames(code, keep) {
   return code.replace(/("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|[A-Za-z_][A-Za-z0-9_]*)/g, tok => {
     if (!/^[A-Za-z_]/.test(tok)) return tok; // texte, caractère ou commentaire
@@ -690,11 +951,23 @@ export function englishNames(code, keep) {
 const boardsOf = cx => cx.comps.filter(c => boardOf(c)).length;
 const SHORT = { temp: tl('Temp'), hum: tl('Hum'), press: tl('Pres'), dist: tl('Dist'), light: tl('Lum'), soil: tl('Sol'), gas: tl('Gaz'), level: tl('Son'), tilt: tl('Incl'), pos: tl('Pos'), x: 'X', y: 'Y' };
 /** Texte d'une mesure pour un écran : court et sans accent (les LCD n'en ont pas). */
-function screenText(c, sig, v) {
+/** Libellé d'une mesure sur un écran (sans accents, l'écran ne les affiche pas) : [« Temp: », « C »]. */
+export function screenLabel(c, sig) {
   const plain = t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   const key = Object.keys(SIGNALS[c.type]).find(k => SIGNALS[c.type][k].v === sig.v);
   const name = plain(sig.short || SHORT[key] || sig.label);
-  if (sig.kind === 'bool') return `${cstr(name + ': ')} + String(${v} ? ${cstr(tl('oui'))} : ${cstr(tl('non'))})`;
-  const unit = sig.unit ? plain(' ' + sig.unit.replace('°C', 'C').replace('°', ' deg')) : '';
-  return `${cstr(name + ': ')} + String(${v}${sig.type === 'float' ? ', 1' : ''})${unit ? ` + ${cstr(unit)}` : ''}`;
+  return [name + ': ', sig.kind !== 'bool' && sig.unit ? plain(' ' + sig.unit.replace('°C', 'C').replace('°', ' deg')) : ''];
+}
+/**
+ * Texte d'une mesure sur un écran. parts : morceaux imprimés l'un après l'autre (OLED : aucun String à construire) ;
+ * str : la ligne entière en String (LCD, qui compare la ligne à celle déjà affichée).
+ */
+function screenText(c, sig, v) {
+  const [name, unit] = screenLabel(c, sig);
+  if (sig.kind === 'bool') return { parts: [['lit', name], ['bool', v]], str: `${cstr(name)} + String(${v} ? ${cstr(tl('oui'))} : ${cstr(tl('non'))})` };
+  const d = sig.type === 'float' ? 1 : 0;
+  return {
+    parts: [['lit', name], ['num', v, d], ...(unit ? [['lit', unit]] : [])],
+    str: `${cstr(name)} + String(${v}${d ? ', 1' : ''})${unit ? ` + ${cstr(unit)}` : ''}`
+  };
 }

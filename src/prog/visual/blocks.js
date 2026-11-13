@@ -151,34 +151,35 @@ export function toolbox(ctx) {
   const blk = (type, fields, inputs, extra) => ({ kind: 'block', type, ...(fields && { fields }), ...(inputs && { inputs }), ...extra });
   const cat = (name, style, contents) => ({ kind: 'category', name, categorystyle: style, contents });
   const out = pick('out', /^led|relay|buzzer/), max = ctx.board.adcMax || 1023, colors = ctx.colors.map(c => c[1]);
-  const montage = !ctx.comps.length ? [{ kind: 'label', text: tl('Aucun composant relié à cette carte') }] : ctx.comps.flatMap(c => [
-    { kind: 'label', text: c.name },
-    ...c.acts.map(a => {
-      const k = a.arg && a.arg.kind;
-      if (k === 'color') return blk(B.ACT, { COMP: c.id, ACT: a.key, COLOR: colors.includes(a.arg.def) ? a.arg.def : colors[0] }, null, { extraState: { arg: 'color', unit: '' } });
-      return blk(B.ACT, { COMP: c.id, ACT: a.key }, k ? { ARG: k === 'num' ? N(a.arg.def) : T(a.arg.def) } : null, k ? { extraState: { arg: k, unit: a.arg.unit || '' } } : {});
-    }),
-    ...c.sigs.map(s => blk(s.kind === 'bool' ? B.SIG_BOOL : B.SIG_NUM, { COMP: c.id, SIG: s.key }))
-  ]);
-  return {
-    kind: 'categoryToolbox',
-    contents: [
-      cat(tl('Événements'), 'events', [blk(B.SETUP), blk(B.LOOP), blk(B.EVERY, { MS: 1000 })]),
-      cat(tl('Broches'), 'pins', [blk(B.DWRITE, { PIN: out }, { STATE: L('HIGH') }), blk(B.DWRITE, { PIN: out }, { STATE: L('LOW') }), blk(B.DREAD, { PIN: pick('in', /button|pir|joystick/) }),
-        blk(B.LEVEL, { LEVEL: 'HIGH' }), blk(B.AREAD, { PIN: pick('adc', /pot|ldr|soil|mq2|sound|joystick/) }), blk(B.AWRITE, { PIN: pick('pwm', /^led/) }, { VALUE: N(128) })]),
-      cat(tl('Temps'), 'time', [blk(B.DELAY, null, { MS: N(1000) }), blk(B.MILLIS)]),
-      cat(tl('Conditions'), 'logic', [blk('controls_if'), blk('controls_if', null, null, { extraState: { hasElse: true } }), blk('logic_compare', { OP: 'EQ' }),
-        blk('logic_operation', { OP: 'AND' }), blk('logic_negate'), blk('logic_boolean', { BOOL: 'TRUE' })]),
-      cat(tl('Boucles'), 'loops', [blk('controls_repeat_ext', null, { TIMES: N(10) }), blk('controls_whileUntil', { MODE: 'WHILE' }), blk('controls_for', null, { FROM: N(1), TO: N(10), BY: N(1) })]),
-      cat(tl('Maths'), 'math', [blk('math_number', { NUM: 0 }), blk('math_arithmetic', { OP: 'ADD' }, { A: N(1), B: N(1) }), blk('math_single', { OP: 'ROOT' }, { NUM: N(9) }),
-        blk('math_modulo', null, { DIVIDEND: N(64), DIVISOR: N(10) }), blk('math_random_int', null, { FROM: N(1), TO: N(6) }),
-        blk(B.MAP, null, { VALUE: N(512), FROM_LOW: N(0), FROM_HIGH: N(max), TO_LOW: N(0), TO_HIGH: N(255) }), blk(B.CONSTRAIN, null, { VALUE: N(50), LOW: N(0), HIGH: N(100) })]),
-      cat(tl('Texte'), 'text', [blk('text', { TEXT: '' }), blk('text_join')]),
-      { kind: 'category', name: tl('Variables'), categorystyle: 'variables', custom: 'VARIABLE' },
-      cat(tl('Moniteur série'), 'serial', [blk(B.PRINTLN, null, { VALUE: T(tl('Bonjour')) }), blk(B.PRINT, null, { VALUE: T('') }), blk(B.PLOT, { LABEL: tl('valeur') }, { VALUE: N(0) })]),
-      cat(tl('Son'), 'sound', [blk(B.TONE, { PIN: pick('out', /speaker|buzzer/) }, { FREQ: N(440) }), blk(B.NOTONE, { PIN: pick('out', /speaker|buzzer/) })]),
-      cat(tl('Servo'), 'servo', [blk(B.SERVO, { PIN: pick('out', /servo/) }, { ANGLE: N(90) })]),
-      cat(tl('Montage'), 'montage', montage)
-    ]
+  // « Mon montage » : d'abord ce que font les composants (blocs à empiler), puis ce que mesurent les capteurs (à glisser dans un bloc).
+  const actBlocks = c => c.acts.map(a => {
+    const k = a.arg && a.arg.kind;
+    if (k === 'color') return blk(B.ACT, { COMP: c.id, ACT: a.key, COLOR: colors.includes(a.arg.def) ? a.arg.def : colors[0] }, null, { extraState: { arg: 'color', unit: '' } });
+    return blk(B.ACT, { COMP: c.id, ACT: a.key }, k ? { ARG: k === 'num' ? N(a.arg.def) : T(a.arg.def) } : null, k ? { extraState: { arg: k, unit: a.arg.unit || '' } } : {});
+  });
+  const acting = ctx.comps.filter(c => c.acts.length), sensing = ctx.comps.filter(c => c.sigs.length);
+  const montage = !ctx.comps.length ? [{ kind: 'label', text: tl('Aucun composant relié à cette carte') }] : [
+    ...(acting.length ? [{ kind: 'label', text: tl('Faire agir un composant') }, ...acting.flatMap(actBlocks)] : []),
+    ...(sensing.length ? [{ kind: 'label', text: tl('Mesures, à glisser dans un bloc (si…, écrire…)') }, ...sensing.flatMap(c => c.sigs.map(s => blk(s.kind === 'bool' ? B.SIG_BOOL : B.SIG_NUM, { COMP: c.id, SIG: s.key })))] : [])
+  ];
+  // Ordre de la boîte à outils : d'abord les composants du montage, puis ce qui sert le plus (conditions, boucles, temps).
+  const C = {
+    events: cat(tl('Événements'), 'events', [blk(B.SETUP), blk(B.LOOP), blk(B.EVERY, { MS: 1000 })]),
+    pins: cat(tl('Broches'), 'pins', [blk(B.DWRITE, { PIN: out }, { STATE: L('HIGH') }), blk(B.DWRITE, { PIN: out }, { STATE: L('LOW') }), blk(B.DREAD, { PIN: pick('in', /button|pir|joystick/) }),
+      blk(B.LEVEL, { LEVEL: 'HIGH' }), blk(B.AREAD, { PIN: pick('adc', /pot|ldr|soil|mq2|sound|joystick/) }), blk(B.AWRITE, { PIN: pick('pwm', /^led/) }, { VALUE: N(128) })]),
+    time: cat(tl('Temps'), 'time', [blk(B.DELAY, null, { MS: N(1000) }), blk(B.MILLIS)]),
+    logic: cat(tl('Conditions'), 'logic', [blk('controls_if'), blk('controls_if', null, null, { extraState: { hasElse: true } }), blk('logic_compare', { OP: 'EQ' }),
+      blk('logic_operation', { OP: 'AND' }), blk('logic_negate'), blk('logic_boolean', { BOOL: 'TRUE' })]),
+    loops: cat(tl('Boucles'), 'loops', [blk('controls_repeat_ext', null, { TIMES: N(10) }), blk('controls_whileUntil', { MODE: 'WHILE' }), blk('controls_for', null, { FROM: N(1), TO: N(10), BY: N(1) })]),
+    math: cat(tl('Maths'), 'math', [blk('math_number', { NUM: 0 }), blk('math_arithmetic', { OP: 'ADD' }, { A: N(1), B: N(1) }), blk('math_single', { OP: 'ROOT' }, { NUM: N(9) }),
+      blk('math_modulo', null, { DIVIDEND: N(64), DIVISOR: N(10) }), blk('math_random_int', null, { FROM: N(1), TO: N(6) }),
+      blk(B.MAP, null, { VALUE: N(512), FROM_LOW: N(0), FROM_HIGH: N(max), TO_LOW: N(0), TO_HIGH: N(255) }), blk(B.CONSTRAIN, null, { VALUE: N(50), LOW: N(0), HIGH: N(100) })]),
+    text: cat(tl('Texte'), 'text', [blk('text', { TEXT: '' }), blk('text_join')]),
+    variables: { kind: 'category', name: tl('Variables'), categorystyle: 'variables', custom: 'VARIABLE' },
+    serial: cat(tl('Moniteur série'), 'serial', [blk(B.PRINTLN, null, { VALUE: T(tl('Bonjour')) }), blk(B.PRINT, null, { VALUE: T('') }), blk(B.PLOT, { LABEL: tl('valeur') }, { VALUE: N(0) })]),
+    sound: cat(tl('Son'), 'sound', [blk(B.TONE, { PIN: pick('out', /speaker|buzzer/) }, { FREQ: N(440) }), blk(B.NOTONE, { PIN: pick('out', /speaker|buzzer/) })]),
+    servo: cat(tl('Servo'), 'servo', [blk(B.SERVO, { PIN: pick('out', /servo/) }, { ANGLE: N(90) })]),
+    montage: cat(tl('Mon montage'), 'montage', montage)
   };
+  return { kind: 'categoryToolbox', contents: ['montage', 'events', 'logic', 'loops', 'time', 'math', 'variables', 'text', 'serial', 'pins', 'sound', 'servo'].map(k => C[k]) };
 }

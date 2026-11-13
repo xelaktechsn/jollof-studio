@@ -1,0 +1,118 @@
+{
+  "format": 1,
+  "id": "pk-tmp36",
+  "version": 2,
+  "name": "TMP36 température (analogique)",
+  "category": "Capteurs",
+  "prefix": "TMP",
+  "description": "Capteur de température TMP36 : tension proportionnelle, 10 mV par °C et 0,75 V à 25 °C. Contrairement au LM35, il fonctionne dès 2,7 V et mesure sous 0 °C sans montage spécial.",
+  "sources": {
+    "adi": {
+      "title": "TMP35/TMP36/TMP37 Low Voltage Temperature Sensors (Rev. F)",
+      "publisher": "Analog Devices",
+      "section": "Table 1 Specifications : supply range 2,7 à 5,5 V ; supply current 50 µA max ; scale factor 10 mV/°C ; output 750 mV à 25 °C ; précision ±1 °C (grade F) ou ±2 °C (grade G) à 25 °C. Figure 4 TO-92 : broche 1 +VS, 2 VOUT, 3 GND.",
+      "url": "https://cdn.sparkfun.com/datasheets/Sensors/Temp/TMP35_36_37.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 0.05,
+  "ds": "adi",
+  "pins": [
+    {
+      "name": "VS",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 3.3,
+      "kind": "pwr",
+      "why": "2,7 à 5,5 V : il marche directement sur les cartes 3,3 V comme sur les cartes 5 V.",
+      "v": [
+        2.7,
+        5.5
+      ],
+      "ds": "adi"
+    },
+    {
+      "name": "VOUT",
+      "x": 0,
+      "y": 8.1,
+      "z": 3.3,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "0,5 V à 0 °C plus 10 mV par °C : 0,75 V à 25 °C. Température = (tension − 0,5) × 100."
+    },
+    {
+      "name": "GND",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 3.3,
+      "kind": "gnd"
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "VOUT",
+        "quantity": "temp",
+        "from": [
+          -30,
+          90
+        ],
+        "ratio": false,
+        "to": [
+          0.2,
+          1.4
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.2,
+      "tau": 2
+    }
+  },
+  "docs": {
+    "text": "La puce produit une tension linéaire avec un décalage de 0,5 V : elle mesure donc sous 0 °C avec une seule alimentation. Lisez VOUT avec analogRead() puis calculez : température (°C) = (tension − 0,5) × 100.",
+    "specs": [
+      [
+        "Alimentation",
+        "2,7 à 5,5 V, moins de 50 µA"
+      ],
+      [
+        "Sortie",
+        "10 mV par °C, 0,75 V à 25 °C"
+      ],
+      [
+        "Plage",
+        "−40 à +125 °C"
+      ],
+      [
+        "Précision",
+        "±1 à ±2 °C à 25 °C selon le grade"
+      ],
+      [
+        "Boîtier",
+        "TO-92, face plate vers soi : +VS, VOUT, GND"
+      ]
+    ],
+    "uses": [
+      "Thermomètre sur ESP32 ou Pico, sans 5 V ni bibliothèque",
+      "Alarme de surchauffe ou de gel",
+      "Régulation simple d’un ventilateur"
+    ],
+    "mistakes": [
+      "Le monter à l’envers : il chauffe très vite.",
+      "Oublier le décalage : 0,75 V vaut 25 °C, pas 75 °C.",
+      "Convertir avec la mauvaise référence : 3,3 V ou 5 V selon la carte."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#222222",
+    "label": "TMP36",
+    "size": [
+      11,
+      1.6,
+      11
+    ]
+  }
+}

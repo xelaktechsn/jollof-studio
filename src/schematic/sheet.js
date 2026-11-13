@@ -254,7 +254,7 @@ const SYMBOLS = {
  */
 export const PKG_SYMBOLS = {};
 const SYMBOL_OF = type => (/^res-/.test(type) ? 'resistor' : type === 'cap-100n' ? 'cap' : type === 'cap-100u' ? 'capPol' : type === 'diode' ? 'diode' : LED_COLOR[type] ? 'led'
-  : type === 'led-rgb' ? 'ledRgb' : type === 'button' ? 'button' : type === 'pot' ? 'pot' : type === 'npn' || type === 'pn2222' ? 'npn' : /^bat/.test(type) ? 'battery' : type === 'dcmotor' ? 'motor'
+  : type === 'led-rgb' ? 'ledRgb' : type === 'button' || type === 'cylsensor' || type === 'pressostat' ? 'button' : type === 'pot' ? 'pot' : type === 'npn' || type === 'pn2222' ? 'npn' : /^bat/.test(type) ? 'battery' : type === 'dcmotor' ? 'motor'
   : type === 'buzzer' ? 'buzzer' : type === 'speaker' ? 'speaker' : type === 'fan' || type === 'pump' || type === 'vibro' ? type : ANALOG_SYMBOL[type] || null);
 
 /** Petits pictogrammes dans les blocs (relais, servo, pas à pas). */
@@ -792,7 +792,7 @@ export function paintCircuit(d, L, o = {}) {
 export function liveState(c) {
   const i = c.inp || {};
   switch (c.type) {
-    case 'button': return { pressed: !!i.pressed };
+    case 'button': case 'cylsensor': case 'pressostat': return { pressed: !!i.pressed };
     case 'pot': return { pos: Math.round(i.pos ?? 50) };
     case 'relay': return { on: !!c.relayOn };
     case 'buzzer': case 'speaker': return { on: !!(c.actR && c.actR.live) };

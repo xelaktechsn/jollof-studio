@@ -10,11 +10,12 @@ import { hydrateIcons } from '../ui/icons.js';
 
 const STASH = 'jollof-stash';
 
-export function createSessions(app, hub) {
+/** hub : espace classe (édition Pro), refermé au début d'une séance ; null sans espace classe (TP seuls). */
+export function createSessions(app, hub = null) {
   let cur = null;
   const chip = document.createElement('div');
   chip.className = 'sessChip'; chip.hidden = true;
-  document.querySelector('.appbar .project').insertAdjacentElement('afterend', chip);
+  document.querySelector('#redoBtn').insertAdjacentElement('afterend', chip); // après le projet et son historique
 
   function paintChip() {
     if (!cur) { chip.hidden = true; chip.innerHTML = ''; return; }
@@ -46,7 +47,7 @@ export function createSessions(app, hub) {
       s.stash = { data: mine, name: app.projectName() };
       if (!(await app.openProject(s.data, s.name))) { toast(tl('Terminez d’abord l’enregistrement vidéo.'), 'warn'); return false; }
     }
-    cur = s; paintChip(); openPanel(); hub.close();
+    cur = s; paintChip(); openPanel(); if (hub) hub.close();
     return true;
   }
   /** Termine la séance (et rend le projet personnel). Renvoie false si l'utilisateur annule. */
@@ -67,7 +68,7 @@ export function createSessions(app, hub) {
   async function recover() {
     let st = null; try { st = JSON.parse(localStorage.getItem(STASH) || 'null'); } catch (e) { st = null; }
     if (!st || !st.data) return;
-    const ok = await confirm(tl('Projet mis de côté'), tl('L’application s’est fermée pendant une séance (devoir ou projet de groupe). Votre projet personnel « {0} » avait été mis de côté : le remettre dans le plan de travail ?', esc(st.name || '')), tl('Restaurer mon projet'));
+    const ok = await confirm(tl('Projet mis de côté'), tl('L’application s’est fermée pendant une séance (TP, devoir ou projet de groupe). Votre projet personnel « {0} » avait été mis de côté : le remettre dans le plan de travail ?', esc(st.name || '')), tl('Restaurer mon projet'));
     if (ok) await app.openProject(st.data, st.name);
     try { localStorage.removeItem(STASH); } catch (e) { /* rien à effacer */ }
   }

@@ -9,6 +9,7 @@ import { createGenContext, ident, cstr, RESERVED, SIGNALS, ACTIONS, signalOf, is
 import { boardOf, codePin, base } from '../../sim/boards.js';
 import { tl, isEn, quote } from '../../i18n/index.js';
 import { B, F } from './types.js';
+import { isEsp32 } from '../api.js';
 
 const MK = '⁣', MKRX = /⁣(\d+)⁣/g; // repère invisible ligne → bloc, retiré après l'assemblage
 // Priorités du C++ (plus petit = plus lié) : décident des parenthèses.
@@ -120,6 +121,22 @@ function build(board, ws, cx, types) {
   const ZERO = res('0', O.ATOM, 'int', 'num'), FALSE = res('false', O.ATOM, 'bool');
   const wrap = (r, max) => (r.order > max ? `(${r.code})` : r.code);
   let pending = []; // commentaires des blocs de valeur, écrits avant leur instruction
+  // Écrans OLED dessinés depuis le dernier envoi (objet → minuterie d'envoi) : l'image part une fois, pas à chaque ligne.
+  const drawn = new Map();
+  const flushNow = () => { const out = [...drawn.keys()].map(o => `${o}.display();`); drawn.clear(); return out; };
+  // Mesures lues plusieurs fois dans un même événement : lues une fois, au début (hoist : clé → nom, reads : lignes).
+  let hoist = new Map(), reads = [];
+  const LOOPY = new Set([B.DELAY, 'controls_repeat_ext', 'controls_repeat', 'controls_whileUntil', 'controls_for']);
+  /** Mesures à lire une seule fois dans cet événement ; aucune s'il attend ou boucle (la mesure doit rester fraîche). */
+  function plan(first) {
+    const n = new Map(); let loopy = false;
+    walk(first, b => {
+      if (off(b)) return;
+      if (LOOPY.has(b.type)) loopy = true;
+      if (b.type === B.SIG_NUM || b.type === B.SIG_BOOL) { const k = `${fieldOf(b, F.COMP)}|${fieldOf(b, F.SIG)}`; n.set(k, (n.get(k) || 0) + 1); }
+    });
+    hoist = loopy ? new Map() : new Map([...n].filter(([, c]) => c > 1).map(([k]) => [k, null])); reads = [];
+  }
 
   // Événements : le premier « au démarrage » et le premier « en boucle » ; autant de « toutes les N ms » qu'on veut.
   const top = ((ws.blocks && ws.blocks.blocks) || []).filter(b => !off(b));
@@ -231,7 +248,12 @@ function build(board, ws, cx, types) {
         if (!sig) { warn(b, tl('{0} ne fournit pas cette mesure.', c.name)); return fb; }
         const x = compBoard(c, cx) === board ? g.sensorExpr(c, key) : g.missing(c);
         if (!x) { warn(b, tl('{0} n’est pas câblé à {1} : utilisez « Câbler automatiquement ».', c.name, board.name)); return fb; }
-        return res(x, / == /.test(x) ? O.EQ : / \/ /.test(x) ? O.MUL : O.ATOM, sig.kind === 'bool' ? 'bool' : sig.type === 'float' ? 'float' : 'int');
+        const t = sig.kind === 'bool' ? 'bool' : sig.type === 'float' ? 'float' : 'int', k = `${c.id}|${key}`;
+        if (hoist.has(k)) { // lue plusieurs fois ici : une seule lecture, en tête de l'événement
+          if (!hoist.get(k)) { const v = g.uniq(ident(`${g.objName(c)}_${sig.v}`)); hoist.set(k, v); reads.push(`${t} ${v} = ${x};`); }
+          return res(hoist.get(k), O.ATOM, t);
+        }
+        return res(x, / == /.test(x) ? O.EQ : / \/ /.test(x) ? O.MUL : O.ATOM, t);
       }
       default: warn(b, tl('Bloc non pris en charge : il compte pour 0.')); return ZERO;
     }
@@ -286,10 +308,10 @@ function build(board, ws, cx, types) {
         return p ? [`digitalWrite(${p}, ${s.type === 'bool' ? `${wrap(s, O.COND - 1)} ? HIGH : LOW` : s.code});`] : [tl('// (choisissez une broche)')];
       }
       case B.AWRITE: { const p = pin(b, 'out'); return p ? [`analogWrite(${p}, ${V(b, F.VALUE).code});`] : [tl('// (choisissez une broche)')]; }
-      case B.DELAY: return [`delay(${V(b, F.MS, res('1000', O.ATOM, 'int', 'num')).code});`];
+      case B.DELAY: return [...flushNow(), `delay(${V(b, F.MS, res('1000', O.ATOM, 'int', 'num')).code});`]; // l'écran montre ce qui précède l'attente
       case B.PRINT: case B.PRINTLN: {
-        const x = inputOf(b, F.VALUE), fn = b.type === B.PRINT ? 'print' : 'println';
-        return x ? [`Serial.${fn}(${E(x).code});`] : fn === 'println' ? ['Serial.println();'] : [];
+        const x = inputOf(b, F.VALUE), ln = b.type === B.PRINTLN;
+        return x ? printParts('Serial', x, ln) : ln ? ['Serial.println();'] : [];
       }
       case B.PLOT: { // une ligne « nom:valeur » par mesure : le format du traceur série
         const label = String(fieldOf(b, F.LABEL) || 'valeur').replace(/[\s:,]+/g, '_') || 'valeur';
@@ -303,6 +325,17 @@ function build(board, ws, cx, types) {
     }
   }
 
+  /**
+   * Imprime une valeur ; un texte assemblé (« créer un texte avec ») part morceau par morceau : aucun String
+   * n'est construit (sur une UNO, sa mémoire se fragmente vite). ln : passer à la ligne après.
+   */
+  function printParts(target, x, ln) {
+    if (x.type !== 'text_join') return [`${target}.${ln ? 'println' : 'print'}(${E(x).code});`];
+    const n = x.extraState && x.extraState.itemCount != null ? x.extraState.itemCount : Object.keys(x.inputs || {}).length, parts = [];
+    for (let i = 0; i < n; i++) { const p = inputOf(x, 'ADD' + i); if (p) parts.push(E(p).code); }
+    if (!parts.length) return ln ? [`${target}.println();`] : [];
+    return parts.map((c, i) => `${target}.${ln && i === parts.length - 1 ? 'println' : 'print'}(${c});`);
+  }
   /** Servo sur une broche : l'objet du composant SERVO1 s'il y est relié, sinon un objet propre à la broche. */
   function servo(b) {
     const a = V(b, F.ANGLE, res('90', O.ATOM, 'int', 'num')), sc = (users.get(fieldOf(b, F.PIN)) || []).map(u => u.comp).find(c => c.type === 'servo');
@@ -311,7 +344,7 @@ function build(board, ws, cx, types) {
     const p = pin(b, null); if (!p) return [tl('// (choisissez une broche)')];
     if (!servos.has(p)) {
       const o = g.uniq(ident(`servo_${p}`)); servos.set(p, o);
-      g.inc.add(g.kind === 'esp32' ? 'ESP32Servo.h' : 'Servo.h'); g.glob.push(`Servo ${o};`); g.setup.push(`${o}.attach(${p});`);
+      g.inc.add(isEsp32(g.kind) ? 'ESP32Servo.h' : 'Servo.h'); g.glob.push(`Servo ${o};`); g.setup.push(`${o}.attach(${p});`);
     }
     return [`${servos.get(p)}.write(${a.code});`];
   }
@@ -328,38 +361,55 @@ function build(board, ws, cx, types) {
     let arg = null;
     if (kind === 'color') { const v = fieldOf(b, F.COLOR); arg = /^#[0-9a-f]{6}$/i.test(v || '') ? v : va.arg.def; }
     else if (kind) arg = V(b, F.ARG, kind === 'text' ? res(cstr(va.arg.def), O.ATOM, 'String', 'str') : res(String(va.arg.def), O.ATOM, 'int', 'num'));
+    if (c.type === 'oled' && act === 'text' && inputOf(b, F.ARG) && inputOf(b, F.ARG).type === 'text_join' && g.actor(c)) { // morceau par morceau
+      const o = g.objName(c), a = g.actor(c); a.frame.own = true; drawn.set(o, a.frame); g.setup.push(`${o}.clearDisplay();`);
+      return printParts(o, inputOf(b, F.ARG), true);
+    }
     if (c.type === 'lcd1602' || c.type === 'oled') return screen(c, act, arg, unwired);
     const a = g.actor(c);
     if (!a) return unwired();
     if (kind !== 'num') return a(act, arg);
     if (arg.lit === 'num') return a(act, +arg.code);
-    // Réglage calculé (variable, mesure…) : même code que « suit la mesure ».
-    if (['dim', 'angle', 'note', 'digit', 'fwd', 'speed'].includes(act)) return a('follow', null, arg.code);
-    if (act === 'back') return [...a('back', 0).slice(0, 2), ...a('follow', null, arg.code).slice(2)];
-    if (act === 'blink' || act === 'beep') return [`digitalWrite(${g.pinConst(c, c.type === 'buzzer' ? '+' : 'A')}, (millis() / ${wrap(arg, O.MUL - 1)}) % 2 ? HIGH : LOW);`];
+    // Réglage calculé (mesure convertie…) : nommé avant d'être utilisé, comme dans le code des règles ; une variable reste telle quelle.
+    const named = arg.order === O.ATOM && !/\(/.test(arg.code) ? null : g.uniq(`${g.objName(c)}_consigne`);
+    const x = named || arg.code, keep = named ? [`int ${named} = ${arg.code};`] : [];
+    if (['dim', 'angle', 'note', 'digit', 'fwd', 'speed'].includes(act)) return [...keep, ...a('follow', null, x)];
+    if (act === 'back') return [...keep, ...a('back', 0).slice(0, 2), ...a('follow', null, x).slice(2)];
+    if (act === 'blink' || act === 'beep') return [...keep, `digitalWrite(${g.pinConst(c, c.type === 'buzzer' ? '+' : c.type === 'laser' ? 'S' : 'A')}, (millis() / ${named || wrap(arg, O.MUL - 1)}) % 2 ? HIGH : LOW);`];
     return a(act, 0);
   }
   /** Écrans : chaque bloc écrit ou efface lui-même (pas d'effacement automatique à chaque tour). */
+  /** Écrans : chaque bloc écrit ou efface (pas d'effacement automatique) ; l'image d'un OLED part une fois (flushNow). */
   function screen(c, act, arg, unwired) {
-    const keep0 = [g.pre.length, g.tail.length], a = g.actor(c);
-    g.pre.length = keep0[0]; g.tail.length = keep0[1];
+    const a = g.actor(c);
     if (!a) return unwired();
     const o = g.objName(c);
-    if (c.type === 'lcd1602') return act === 'clear' ? [`${o}.clear();`] : [`ecrireLigne(${o}, ${act === 'line1' ? 1 : 0}, ${!arg ? '""' : arg.type === 'String' ? arg.code : `String(${arg.code})`});`];
+    if (c.type === 'lcd1602') {
+      if (act === 'clear') return [`${o}.clear();`, `${a.memo}[0] = "";`, `${a.memo}[1] = "";`];
+      return [`ecrireLigne(${o}, ${a.memo}, ${act === 'line1' ? 1 : 0}, ${!arg ? '""' : arg.type === 'String' ? arg.code : `String(${arg.code})`});`];
+    }
+    a.frame.own = true; drawn.set(o, a.frame);
     g.setup.push(`${o}.clearDisplay();`);
-    return act === 'clear' ? [`${o}.clearDisplay();`, `${o}.setCursor(0, 0);`, `${o}.display();`] : [`${o}.println(${arg ? arg.code : '""'});`, `${o}.display();`];
+    return act === 'clear' ? [`${o}.clearDisplay();`, `${o}.setCursor(0, 0);`] : [`${o}.println(${arg ? arg.code : '""'});`];
   }
 
   /* ---------- Programme ---------- */
-  const setupBody = setupB ? [...commentLines(setupB), ...chain(stmtIn(setupB, F.DO), 0)] : [];
-  const loop = loopB ? [...commentLines(loopB), ...chain(stmtIn(loopB, F.DO), 0)] : [];
+  /** Corps d'un événement : mesures lues une fois en tête, puis ses blocs. */
+  const rootBody = (b, inner) => { plan(stmtIn(b, F.DO)); const lines = inner ? indent(chain(stmtIn(b, F.DO), 1)) : chain(stmtIn(b, F.DO), 0); return [...(inner ? indent(reads) : reads), ...lines]; };
+  const setupBody = setupB ? [...commentLines(setupB), ...rootBody(setupB, false), ...flushNow()] : [];
+  const loop = loopB ? [...commentLines(loopB), ...rootBody(loopB, false)] : [];
+  if (drawn.size) { // fin de loop() : l'image part au plus 10 fois par seconde (chaque envoi prend environ 25 ms)
+    loop.push('', tl('// Écran : l’image part au plus 10 fois par seconde (chaque envoi prend environ 25 ms)'));
+    for (const [o, f] of drawn) { f.used = true; loop.push(`if (millis() - ${f.sent} >= 100) {`, `  ${f.sent} = millis();`, `  ${o}.display();`, '}'); }
+    drawn.clear();
+  }
   const timers = [];
   every.forEach((b, i) => {
     const ms = Math.max(1, Math.round(Number(fieldOf(b, F.MS)) || 1000)), t = g.uniq(`${isEn ? 'timer' : 'minuterie'}${i + 1}`);
     timers.push(`unsigned long ${t} = 0;`);
     ids.push(b.id);
     if (loop.length) loop.push('');
-    loop.push(...commentLines(b), tl('// Toutes les {0} ms', ms), `${MK}${ids.length - 1}${MK}if (millis() - ${t} >= ${ms}) {`, `  ${t} = millis();`, ...body(b, F.DO, 0), '}');
+    loop.push(...commentLines(b), tl('// Toutes les {0} ms', ms), `${MK}${ids.length - 1}${MK}if (millis() - ${t} >= ${ms}) {`, `  ${t} = millis();`, ...rootBody(b, true), ...indent(flushNow()), '}');
   });
   // pinMode automatiques, en tête de setup() ; les broches déjà réglées par un composant ne sont pas répétées.
   const done = new Set(g.setup.map(l => (/^pinMode\(([^,]+),/.exec(l) || [])[1]).filter(Boolean));

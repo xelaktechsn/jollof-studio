@@ -7,7 +7,7 @@ Jollof Studio itself: AGPL-3.0-or-later with additional terms (see NOTICE.md), �
 | Kind | Count |
 | --- | --- |
 | npm packages (production) | 125 |
-| Rust crates (desktop app) | 404 |
+| Rust crates (desktop app) | 421 |
 | 3D models | 24 |
 | Fonts | 2 |
 | Embedded firmware | 2 |
@@ -51,13 +51,25 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | crate | [fnv](https://github.com/servo/rust-fnv) | 1.0.7 | Apache-2.0 / MIT |
 
+### Apache-2.0 AND ISC (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [ring](https://github.com/briansmith/ring) | 0.17.14 | Apache-2.0 AND ISC |
+
 ### Apache-2.0 AND MIT (1)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | crate | [dpi](https://github.com/rust-windowing/winit) | 0.1.2 | Apache-2.0 AND MIT |
 
-### Apache-2.0 OR MIT (30)
+### Apache-2.0 OR ISC OR MIT (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [rustls](https://github.com/rustls/rustls) | 0.23.46 | Apache-2.0 OR ISC OR MIT |
+
+### Apache-2.0 OR MIT (31)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
@@ -91,6 +103,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [uuid](https://github.com/uuid-rs/uuid) | 1.29.0 | Apache-2.0 OR MIT |
 | crate | [window-vibrancy](https://github.com/tauri-apps/tauri-plugin-vibrancy) | 0.8.1 | Apache-2.0 OR MIT |
 | crate | [wry](https://github.com/tauri-apps/wry) | 0.57.1 | Apache-2.0 OR MIT |
+| crate | [zeroize](https://github.com/RustCrypto/utils) | 1.9.1 | Apache-2.0 OR MIT |
 
 ### Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT (3)
 
@@ -122,13 +135,14 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | crate | [mach2](https://github.com/JohnTitor/mach2) | 0.4.3 | BSD-2-Clause OR MIT OR Apache-2.0 |
 
-### BSD-3-Clause (4)
+### BSD-3-Clause (5)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | npm | [tough-cookie](git://github.com/salesforce/tough-cookie) | 5.1.2 | BSD-3-Clause |
 | crate | [alloc-no-stdlib](https://github.com/dropbox/rust-alloc-no-stdlib) | 3.0.0 | BSD-3-Clause |
 | crate | [alloc-stdlib](https://github.com/dropbox/rust-alloc-no-stdlib) | 0.3.0 | BSD-3-Clause |
+| crate | [subtle](https://github.com/dalek-cryptography/subtle) | 2.6.1 | BSD-3-Clause |
 | firmware | [RP2040 bootrom](https://github.com/raspberrypi/pico-bootrom) | B1 | BSD-3-Clause |
 
 ### BSD-3-Clause AND MIT (1)
@@ -183,13 +197,21 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | crate | [dunce](https://gitlab.com/kornelski/dunce) | 1.0.5 | CC0-1.0 OR MIT-0 OR Apache-2.0 |
 
-### ISC (3)
+### CDLA-Permissive-2.0 (1)
+
+| Kind | Name | Version | License |
+| --- | --- | --- | --- |
+| crate | [webpki-roots](https://github.com/rustls/webpki-roots) | 1.0.11 | CDLA-Permissive-2.0 |
+
+### ISC (5)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | npm | [lru-cache](git://github.com/isaacs/node-lru-cache) | 10.4.3 | ISC |
 | npm | [saxes](https://github.com/lddubeau/saxes) | 6.0.0 | ISC |
 | crate | [libloading](https://github.com/nagisa/rust_libloading/) | 0.7.4 | ISC |
+| crate | [rustls-webpki](https://github.com/rustls/webpki) | 0.103.16 | ISC |
+| crate | [untrusted](https://github.com/briansmith/untrusted) | 0.9.0 | ISC |
 
 ### LGPL-2.1 (1)
 
@@ -197,7 +219,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | npm | [occt-import-js](github:kovacsv/occt-import-js) | 0.0.23 | LGPL-2.1 |
 
-### MIT (207)
+### MIT (210)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
@@ -353,9 +375,11 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [infer](https://github.com/bojand/infer) | 0.22.0 | MIT |
 | crate | [javascriptcore-rs](https://github.com/tauri-apps/javascriptcore-rs) | 1.1.2 | MIT |
 | crate | [javascriptcore-rs-sys](https://github.com/tauri-apps/javascriptcore-rs) | 1.1.1 | MIT |
+| crate | [libm](https://github.com/rust-lang/compiler-builtins) | 0.2.16 | MIT |
 | crate | [libredox](https://gitlab.redox-os.org/redox-os/libredox.git) | 0.1.25 | MIT |
 | crate | [libudev](https://github.com/dcuddeback/libudev-rs) | 0.3.0 | MIT |
 | crate | [libudev-sys](https://github.com/dcuddeback/libudev-sys) | 0.1.4 | MIT |
+| crate | [maisa-core](https://github.com/mouhamed1296/maisa-core) | 0.1.0 | MIT |
 | crate | [memoffset](https://github.com/Gilnaa/memoffset) | 0.9.1 | MIT |
 | crate | [mio](https://github.com/tokio-rs/mio) | 1.2.4 | MIT |
 | crate | [new_debug_unreachable](https://github.com/mbrubeck/rust-debug-unreachable) | 1.0.6 | MIT |
@@ -405,6 +429,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [winnow](https://github.com/winnow-rs/winnow) | 1.0.4 | MIT |
 | crate | [x11](https://github.com/AltF02/x11-rs.git) | 2.21.0 | MIT |
 | crate | [x11-dl](https://github.com/AltF02/x11-rs.git) | 2.21.0 | MIT |
+| crate | [zip](https://github.com/zip-rs/zip2.git) | 4.6.1 | MIT |
 | crate | [zmij](https://github.com/dtolnay/zmij) | 1.0.23 | MIT |
 | model | [Pile 9 V](https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/1321%20Battery%209V/1321%20Battery%209V.step) |  | MIT |
 | model | [Potentiomètre 10 kΩ](https://raw.githubusercontent.com/adafruit/Adafruit_CAD_Parts/main/562%2010K%20Potentiometer/562%2010K%20Potentiometer.step) |  | MIT |
@@ -421,15 +446,16 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | firmware | [MicroPython (RPI_PICO)](https://micropython.org/download/RPI_PICO/) | 1.29.0 | MIT AND BSD-3-Clause |
 
-### MIT OR Apache-2.0 (188)
+### MIT OR Apache-2.0 (195)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
 | npm | [@tauri-apps/plugin-dialog](https://github.com/tauri-apps/plugins-workspace) | 2.8.4 | MIT OR Apache-2.0 |
 | crate | [android_system_properties](https://github.com/nical/android_system_properties) | 0.1.6 | MIT OR Apache-2.0 |
 | crate | [anyhow](https://github.com/dtolnay/anyhow) | 1.0.104 | MIT OR Apache-2.0 |
-| crate | [base64](https://github.com/marshallpierce/rust-base64) | 0.21.7 | MIT OR Apache-2.0 |
+| crate | [arbitrary](https://github.com/rust-fuzz/arbitrary/) | 1.5.0 | MIT OR Apache-2.0 |
 | crate | [base64](https://github.com/marshallpierce/rust-base64) | 0.23.1 | MIT OR Apache-2.0 |
+| crate | [base64](https://github.com/marshallpierce/rust-base64) | 0.21.7 | MIT OR Apache-2.0 |
 | crate | [bitflags](https://github.com/bitflags/bitflags) | 2.13.2 | MIT OR Apache-2.0 |
 | crate | [block-buffer](https://github.com/RustCrypto/utils) | 0.10.4 | MIT OR Apache-2.0 |
 | crate | [bumpalo](https://github.com/fitzgen/bumpalo) | 3.20.3 | MIT OR Apache-2.0 |
@@ -451,6 +477,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [defmt-macros](https://github.com/knurling-rs/defmt) | 1.2.0 | MIT OR Apache-2.0 |
 | crate | [defmt-parser](https://github.com/knurling-rs/defmt) | 1.1.0 | MIT OR Apache-2.0 |
 | crate | [deranged](https://github.com/jhpratt/deranged) | 0.5.9 | MIT OR Apache-2.0 |
+| crate | [derive_arbitrary](https://github.com/rust-fuzz/arbitrary) | 1.5.0 | MIT OR Apache-2.0 |
 | crate | [digest](https://github.com/RustCrypto/traits) | 0.10.7 | MIT OR Apache-2.0 |
 | crate | [dirs](https://codeberg.org/dirs/dirs-rs) | 7.0.0 | MIT OR Apache-2.0 |
 | crate | [dirs-sys](https://github.com/dirs-dev/dirs-sys-rs) | 0.5.0 | MIT OR Apache-2.0 |
@@ -471,6 +498,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [futures-sink](https://github.com/rust-lang/futures-rs) | 0.3.34 | MIT OR Apache-2.0 |
 | crate | [futures-task](https://github.com/rust-lang/futures-rs) | 0.3.34 | MIT OR Apache-2.0 |
 | crate | [futures-util](https://github.com/rust-lang/futures-rs) | 0.3.34 | MIT OR Apache-2.0 |
+| crate | [getrandom](https://github.com/rust-random/getrandom) | 0.2.17 | MIT OR Apache-2.0 |
 | crate | [getrandom](https://github.com/rust-random/getrandom) | 0.4.3 | MIT OR Apache-2.0 |
 | crate | [getrandom](https://github.com/rust-random/getrandom) | 0.3.4 | MIT OR Apache-2.0 |
 | crate | [glob](https://github.com/rust-lang/glob) | 0.3.4 | MIT OR Apache-2.0 |
@@ -522,6 +550,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [regex-automata](https://github.com/rust-lang/regex) | 0.4.18 | MIT OR Apache-2.0 |
 | crate | [regex-syntax](https://github.com/rust-lang/regex) | 0.8.11 | MIT OR Apache-2.0 |
 | crate | [reqwest](https://github.com/seanmonstar/reqwest) | 0.13.5 | MIT OR Apache-2.0 |
+| crate | [rustls-pki-types](https://github.com/rustls/pki-types) | 1.15.1 | MIT OR Apache-2.0 |
 | crate | [rustversion](https://github.com/dtolnay/rustversion) | 1.0.23 | MIT OR Apache-2.0 |
 | crate | [scopeguard](https://github.com/bluss/scopeguard) | 1.2.0 | MIT OR Apache-2.0 |
 | crate | [semver](https://github.com/dtolnay/semver) | 1.0.28 | MIT OR Apache-2.0 |
@@ -571,7 +600,10 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [typeid](https://github.com/dtolnay/typeid) | 1.0.3 | MIT OR Apache-2.0 |
 | crate | [typenum](https://github.com/paholg/typenum) | 1.20.1 | MIT OR Apache-2.0 |
 | crate | [unicode-segmentation](https://github.com/unicode-rs/unicode-segmentation) | 1.13.3 | MIT OR Apache-2.0 |
+| crate | [ureq](https://github.com/algesten/ureq) | 3.5.1 | MIT OR Apache-2.0 |
+| crate | [ureq-proto](https://github.com/algesten/ureq-proto) | 0.7.1 | MIT OR Apache-2.0 |
 | crate | [url](https://github.com/servo/rust-url) | 2.5.8 | MIT OR Apache-2.0 |
+| crate | [utf8-zero](https://github.com/algesten/utf8-zero) | 0.8.1 | MIT OR Apache-2.0 |
 | crate | [wasm-bindgen](https://github.com/wasm-bindgen/wasm-bindgen) | 0.2.130 | MIT OR Apache-2.0 |
 | crate | [wasm-bindgen-futures](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/futures) | 0.4.80 | MIT OR Apache-2.0 |
 | crate | [wasm-bindgen-macro](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/macro) | 0.2.130 | MIT OR Apache-2.0 |
@@ -582,21 +614,21 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [web-sys](https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/web-sys) | 0.3.107 | MIT OR Apache-2.0 |
 | crate | [web-time](https://github.com/daxpedda/web-time) | 1.1.0 | MIT OR Apache-2.0 |
 | crate | [windows](https://github.com/microsoft/windows-rs) | 0.62.2 | MIT OR Apache-2.0 |
-| crate | [windows_aarch64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_aarch64_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_aarch64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_aarch64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_aarch64_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_i686_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_aarch64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_i686_gnu](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
+| crate | [windows_i686_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_i686_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_i686_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_i686_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_x86_64_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_i686_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_gnu](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_x86_64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_gnu](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_gnullvm](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
-| crate | [windows_x86_64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_gnullvm](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows_x86_64_msvc](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
+| crate | [windows_x86_64_msvc](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows-collections](https://github.com/microsoft/windows-rs) | 0.3.2 | MIT OR Apache-2.0 |
 | crate | [windows-core](https://github.com/microsoft/windows-rs) | 0.62.2 | MIT OR Apache-2.0 |
 | crate | [windows-future](https://github.com/microsoft/windows-rs) | 0.3.2 | MIT OR Apache-2.0 |
@@ -606,11 +638,11 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | crate | [windows-numerics](https://github.com/microsoft/windows-rs) | 0.3.1 | MIT OR Apache-2.0 |
 | crate | [windows-result](https://github.com/microsoft/windows-rs) | 0.4.1 | MIT OR Apache-2.0 |
 | crate | [windows-strings](https://github.com/microsoft/windows-rs) | 0.5.1 | MIT OR Apache-2.0 |
+| crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.52.0 | MIT OR Apache-2.0 |
 | crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.61.2 | MIT OR Apache-2.0 |
 | crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.45.0 | MIT OR Apache-2.0 |
-| crate | [windows-sys](https://github.com/microsoft/windows-rs) | 0.52.0 | MIT OR Apache-2.0 |
-| crate | [windows-targets](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows-targets](https://github.com/microsoft/windows-rs) | 0.52.6 | MIT OR Apache-2.0 |
+| crate | [windows-targets](https://github.com/microsoft/windows-rs) | 0.42.2 | MIT OR Apache-2.0 |
 | crate | [windows-threading](https://github.com/microsoft/windows-rs) | 0.2.1 | MIT OR Apache-2.0 |
 | crate | [windows-version](https://github.com/microsoft/windows-rs) | 0.1.7 | MIT OR Apache-2.0 |
 
@@ -637,8 +669,8 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
-| crate | [miniz_oxide](https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide) | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 | crate | [miniz_oxide](https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide) | 0.9.1 | MIT OR Zlib OR Apache-2.0 |
+| crate | [miniz_oxide](https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide) | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 
 ### MIT-0 (1)
 

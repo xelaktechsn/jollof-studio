@@ -13,6 +13,8 @@ import { BOARDS } from '../sim/boards.js';
 const { LIMIT_SRC } = LIM;
 /** Seuils de conception sans fiche technique (LIMIT_SRC à null), chacun justifié dans limits.js. */
 const DESIGN = new Set(['SHORT_MA']);
+/** Limites de carte sans fiche technique (null dans LIMIT_SRC.BOARD), justifiées dans limits.js. */
+const DESIGN_BOARD = new Set(['d1mini.three', 'esp32-38.three', 'esp32s3.three', 'esp32c3.three']);
 /** Fabricants dont le site ne sert pas HTTPS : adresse HTTP d'origine. */
 const HTTP_ONLY = new Set(['ams1117']);
 const BOARD_FIELDS = ['pin', 'total', 'five', 'three', 'vmax'];
@@ -59,6 +61,7 @@ test('chaque limite de carte cite une source', () => {
     const b = LIM.boardLimits({ type, pins: {} });
     for (const f of BOARD_FIELDS) {
       assert.ok(b[f] != null, `${type}.${f} existe`);
+      if (DESIGN_BOARD.has(`${type}.${f}`)) { assert.equal(LIMIT_SRC.BOARD[type][f], null, `${type}.${f}`); continue; }
       assert.equal(bad(LIMIT_SRC.BOARD[type][f]), '', `${type}.${f}`);
     }
   }
@@ -80,7 +83,7 @@ test('chaque alimentation v et chaque consommation ma de parts.js cite une sourc
 test('chaque fiche est complète et sert au moins une fois', () => {
   // Les tests précédents remplissent used ; on le recalcule ici pour ne pas dépendre de leur ordre.
   for (const [, src] of limits()) if (src != null) bad(src);
-  for (const type of Object.keys(BOARDS)) for (const f of BOARD_FIELDS) bad(LIMIT_SRC.BOARD[type][f]);
+  for (const type of Object.keys(BOARDS)) for (const f of BOARD_FIELDS) if (!DESIGN_BOARD.has(`${type}.${f}`)) bad(LIMIT_SRC.BOARD[type][f]);
   for (const n of Object.values(NPNS)) bad(n.src);
   for (const spec of Object.values(PARTS)) {
     for (const p of spec.pins || []) if (Array.isArray(p.v)) bad(p.ds);

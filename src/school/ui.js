@@ -2,12 +2,15 @@
 // Copyright (C) 2026 Mamadou Sarr
 // Petite trousse d'interface de l'espace classe : avatars, pastilles d'état, dates relatives,
 // boîtes de dialogue, notifications éphémères, anneau de score, états vides.
-import { tl, locale, isEn } from '../i18n/index.js';
+// Feuille de style des fenêtres, menus, notifications et séances : partagés par toute l'application (TP, IA,
+// onglet Code, logique…), dans les deux éditions ; l'espace classe (édition Pro) s'en sert aussi.
+import './school.css';
+import { tl, locale, isEn, CANCEL } from '../i18n/index.js';
 import { icon, hydrateIcons } from '../ui/icons.js';
 
 export const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 export { icon };
-export const COLORS = ['#e0703a', '#3b82f6', '#3fb27f', '#9b7be0', '#f2c94c', '#e5484d', '#3fbfbf', '#d36bb0'];
+export const COLORS = ['#3b82f6', '#e0703a', '#3fb27f', '#9b7be0', '#f2c94c', '#e5484d', '#3fbfbf', '#d36bb0'];
 
 export const initials = name => String(name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase() || '?';
 /** Pastille ronde d'une personne : initiales sur sa couleur, point vert si en ligne. */
@@ -104,12 +107,12 @@ export function dialog({ title, body = '', actions = [{ label: tl('Fermer'), val
   });
 }
 export const confirm = (title, text, label = tl('Confirmer'), danger = false) =>
-  dialog({ title, body: `<p class="dlgText">${text}</p>`, actions: [{ label: tl('Annuler'), value: false }, { label, value: true, kind: danger ? 'danger solid' : 'primary' }] }).then(v => !!v);
+  dialog({ title, body: `<p class="dlgText">${text}</p>`, actions: [{ label: CANCEL, value: false }, { label, value: true, kind: danger ? 'danger solid' : 'primary' }] }).then(v => !!v);
 export function ask(title, label, value = '', { placeholder = '', multiline = false, ok = tl('Valider') } = {}) {
   const field = multiline ? `<textarea class="sInput" rows="4" placeholder="${esc(placeholder)}">${esc(value)}</textarea>` : `<input class="sInput" value="${esc(value)}" placeholder="${esc(placeholder)}">`;
   return dialog({
     title, body: `<label class="sField"><span>${label}</span>${field}</label>`,
-    actions: [{ label: tl('Annuler'), value: null }, { label: ok, value: 'ok', kind: 'primary' }],
+    actions: [{ label: CANCEL, value: null }, { label: ok, value: 'ok', kind: 'primary' }],
     onAction: (v, root) => (v === 'ok' ? root.querySelector('.sInput').value.trim() || false : undefined)
   });
 }

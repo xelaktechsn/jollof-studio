@@ -26,8 +26,13 @@ function counts(prof) {
 const CARDS = () => [
   { id: 'uno', wifi: false, level: tl('Débutant'), price: tl('≈ 4 000 – 8 000 FCFA (clone)'), use: tl('Apprendre : LED, boutons, capteurs, moteurs. Le premier choix d’un club ou d’une salle de TP.') },
   { id: 'nano', wifi: false, level: tl('Débutant'), price: tl('≈ 3 000 – 6 000 FCFA (clone)'), use: tl('La même carte que l’Uno, en petit : se pique directement sur la breadboard, idéale pour un montage définitif.') },
+  { id: 'mega', wifi: false, level: tl('Débutant'), price: tl('≈ 8 000 – 14 000 FCFA (clone)'), use: tl('L’Uno en grand : 54 broches, 16 entrées analogiques, 4 ports série. Pour les gros projets (robot, serre, imprimante 3D).') },
   { id: 'esp32', wifi: true, bt: true, level: tl('Intermédiaire'), price: tl('≈ 5 000 – 9 000 FCFA'), use: tl('Objets connectés : station météo en ligne, arrosage commandé par téléphone, serveur web. Plus rapide, mais logique 3,3 V.') },
+  { id: 'esp32-38', wifi: true, bt: true, level: tl('Intermédiaire'), price: tl('≈ 5 000 – 9 000 FCFA'), use: tl('Le même ESP32 sur 38 broches (DevKitC, NodeMCU-32S) : plus de broches sorties, mais trop large pour une petite breadboard.') },
+  { id: 'esp32s3', wifi: true, bt: true, ble: true, level: tl('Avancé'), price: tl('≈ 7 000 – 12 000 FCFA'), use: tl('L’ESP32 moderne : plus rapide, USB natif, beaucoup de broches. Écran, son, caméra, petite intelligence artificielle.') },
+  { id: 'esp32c3', wifi: true, bt: true, ble: true, level: tl('Intermédiaire'), price: tl('≈ 2 000 – 4 000 FCFA'), use: tl('L’ESP32 le moins cher et le plus petit : Wi-Fi et Bluetooth LE pour un capteur connecté.') },
   { id: 'nodemcu', wifi: true, level: tl('Intermédiaire'), price: tl('≈ 3 500 – 6 000 FCFA'), use: tl('Le Wi-Fi le moins cher : un capteur qui envoie ses mesures. Une seule entrée analogique.') },
+  { id: 'd1mini', wifi: true, level: tl('Intermédiaire'), price: tl('≈ 2 500 – 5 000 FCFA'), use: tl('Le NodeMCU en tout petit, avec des cartes d’extension à empiler : capteur Wi-Fi qui tient dans un boîtier.') },
   { id: 'pico', wifi: false, level: tl('Intermédiaire'), price: tl('≈ 4 000 – 7 000 FCFA'), use: tl('Apprendre MicroPython ; signaux très précis (rubans de LED) grâce à ses blocs PIO. Version « W » avec Wi-Fi.') }
 ];
 
@@ -37,7 +42,7 @@ export function renderBoardGuide() {
     const p = BOARDS[c.id], n = counts(p), five = p.logic >= 5;
     return `<tr><th><b>${esc(p.label)}</b><small>${esc(c.level)}</small><span class="bgAct"><button type="button" class="btn small" data-id="${c.id}">${tl('Fiche')}</button><button type="button" class="btn small primary" data-add="${c.id}">${tl('Ajouter')}</button></span></th>
       <td><span class="bgLogic ${five ? 'v5' : 'v3'}">${esc(volts(p.logic))}</span></td>
-      <td>${yes(five)}</td><td>${n.io}</td><td>${n.adc} · ${tl('{0} bits', p.adcBits)}</td><td class="bgNw">${yes(c.wifi)}${c.bt ? ` <small>+ BT</small>` : ''}</td>
+      <td>${yes(five)}</td><td>${n.io}</td><td>${n.adc} · ${tl('{0} bits', p.adcBits)}</td><td class="bgNw">${yes(c.wifi)}${c.bt ? ` <small>+ ${c.ble ? 'BLE' : 'BT'}</small>` : ''}</td>
       <td class="bgUse">${esc(c.use)}<small>${esc(c.price)}</small></td></tr>`;
   }).join('');
   const head = `<small>${tl('Guide')}</small><h1>${tl('Quelle carte choisir ?')}</h1>
@@ -57,11 +62,11 @@ export function renderBoardGuide() {
       <li>${tl('Le simulateur signale ces erreurs en rouge dans l’onglet Simulation : essayez avant d’acheter.')}</li></ul></section>
     <section><h3>${tl('Par où commencer ?')}</h3><ol class="bgPath">
       <li><b>${tl('Apprendre')}</b> — ${tl('Uno, ou Nano pour un montage compact. Des milliers de tutoriels en français ; tous les TP de base de Jollof Studio l’utilisent.')}</li>
-      <li><b>${tl('Connecter')}</b> — ${tl('ESP32 dès qu’il faut le Wi-Fi ou le Bluetooth (mêmes programmes Arduino, quelques broches à éviter) ; NodeMCU si le budget est très serré.')}</li>
+      <li><b>${tl('Connecter')}</b> — ${tl('ESP32 dès qu’il faut le Wi-Fi ou le Bluetooth (mêmes programmes Arduino, quelques broches à éviter) ; ESP32-C3 ou NodeMCU si le budget est très serré, ESP32-S3 pour les projets plus lourds.')}</li>
       <li><b>${tl('Explorer')}</b> — ${tl('Pico pour MicroPython et les signaux très précis.')}</li></ol></section>
     <section><h3>${tl('Pour aller plus loin')}</h3><ul>
       <li>${tl('Arduino Uno R4 : même forme et même 5 V que l’Uno, processeur 48 MHz et 32 Ko de mémoire vive ; version WiFi.')}</li>
-      <li>${tl('ESP32-S3 et ESP32-C3 : variantes de l’ESP32 (USB intégré, prix plus bas pour la C3). Importables dans Jollof Studio comme cartes personnelles.')}</li>
+      <li>${tl('ESP32-C6 : l’ESP32-C3 avec le Wi-Fi 6, Thread et Zigbee, pour la maison connectée (pas encore simulé dans Jollof Studio).')}</li>
       <li>${tl('Raspberry Pi Pico 2 (RP2350) : 150 MHz, 520 Ko de mémoire vive et 3 blocs PIO, au lieu de 133 MHz, 264 Ko et 2 PIO pour le Pico.')}</li>
       <li>${tl('micro:bit : carte d’initiation avec écran de LED, boutons et capteurs intégrés, programmée par blocs ou en Python.')}</li>
       <li>${tl('Raspberry Pi 4 ou 5 : quand le projet a besoin d’une caméra, de vision par ordinateur ou d’un serveur, associé à une carte ci-dessus pour les capteurs et les moteurs.')}</li></ul></section>`;

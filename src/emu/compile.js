@@ -17,7 +17,7 @@ const CORE_URLS = {
 /** Bibliothèques Arduino à installer selon les #include du programme. */
 export const LIBS = {
   'DHT.h': ['DHT sensor library', 'Adafruit Unified Sensor'], 'OneWire.h': ['OneWire'], 'DallasTemperature.h': ['DallasTemperature'],
-  'Adafruit_BMP280.h': ['Adafruit BMP280 Library'], 'Adafruit_MPU6050.h': ['Adafruit MPU6050'], 'LiquidCrystal_I2C.h': ['LiquidCrystal I2C'],
+  'Adafruit_BMP280.h': ['Adafruit BMP280 Library'], 'Adafruit_BME280.h': ['Adafruit BME280 Library'], 'BH1750.h': ['BH1750'], 'HX711.h': ['HX711 Arduino Library'], 'Adafruit_MPU6050.h': ['Adafruit MPU6050'], 'LiquidCrystal_I2C.h': ['LiquidCrystal I2C'],
   'Adafruit_SSD1306.h': ['Adafruit SSD1306', 'Adafruit GFX Library'], 'Adafruit_GFX.h': ['Adafruit GFX Library'], 'Servo.h': ['Servo'],
   'Adafruit_NeoPixel.h': ['Adafruit NeoPixel'], 'Stepper.h': ['Stepper'], 'Keypad.h': ['Keypad'], 'IRremote.h': ['IRremote'],
   'IRremote.hpp': ['IRremote'], 'MFRC522.h': ['MFRC522'], 'RF24.h': ['RF24'], 'ESP32Servo.h': ['ESP32Servo']

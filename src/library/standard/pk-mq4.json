@@ -1,0 +1,163 @@
+{
+  "format": 1,
+  "id": "pk-mq4",
+  "version": 1,
+  "name": "MQ-4 méthane et biogaz",
+  "category": "Capteurs",
+  "prefix": "MQ4",
+  "description": "Capteur MQ-4 de méthane et de gaz naturel (module) : la tension AO monte avec la concentration, de 200 à 10 000 ppm. Peu sensible à l’alcool et à la fumée de cuisine : utile autour d’un biodigesteur. Pas une alarme certifiée.",
+  "sources": {
+    "hanwei": {
+      "title": "Technical Data MQ-4 Gas Sensor",
+      "publisher": "Hanwei Electronics",
+      "section": "Specifications : Vc et VH 5 V ±0,1 V ; RH 33 Ω ±5 %, soit 152 mA sous 5 V ; PH  750 mW ; RL 20 kΩ ; Rs 10 à 60 kΩ à 1000 ppm CH4 ; 200 à 10 000 ppm ; préchauffage plus de 24 h. Fig.2 : Rs/Ro relevé pour le CH4 et l’air. Modèle : RL 20 kΩ et Ro 24,5 kΩ, milieu géométrique de la plage.",
+      "url": "https://cdn.sparkfun.com/assets/e/f/c/7/d/MQ-4.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 152,
+  "ds": "hanwei",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "pwr",
+      "why": "Le filament demande 5 V ±0,1 V et environ 150 mA : prenez le 5 V, VIN ou VBUS, même sur une carte 3,3 V.",
+      "v": [
+        4.9,
+        5.1
+      ],
+      "ds": "hanwei"
+    },
+    {
+      "name": "GND",
+      "x": -1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "gnd"
+    },
+    {
+      "name": "DO",
+      "x": 1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "in",
+      "role": "Alarme",
+      "why": "LOW au-dessus du seuil réglé par le potentiomètre (1000 ppm dans la simulation), tirée à la tension du module au repos.",
+      "opt": true,
+      "lv5": true,
+      "idle": 1
+    },
+    {
+      "name": "AO",
+      "x": 3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "Monte avec le méthane, selon la résistance de charge RL : pont diviseur conseillé sur une carte 3,3 V.",
+      "lv5": true
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "AO",
+        "quantity": "gas",
+        "from": [
+          0,
+          10000
+        ],
+        "ratio": true,
+        "to": [
+          0.154,
+          0.646
+        ],
+        "curve": [
+          [
+            0,
+            0.154
+          ],
+          [
+            200,
+            0.314
+          ],
+          [
+            1000,
+            0.449
+          ],
+          [
+            5000,
+            0.583
+          ],
+          [
+            10000,
+            0.646
+          ]
+        ]
+      }
+    ],
+    "digitalOut": [
+      {
+        "pin": "DO",
+        "quantity": "gas",
+        "activeLow": true,
+        "threshold": 1000
+      }
+    ],
+    "sample": {
+      "period": 0.2,
+      "tau": 3
+    }
+  },
+  "docs": {
+    "text": "La couche d’oxyde d’étain chauffée devient plus conductrice en présence de méthane : AO monte. La simulation suit la fiche avec RL = 20 kΩ. De nombreux modules vendus ont une résistance plus faible, souvent 1 kΩ, et donnent une tension bien plus basse : mesurez la vôtre, et étalonnez dans l’air avant de comparer.",
+    "specs": [
+      [
+        "Alimentation",
+        "5 V ±0,1 V, ≈ 150 mA"
+      ],
+      [
+        "Détection",
+        "méthane, gaz naturel, 200 à 10 000 ppm"
+      ],
+      [
+        "Résistance de charge",
+        "20 kΩ conseillés (10 à 47 kΩ)"
+      ],
+      [
+        "Préchauffage",
+        "plus de 24 h la première fois"
+      ],
+      [
+        "Sorties",
+        "AO analogique · DO numérique (seuil réglable)"
+      ]
+    ],
+    "uses": [
+      "Surveiller les fuites autour d’un biodigesteur",
+      "Détecteur de gaz naturel de démonstration",
+      "Suivre une production de biogaz, à titre indicatif"
+    ],
+    "mistakes": [
+      "Le prendre pour un détecteur de sécurité certifié : il ne l’est pas.",
+      "Viser le butane ou le propane : pour une bouteille de gaz, le MQ-2 ou un détecteur certifié convient mieux.",
+      "L’alimenter par une sortie 3V3 ou une broche : il tire ≈ 150 mA.",
+      "Il chauffe : ne le touchez pas et éloignez-le du plastique."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1b4f8c",
+    "label": "MQ-4",
+    "size": [
+      20,
+      1.6,
+      32
+    ]
+  }
+}

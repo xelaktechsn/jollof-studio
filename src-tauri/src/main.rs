@@ -4,5 +4,10 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 fn main() {
+    // `jollof-studio --mcp [édition]` : relais stdio du protocole MCP vers l'application ouverte (assistants IA).
+    let mut args = std::env::args().skip(1);
+    if args.next().as_deref() == Some("--mcp") {
+        return jollof_studio_lib::ai::stdio_proxy(args.next());
+    }
     jollof_studio_lib::run()
 }

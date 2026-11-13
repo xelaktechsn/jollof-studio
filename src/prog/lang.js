@@ -6,7 +6,7 @@
 // sans bloquer l'application, et chaque tour de boucle rend la main de temps en temps,
 // si bien qu'une boucle infinie ne fige jamais l'interface.
 // Les entiers suivent la carte : int fait 16 bits sur un Uno, 32 bits sur un ESP32.
-import { FN, CONSTS, CONST_TYPES, BOARD_CONSTS, INT_BITS, CLASSES, OBJECTS, KNOWN_INCLUDES, UNSUPPORTED_INCLUDES, CLASS_CONSTS, TYPE_ALIASES, BOARD_ONLY, INCLUDE_TWIN } from './api.js';
+import { FN, CONSTS, CONST_TYPES, BOARD_CONSTS, INT_BITS, CLASSES, OBJECTS, KNOWN_INCLUDES, UNSUPPORTED_INCLUDES, CLASS_CONSTS, TYPE_ALIASES, BOARD_ONLY, INCLUDE_TWIN, ESP32_KINDS, isEsp32 } from './api.js';
 import { tl, quote } from '../i18n/index.js';
 
 // Une erreur garde un code stable (J1xxx, voir src/check/codes.js), la longueur à souligner, une aide séparée du
@@ -681,6 +681,7 @@ class Gen {
     if (FN[name]) return { kind: 'builtin', name };
     let hint = '';
     if (/^D\d+$/.test(name) && this.board === 'esp32') hint = tl(' : sur l’ESP32, écrivez seulement le numéro de GPIO ({0} pour {1})', name.slice(1), name);
+    else if (/^(IO|GPIO)\d+$/.test(name) && isEsp32(this.board)) hint = tl(' : sur l’ESP32, écrivez seulement le numéro de GPIO ({0} pour {1})', name.replace(/^\D+/, ''), name);
     else if (/^GP\d+$/.test(name) && this.board === 'pico') hint = tl(' : sur le Pico, écrivez seulement le numéro ({0} pour {1})', name.slice(2), name);
     else if (/^A\d+$/.test(name)) hint = tl(' : {0} n’a pas d’entrée {1}', this.boardLabel, name);
     else if (/^(WiFi|WebServer|HTTPClient|SerialBT|client|server|EEPROM|SD)$/.test(name)) hint = tl(' : cette fonction n’est pas simulée');
@@ -903,7 +904,7 @@ class Gen {
   builtin(name, e, sc) {
     const spec = FN[name];
     if (!argCount(spec.args, e.args.length)) this.err(tl('{0}() attend {1}, {2} donné{3}', name, argWord(spec.args), e.args.length, e.args.length > 1 ? 's' : ''), e, { code: 'J1103', len: name.length });
-    if (BOARD_ONLY.fn.test(name)) this.onBoard(['esp32', 'nodemcu'], name + '()', e);
+    if (BOARD_ONLY.fn.test(name)) this.onBoard([...ESP32_KINDS, 'nodemcu'], name + '()', e);
     if (spec.lvalue) {
       const v = this.x(e.args[0], sc); this.lvalue(v, e.args[0], name);
       const rest = e.args.slice(1).map(a => this.x(a, sc).js);
@@ -1145,7 +1146,7 @@ function boardHelp(what, list, board) {
   if (/Bluetooth/.test(what)) return tl('seul l’ESP32 a le Bluetooth classique');
   if (/Preferences/.test(what)) return tl('Preferences n’existe que sur l’ESP32 : utilisez EEPROM.h');
   if (list.length === 1 && list[0] === 'nodemcu') return tl('cette bibliothèque est celle de l’ESP8266 (NodeMCU)');
-  if (list.length === 1 && list[0] === 'esp32') return board === 'nodemcu' ? tl('cette bibliothèque est celle de l’ESP32') : tl('cette carte n’a pas de Wi-Fi : choisissez un ESP32');
+  if (list.includes('esp32') && list.every(k => isEsp32(k))) return board === 'nodemcu' ? tl('cette bibliothèque est celle de l’ESP32') : tl('cette carte n’a pas de Wi-Fi : choisissez un ESP32');
   return tl('cette carte n’a pas de Wi-Fi : choisissez un ESP32 ou un NodeMCU (ESP8266)');
 }
 /** Nom le plus proche (au plus 2 lettres de différence), pour suggérer une correction. */
@@ -1211,7 +1212,7 @@ export function compile(src, ctx = {}) {
     const globals = gen.globals.map(({ name, t }) => ({ name, t }));
     const warnings = pp.warnings.slice(), sv = pp.incAt.get('Servo.h');
     // La bibliothèque Servo d'Arduino ne connaît pas l'ESP32 : ESP32Servo la remplace (mêmes méthodes).
-    if (sv && ctx.board === 'esp32') warnings.push({ line: sv.line, col: sv.col, code: 'J1109', msg: tl('Servo.h ne fonctionne pas sur l’ESP32 : installez la bibliothèque ESP32Servo et écrivez #include <ESP32Servo.h>') });
+    if (sv && isEsp32(ctx.board)) warnings.push({ line: sv.line, col: sv.col, code: 'J1109', msg: tl('Servo.h ne fonctionne pas sur l’ESP32 : installez la bibliothèque ESP32Servo et écrivez #include <ESP32Servo.h>') });
     const res = { ok: true, js, errors: [], warnings, includes: pp.includes, globals };
     if (ctx.debug) res.debug = { hooks: gen.hooks, lines: new Set(gen.hooks.map(h => h.line)), globals };
     return res;

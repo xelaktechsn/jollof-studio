@@ -4,7 +4,7 @@
 // repère alimentations, masses et GPIO, signale les courts-circuits, puis vérifie
 // broche par broche qu'un composant est câblé comme sa fiche le demande.
 import { BOARDS, SOURCES, DERIVED, NEED_CAPS, CAP_WORDS, base, volts, vrange, boardOf, isGnd } from './boards.js';
-import { NPNS } from './parts.js';
+import { NPNS, isContact } from './parts.js';
 import { MOSFETS, ANALOG_PARTS } from './analog-parts.js';
 /** Broche de sortie d'un composant analogique qui fournit son propre signal (analog-parts.js, drives). */
 const drivesPin = m => { const sp = ANALOG_PARTS[m.comp.type], q = sp && sp.pins.find(x => x.pin === m.key); return !!(q && q.drives); };
@@ -64,13 +64,13 @@ function internal(c) {
 
 /** Contacts d'un composant fermés en ce moment : bouton appuyé (1–2), relais collé (COM–NO) ou au repos (COM–NC). */
 export function closedContacts(c) {
-  if (c.type === 'button') return c.inp && c.inp.pressed && c.pins['1'] && c.pins['2'] ? [['1', '2']] : [];
+  if (isContact(c)) return c.inp && c.inp.pressed && c.pins['1'] && c.pins['2'] ? [['1', '2']] : [];
   if (c.type === 'relay' && c.pins.COM) { const k = c.relayOn ? 'NO' : 'NC'; return c.pins[k] ? [['COM', k]] : []; }
   return [];
 }
 /** Tous les contacts possibles d'un composant (fermés ou non), avec leur état : [a, b, fermé]. */
 function contacts(c) {
-  if (c.type === 'button') return c.pins['1'] && c.pins['2'] ? [['1', '2', !!(c.inp && c.inp.pressed)]] : [];
+  if (isContact(c)) return c.pins['1'] && c.pins['2'] ? [['1', '2', !!(c.inp && c.inp.pressed)]] : [];
   if (c.type === 'relay' && c.pins.COM) return ['NO', 'NC'].filter(k => c.pins[k]).map(k => ['COM', k, !!c.relayOn === (k === 'NO')]);
   return [];
 }
@@ -330,7 +330,7 @@ export function inspect(comp, A, spec) {
 
 // Sens d'un signal : le module le reçoit de la carte (FROM_BOARD), le lui envoie (TO_BOARD), ou les deux (bus, 1-Wire).
 const FROM_BOARD = new Set(['out', 'pwm', 'mosi', 'sck', 'ss', 'rx', 'sda', 'scl', 'io']);
-const TO_BOARD = new Set(['in', 'adc', 'miso', 'tx', 'sda', 'scl', 'io', 'pullup']);
+const TO_BOARD = new Set(['in', 'adc', 'irq', 'miso', 'tx', 'sda', 'scl', 'io', 'pullup']);
 const fmt = v => volts(Math.round(v * 100) / 100);
 /**
  * Niveaux logiques entre un module et la carte. lv5 : le module sort du 5 V vers une carte 3,3 V ; lv3 : module en

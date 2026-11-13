@@ -10,11 +10,11 @@
 import { analyze, inspect, pid } from '../sim/circuit.js';
 import { collectFaults } from '../sim/faults.js';
 import { solveDC } from '../sim/dc.js';
-import { BOARDS, boardOf, base, SOURCES, DERIVED } from '../sim/boards.js';
-import { partOf, MOTORS, NPNS } from '../sim/parts.js';
+import { boardOf, kindOf, base, SOURCES, DERIVED } from '../sim/boards.js';
+import { partOf, MOTORS, NPNS, COILS } from '../sim/parts.js';
 import { driveOf } from '../sim/drive.js';
 import { compile } from '../prog/lang.js';
-import { BOARD_CONSTS } from '../prog/api.js';
+import { BOARD_CONSTS, isEsp32 } from '../prog/api.js';
 import { pinMap } from '../prog/runtime.js';
 import { tl } from '../i18n/index.js';
 import { CODES, BY_KEY } from './codes.js';
@@ -24,14 +24,14 @@ import { pyPinFacts } from './pyfacts.js';
 import { stateVars, assignments, stateText, sensorOutputs, MAX_STATES } from './states.js';
 import * as LIM from './limits.js';
 import { OPAMPS } from '../sim/analog-parts.js';
-import { isResistor, pkgLed, pkgLimit } from '../sim/pkgparts.js';
+import { isResistor, pkgLed, pkgLimit, pkgI2c } from '../sim/pkgparts.js';
+import { i2cAddress } from '../sim/pkgbus.js';
 
-const FAMILY_KIND = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
 /** Famille de carte pour le compilateur (même règle que prog/panel.js). */
-export const boardKind = c => (BOARDS[c.type] ? c.type : FAMILY_KIND[boardOf(c).family] || 'esp32');
+export const boardKind = kindOf;
 const BUS = new Set(['sda', 'scl', 'sck', 'mosi', 'miso', 'ss', 'rx', 'tx']);
 // Broches qu'un module pilote lui-même (sortie d'un capteur, écho d'un sonar…) : un nœud qui en contient une n'est jamais en l'air.
-const DRIVEN = new Set(['in', 'adc', 'io', 'tx', 'miso', 'sda']);
+const DRIVEN = new Set(['in', 'adc', 'irq', 'io', 'tx', 'miso', 'sda']);
 // Un contrôle fait dans tous les états qui redit une erreur de câblage déjà signalée : on garde la première, plus claire.
 const COVERED = { J0103: ['J0101', 'J0102', 'J0110'], J0306: ['J0106'], J0302: ['J0201', 'J0202', 'J0501'], J0301: ['J0401'] };
 const isLed = c => /^led-(red|green|blue|yellow|white)$/.test(c.type);
@@ -111,11 +111,16 @@ function* run(proj, opts) {
   }
   // Modules I2C d'une même carte à la même adresse.
   const ADDR = { oled: () => 0x3c, lcd1602: () => 0x27, mpu6050: c => (c.pins.AD0 && A.net({ comp: c, key: 'AD0' }).src.length ? 0x69 : 0x68),
-    bmp280: c => (A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : A.net({ comp: c, key: 'SDO' }).src.length ? 0x77 : null) };
+    bmp280: c => (A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : A.net({ comp: c, key: 'SDO' }).src.length ? 0x77 : null),
+    bme280: c => (A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : A.net({ comp: c, key: 'SDO' }).src.length ? 0x77 : null),
+    bh1750: c => (A.net({ comp: c, key: 'ADDR' }).src.length ? 0x5c : 0x23) };
   const onBus = new Map();
   for (const c of comps) {
-    const f = ADDR[c.type], spec = f && partOf(c); if (!spec) continue;
-    const ins = inspect(c, A, spec), addr = f(c); if (!ins.board || !ins.io.SDA || addr == null) continue;
+    // Module I2C en paquet : son adresse déclarée (l'autre si sa broche d'adresse reçoit l'alimentation).
+    const I = pkgI2c(c.type);
+    const f = ADDR[c.type] || (I && (cc => i2cAddress(I, !!I.addressPin && A.net({ comp: cc, key: I.addressPin }).src.length > 0))), spec = f && partOf(c); if (!spec) continue;
+    const sda = (spec.pins || []).find(p => p.need === 'sda'), ins = inspect(c, A, spec), addr = f(c);
+    if (!ins.board || !sda || !ins.io[sda.pin] || addr == null) continue;
     const key = `${ins.board.id}|${addr}`, first = onBus.get(key);
     if (first) put('J0610', 'error', { comp: c, key: 'SDA', pins: [{ comp: c, key: 'SDA' }, { comp: first, key: 'SDA' }] }, { a: first.name, b: c.name, addr: addr.toString(16).toUpperCase() });
     else onBus.set(key, c);
@@ -146,7 +151,7 @@ function* run(proj, opts) {
     for (const [k, pf] of f.pins) {
       const g = prof.gpio[k], loc = { comp: b, key: k, board: b, line: pf.at[0].line, col: pf.at[0].col };
       if (!g) continue;
-      if (pf.writes.has('pwm') && !g.caps.has('pwm') && kind !== 'esp32') put('J0603', 'error', loc, { name: name({ comp: b, key: k }) });
+      if (pf.writes.has('pwm') && !g.caps.has('pwm') && !isEsp32(kind)) put('J0603', 'error', loc, { name: name({ comp: b, key: k }) });
       if (pf.reads.has('a') && !g.caps.has('adc')) put('J0604', 'error', loc, { name: name({ comp: b, key: k }) });
       if (pf.writes.has('d') && !pf.modes.has('out') && !pf.writes.has('pwm') && !pf.writes.has('servo') && !pf.writes.has('tone')) put('J0607', 'warning', loc, { name: name({ comp: b, key: k }) });
       if (pinRole(pf) === 'out' && !wired({ comp: b, key: k }) && k !== led) put('J0605', 'warning', loc, { name: name({ comp: b, key: k }) });
@@ -177,9 +182,10 @@ function* run(proj, opts) {
   }
   // Moteur commandé par un transistor sans diode de roue libre (la bobine renvoie une pointe de tension).
   for (const c of comps) {
-    if (!MOTORS[c.type] || c.type === 'fan') continue;
+    const ind = MOTORS[c.type] || COILS[c.type]; // moteur ou bobine d'électrovanne : une inductance
+    if (!ind || c.type === 'fan') continue;
     const d = driveOf(c, A); if (!d || d.kind !== 'npn') continue;
-    const [p, m] = [MOTORS[c.type].plus, MOTORS[c.type].minus], np = A.members({ comp: c, key: p }), nm = A.members({ comp: c, key: m });
+    const [p, m] = [ind.plus, ind.minus], np = A.members({ comp: c, key: p }), nm = A.members({ comp: c, key: m });
     const diode = comps.some(x => x.type === 'diode' && ((np.some(y => y.comp === x && y.key === 'K') && nm.some(y => y.comp === x && y.key === 'A'))));
     if (!diode) put('J0901', 'warning', { comp: c, key: m, pins: [{ comp: c, key: m }] }, { name: c.name });
   }
@@ -318,6 +324,10 @@ function probeList(comps, A, facts) {
       const v = dc.capV(c); if (v == null) return;
       if (Math.abs(v) > LIM.CAP_V[t]) R('J0307', 'error', { comp: c }, { name: c.name, value: Math.abs(v), limit: LIM.CAP_V[t] });
       if (t === 'cap-100u' && v < -1) R('J0402', 'error', { comp: c, key: '+' }, { name: c.name, value: v }, null);
+    });
+    if (COILS[t]) P.push((dc, R) => {
+      const m = COILS[t], a = dc.across(c); if (!a || a.v == null) return;
+      if (Math.abs(a.v) > m.vMax) R('J0311', 'warning', { comp: c }, { name: c.name, value: Math.abs(a.v), limit: m.vNom });
     });
     if (MOTORS[t]) P.push((dc, R) => {
       const m = MOTORS[t], a = dc.across(c); if (!a || a.v == null) return;

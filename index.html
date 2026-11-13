@@ -5,34 +5,47 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jollof Studio</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 </head>
 <body>
 <div class="app">
   <!-- Barre d'application -->
   <header class="appbar">
-    <div class="brand"><i data-icon="logo"></i><span>Jollof Studio</span></div>
-    <nav class="toolbar" aria-label="Projet">
+    <div class="abStart">
+      <div class="brand"><i data-icon="wordmark"></i><i data-icon="logo"></i></div>
+    </div>
+    <nav class="abDoc" aria-label="Projet">
       <button type="button" class="tb toggle" id="libToggle" data-tip="Replier la bibliothèque · Ctrl+B" aria-label="Afficher la bibliothèque" aria-pressed="true" aria-controls="libPanel"><i data-icon="sidebar"></i></button>
-      <span class="sep" aria-hidden="true"></span>
-      <button type="button" class="tb" id="newBtn" data-tip="Nouveau projet · Ctrl+N" aria-label="Nouveau projet"><i data-icon="filePlus"></i></button>
-      <button type="button" class="tb" id="openBtn" data-tip="Ouvrir · Ctrl+O" aria-label="Ouvrir un projet"><i data-icon="folder"></i></button>
-      <button type="button" class="tb" id="saveBtn" data-tip="Enregistrer · Ctrl+S" aria-label="Enregistrer"><i data-icon="save"></i></button>
-      <button type="button" class="tb" id="importBtn" data-tip="Importer un projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé)" aria-label="Importer un projet Wokwi"><i data-icon="upload"></i></button>
+      <div class="project">
+        <button type="button" class="projBtn" id="projBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="projMenu" data-tip="Projet : nouveau, ouvrir, enregistrer sous, importer"><i data-icon="file"></i><span id="projectName">Sans titre</span><i data-icon="chevDown" class="chev"></i></button>
+        <div class="abMenu" id="projMenu" role="menu" aria-label="Projet" hidden>
+          <button type="button" role="menuitem" id="newBtn"><i data-icon="filePlus"></i><span>Nouveau projet</span><kbd data-key="N"></kbd></button>
+          <button type="button" role="menuitem" id="openBtn"><i data-icon="folder"></i><span>Ouvrir…</span><kbd data-key="O"></kbd></button>
+          <hr>
+          <button type="button" role="menuitem" id="saveMenuBtn"><i data-icon="save"></i><span>Enregistrer</span><kbd data-key="S"></kbd></button>
+          <button type="button" role="menuitem" id="saveAsBtn"><i data-icon="save"></i><span>Enregistrer sous…</span><kbd data-key="S" data-shift="1"></kbd></button>
+          <hr class="abImportSep">
+          <button type="button" role="menuitem" id="importBtn"><i data-icon="upload"></i><span>Importer un projet Wokwi…</span></button>
+        </div>
+      </div>
       <input type="file" id="importFile" accept=".json,.zip,.ino,.txt,.toml,.h,.cpp,.py" multiple hidden>
+      <button type="button" class="tb" id="saveBtn" data-tip="Enregistrer · Ctrl+S" aria-label="Enregistrer"><i data-icon="save"></i></button>
       <span class="sep" aria-hidden="true"></span>
       <button type="button" class="tb" id="undoBtn" data-tip="Annuler · Ctrl+Z" aria-label="Annuler" disabled><i data-icon="undo"></i></button>
       <button type="button" class="tb" id="redoBtn" data-tip="Rétablir · Ctrl+Maj+Z" aria-label="Rétablir" disabled><i data-icon="redo"></i></button>
-      <span class="sep" aria-hidden="true"></span>
-      <div class="project"><i data-icon="file"></i><span id="projectName">Sans titre</span></div>
     </nav>
     <div class="grow"></div>
-    <nav class="toolbar" aria-label="Ressources">
-      <button type="button" class="tb label" id="exBtn" data-tip="Montages prêts à simuler, dont un à corriger"><i data-icon="layers"></i><span>Exemples</span></button>
-      <button type="button" class="tb label" id="schBtn" data-tip="Schéma électrique 2D, à imprimer ou enregistrer en PDF"><i data-icon="schematic"></i><span>Schéma</span></button>
-      <button type="button" class="tb label" id="docBtn" data-tip="Fiches des cartes, capteurs et composants"><i data-icon="book"></i><span>Documentation</span></button>
-      <span class="sep" aria-hidden="true"></span>
-      <button type="button" class="btn primary simBtn" id="simBtn"><i data-icon="play"></i><span>Simuler</span></button>
-    </nav>
+    <div class="abEnd">
+      <nav class="toolbar abTools" aria-label="Ressources">
+        <button type="button" class="tb label" id="exBtn" data-tip="Montages prêts à simuler, dont un à corriger"><i data-icon="layers"></i><span>Exemples</span></button>
+        <button type="button" class="tb label" id="schBtn" data-tip="Schéma électrique 2D, à imprimer ou enregistrer en PDF"><i data-icon="schematic"></i><span>Schéma</span></button>
+        <button type="button" class="tb label" id="docBtn" data-tip="Fiches des cartes, capteurs et composants"><i data-icon="book"></i><span>Documentation</span></button>
+      </nav>
+      <nav class="toolbar abSpaces" id="abSpaces" aria-label="Apprendre"></nav>
+      <div class="toolbar abRun">
+        <button type="button" class="btn primary simBtn" id="simBtn"><i data-icon="play"></i><span>Simuler</span></button>
+      </div>
+    </div>
   </header>
 
   <!-- Bibliothèque et sélection -->
@@ -56,7 +69,7 @@
       <label class="btn subtle wide" for="glb" data-tip="STEP (.step, .stp) ou glTF (.glb, .gltf), en millimètres"><i data-icon="upload"></i><span>Importer une carte ou un modèle CAO</span></label>
       <input type="file" id="glb" accept=".step,.stp,.glb,.gltf" hidden>
       <div class="row partRow">
-        <button type="button" class="btn subtle small" id="partNew" data-tip="Décrire un nouveau composant sur une plaquette : broches, rôles, limites, documentation"><i data-icon="plus"></i><span>Créer un composant</span></button>
+        <button type="button" class="btn subtle small" id="partNew" data-tip="Atelier de composants : modèle 3D, broches, natures, limites, documentation"><i data-icon="plus"></i><span>Créer un composant</span></button>
         <label class="btn subtle small" for="partFile" data-tip="Paquet Jollof (.jpart), pièce Fritzing (.fzpz) ou symbole KiCad (.kicad_sym)"><i data-icon="upload"></i><span>Importer un composant</span></label>
       </div>
       <input type="file" id="partFile" accept=".jpart,.fzpz,.kicad_sym" hidden>
@@ -113,7 +126,7 @@
     <div class="stageBar top">
       <div class="chipGroup" role="group" aria-label="Couleur du prochain fil"><i data-icon="palette"></i><span>Fil</span><div class="swatches" id="swatches"></div></div>
       <button type="button" class="tb glass" id="blockTool" data-tip="Encadrer une partie du montage et la nommer (bloc)" aria-pressed="false" aria-label="Encadrer un bloc"><i data-icon="blockFrame"></i></button>
-      <div class="chipGroup lockChip" id="lockChip" role="status" hidden><i data-icon="lock"></i><span>Câblage verrouillé pendant la simulation</span></div>
+      <div class="chipGroup lockChip" id="lockChip" role="status" data-tip="Câblage verrouillé pendant la simulation" hidden><i data-icon="lock"></i><span>Câblage verrouillé pendant la simulation</span></div>
     </div>
     <div class="stageBar bottom">
       <div class="seg glass" role="group" aria-label="Point de vue">
@@ -164,22 +177,25 @@
     <div class="pane" id="pane-wiring" role="tabpanel" aria-labelledby="tab-wiring">
       <section>
         <button type="button" class="btn primary wide" id="autoAll" data-tip="Relie chaque composant non câblé à la carte la plus proche"><i data-icon="wand"></i><span>Câbler tout le circuit</span></button>
-        <div class="quick">
+        <span class="fieldLab" id="quickLab">Relier deux broches</span>
+        <div class="quick" role="group" aria-labelledby="quickLab">
           <select id="qA" aria-label="Broche de départ"></select>
           <select id="qB" aria-label="Broche d'arrivée"></select>
           <button type="button" class="btn icon" id="qGo" data-tip="Relier ces deux broches" aria-label="Relier"><i data-icon="link"></i></button>
         </div>
         <label class="check"><input type="checkbox" id="autoCol" checked> Couleur auto : GND en noir, alimentation en rouge</label>
-        <p class="note rule"><i data-icon="info"></i>Une broche ne reçoit qu’un fil. Pour relier plusieurs fils au même point, passez par une breadboard : le câblage automatique s’en sert.</p>
+        <p class="note rule" id="tipOneWire"><i data-icon="info"></i><span>Une broche ne reçoit qu’un fil. Pour relier plusieurs fils au même point, passez par une breadboard : le câblage automatique s’en sert.</span><button type="button" class="noteX" data-dismiss="tipOneWire" aria-label="Masquer ce conseil"><i data-icon="x"></i></button></p>
       </section>
-      <section>
+      <section data-fold="blocks">
         <div class="secHead"><h2><i data-icon="blockFrame"></i>Blocs</h2><button type="button" class="btn small" id="blockAdd" data-tip="Tracez un rectangle autour des composants à regrouper"><i data-icon="plus"></i><span>Encadrer</span></button></div>
         <ul class="blocks" id="blocks"></ul>
       </section>
-      <section class="fill">
+      <section class="fill" data-fold="wires">
         <div class="secHead"><h2><i data-icon="list"></i>Connexions</h2>
-          <div class="seg mini" role="group" aria-label="Affichage des connexions"><button type="button" class="segBtn" id="showWires" aria-pressed="true">Fils</button><button type="button" class="segBtn" id="showNets" aria-pressed="false">Nœuds</button></div></div>
-        <ol class="wires" id="wires"></ol>
+          <div class="seg mini" role="group" aria-label="Affichage des connexions"><button type="button" class="segBtn" id="showParts" aria-pressed="true" data-tip="Par composant : chaque broche câblée et où elle mène">Composants</button><button type="button" class="segBtn" id="showWires" aria-pressed="false" data-tip="Tous les fils, dans l’ordre de l’animation (flèches pour le changer)">Fils</button><button type="button" class="segBtn" id="showNets" aria-pressed="false" data-tip="Nœuds : les broches reliées entre elles">Nœuds</button></div></div>
+        <div class="search filterBox" id="wireFilterBox" hidden><i data-icon="search"></i><input id="wireFilter" type="search" placeholder="Filtrer : DHT22, GND, D14…" autocomplete="off" aria-label="Filtrer les connexions"></div>
+        <div class="wparts" id="wireParts"></div>
+        <ol class="wires" id="wires" hidden></ol>
         <ul class="nets" id="nets" hidden></ul>
         <ul class="issues" id="issues"></ul>
       </section>
@@ -206,7 +222,15 @@
           </select>
           <button type="button" class="btn primary small" id="progRun" data-tip="Compiler et exécuter sur la carte · Ctrl+Entrée"><i data-icon="upload"></i><span>Téléverser</span></button>
         </div>
-        <section class="rulesSec">
+        <div class="progModes" id="progModes">
+          <div class="seg modeSeg" role="group" aria-label="Façon de programmer">
+            <button type="button" class="segBtn" data-mode="rules" aria-pressed="true" data-tip="Sans écrire de code : « quand… alors… »"><i data-icon="workflow"></i><span>Règles</span></button>
+            <button type="button" class="segBtn" data-mode="blocks" aria-pressed="false" data-tip="Assembler des blocs, comme dans Scratch"><i data-icon="puzzle"></i><span>Blocs</span></button>
+            <button type="button" class="segBtn" data-mode="code" aria-pressed="false" data-tip="Écrire le programme Arduino (C++) soi-même"><i data-icon="code"></i><span>Code</span></button>
+          </div>
+          <p class="modeHint" id="modeHint" aria-live="polite"></p>
+        </div>
+        <section class="rulesSec" data-fold="rules">
           <div class="secHead"><h2><i data-icon="workflow"></i>Règles<span class="count" id="ruleCount"></span></h2><button type="button" class="btn small" id="ruleAdd" data-tip="Quand une mesure change, un effecteur réagit"><i data-icon="plus"></i><span>Règle</span></button></div>
           <p class="note" id="rulesHint">Une règle relie une mesure à des actions : « quand BTN1 est appuyé, LED1 s’allume ». Chaque branche peut contenir plusieurs actions et d’autres conditions imbriquées. Le code Arduino s’écrit tout seul ci-dessous. Vous pouvez aussi sélectionner un composant puis « Programmer ».</p>
           <ol class="rules" id="rules"></ol>
@@ -227,7 +251,9 @@
               <button type="button" class="tb" id="dbgOut" data-tip="Sortir de la fonction · Maj+F11" aria-label="Sortir de la fonction"><i data-icon="stepOut"></i></button>
             </div>
             <button type="button" class="btn small subtle" id="codeGen" data-tip="Remplacer le code par celui des règles et du montage" hidden><i data-icon="wand"></i><span>Régénérer</span></button></div>
+          <p class="note rule modeNote" id="rulesKept" hidden><i data-icon="info"></i><span></span></p>
           <div id="editor"></div>
+          <div class="vGrip" data-resize="editor" data-min="160" aria-label="Hauteur de l’éditeur"></div>
           <ul class="diag" id="diag" aria-live="polite"></ul>
         </section>
         <section class="watchSec" id="watchSec" hidden>
@@ -236,11 +262,26 @@
             <div class="watch" id="watch" aria-live="off"></div>
           </details>
         </section>
-        <section class="serialSec">
+        <section class="serialSec" data-fold="serial">
           <div class="secHead"><h2><i data-icon="terminal"></i>Moniteur série</h2>
             <div class="seg mini" role="group" aria-label="Affichage du port série"><button type="button" class="segBtn" id="serialMon" aria-pressed="true">Moniteur</button><button type="button" class="segBtn" id="serialPlot" aria-pressed="false"><i data-icon="chart"></i>Traceur</button></div>
             <button type="button" class="tb" id="serialClear" data-tip="Effacer le moniteur" aria-label="Effacer le moniteur"><i data-icon="trash"></i></button></div>
+          <div class="seg serialSrc" id="serialSrc" role="group" aria-label="Source du moniteur série">
+            <button type="button" class="segBtn" data-src="sim" aria-pressed="true" data-tip="Ce qu’écrit la carte simulée"><i data-icon="cpu"></i><span>Simulation</span></button>
+            <button type="button" class="segBtn" data-src="real" aria-pressed="false" data-tip="Une vraie carte branchée en USB : ce qu’elle écrit, ce que vous lui envoyez"><i data-icon="usb"></i><span>Carte réelle</span></button>
+          </div>
+          <div class="realBox" id="realBox" hidden>
+            <div class="realRow">
+              <select class="sel realPort" id="realPort" aria-label="Port USB de la carte"></select>
+              <select class="sel realBaud" id="realBaud" aria-label="Débit (bauds), celui de Serial.begin()" data-tip="Débit : le même que Serial.begin() dans le programme"></select>
+              <button type="button" class="btn small primary" id="realGo">Connecter</button>
+              <button type="button" class="tb" id="realReset" data-tip="Redémarrer la carte (comme son bouton RESET)" aria-label="Redémarrer la carte" disabled><i data-icon="rotate"></i></button>
+            </div>
+            <p class="realState" id="realState" role="status"><span class="dot"></span><span class="txt"></span></p>
+            <div class="realHelp" id="realHelp" hidden></div>
+          </div>
           <pre class="serial" id="serialOut" aria-label="Sortie du moniteur série"></pre>
+          <div class="vGrip" data-resize="serialOut" data-min="70" aria-label="Hauteur du moniteur série"></div>
           <div class="plotBox" id="plotBox" hidden>
             <div class="plotLegend" id="plotLegend" aria-label="Séries tracées : cliquer pour afficher ou cacher"></div>
             <canvas id="plotCv" aria-label="Traceur série : courbes des nombres écrits avec Serial.println()"></canvas>
@@ -252,7 +293,7 @@
               <button type="button" class="btn small" id="plotCsv" data-tip="Enregistrer les mesures (tableur, .csv)"><i data-icon="save"></i><span>CSV</span></button>
             </div>
           </div>
-          <form class="serialIn" id="serialForm"><input id="serialInput" autocomplete="off" placeholder="Envoyer à la carte (Serial.read)…" aria-label="Texte à envoyer à la carte"><button type="submit" class="btn small icon" aria-label="Envoyer"><i data-icon="send"></i></button></form>
+          <form class="serialIn" id="serialForm"><input id="serialInput" autocomplete="off" placeholder="Envoyer à la carte (Serial.read)…" aria-label="Texte à envoyer à la carte"><select class="sel serialEnd" id="serialEnd" aria-label="Fin de ligne envoyée" data-tip="Ajoutée après le texte envoyé" hidden></select><button type="submit" class="btn small icon" aria-label="Envoyer"><i data-icon="send"></i></button></form>
         </section>
       </div>
     </div>
@@ -265,9 +306,9 @@
         <button type="button" class="btn primary" id="simBtn2"><i data-icon="play"></i><span>Démarrer la simulation</span></button>
       </div>
       <section id="faultSec" hidden><h2><i data-icon="alert"></i>Erreurs de câblage</h2><ul class="faults" id="faults" aria-live="polite"></ul></section>
-      <section id="envSec" hidden><h2><i data-icon="sliders"></i>Environnement</h2><div class="env" id="env"></div></section>
-      <section id="probeSec"><h2><i data-icon="activity"></i>Mesures</h2><ul class="probes" id="probes"></ul></section>
-      <section id="outSec" hidden><h2><i data-icon="bulb"></i>Effecteurs : ce qu’ils font</h2><ul class="probes outs" id="outs"></ul></section>
+      <section id="envSec" data-fold="env" hidden><h2><i data-icon="sliders"></i>Environnement</h2><div class="env" id="env"></div></section>
+      <section id="probeSec" data-fold="probes"><h2><i data-icon="activity"></i>Mesures</h2><ul class="probes" id="probes"></ul></section>
+      <section id="outSec" data-fold="outs" hidden><h2><i data-icon="bulb"></i>Effecteurs : ce qu’ils font</h2><ul class="probes outs" id="outs"></ul></section>
     </div>
 
     <div class="pane" id="pane-video" role="tabpanel" aria-labelledby="tab-video" hidden>

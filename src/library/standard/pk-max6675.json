@@ -1,0 +1,122 @@
+{
+  "format": 1,
+  "id": "pk-max6675",
+  "version": 1,
+  "name": "MAX6675 thermocouple type K (SPI)",
+  "category": "Capteurs",
+  "prefix": "TC",
+  "description": "Convertisseur MAX6675 pour thermocouple de type K : de 0 à 1023,75 °C au quart de degré, soudure froide compensée, lu en une trame SPI de 16 bits.",
+  "sources": {
+    "maxim": {
+      "title": "MAX6675 Cold-Junction-Compensated K-Thermocouple-to-Digital Converter (0°C to +1024°C), 19-2235 Rev 1",
+      "publisher": "Maxim Integrated",
+      "section": "Electrical Characteristics : supply voltage VCC 3,0 à 5,5 V ; supply current 0,7 mA typ., 1,5 mA max. ; resolution 0,25 °C ; conversion time 0,17 s typ., 0,22 s max. ; serial clock frequency 4,3 MHz max. Serial Interface Protocol : bits D14 à D3 = température, D2 = 1 quand le thermocouple est débranché.",
+      "url": "https://cdn-shop.adafruit.com/datasheets/MAX6675.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 1.5,
+  "ds": "maxim",
+  "pins": [
+    {
+      "name": "GND",
+      "x": -5.08,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd"
+    },
+    {
+      "name": "VCC",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "pwr",
+      "v": "logic",
+      "why": "3,0 à 5,5 V : alimenté à la tension logique de la carte, sa sortie SO reste au niveau de la carte."
+    },
+    {
+      "name": "SCK",
+      "x": 0,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "sck",
+      "role": "SPI SCK",
+      "why": "Horloge de la lecture : un bit sort sur SO à chaque impulsion (4,3 MHz au plus)."
+    },
+    {
+      "name": "CS",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "ss",
+      "role": "Sélection",
+      "why": "À l’état bas, la conversion s’arrête et la lecture commence ; remonté, il relance une conversion (0,22 s au plus)."
+    },
+    {
+      "name": "SO",
+      "x": 5.08,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "miso",
+      "role": "SPI MISO",
+      "why": "Données : 16 bits, du poids fort au poids faible."
+    }
+  ],
+  "behaviour": {
+    "spi": {
+      "mode": "frame",
+      "cs": "CS",
+      "frame": [
+        {
+          "quantity": "temp",
+          "bits": 16,
+          "scale": 4,
+          "shift": 3
+        }
+      ]
+    },
+    "sample": {
+      "period": 0.25,
+      "tau": 2
+    }
+  },
+  "docs": {
+    "text": "Abaissez CS, lisez deux octets avec SPI.transfer(), puis remontez CS. Température (°C) = valeur ÷ 8 (bits 14 à 3) × 0,25. Si le bit 2 vaut 1, le thermocouple est débranché. Laissez au moins 0,22 s entre deux lectures : chaque lecture relance la conversion.",
+    "specs": [
+      [
+        "Alimentation",
+        "3,0 à 5,5 V ; 1,5 mA au plus"
+      ],
+      [
+        "Plage",
+        "0 à 1023,75 °C, au quart de degré"
+      ],
+      [
+        "Conversion",
+        "0,22 s au plus"
+      ],
+      [
+        "Bus",
+        "SPI en lecture seule, 4,3 MHz au plus"
+      ]
+    ],
+    "uses": [
+      "Four, fumoir ou séchoir solaire",
+      "Température d’un moteur ou d’un pot d’échappement",
+      "Four de refusion artisanal pour souder des composants"
+    ],
+    "mistakes": [
+      "Lire plus souvent que toutes les 0,22 s : la valeur ne change plus.",
+      "Inverser les fils + et − du thermocouple : la température baisse quand ça chauffe.",
+      "Oublier de remonter CS après la lecture : la conversion suivante ne démarre pas."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#b03a2e",
+    "label": "MAX6675"
+  }
+}

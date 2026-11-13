@@ -58,3 +58,39 @@
 #plotCv { display: block; width: 100%; height: 190px; background: #0a0d10; border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; }
 .plotBar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 #plotHold[aria-pressed="true"] { color: var(--warn); border-color: #f2c94c66; }
+
+/* ---------- Moniteur série : simulation ou carte réelle (USB) ---------- */
+.serialSrc { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: var(--bg); }
+.serialSrc .segBtn { justify-content: center; height: 28px; font-size: 12px; }
+.serialSrc .segBtn .ic { width: 14px; height: 14px; }
+.serialSrc .segBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 0 0 1px #3b82f666; }
+.serialSrc .segBtn[aria-pressed="true"] .ic { color: var(--accent-hi); }
+.realBox { display: flex; flex-direction: column; gap: 6px; }
+.realBox[hidden] { display: none; }
+/* Inspecteur étroit : le port sur toute la largeur, puis débit et boutons ; large : tout sur une ligne. */
+.realRow { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 6px; }
+.realRow .realPort { grid-column: 1 / -1; min-width: 0; height: 28px; }
+.realRow .realBaud { min-width: 0; height: 28px; }
+@container insp (min-width: 520px) { .realRow { grid-template-columns: minmax(0, 1fr) 132px auto auto; } .realRow .realPort { grid-column: auto; } }
+.realRow .realPort[hidden] { display: none; }
+.realRow #realGo { white-space: nowrap; }
+.realRow #realGo.pulse { animation: realPulse 1.2s ease-in-out 3; }
+@keyframes realPulse { 50% { box-shadow: 0 0 0 4px var(--accent-soft); } }
+.realState { display: flex; align-items: center; gap: 7px; margin: 0; font-size: 12px; color: var(--fg-2); }
+.realState .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.realState[data-kind="on"] { color: var(--ok); }
+.realState[data-kind="on"] .dot { background: var(--ok); box-shadow: 0 0 0 3px #3fb27f33; }
+.realState[data-kind="connecting"] .dot { background: var(--warn); animation: blink 1s steps(2) infinite; }
+.realState[data-kind="lost"] { color: var(--warn); }
+.realState[data-kind="lost"] .dot { background: var(--warn); animation: blink 1s steps(2) infinite; }
+.realState[data-kind="error"] { color: var(--danger); }
+.realState[data-kind="error"] .dot { background: var(--danger); }
+.realHelp { padding: 8px 10px; border-radius: var(--r-sm); background: var(--raise); color: var(--fg-2); font-size: 12px; line-height: 1.45; }
+.realHelp[hidden] { display: none; }
+.realHelp b { color: var(--fg); }
+.realHelp ul { margin: 4px 0 0; padding-left: 18px; }
+.realHelp li + li { margin-top: 2px; }
+.realHelp .btn { margin-top: 6px; }
+.serialIn .serialEnd { flex: none; width: 118px; height: 28px; font-size: 11.5px; }
+.serialIn .serialEnd[hidden] { display: none; }
+@media (prefers-reduced-motion: reduce) { .realRow #realGo.pulse, .realState .dot { animation: none !important; } }

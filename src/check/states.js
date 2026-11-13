@@ -16,7 +16,11 @@ export const MAX_STATES = 4096;
 // (le PIR et la sonde d'humidité du sol ont leur propre régulateur 3,3 V). ECHO du HC-SR04 : 0 ou VCC.
 const SENSOR_OUT = {
   pir: { OUT: [0, 3.3, true] }, ldr: { AO: [0.035, 0.98], DO: [0, 1] }, soil: { AOUT: [1.2, 3.0, true] }, hcsr04: { ECHO: [0, 1] },
-  mq2: { AO: [0.049, 0.615], DO: [0, 1] }, sound: { AO: [0, 1], DO: [0, 1] }, joystick: { VRx: [0, 1], VRy: [0, 1] }
+  mq2: { AO: [0.049, 0.615], DO: [0, 1] }, sound: { AO: [0, 1], DO: [0, 1] }, joystick: { VRx: [0, 1], VRy: [0, 1] },
+  'tilt-sw': { S: [0, 1] }, hall: { S: [0, 1] }, flame: { AO: [0.08, 0.95], DO: [0, 1] }, rain: { AO: [0.1, 0.95], DO: [0, 1] }, water: { S: [0, 0.7] },
+  irobst: { OUT: [0, 1] }, line: { DO: [0, 1], AO: [0.1, 0.85] }, shock: { DO: [0, 1] },
+  lm35: { VOUT: [0.02, 1.5, true] }, // 10 mV par °C, de 2 à 150 °C : volts fixes, quelle que soit l'alimentation
+  ttp223: { SIG: [0, 1] }, rcwl0516: { OUT: [0, 3.3, true] }, mq135: { AO: [0.2, 0.39], DO: [0, 1] }, hx711: { DT: [0, 1] }
 };
 // Générateur de fonctions : sa sortie parcourt [décalage − amplitude, décalage + amplitude], en volts.
 export const sensorOutputs = c => SENSOR_OUT[c.type] || (c.type === 'siggen' ? { OUT: [...genRange(c.inp), true] } : null) || pkgSensorOut(c.type) || null;
@@ -31,6 +35,8 @@ export function stateVars(comps, facts, wired, supplyOf = () => 5) {
   const vars = [], fixed = [];
   for (const c of comps) {
     const n = c.name;
+    if (c.type === 'pressostat' && c.pins['1']) vars.push({ comp: c, id: `${c.id}|pressed`, values: [false, true], text: v => (v ? tl('{0} : pression atteinte', n) : tl('{0} : sous le seuil', n)), apply: v => { c.inp.pressed = v; } });
+    if (c.type === 'cylsensor' && c.pins['1']) vars.push({ comp: c, id: `${c.id}|pressed`, values: [false, true], text: v => (v ? tl('{0} : piston devant', n) : tl('{0} : piston absent', n)), apply: v => { c.inp.pressed = v; } });
     if (c.type === 'button' && c.pins['1']) vars.push({ comp: c, id: `${c.id}|pressed`, values: [false, true], text: v => (v ? tl('{0} appuyé', n) : tl('{0} relâché', n)), apply: v => { c.inp.pressed = v; } });
     if (c.type === 'joystick' && c.pins.SW) vars.push({ comp: c, id: `${c.id}|sw`, values: [false, true], text: v => (v ? tl('{0} enfoncé', n) : tl('{0} relâché', n)), apply: v => { c.inp.sw = v; } });
     if (c.type === 'pot') vars.push({ comp: c, id: `${c.id}|pos`, values: [50, 0, 100], text: v => tl('{0} à {1} %', n, v), apply: v => { c.inp.pos = v; } });

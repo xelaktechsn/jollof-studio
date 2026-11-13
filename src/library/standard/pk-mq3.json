@@ -1,0 +1,171 @@
+{
+  "format": 1,
+  "id": "pk-mq3",
+  "version": 1,
+  "name": "MQ-3 alcool (éthanol)",
+  "category": "Capteurs",
+  "prefix": "MQ3",
+  "description": "Capteur MQ-3 d’alcool (module) : la tension AO monte avec les vapeurs d’éthanol, de 25 à 500 ppm. Peu sensible à l’essence et à la fumée, mais il ne remplace pas un éthylotest homologué.",
+  "sources": {
+    "winsen": {
+      "title": "Alcohol Gas Sensor MQ-3 Manual, version 1.3",
+      "publisher": "Zhengzhou Winsen Electronics",
+      "section": "Table 1 : 25 à 500 ppm d’alcool ; VH 5,0 V ±0,1 V ; RH 29 Ω ±3 Ω, soit 172 mA sous 5 V ; PH ≤ 900 mW ; Vs 2,5 à 4,0 V à 125 ppm ; préchauffage plus de 48 h. Fig.3 : Rs/R0 relevé de 50 à 500 ppm. Modèle : pont réglé pour 3,25 V à 125 ppm, milieu de la plage Vs, sous 5 V ; 25 ppm est prolongé sur la droite.",
+      "url": "https://cdn.sparkfun.com/datasheets/Sensors/Biometric/MQ-3%20ver1.3%20-%20Manual.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 172,
+  "ds": "winsen",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "pwr",
+      "why": "Le filament demande 5 V ±0,1 V et environ 170 mA : prenez le 5 V, VIN ou VBUS, même sur une carte 3,3 V.",
+      "v": [
+        4.9,
+        5.1
+      ],
+      "ds": "winsen"
+    },
+    {
+      "name": "GND",
+      "x": -1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "gnd"
+    },
+    {
+      "name": "DO",
+      "x": 1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "in",
+      "role": "Alarme",
+      "why": "LOW au-dessus du seuil réglé par le potentiomètre (125 ppm dans la simulation), tirée à la tension du module au repos.",
+      "opt": true,
+      "lv5": true,
+      "idle": 1
+    },
+    {
+      "name": "AO",
+      "x": 3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "Monte avec l’alcool et atteint 4,3 V à 500 ppm : pont diviseur nécessaire sur une carte 3,3 V.",
+      "lv5": true
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "AO",
+        "quantity": "gas",
+        "from": [
+          0,
+          500
+        ],
+        "ratio": true,
+        "to": [
+          0.121,
+          0.863
+        ],
+        "curve": [
+          [
+            0,
+            0.121
+          ],
+          [
+            25,
+            0.31
+          ],
+          [
+            50,
+            0.453
+          ],
+          [
+            100,
+            0.616
+          ],
+          [
+            125,
+            0.65
+          ],
+          [
+            200,
+            0.753
+          ],
+          [
+            500,
+            0.863
+          ]
+        ]
+      }
+    ],
+    "digitalOut": [
+      {
+        "pin": "DO",
+        "quantity": "gas",
+        "activeLow": true,
+        "threshold": 125
+      }
+    ],
+    "sample": {
+      "period": 0.2,
+      "tau": 3
+    }
+  },
+  "docs": {
+    "text": "La couche d’oxyde d’étain chauffée devient plus conductrice en présence d’alcool : AO monte. Dans la simulation, la courbe est stable à partir de 500 ppm, la limite de la fiche. Sur un vrai capteur, le résultat dépend de la température et de l’humidité : étalonnez-le en air pur avant de comparer.",
+    "specs": [
+      [
+        "Alimentation",
+        "5 V ±0,1 V, ≈ 170 mA"
+      ],
+      [
+        "Détection",
+        "alcool, 25 à 500 ppm"
+      ],
+      [
+        "Sortie",
+        "Vs 2,5 à 4,0 V à 125 ppm"
+      ],
+      [
+        "Préchauffage",
+        "plus de 48 h la première fois"
+      ],
+      [
+        "Sorties",
+        "AO analogique · DO numérique (seuil réglable)"
+      ]
+    ],
+    "uses": [
+      "Détecteur de vapeurs d’alcool dans un atelier",
+      "Suivre une fermentation, à titre indicatif",
+      "Projet pédagogique sur les capteurs chauffés"
+    ],
+    "mistakes": [
+      "S’en servir pour décider si on peut conduire : il n’est ni précis ni homologué.",
+      "L’alimenter par une sortie 3V3 ou une broche : il tire ≈ 170 mA.",
+      "Lire AO sans pont diviseur sur une carte 3,3 V : l’entrée peut recevoir plus de 3,3 V.",
+      "Il chauffe : ne le touchez pas et éloignez-le du plastique."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1b4f8c",
+    "label": "MQ-3",
+    "size": [
+      20,
+      1.6,
+      32
+    ]
+  }
+}

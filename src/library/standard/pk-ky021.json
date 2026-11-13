@@ -1,0 +1,111 @@
+{
+  "format": 1,
+  "id": "pk-ky021",
+  "version": 1,
+  "name": "KY-021 contact à lames souples (reed)",
+  "category": "Capteurs",
+  "prefix": "REED",
+  "description": "Module KY-021 à lames souples : un aimant ferme un petit contact dans une ampoule de verre. Sans électronique active, il ne consomme presque rien au repos : parfait pour une porte, une fenêtre ou un pluviomètre.",
+  "sources": {
+    "joyit": {
+      "title": "KY-021 Mini Magnet Reed Module",
+      "publisher": "Joy-IT SensorKit",
+      "section": "Fiche du module : tension de 3,3 à 5 V ; le contact se ferme près d’un champ magnétique ; exemple Arduino : détection quand la broche lue vaut LOW.",
+      "url": "https://sensorkit.joy-it.net/en/sensors/ky-021"
+    },
+    "berrybase": {
+      "title": "KY-021 Mini Reed Switch Module",
+      "publisher": "BerryBase",
+      "section": "Caractéristiques du vendeur : résistance de 10 kΩ ; broches courant (3,3 à 5 V), signal, masse.",
+      "url": "https://www.berrybase.de/en/ky-021-mini-reed-switch-module"
+    }
+  },
+  "limits": {},
+  "pins": [
+    {
+      "name": "S",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "io",
+      "need": "in",
+      "role": "Aimant",
+      "why": "Tirée vers le haut par la résistance du module : LOW quand un aimant ferme le contact, HIGH sinon.",
+      "idle": 1
+    },
+    {
+      "name": "VCC",
+      "x": 0,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "pwr",
+      "why": "3,3 à 5 V : alimenté à la tension logique de la carte, S reste dans la plage de ses entrées.",
+      "v": "logic"
+    },
+    {
+      "name": "GND",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "gnd"
+    }
+  ],
+  "behaviour": {
+    "digitalOut": [
+      {
+        "pin": "S",
+        "quantity": "magnet",
+        "activeLow": true
+      }
+    ],
+    "sample": {
+      "period": 0.02,
+      "tau": 0
+    }
+  },
+  "docs": {
+    "text": "Deux lames de métal souple sont scellées dans une ampoule de verre : un aimant proche les attire jusqu’au contact, et S passe à LOW. Contrairement à un capteur à effet Hall, il réagit aux deux pôles de l’aimant et n’a aucune électronique active. Le vrai contact rebondit quelques millisecondes ; la simulation ne reproduit pas ces rebonds.",
+    "specs": [
+      [
+        "Alimentation",
+        "3,3 à 5 V"
+      ],
+      [
+        "Sortie",
+        "S : LOW près d’un aimant, HIGH sinon"
+      ],
+      [
+        "Résistance",
+        "10 kΩ sur le module"
+      ],
+      [
+        "Type de contact",
+        "normalement ouvert"
+      ],
+      [
+        "Pôle de l’aimant",
+        "les deux pôles conviennent"
+      ]
+    ],
+    "uses": [
+      "Détecter l’ouverture d’une porte ou d’une fenêtre",
+      "Compter les basculements d’un pluviomètre",
+      "Compte-tours d’une roue ou d’un anémomètre lent"
+    ],
+    "mistakes": [
+      "Compter sans anti-rebond : chaque fermeture peut compter plusieurs fois.",
+      "Faire tomber le module : l’ampoule de verre se casse.",
+      "Attendre une mesure de distance : il répond seulement oui ou non."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#111111",
+    "label": "KY-021",
+    "size": [
+      15,
+      1.6,
+      19
+    ]
+  }
+}

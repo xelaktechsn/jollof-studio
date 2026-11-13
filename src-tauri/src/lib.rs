@@ -9,8 +9,10 @@
 //! Les commandes qui touchent au disque sont asynchrones et font leur travail dans un fil à part
 //! (`blocking`) : la boucle d'événements de la fenêtre n'attend jamais une lecture ou une écriture.
 
+pub mod ai;
 mod qemu;
 mod serial;
+mod supervision_cmd;
 
 use percent_encoding::percent_decode_str;
 use serde::de::IgnoredAny;
@@ -30,7 +32,9 @@ where
     F: FnOnce() -> Result<T, String> + Send + 'static,
     T: Send + 'static,
 {
-    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(f)
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 /// Comme `blocking`, mais sur le fil asynchrone en cours (signalé à tokio, qui confie ailleurs ses
@@ -81,7 +85,10 @@ struct Grants {
 const MAX_WRITE_GRANTS: usize = 200;
 
 fn grants_file(app: &AppHandle) -> Option<PathBuf> {
-    app.path().app_data_dir().ok().map(|d| d.join("grants.json"))
+    app.path()
+        .app_data_dir()
+        .ok()
+        .map(|d| d.join("grants.json"))
 }
 fn load_grants(app: &AppHandle, g: &mut Grants) {
     if g.loaded {
@@ -131,7 +138,9 @@ fn can_read(app: &AppHandle, state: &Mutex<Grants>, p: &Path) -> bool {
 fn clean_exts(exts: &[String]) -> Result<Vec<String>, String> {
     let ok = !exts.is_empty()
         && exts.len() <= 8
-        && exts.iter().all(|e| !e.is_empty() && e.len() <= 8 && e.chars().all(|c| c.is_ascii_alphanumeric()));
+        && exts
+            .iter()
+            .all(|e| !e.is_empty() && e.len() <= 8 && e.chars().all(|c| c.is_ascii_alphanumeric()));
     if ok {
         Ok(exts.iter().map(|e| e.to_ascii_lowercase()).collect())
     } else {
@@ -156,7 +165,11 @@ async fn pick_save(
 ) -> Result<Option<String>, String> {
     let exts = clean_exts(&extensions)?;
     let refs: Vec<&str> = exts.iter().map(|s| s.as_str()).collect();
-    let file_name: String = name.chars().filter(|c| !c.is_control() && *c != '/' && *c != '\\').take(120).collect();
+    let file_name: String = name
+        .chars()
+        .filter(|c| !c.is_control() && *c != '/' && *c != '\\')
+        .take(120)
+        .collect();
     let picked = app
         .dialog()
         .file()
@@ -209,7 +222,11 @@ async fn pick_open(
 /// Le chemin arrive dans l'en-tête `x-path`, encodé façon URL ; le corps est binaire,
 /// ce qui évite de sérialiser des dizaines de mégaoctets en JSON.
 #[tauri::command]
-async fn save_bytes(app: AppHandle, state: State<'_, Mutex<Grants>>, request: Request<'_>) -> Result<u64, String> {
+async fn save_bytes(
+    app: AppHandle,
+    state: State<'_, Mutex<Grants>>,
+    request: Request<'_>,
+) -> Result<u64, String> {
     let raw = request
         .headers()
         .get("x-path")
@@ -228,21 +245,32 @@ async fn save_bytes(app: AppHandle, state: State<'_, Mutex<Grants>>, request: Re
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Le corps de la requête doit être binaire".into());
     };
-    blocking_in_place(|| fs::write(&path, bytes)).map_err(|e| format!("Écriture impossible : {e}"))?;
+    blocking_in_place(|| fs::write(&path, bytes))
+        .map_err(|e| format!("Écriture impossible : {e}"))?;
     Ok(bytes.len() as u64)
 }
 
 #[tauri::command]
-async fn save_text(app: AppHandle, state: State<'_, Mutex<Grants>>, path: String, contents: String) -> Result<(), String> {
+async fn save_text(
+    app: AppHandle,
+    state: State<'_, Mutex<Grants>>,
+    path: String,
+    contents: String,
+) -> Result<(), String> {
     let p = PathBuf::from(&path);
     if !can_write(&app, &state, &p) {
         return Err("Emplacement non autorisé : choisissez-le dans la boîte de dialogue".into());
     }
-    blocking(move || fs::write(&p, contents).map_err(|e| format!("Écriture impossible : {e}"))).await
+    blocking(move || fs::write(&p, contents).map_err(|e| format!("Écriture impossible : {e}")))
+        .await
 }
 
 #[tauri::command]
-async fn read_text(app: AppHandle, state: State<'_, Mutex<Grants>>, path: String) -> Result<String, String> {
+async fn read_text(
+    app: AppHandle,
+    state: State<'_, Mutex<Grants>>,
+    path: String,
+) -> Result<String, String> {
     let p = PathBuf::from(&path);
     if !can_read(&app, &state, &p) {
         return Err("Fichier non autorisé : ouvrez-le avec la boîte de dialogue".into());
@@ -271,7 +299,9 @@ fn library_dir(app: &AppHandle) -> Result<PathBuf, String> {
 fn safe_id(id: &str) -> Result<String, String> {
     let ok = !id.is_empty()
         && id.len() <= 64
-        && id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        && id
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
     if ok {
         Ok(id.to_string())
     } else {
@@ -347,7 +377,11 @@ const AUTOSAVE_MAX: usize = 512 * 1024 * 1024;
 static AUTOSAVE_LOCK: Mutex<()> = Mutex::new(());
 
 fn autosave_file(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_data_dir().map_err(|e| e.to_string())?.join("autosave.json"))
+    Ok(app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("autosave.json"))
 }
 
 /// Contenu envoyé par la webview : corps binaire brut (UTF-8), ou `{ json: "…" }`, ou tableau
@@ -432,18 +466,32 @@ struct CliOutput {
 /// Cherche arduino-cli : dans le PATH, puis aux emplacements d'installation habituels
 /// (une application lancée depuis le Finder ou le menu Démarrer n'hérite pas toujours du PATH du terminal).
 fn find_arduino_cli() -> Option<PathBuf> {
-    let exe = if cfg!(windows) { "arduino-cli.exe" } else { "arduino-cli" };
+    let exe = if cfg!(windows) {
+        "arduino-cli.exe"
+    } else {
+        "arduino-cli"
+    };
     let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
         .map(|p| std::env::split_paths(&p).collect())
         .unwrap_or_default();
-    for d in ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/snap/bin"] {
+    for d in [
+        "/opt/homebrew/bin",
+        "/usr/local/bin",
+        "/usr/bin",
+        "/snap/bin",
+    ] {
         dirs.push(PathBuf::from(d));
     }
     if let Some(home) = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")) {
         let home = PathBuf::from(home);
         dirs.push(home.join("bin"));
         dirs.push(home.join(".local").join("bin"));
-        dirs.push(home.join("AppData").join("Local").join("Programs").join("arduino-cli"));
+        dirs.push(
+            home.join("AppData")
+                .join("Local")
+                .join("Programs")
+                .join("arduino-cli"),
+        );
     }
     if let Some(pf) = std::env::var_os("ProgramFiles") {
         dirs.push(PathBuf::from(pf).join("Arduino CLI"));
@@ -466,10 +514,18 @@ const CORE_URLS: [&str; 3] = [
     "https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json",
 ];
 /// Cartes avec options acceptées telles quelles : l'ESP32 du mode fidèle se compile en flash DIO (le mode QIO par
-/// défaut ne démarre pas dans QEMU). Aucune autre option (ni `=`, ni `,`) ne passe.
-const FQBN_WITH_OPTIONS: [&str; 1] = ["esp32:esp32:esp32:FlashMode=dio"];
+/// défaut ne démarre pas dans QEMU) ; les Nano compatibles gardent souvent l'ancien chargeur d'amorçage. Aucune autre
+/// option (ni `=`, ni `,`) ne passe.
+const FQBN_WITH_OPTIONS: [&str; 2] = [
+    "esp32:esp32:esp32:FlashMode=dio",
+    "arduino:avr:nano:cpu=atmega328old",
+];
 fn word(s: &str, extra: &str) -> bool {
-    !s.is_empty() && s.len() <= 80 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
+    !s.is_empty()
+        && s.len() <= 80
+        && !s.starts_with('-')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || extra.contains(c))
 }
 /// Dossier où la compilation dépose le programme machine (.hex, .uf2, .bin), lu ensuite par `read_build`
 /// pour le faire tourner dans l'émulateur (mode « fidèle »).
@@ -490,21 +546,41 @@ fn check_cli_args_in(sketch: &Path, build: &Path, args: &[String]) -> Result<(),
     let a: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     let is_sketch = |p: &str| Path::new(p) == sketch;
     let is_build = |p: &str| Path::new(p) == build;
-    let fqbn = |s: &str| (word(s, ":_-.") && s.split(':').count() >= 3) || FQBN_WITH_OPTIONS.contains(&s);
-    let urls_ok = |rest: &[&str]| rest.is_empty() || (rest.len() == 2 && rest[0] == "--additional-urls" && CORE_URLS.contains(&rest[1]));
-    let port = |s: &str| !s.is_empty() && s.len() <= 64 && !s.starts_with('-') && s.chars().all(|c| c.is_ascii_alphanumeric() || "/._-:".contains(c));
+    let fqbn =
+        |s: &str| (word(s, ":_-.") && s.split(':').count() >= 3) || FQBN_WITH_OPTIONS.contains(&s);
+    let urls_ok = |rest: &[&str]| {
+        rest.is_empty()
+            || (rest.len() == 2 && rest[0] == "--additional-urls" && CORE_URLS.contains(&rest[1]))
+    };
+    let port = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 64
+            && !s.starts_with('-')
+            && s.chars()
+                .all(|c| c.is_ascii_alphanumeric() || "/._-:".contains(c))
+    };
     let ok = match a.as_slice() {
         ["board", "list", "--format", "json"] => true,
         ["core", "list", "--format", "json"] => true,
         ["core", "update-index", rest @ ..] => urls_ok(rest),
-        ["core", "install", core, rest @ ..] => word(core, ":_-.") && core.split(':').count() == 2 && urls_ok(rest),
-        ["lib", "install", libs @ ..] => !libs.is_empty() && libs.len() <= 20 && libs.iter().all(|l| word(l, " _-.")),
+        ["core", "install", core, rest @ ..] => {
+            word(core, ":_-.") && core.split(':').count() == 2 && urls_ok(rest)
+        }
+        ["lib", "install", libs @ ..] => {
+            !libs.is_empty() && libs.len() <= 20 && libs.iter().all(|l| word(l, " _-."))
+        }
         ["compile", "--fqbn", f, dir] => fqbn(f) && is_sketch(dir),
-        ["compile", "--fqbn", f, "--output-dir", out, dir] => fqbn(f) && is_build(out) && is_sketch(dir),
+        ["compile", "--fqbn", f, "--output-dir", out, dir] => {
+            fqbn(f) && is_build(out) && is_sketch(dir)
+        }
         ["upload", "-p", p, "--fqbn", f, dir] => port(p) && fqbn(f) && is_sketch(dir),
         _ => false,
     };
-    if ok { Ok(()) } else { Err("Commande arduino-cli refusée".into()) }
+    if ok {
+        Ok(())
+    } else {
+        Err("Commande arduino-cli refusée".into())
+    }
 }
 
 /// Lance arduino-cli (compilation, téléversement, cartes, bibliothèques), arguments vérifiés.
@@ -547,7 +623,9 @@ async fn read_build(app: AppHandle, ext: String) -> Result<tauri::ipc::Response,
     }
     let path = build_dir(&app)?.join(format!("jollof_sketch.ino.{ext}"));
     let bytes = blocking(move || {
-        let len = fs::metadata(&path).map_err(|e| format!("Programme compilé introuvable : {e}"))?.len();
+        let len = fs::metadata(&path)
+            .map_err(|e| format!("Programme compilé introuvable : {e}"))?
+            .len();
         if len > 16 * 1024 * 1024 {
             return Err("Programme compilé trop gros".to_string());
         }
@@ -595,7 +673,9 @@ fn open_external(url: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     let r = std::process::Command::new("open").arg(&url).spawn();
     #[cfg(target_os = "windows")]
-    let r = std::process::Command::new("rundll32").args(["url.dll,FileProtocolHandler", &url]).spawn();
+    let r = std::process::Command::new("rundll32")
+        .args(["url.dll,FileProtocolHandler", &url])
+        .spawn();
     #[cfg(all(unix, not(target_os = "macos")))]
     let r = std::process::Command::new("xdg-open").arg(&url).spawn();
     r.map(|_| ()).map_err(|e| e.to_string())
@@ -605,12 +685,18 @@ fn open_external(url: String) -> Result<(), String> {
 /// à côté de l'exécutable) ; None si l'installateur n'en a pas écrit.
 #[tauri::command]
 async fn install_language() -> Option<String> {
-    blocking(|| Ok(read_install_language())).await.ok().flatten()
+    blocking(|| Ok(read_install_language()))
+        .await
+        .ok()
+        .flatten()
 }
 fn read_install_language() -> Option<String> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
-    for p in [dir.join("language.txt"), dir.join("..").join("Resources").join("language.txt")] {
+    for p in [
+        dir.join("language.txt"),
+        dir.join("..").join("Resources").join("language.txt"),
+    ] {
         if let Ok(t) = fs::read_to_string(&p) {
             let l = t.trim().to_lowercase();
             if l == "fr" || l == "en" {
@@ -626,13 +712,18 @@ fn read_install_language() -> Option<String> {
 /// navigateur du système par `open_external`.
 fn navigation_guard<R: tauri::Runtime>() -> tauri::plugin::TauriPlugin<R> {
     tauri::plugin::Builder::new("navigation-guard")
-        .on_navigation(|_webview, url| allowed_navigation(url.scheme(), url.host_str().unwrap_or("")))
+        .on_navigation(|_webview, url| {
+            allowed_navigation(url.scheme(), url.host_str().unwrap_or(""))
+        })
         .build()
 }
 fn allowed_navigation(scheme: &str, host: &str) -> bool {
     match scheme {
         "tauri" => true,
-        "http" | "https" => host == "tauri.localhost" || (cfg!(debug_assertions) && (host == "localhost" || host == "127.0.0.1")),
+        "http" | "https" => {
+            host == "tauri.localhost"
+                || (cfg!(debug_assertions) && (host == "localhost" || host == "127.0.0.1"))
+        }
         _ => false,
     }
 }
@@ -645,7 +736,10 @@ pub fn run() {
         .manage(Mutex::new(Grants::default()))
         .manage(serial::Ports::default())
         .manage(qemu::Qemu::default())
+        .manage(ai::Bridge::default())
+        .manage(supervision_cmd::Supervision::default())
         .invoke_handler(tauri::generate_handler![
+            supervision_cmd::supervision,
             pick_save,
             pick_open,
             save_bytes,
@@ -673,7 +767,14 @@ pub fn run() {
             qemu::qemu_flash,
             qemu::qemu_start,
             qemu::qemu_input,
-            qemu::qemu_stop
+            qemu::qemu_stop,
+            ai::ai_bridge,
+            ai::ai_reply,
+            ai::ai_new_token,
+            ai::ai_end_session,
+            ai::ai_focus,
+            ai::ai_clients,
+            ai::ai_connect
         ])
         .build(tauri::generate_context!())
         .expect("Impossible de démarrer Jollof Studio")
@@ -701,36 +802,202 @@ mod tests {
         let ok = |a: &[&str]| check_cli_args_in(&sk, &bd, &v(a)).is_ok();
         assert!(ok(&["board", "list", "--format", "json"]));
         assert!(ok(&["core", "update-index"]));
-        assert!(ok(&["core", "update-index", "--additional-urls", CORE_URLS[0]]));
+        assert!(ok(&[
+            "core",
+            "update-index",
+            "--additional-urls",
+            CORE_URLS[0]
+        ]));
         assert!(ok(&["core", "install", "arduino:avr"]));
-        assert!(ok(&["lib", "install", "DHT sensor library", "Adafruit Unified Sensor"]));
+        assert!(ok(&[
+            "lib",
+            "install",
+            "DHT sensor library",
+            "Adafruit Unified Sensor"
+        ]));
         assert!(ok(&["compile", "--fqbn", "arduino:avr:uno", &d]));
-        assert!(ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", &b, &d]));
+        assert!(ok(&[
+            "compile",
+            "--fqbn",
+            "arduino:avr:uno",
+            "--output-dir",
+            &b,
+            &d
+        ]));
         assert!(ok(&["core", "list", "--format", "json"]));
-        assert!(ok(&["upload", "-p", "/dev/cu.usbmodem1101", "--fqbn", "esp32:esp32:esp32", &d]));
-        assert!(ok(&["upload", "-p", "COM3", "--fqbn", "arduino:avr:nano", &d]));
+        assert!(ok(&[
+            "upload",
+            "-p",
+            "/dev/cu.usbmodem1101",
+            "--fqbn",
+            "esp32:esp32:esp32",
+            &d
+        ]));
+        assert!(ok(&[
+            "upload",
+            "-p",
+            "COM3",
+            "--fqbn",
+            "arduino:avr:nano",
+            &d
+        ]));
+        // Cartes de la bibliothèque : Mega, ESP32 DevKit V1, 38 broches, S3, C3 SuperMini, D1 mini, Nano à l'ancien chargeur.
+        for f in [
+            "arduino:avr:mega",
+            "esp32:esp32:esp32doit-devkit-v1",
+            "esp32:esp32:nodemcu-32s",
+            "esp32:esp32:esp32s3",
+            "esp32:esp32:nologo_esp32c3_super_mini",
+            "esp8266:esp8266:d1_mini",
+            "arduino:avr:nano:cpu=atmega328old",
+        ] {
+            assert!(
+                ok(&["upload", "-p", "/dev/cu.usbmodem1101", "--fqbn", f, &d]),
+                "{f}"
+            );
+        }
+        assert!(
+            !ok(&[
+                "upload",
+                "-p",
+                "COM3",
+                "--fqbn",
+                "arduino:avr:nano:cpu=atmega168",
+                &d
+            ]),
+            "autre option refusée"
+        );
         // Mode fidèle du Pico : cœur arduino-pico (dépôt d'Earle Philhower), compilation vers le dossier de build.
-        assert!(ok(&["core", "update-index", "--additional-urls", CORE_URLS[2]]));
-        assert!(ok(&["core", "install", "rp2040:rp2040", "--additional-urls", CORE_URLS[2]]));
-        assert!(ok(&["compile", "--fqbn", "rp2040:rp2040:rpipico", "--output-dir", &b, &d]));
-        assert!(!ok(&["core", "install", "rp2040:rp2040", "--additional-urls", "https://github.com/evil/package_rp2040_index.json"]));
+        assert!(ok(&[
+            "core",
+            "update-index",
+            "--additional-urls",
+            CORE_URLS[2]
+        ]));
+        assert!(ok(&[
+            "core",
+            "install",
+            "rp2040:rp2040",
+            "--additional-urls",
+            CORE_URLS[2]
+        ]));
+        assert!(ok(&[
+            "compile",
+            "--fqbn",
+            "rp2040:rp2040:rpipico",
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        assert!(!ok(&[
+            "core",
+            "install",
+            "rp2040:rp2040",
+            "--additional-urls",
+            "https://github.com/evil/package_rp2040_index.json"
+        ]));
         // Mode fidèle de l'ESP32 : cœur d'Espressif, flash DIO (seule option de carte acceptée).
-        assert!(ok(&["core", "install", "esp32:esp32", "--additional-urls", CORE_URLS[0]]));
-        assert!(ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=dio", "--output-dir", &b, &d]));
-        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=qio", "--output-dir", &b, &d]));
-        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:FlashMode=dio,PartitionScheme=x", "--output-dir", &b, &d]));
-        assert!(!ok(&["compile", "--fqbn", "esp32:esp32:esp32:build.extra_flags=-include/etc/passwd", "--output-dir", &b, &d]));
-        assert!(!ok(&["upload", "-p", "COM3", "--fqbn", "esp32:esp32:esp32:FlashMode=dio --verbose", &d]));
+        assert!(ok(&[
+            "core",
+            "install",
+            "esp32:esp32",
+            "--additional-urls",
+            CORE_URLS[0]
+        ]));
+        assert!(ok(&[
+            "compile",
+            "--fqbn",
+            "esp32:esp32:esp32:FlashMode=dio",
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "esp32:esp32:esp32:FlashMode=qio",
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "esp32:esp32:esp32:FlashMode=dio,PartitionScheme=x",
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "esp32:esp32:esp32:build.extra_flags=-include/etc/passwd",
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        assert!(!ok(&[
+            "upload",
+            "-p",
+            "COM3",
+            "--fqbn",
+            "esp32:esp32:esp32:FlashMode=dio --verbose",
+            &d
+        ]));
         // Refusés : autres commandes, autres dossiers, options cachées, dépôts arbitraires.
-        assert!(!ok(&["config", "set", "library.enable_unsafe_install", "true"]));
-        assert!(!ok(&["lib", "install", "--git-url", "https://evil.example/x.git"]));
+        assert!(!ok(&[
+            "config",
+            "set",
+            "library.enable_unsafe_install",
+            "true"
+        ]));
+        assert!(!ok(&[
+            "lib",
+            "install",
+            "--git-url",
+            "https://evil.example/x.git"
+        ]));
         assert!(!ok(&["lib", "install", "--zip-path", "/tmp/x.zip"]));
         assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "/etc"]));
-        assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", &d, "--build-property", "x"]));
-        assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", "/tmp", &d]));
-        assert!(!ok(&["compile", "--fqbn", "arduino:avr:uno", "--output-dir", &d, &d]));
-        assert!(!ok(&["core", "install", "arduino:avr", "--additional-urls", "https://evil.example/index.json"]));
-        assert!(!ok(&["upload", "-p", "--config-file=/x", "--fqbn", "arduino:avr:uno", &d]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "arduino:avr:uno",
+            &d,
+            "--build-property",
+            "x"
+        ]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "arduino:avr:uno",
+            "--output-dir",
+            "/tmp",
+            &d
+        ]));
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "arduino:avr:uno",
+            "--output-dir",
+            &d,
+            &d
+        ]));
+        assert!(!ok(&[
+            "core",
+            "install",
+            "arduino:avr",
+            "--additional-urls",
+            "https://evil.example/index.json"
+        ]));
+        assert!(!ok(&[
+            "upload",
+            "-p",
+            "--config-file=/x",
+            "--fqbn",
+            "arduino:avr:uno",
+            &d
+        ]));
         assert!(!ok(&["daemon"]));
         assert!(!ok(&[]));
     }
@@ -768,7 +1035,10 @@ mod tests {
         write_atomic(&f, b"{\"v\":1}").unwrap();
         write_atomic(&f, b"{\"v\":2}").unwrap();
         assert_eq!(fs::read(&f).unwrap(), b"{\"v\":2}");
-        assert!(!d.join("sous").join("a.json.tmp").exists(), "aucun fichier temporaire ne reste");
+        assert!(
+            !d.join("sous").join("a.json.tmp").exists(),
+            "aucun fichier temporaire ne reste"
+        );
         let _ = fs::remove_dir_all(&d);
     }
 
@@ -776,19 +1046,32 @@ mod tests {
     fn autosave_roundtrip() {
         let d = temp_dir("autosave");
         let f = d.join("autosave.json");
-        assert!(autosave_load(&f).unwrap().is_empty(), "pas de sauvegarde : contenu vide");
-        let big = format!("{{\"comps\":[],\"glb\":\"{}\"}}", "A".repeat(8 * 1024 * 1024));
+        assert!(
+            autosave_load(&f).unwrap().is_empty(),
+            "pas de sauvegarde : contenu vide"
+        );
+        let big = format!(
+            "{{\"comps\":[],\"glb\":\"{}\"}}",
+            "A".repeat(8 * 1024 * 1024)
+        );
         autosave_store(&f, big.as_bytes()).unwrap(); // bien au-delà de la limite du stockage local
         assert_eq!(autosave_load(&f).unwrap(), big.as_bytes());
         assert!(autosave_store(&f, b"{pas du json").is_err());
-        assert_eq!(autosave_load(&f).unwrap(), big.as_bytes(), "un contenu refusé ne remplace pas la sauvegarde");
+        assert_eq!(
+            autosave_load(&f).unwrap(),
+            big.as_bytes(),
+            "un contenu refusé ne remplace pas la sauvegarde"
+        );
         let _ = fs::remove_dir_all(&d);
     }
 
     #[test]
     fn autosave_bodies() {
         let j = |s: &str| InvokeBody::Json(serde_json::from_str(s).unwrap());
-        assert_eq!(&*body_bytes(&InvokeBody::Raw(b"{}".to_vec())).unwrap(), b"{}");
+        assert_eq!(
+            &*body_bytes(&InvokeBody::Raw(b"{}".to_vec())).unwrap(),
+            b"{}"
+        );
         assert_eq!(&*body_bytes(&j(r#"{"json":"{}"}"#)).unwrap(), b"{}");
         assert_eq!(&*body_bytes(&j(r#""{}""#)).unwrap(), b"{}");
         assert_eq!(&*body_bytes(&j("[123,125]")).unwrap(), b"{}");
@@ -821,4 +1104,3 @@ mod tests {
         assert!(safe_id("").is_err());
     }
 }
-

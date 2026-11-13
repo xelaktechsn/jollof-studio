@@ -13,3 +13,59 @@
 .codeMode[data-kind="visual"] { color: #b9a2ec; }
 /* Les calques de Blockly (catégories, volet des blocs) restent dans la zone des blocs : jamais au-dessus des boîtes de dialogue. */
 .visualHost { isolation: isolate; }
+
+/* Choix de la façon de programmer : Règles · Blocs · Code, sous la barre de l'onglet Code */
+.progModes { display: flex; flex-direction: column; gap: 7px; padding: 10px 16px 12px; border-bottom: 1px solid var(--line); }
+.progModes[hidden] { display: none; }
+.modeSeg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--bg); }
+.modeSeg .segBtn { justify-content: center; height: 30px; font-size: 12.5px; }
+.modeSeg .segBtn .ic { width: 15px; height: 15px; }
+.modeSeg .segBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 0 0 1px #3b82f666; }
+.modeSeg .segBtn[aria-pressed="true"] .ic { color: var(--accent-hi); }
+.modeSeg [data-tip]:hover::after { white-space: nowrap; max-width: none; }
+.modeHint { margin: 0; font-size: 11.5px; line-height: 1.45; color: var(--muted); }
+.modeNote { margin-bottom: 2px; }
+.visBanner { flex-wrap: wrap; }
+
+/* Mode Règles : programme vu en code ou en blocs (aperçu en lecture seule) */
+.rulesView { margin-right: 4px; }
+.rulesView .segBtn { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; }
+.rulesView .segBtn .ic { width: 13px; height: 13px; }
+.codeSec.previewBlocks #editor, .codeSec.previewBlocks .vGrip[data-resize="editor"], .codeSec.previewBlocks #diag, .codeSec.previewBlocks .dbgBar { display: none !important; }
+.previewHost { height: 400px; }
+.pane .note.rule.modeNote { flex-direction: row; gap: 8px; }
+
+/* ---------- Mode Blocs : barre d'outils, blocs à pleine hauteur, code replié ---------- */
+.visBar { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.visBar[hidden] { display: none; }
+.visBar .grow { flex: 1; }
+#visualHost { height: clamp(380px, calc(100vh - 340px), 1100px); resize: none; }
+.visCodeToggle { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 8px; width: 100%; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--raise); color: var(--fg-2); font-size: 12px; font-weight: 500; cursor: pointer; }
+.visCodeToggle:hover { color: var(--fg); border-color: var(--line-2); }
+.visCodeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.visCodeToggle[hidden] { display: none; }
+.visCodeToggle .ic { width: 14px; height: 14px; color: var(--muted); }
+.visCodeToggle small { margin-left: auto; color: var(--muted); font-size: 11px; }
+.visCodeToggle[aria-expanded="false"] .foldChev { transform: rotate(-45deg); }
+.codeSec.blocksMode.showCode .visCodeToggle { margin-bottom: 8px; }
+.codeSec.blocksMode:not(.showCode) #editor, .codeSec.blocksMode:not(.showCode) .vGrip[data-resize="editor"], .codeSec.blocksMode:not(.showCode) #diag { display: none !important; }
+/* Programme vide : les trois étapes pour commencer, dans un coin du plan de travail */
+.visEmpty { position: absolute; right: 96px; bottom: 22px; z-index: 5; max-width: 310px; padding: 12px 14px; border: 1px dashed var(--line-2); border-radius: 10px; background: #11151ae8; color: var(--fg-2); font-size: 12px; line-height: 1.5; pointer-events: none; }
+.visEmpty[hidden], .visEmpty.away { display: none; }
+.visEmpty b { color: var(--fg); font-weight: 600; }
+.visEmpty ol { margin: 6px 0 0; padding-left: 18px; }
+.visEmpty li + li { margin-top: 3px; }
+.visEmpty em { font-style: normal; font-weight: 600; color: var(--accent-hi); }
+/* Plein écran : blocs et code côte à côte, sous la barre d'application */
+.visFull { position: fixed; left: 0; right: 0; top: 48px; bottom: 28px; z-index: 3; display: flex; flex-direction: column; background: var(--bg); animation: fadeIn .12s ease-out; }
+.visFullHead { display: flex; align-items: center; gap: 10px; height: 46px; flex: none; padding: 0 12px 0 16px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.visFullHead > .ic { width: 16px; height: 16px; color: var(--accent-hi); }
+.visFullHead small { color: var(--muted); }
+.visFullHead .grow { flex: 1; }
+.visFullHead kbd { margin-left: 4px; padding: 0 4px; border-radius: 4px; background: #ffffff24; font: 500 10px var(--mono); }
+.visFullBody { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 34%); }
+.visFull.noCode .visFullBody { grid-template-columns: minmax(0, 1fr); }
+.visFull.noCode .visFullCode { display: none; }
+.visFullBlocks { min-height: 0; padding: 10px; }
+.visFullBlocks > #visualHost { height: 100%; margin: 0; }
+.visFullCode { margin: 0; overflow: auto; padding: 12px 14px; border-left: 1px solid var(--line); background: #0a0d10; color: #c9d1d6; font: 12px/18px var(--mono); white-space: pre; -webkit-user-select: text; user-select: text; }

@@ -1,0 +1,145 @@
+{
+  "format": 1,
+  "id": "pk-sht31",
+  "version": 1,
+  "name": "SHT31 température et humidité (I2C)",
+  "category": "Capteurs",
+  "prefix": "SHT",
+  "description": "Capteur Sensirion SHT31 sur module : température et humidité relative lues par le bus I2C, chaque valeur suivie d’un octet de contrôle (CRC).",
+  "sources": {
+    "sensirion": {
+      "title": "Datasheet SHT3x-DIS (Version 7, December 2022)",
+      "publisher": "Sensirion",
+      "section": "2.1 Electrical Specifications, Table 3 : supply voltage VDD 2,15 à 5,5 V ; supply current measuring 600 µA typ., 1500 µA max. Table 8 I2C device addresses : 0x44 (ADDR à l’état bas), 0x45 (ADDR à l’état haut). Table 9 : 0x2400, mesure en haute répétabilité sans étirement d’horloge. 4.13 Conversion of Signal Output : RH = 100 × S_RH / (2^16 − 1), T = −45 + 175 × S_T / (2^16 − 1).",
+      "url": "https://sensirion.com/media/documents/213E6A3B/63A5A569/Datasheet_SHT3x_DIS.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 1.5,
+  "ds": "sensirion",
+  "pins": [
+    {
+      "name": "VIN",
+      "x": -5.08,
+      "y": 8.1,
+      "z": 6,
+      "kind": "pwr",
+      "v": "logic",
+      "why": "Le capteur accepte de 2,15 à 5,5 V : alimenté à la tension logique de la carte, le bus I2C reste à son niveau."
+    },
+    {
+      "name": "GND",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd"
+    },
+    {
+      "name": "SCL",
+      "x": 0,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "scl",
+      "role": "I2C SCL",
+      "why": "Horloge du bus I2C, partagée avec les autres modules I2C."
+    },
+    {
+      "name": "SDA",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "sda",
+      "role": "I2C SDA",
+      "why": "Données du bus I2C. Les résistances de tirage sont déjà sur le module."
+    },
+    {
+      "name": "ADR",
+      "x": 5.08,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd",
+      "role": "Adresse",
+      "why": "À la masse : adresse 0x44. Reliée à VIN, elle passe à 0x45 (deux capteurs sur le même bus)."
+    }
+  ],
+  "behaviour": {
+    "i2c": {
+      "address": 68,
+      "alt": 69,
+      "addressPin": "ADR",
+      "commands": [
+        {
+          "write": [
+            36,
+            0
+          ],
+          "reply": [
+            {
+              "quantity": "temp",
+              "bits": 16,
+              "scale": 374.4857,
+              "offset": 16851.86
+            },
+            {
+              "crc": "sensirion"
+            },
+            {
+              "quantity": "hum",
+              "bits": 16,
+              "scale": 655.35
+            },
+            {
+              "crc": "sensirion"
+            }
+          ]
+        }
+      ]
+    },
+    "sample": {
+      "period": 0.5,
+      "tau": 1
+    }
+  },
+  "docs": {
+    "text": "Le programme envoie la commande de mesure 0x24 0x00, attend au moins 16 ms, puis lit six octets : température (2 octets), CRC, humidité (2 octets), CRC. Température (°C) = −45 + 175 × brut ÷ 65535 ; humidité (%) = 100 × brut ÷ 65535. Les règles et les blocs génèrent ce code sans bibliothèque.",
+    "specs": [
+      [
+        "Alimentation",
+        "2,15 à 5,5 V ; 0,6 mA pendant une mesure"
+      ],
+      [
+        "Précision",
+        "±0,2 °C et ±2 % d’humidité relative (valeurs typiques)"
+      ],
+      [
+        "Bus",
+        "I2C, adresse 0x44 (ADR à la masse) ou 0x45"
+      ],
+      [
+        "Durée d’une mesure",
+        "15,5 ms au plus en haute répétabilité"
+      ],
+      [
+        "Contrôle",
+        "CRC-8 (polynôme 0x31) après chaque valeur"
+      ]
+    ],
+    "uses": [
+      "Station météo ou serre connectée",
+      "Surveillance d’une salle de classe ou d’un local technique",
+      "Alarme de condensation (point de rosée)"
+    ],
+    "mistakes": [
+      "Lire les six octets sans attendre la fin de la mesure : le capteur ne répond pas.",
+      "Mettre deux capteurs sur le même bus sans changer l’adresse de l’un d’eux (ADR à VIN : 0x45).",
+      "Ignorer le CRC : une valeur corrompue passe pour une vraie mesure."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1b4f8c",
+    "label": "SHT31"
+  }
+}

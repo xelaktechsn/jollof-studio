@@ -22,7 +22,7 @@ export function esp32Refusal(code) {
 }
 
 /** Types de modules que les modèles de src/emu/devices font répondre, pas encore reliés à QEMU. */
-export const UNBRIDGED = ['lcd1602', 'oled', 'bmp280', 'mpu6050', 'dht11', 'dht22', 'ds18b20', 'hcsr04', 'ws2812', 'keypad', 'ir', 'rc522', 'nrf24', 'hc05', 'sim800'];
+export const UNBRIDGED = ['lcd1602', 'oled', 'bmp280', 'bme280', 'bh1750', 'hx711', 'mpu6050', 'dht11', 'dht22', 'ds18b20', 'hcsr04', 'ws2812', 'keypad', 'ir', 'rc522', 'nrf24', 'hc05', 'sim800'];
 
 /** Message pour les modules branchés qui ne répondront pas (noms des composants), sinon null. */
 export function unbridgedWarning(comps) {

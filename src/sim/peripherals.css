@@ -14,7 +14,7 @@
 .periphs .irKey { height: 27px; padding: 0; border-radius: 14px; background: var(--raise-2); border: 1px solid var(--line-2); font-size: 12px; font-weight: 600; touch-action: none; user-select: none; -webkit-user-select: none; }
 .periphs .irKey.ch { color: var(--danger); }
 .periphs .irKey:hover { border-color: var(--muted); }
-.periphs .irKey.on, .periphs .irKey:active { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.periphs .irKey.on, .periphs .irKey:active { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); }
 
 /* Badges RFID */
 .periphs .rfBadges { display: flex; flex-direction: column; gap: 5px; }
@@ -32,7 +32,7 @@
 .periphs .kpKey.let { color: var(--danger); }
 .periphs .kpKey.sym { color: var(--info); }
 .periphs .kpKey:hover { border-color: var(--muted); }
-.periphs .kpKey.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.periphs .kpKey.on { background: var(--accent-fill); border-color: var(--accent-fill); color: var(--accent-ink); }
 
 /* Conversation Bluetooth et SMS */
 .periphs .chatLog, .periphs .smsList { list-style: none; margin: 0; padding: 6px; display: flex; flex-direction: column; gap: 5px; max-height: 170px; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }

@@ -1,0 +1,152 @@
+{
+  "format": 1,
+  "id": "pk-ina219",
+  "version": 1,
+  "name": "INA219 courant et tension (I2C)",
+  "category": "Capteurs",
+  "prefix": "INA",
+  "description": "Module INA219 avec shunt de 0,1 Ω : mesure le courant et la tension d’un circuit, lus par le bus I2C dans des registres de 16 bits.",
+  "sources": {
+    "ti": {
+      "title": "INA219 Zerø-Drift, Bidirectional Current/Power Monitor With I2C Interface (SBOS448G)",
+      "publisher": "Texas Instruments",
+      "section": "7.5 Electrical Characteristics : operating supply range 3 à 5,5 V, quiescent current 0,7 mA typ., 1 mA max. Address Pins and Slave Addresses : A1 et A0 à la masse = 1000000 (0x40). 8.6.3.1 Shunt Voltage Register (01h), LSB 10 µV ; 8.6.3.2 Bus Voltage Register (02h), bits 15 à 3, LSB 4 mV ; 8.5.1 : Current Register (04h) à zéro tant que le registre d’étalonnage (05h) n’est pas écrit.",
+      "url": "https://www.ti.com/lit/ds/symlink/ina219.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 1,
+  "ds": "ti",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -6.35,
+      "y": 8.1,
+      "z": 6,
+      "kind": "pwr",
+      "v": "logic",
+      "why": "Le circuit intégré accepte 3 à 5,5 V : alimenté à la tension logique de la carte, le bus I2C reste à son niveau."
+    },
+    {
+      "name": "GND",
+      "x": -3.81,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd"
+    },
+    {
+      "name": "SCL",
+      "x": -1.27,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "scl",
+      "role": "I2C SCL",
+      "why": "Horloge du bus I2C, partagée avec les autres modules I2C."
+    },
+    {
+      "name": "SDA",
+      "x": 1.27,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "sda",
+      "role": "I2C SDA",
+      "why": "Données du bus I2C. Les résistances de tirage sont déjà sur le module."
+    },
+    {
+      "name": "VIN+",
+      "x": 3.81,
+      "y": 8.1,
+      "z": 6,
+      "kind": "nc",
+      "role": "Mesure",
+      "why": "Côté alimentation du circuit mesuré : le courant traverse le shunt de VIN+ vers VIN−."
+    },
+    {
+      "name": "VIN-",
+      "x": 6.35,
+      "y": 8.1,
+      "z": 6,
+      "kind": "nc",
+      "role": "Mesure",
+      "why": "Côté charge du circuit mesuré. La tension du bus se mesure ici, 26 V au plus."
+    }
+  ],
+  "behaviour": {
+    "i2c": {
+      "address": 64,
+      "regSize": 2,
+      "registers": [
+        {
+          "at": 0,
+          "bytes": [
+            57,
+            159
+          ]
+        },
+        {
+          "at": 1,
+          "quantity": "current",
+          "bits": 16,
+          "signed": true,
+          "scale": 10000
+        },
+        {
+          "at": 2,
+          "quantity": "voltage",
+          "bits": 16,
+          "scale": 250,
+          "shift": 3
+        },
+        {
+          "at": 4,
+          "quantity": "current",
+          "bits": 16,
+          "signed": true,
+          "scale": 10000
+        }
+      ]
+    },
+    "sample": {
+      "period": 0.2,
+      "tau": 0.2
+    }
+  },
+  "docs": {
+    "text": "Placé en série dans le circuit à mesurer (VIN+ côté alimentation, VIN− côté charge), le module mesure la chute de tension dans son shunt. Registre 0x02 : tension du bus = valeur ÷ 8 (bits 15 à 3) × 4 mV. Registre 0x01 : tension du shunt, signée, 10 µV par unité ; courant = tension du shunt ÷ 0,1 Ω. Le registre 0x04 donne le courant directement (0,1 mA par unité) une fois le registre d’étalonnage 0x05 écrit (4096).",
+    "specs": [
+      [
+        "Alimentation",
+        "3 à 5,5 V ; 1 mA au plus"
+      ],
+      [
+        "Mesure",
+        "tension du bus 0 à 26 V ; courant jusqu’à ±3,2 A avec le shunt de 0,1 Ω"
+      ],
+      [
+        "Bus",
+        "I2C, adresse 0x40 (A0 et A1 à la masse), jusqu’à 0x4F"
+      ],
+      [
+        "Résolution",
+        "4 mV pour la tension, 0,1 mA pour le courant"
+      ]
+    ],
+    "uses": [
+      "Consommation d’un moteur, d’une pompe ou d’un ruban de LED",
+      "Suivi d’une batterie ou d’un panneau solaire",
+      "Wattmètre de banc : puissance = tension × courant"
+    ],
+    "mistakes": [
+      "Brancher VIN+ et VIN− en parallèle sur l’alimentation au lieu de les mettre en série : le shunt la court-circuite.",
+      "Dépasser 26 V sur VIN+ ou VIN− : le circuit intégré est détruit.",
+      "Lire le registre de courant sans avoir écrit l’étalonnage : il reste à 0."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#7b2d8e",
+    "label": "INA219"
+  }
+}

@@ -26,8 +26,8 @@ test('Exemples et TP : aucune erreur, prouvé dans tous les états ; « à corri
     else assert.equal(r.errors, 0, `${f} : ${codes(r).join(' ')}`);
     assert.equal(r.proven, true, f);
   }
-  for (const f of fs.readdirSync(new URL('src/lab/tp/', ROOT)).filter(f => f.endsWith('.json')).sort()) {
-    const tp = read('src/lab/tp/' + f);
+  for (const f of [...fs.readdirSync(new URL('src/lab/tp/', ROOT)).filter(f => f.endsWith('.json')).map(f => 'tp/' + f), ...fs.readdirSync(new URL('src/lab/pneu/', ROOT)).filter(f => f.endsWith('.json')).map(f => 'pneu/' + f)].sort()) {
+    const tp = read('src/lab/' + f);
     const sol = checkProject(loadProject({ ...tp.start, wires: tp.solution.wires || [] }, tp.solution.code || null));
     assert.equal(sol.errors, 0, `${f} solution : ${codes(sol).join(' ')}`);
     assert.equal(checkProject(loadProject(tp.start)).errors, 0, `${f} départ`);

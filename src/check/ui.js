@@ -8,7 +8,7 @@ import { checkProjectAsync } from './check.js';
 import { where, summary, fmtN } from './format.js';
 import { explain } from './explain.js';
 import { familyOf } from './codes.js';
-import { tl, LANG } from '../i18n/index.js';
+import { tl, LANG, CANCEL } from '../i18n/index.js';
 import { SOURCE_URL } from '../library/credits.js';
 import { INSTALLED } from '../library/jpart.js';
 /** Page publique : ce que la preuve couvre, les modèles, la comparaison avec ngspice, les sources des limites. */
@@ -117,6 +117,23 @@ export function installCheck(app) {
       if (r === undefined || r === null) r = await checkProjectAsync(proj, { dist: app.dist }, sig); // repli : sur le fil principal, par tranches
     } catch (e) { console.error(e); }
     if (!r || my !== gen) return last;
+    // Diagnostics des autres plans de travail (plan pneumatique, GRAFCET, liaisons avec le montage) : même rapport,
+    // même verdict. Une exception acceptée s'y retrouve par sa clé.
+    if (app.extra) {
+      try {
+        const more = app.extra() || [], allow = app.allow();
+        for (const d of more) {
+          d.loc = { pins: [], ...(d.loc || {}) };
+          const ex = explain(d.code); if (ex) { if (!d.note) d.note = ex.why; if (!d.help) d.help = ex.fix; }
+          const a = d.level === 'warning' && allow.find(x => x.code === d.code && (x.key ? x.key === d.key : !!(d.loc.comp && x.comp === d.loc.comp.id)));
+          d.accepted = a ? a.reason || '' : null;
+        }
+        if (more.length) {
+          const diags = [...r.diags, ...more].sort((x, y) => (x.level === y.level ? (x.accepted == null) - (y.accepted == null) || x.code.localeCompare(y.code) : x.level === 'error' ? -1 : 1));
+          r = { ...r, diags, errors: diags.filter(d => d.level === 'error').length, warnings: diags.filter(d => d.level === 'warning' && d.accepted == null).length };
+        }
+      } catch (e) { console.error(e); }
+    }
     last = r; paintChip();
     if (!modal.hidden) render();
     return r;
@@ -144,7 +161,7 @@ export function installCheck(app) {
       ${row(tl('état :'), d.state ? d.state + (d.states > 1 ? tl(' (et {0} autre(s) état(s) sur {1})', fmtN(d.states - 1), fmtN(d.total)) : '') : '')}
       ${row(tl('note :'), d.note)}${row(tl('aide :'), d.help, 'help')}
       ${d.accepted != null ? row(tl('accepté :'), d.accepted || tl('sans raison donnée'), 'accd') : ''}
-      ${accepting === d.key ? `<form class="jaccept" data-a="acceptForm"><input class="inp" name="why" maxlength="160" required placeholder="${tl('Pourquoi cet avertissement est-il voulu ?')}" aria-label="${tl('Raison')}"><button class="btn small primary">${tl('Accepter')}</button><button type="button" class="btn small" data-a="cancelAccept">${tl('Annuler')}</button></form>` : ''}
+      ${accepting === d.key ? `<form class="jaccept" data-a="acceptForm"><input class="inp" name="why" maxlength="160" required placeholder="${tl('Pourquoi cet avertissement est-il voulu ?')}" aria-label="${tl('Raison')}"><button class="btn small primary">${tl('Accepter')}</button><button type="button" class="btn small" data-a="cancelAccept">${CANCEL}</button></form>` : ''}
       <div class="jact">
         ${acts.map(a => `<button type="button" class="btn small primary" data-a="fix" data-act="${a}">${esc(app.actLabel(a))}</button>`).join('')}
         <button type="button" class="btn small" data-a="explain" aria-expanded="${!!ex}">${tl('Expliquer {0}', d.code)}</button>
@@ -174,14 +191,14 @@ export function installCheck(app) {
     if (a === 'explain') { opened.has(d.key) ? opened.delete(d.key) : opened.add(d.key); render(); }
     if (a === 'accept') { accepting = d.key; render(); }
     if (a === 'cancelAccept') { accepting = null; render(); }
-    if (a === 'unaccept') { app.setAllow(app.allow().filter(x => !(x.code === d.code && (!x.comp || (d.loc.comp && x.comp === d.loc.comp.id))))); run(); }
+    if (a === 'unaccept') { app.setAllow(app.allow().filter(x => !(x.code === d.code && (x.key ? x.key === d.key : !x.comp || (d.loc.comp && x.comp === d.loc.comp.id))))); run(); }
   });
   q('list').addEventListener('submit', e => {
     e.preventDefault();
     const art = e.target.closest('.jd'), d = last && last.diags[+art.dataset.i], why = e.target.elements.why.value.trim();
     if (!d || !why) return;
     accepting = null;
-    app.setAllow([...app.allow(), { code: d.code, comp: d.loc.comp ? d.loc.comp.id : null, reason: why }]);
+    app.setAllow([...app.allow(), { code: d.code, comp: d.loc.comp ? d.loc.comp.id : null, ...(d.space ? { key: d.key } : {}), reason: why }]);
     run();
   });
   const open = () => { modal.hidden = false; render(); run(); };

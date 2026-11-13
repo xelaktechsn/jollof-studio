@@ -39,7 +39,7 @@ export function linkFlows(links, inj) {
 /** Bornes de contacts fermés en ce moment : bouton appuyé (1, 2), relais collé (COM, NO) ou au repos (COM, NC). */
 const closedPin = p => {
   const c = p.comp;
-  if (c.type === 'button') return !!(c.inp && c.inp.pressed);
+  if (c.type === 'button' || c.type === 'cylsensor' || c.type === 'pressostat') return !!(c.inp && c.inp.pressed);
   if (c.type === 'relay' && c.pins && c.pins.COM) return p.key === 'COM' || p.key === (c.relayOn ? 'NO' : 'NC');
   return false;
 };

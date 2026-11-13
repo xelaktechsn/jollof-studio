@@ -9,29 +9,33 @@ import { compile } from './lang.js';
 import { createRuntime } from './runtime.js';
 import { EMULATED, QEMU_KINDS, setQemuReady } from '../emu/boards.js';
 import { esp32Refusal } from '../emu/esp32-limits.js';
-import { generate, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs } from './rules.js';
-import { QUANT, ENV, MODELS, NET_DEFAULT } from '../sim/models.js';
-import { createEditor } from './editor.js';
+import { generate, skeleton, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs } from './rules.js';
+import { QUANT, ENV, MODELS, NET_DEFAULT, envOf } from '../sim/models.js';
+import { createEditor, highlight } from './editor.js';
 import { createPlotter } from './plotter.js';
 import { Q, LIGHT } from '../quality.js';
-import { saveFile, qemuStatus, qemuInstall, qemuTransport } from '../native.js';
+import { saveFile, qemuStatus, qemuInstall, qemuTransport, isTauri } from '../native.js';
+import { createRealMonitor, baudOf, ENDINGS, whoLabel } from '../hil/monitor.js';
+import { listPorts, BAUDS, webSerial } from '../hil/serial.js';
 import './debug.css';
 import './visual/mode.css';
 import { generateVisual, visualContext } from './visual/generator.js';
 import { emptyWorkspace } from './visual/types.js';
-import { confirm as askConfirm, ask } from '../school/ui.js';
-import { BOARDS, boardOf } from '../sim/boards.js';
+import { rulesToBlocks, appendRule, hasBlocks } from './visual/fromRules.js';
+import { confirm as askConfirm, ask, dialog } from '../school/ui.js';
+import { boardOf, kindOf } from '../sim/boards.js';
+import { pkgI2c, pkgTypes } from '../sim/pkgparts.js';
+import { i2cAddress } from '../sim/pkgbus.js';
 import { analyze, inspect, firstMsg } from '../sim/circuit.js';
 import { partOf, isMotor } from '../sim/parts.js';
 import { icon } from '../ui/icons.js';
 import * as audio from '../sim/audio.js';
-import { tl, COLON } from '../i18n/index.js';
+import { CANCEL, tl, COLON } from '../i18n/index.js';
 
 const $ = s => document.querySelector(s);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-const FAMILY_KIND = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
-/** Famille de carte pour le compilateur : uno, nano, esp32, nodemcu ou pico. */
-export const boardKind = c => (BOARDS[c.type] ? c.type : FAMILY_KIND[boardOf(c).family] || 'esp32');
+/** Famille de carte pour le compilateur : uno, nano, mega, esp32, nodemcu ou pico. */
+export const boardKind = kindOf;
 const LOG_MAX = 40000;
 
 /**
@@ -61,11 +65,22 @@ export function createProgram(app) {
   const pyDiag = new Map(), pyRunNext = new Map();
   let cur = null, editor = null, lastUi = 0, logDirty = true, checkT = 0, confirmGen = 0, warnSig = '';
   // Blocs de code : espace de travail Blockly de la carte affichée (chargé à la demande) et correspondances ligne → bloc.
-  let vis = null, wideAuto = false; const visMeta = new Map();
+  let vis = null, wideAuto = false, prev = null, rulesView = 'code', showCode = false, full = null;
+  try { showCode = localStorage.getItem('jollof-vis-code') === '1'; } catch (e) { /* stockage indisponible */ } const visMeta = new Map(), tidyNext = new Set();
+  try { rulesView = localStorage.getItem('jollof-rules-view') === 'blocks' ? 'blocks' : 'code'; } catch (e) { /* stockage indisponible */ }
   // Débogueur (voir plus bas) : carte à mettre en pause dès son lancement, lignes où le code affiché
   // peut s'arrêter, carte affichée, variables déjà montrées. Traceur série : vue du port série.
   let pendingPause = null, hookLines = null, shownId = null, watchKey = null, watchAt = 0, watchPrev = new Map(), stepping = false;
   let plot = null, serialView = 'mon';
+  /* ---------- Carte réelle : moniteur série sur un port USB ---------- */
+  const REAL = '__real';
+  let src = 'sim', realPorts = [], portSig = null, portPoll = 0, baudPicked = false;
+  try { src = localStorage.getItem('jollof-serial-src') === 'real' ? 'real' : 'sim'; } catch (e) { /* stockage indisponible */ }
+  const real = createRealMonitor({
+    onText: t => { logKey(REAL, t); if (plot) plot.feed(REAL, t, real.clock() || 0); },
+    onChange: st => { if (st.state === 'on' && st.port !== $('#realPort').value) refreshPorts(); paintReal(); }, // reconnectée : liste et port à jour
+    status: (m, k) => app.status(m, k)
+  });
 
   const comps = () => app.comps();
   const byId = id => comps().find(c => c.id === id);
@@ -138,7 +153,7 @@ export function createProgram(app) {
 
   /* ---------- Pont vers le montage simulé ---------- */
   // Modules I2C et leur adresse. L'écran LCD répond à 0x27 et l'OLED à 0x3C, sauf adresse réglée sur le composant (c.inp.addr).
-  const I2C = ['bmp280', 'oled', 'lcd1602', 'mpu6050'];
+  const I2C = ['bmp280', 'bme280', 'bh1750', 'oled', 'lcd1602', 'mpu6050'];
   const i2cAddr = (c, def) => { const a = c.inp ? Math.trunc(+c.inp.addr) : 0; return a > 0 && a < 128 ? a : def; };
   /** Le projet a changé pendant la simulation (mémoire, journal) : enregistrement au plus toutes les 2 s. */
   let dirtyT = 0;
@@ -146,7 +161,9 @@ export function createProgram(app) {
   const netData = () => P.net || (P.net = NET_DEFAULT());
   function makeHw(b) {
     const prof = boardOf(b), sim = () => app.sim();
-    const addr = c => (c.type === 'bmp280' ? [sim().A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : 0x77] : c.type === 'oled' ? [i2cAddr(c, 0x3c)] : c.type === 'lcd1602' ? [i2cAddr(c, 0x27)] : c.type === 'mpu6050' ? [0x68] : []);
+    // Module I2C en paquet : son adresse, ou l'autre si sa broche d'adresse reçoit l'alimentation.
+    const pkgAddr = c => { const I = pkgI2c(c.type); return I ? [i2cAddress(I, !!I.addressPin && sim().A.net({ comp: c, key: I.addressPin }).src.length > 0)] : null; };
+    const addr = c => pkgAddr(c) || (c.type === 'bmp280' || c.type === 'bme280' ? [sim().A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : 0x77] : c.type === 'bh1750' ? [sim().A.net({ comp: c, key: 'ADDR' }).src.length ? 0x5c : 0x23] : c.type === 'oled' ? [i2cAddr(c, 0x3c)] : c.type === 'lcd1602' ? [i2cAddr(c, 0x27)] : c.type === 'mpu6050' ? [0x68] : []);
     const at = key => (sim().pinComps && sim().pinComps.get(b.id + '|' + key)) || [];
     /** Module câblé et alimenté (sinon le premier défaut de câblage). */
     const status = c => { const ins = sim().ins && sim().ins.get(c), ok = !!ins && ins.level !== 'err'; return { ok, msg: ok || !ins ? '' : firstMsg(ins) }; };
@@ -190,7 +207,7 @@ export function createProgram(app) {
       /** Modules de ces types dans tout le montage (radio nRF24 des autres cartes). */
       peers(types) { return comps().filter(c => types.includes(c.type)).map(c => ({ comp: c, ok: status(c).ok })); },
       /** Modules du bus I2C de la carte (scanner I2C, Wire.endTransmission()). */
-      i2c() { return this.bus(I2C); },
+      i2c() { return this.bus([...I2C, ...pkgTypes('i2c')]); },
       /** La carte elle-même (son état partagé : Wi-Fi, serveur web, Bluetooth). */
       self: () => b,
       /** Mémoire de la carte qui survit au redémarrage : { ee : EEPROM en hexadécimal, prefs : Preferences }. */
@@ -217,10 +234,13 @@ export function createProgram(app) {
   }
 
   /* ---------- Exécution ---------- */
-  function log(b, text) {
-    let s = (logs.get(b.id) || '') + text;
+  function log(b, text) { logKey(b.id, text); }
+  /** Journal d'une carte simulée (son id) ou de la carte réelle (REAL). */
+  function logKey(id, text) {
+    let s = (logs.get(id) || '') + text;
     if (s.length > LOG_MAX) s = s.slice(-LOG_MAX * 0.75);
-    logs.set(b.id, s); if (b.id === cur) logDirty = true;
+    logs.set(id, s);
+    if (id === (src === 'real' ? REAL : cur)) { logDirty = true; if (src === 'real') schedulePaint(); }
   }
   function clearScreens(b) {
     const ins = app.sim().ins;
@@ -380,9 +400,19 @@ export function createProgram(app) {
   }
 
   /* ---------- Interface ---------- */
+  /** Moniteur série : le journal de la source choisie (carte simulée affichée, ou carte réelle). */
+  function paintLog(b = board()) {
+    if (!logDirty) return;
+    logDirty = false;
+    const out = $('#serialOut'), atEnd = out.scrollTop + out.clientHeight >= out.scrollHeight - 8;
+    out.textContent = src === 'real' ? logs.get(REAL) || '' : (b && logs.get(b.id)) || '';
+    if (atEnd) out.scrollTop = out.scrollHeight;
+  }
+  let paintQueued = false;
+  const schedulePaint = () => { if (paintQueued) return; paintQueued = true; requestAnimationFrame(() => { paintQueued = false; if (!$('#pane-prog').hidden) paintLog(); if (plot && serialView === 'plot') plot.kick(); }); };
   function liveUi(force) {
     const b = board(), rt = b && rts.get(b.id);
-    $('#progLive').hidden = !rts.size;
+    if ($('#progLive').hidden !== !rts.size) $('#progLive').hidden = !rts.size; // pastille d'onglet : pas d'écriture inutile
     if ($('#pane-prog').hidden && !force) return;
     const st = $('#progState');
     let kind = 'off', text = app.simOn() ? tl('Pas de programme en cours') : tl('Simulation arrêtée');
@@ -402,12 +432,7 @@ export function createProgram(app) {
     $('#progRun').dataset.tip = py ? (changed ? tl('Les fichiers ont changé : envoyez-les à la carte · Ctrl+Entrée') : tl('Envoyer les fichiers à la carte et exécuter main.py · Ctrl+Entrée'))
       : changed ? tl('Le code a changé : téléversez-le · Ctrl+Entrée') : tl('Compiler et exécuter sur la carte · Ctrl+Entrée');
     if (py && $('#pyStop')) $('#pyStop').disabled = !rt || rt.state !== 'run';
-    if (logDirty) {
-      logDirty = false;
-      const out = $('#serialOut'), atEnd = out.scrollTop + out.clientHeight >= out.scrollHeight - 8;
-      out.textContent = (b && logs.get(b.id)) || '';
-      if (atEnd) out.scrollTop = out.scrollHeight;
-    }
+    paintLog(b);
     if (rt) { const sig = rt.state + rt.warnings.size + [...rt.warnings.values()].reduce((a, w) => a + w.n, 0); if (sig !== warnSig) { warnSig = sig; renderDiag(); } }
     dbgUi(b, rt);
     visualHighlight(b, rt);
@@ -442,13 +467,14 @@ export function createProgram(app) {
   }
   function renderCodeMode() {
     const b = board(), e = b && entry(b), py = pyOf(b);
-    $('#pane-prog .codeSec h2').lastChild.textContent = py ? tl('Code MicroPython') : tl('Code Arduino');
+    const pm = b && !py ? progMode(b) : null;
+    $('#pane-prog .codeSec h2').lastChild.textContent = py ? tl('Code MicroPython') : pm === 'rules' ? tl('Programme des règles') : pm === 'blocks' ? tl('Programme en blocs') : tl('Code Arduino');
     if (py) { $('#codeMode').textContent = tl('MicroPython · {0}', pyFile(b)); $('#codeMode').dataset.kind = 'python'; $('#codeGen').hidden = true; return; }
     const auto = !e || e.auto;
     const visual = !!e && e.mode === 'visual';
     $('#codeMode').textContent = visual ? tl('créé avec les blocs') : auto ? (rulesOf(b, snapshot()).length ? tl('généré par les règles') : tl('généré à partir du montage')) : tl('écrit à la main');
     $('#codeMode').dataset.kind = visual ? 'visual' : auto ? 'auto' : 'hand';
-    $('#codeGen').hidden = auto || visual;
+    $('#codeGen').hidden = true; // remplacé par le choix « Règles · Blocs · Code »
     $('#codeGen').querySelector('span').textContent = confirmGen > performance.now() ? tl('Confirmer : remplacer mon code') : tl('Régénérer');
   }
   function render() {
@@ -538,21 +564,57 @@ export function createProgram(app) {
   const isVisual = b => { const e = b && entry(b); return !!e && e.mode === 'visual' && !pyOf(b); }; // pas de blocs en Python
   function visCtx(b) { const sn = snapshot(); return visualContext(b, { comps: comps(), A: sn.A, inspect: sn.inspect }); }
   function visualUi() {
-    if ($('#codeView')) return;
-    $('#codeMode').insertAdjacentHTML('beforebegin', `<div class="seg mini codeView" id="codeView" role="group" aria-label="${tl('Façon de programmer')}"><button type="button" class="segBtn" id="viewCode" aria-pressed="true">${icon('code')}<span>${tl('Code')}</span></button><button type="button" class="segBtn" id="viewBlocks" aria-pressed="false" data-tip="${tl('Programmer en assemblant des blocs, sans écrire de code')}">${icon('puzzle')}<span>${tl('Blocs de code')}</span></button></div>`);
-    $('#editor').insertAdjacentHTML('beforebegin', `<div class="visualHost" id="visualHost" hidden></div><div class="visBanner" id="visBanner" hidden>${icon('lock')}<span>${tl('Code généré par les blocs — lecture seule')}</span><button type="button" class="btn small" id="visToCode">${icon('code')}<span>${tl('Convertir en code')}</span></button></div>`);
-    $('#viewBlocks').onclick = () => toBlocks();
-    $('#viewCode').onclick = () => toCode();
-    $('#visToCode').onclick = () => toCode();
+    if ($('#visualHost')) return;
+    // Mode Règles : le programme qu'elles écrivent se lit en code ou en blocs (aperçu, regénéré à chaque règle).
+    $('#codeMode').insertAdjacentHTML('beforebegin', `<div class="seg mini rulesView" id="rulesView" role="group" aria-label="${tl('Voir le programme des règles')}"><button type="button" class="segBtn" data-rv="code" aria-pressed="true">${icon('code')}<span>${tl('Code')}</span></button><button type="button" class="segBtn" data-rv="blocks" aria-pressed="false">${icon('puzzle')}<span>${tl('Blocs')}</span></button></div>`);
+    $('#editor').insertAdjacentHTML('beforebegin', `<div class="visualHost previewHost" id="rulesBlocks" hidden></div>`);
+    document.querySelectorAll('#rulesView [data-rv]').forEach(btn => { btn.onclick = () => { rulesView = btn.dataset.rv; try { localStorage.setItem('jollof-rules-view', rulesView); } catch (e) { /* stockage indisponible */ } const b = board(); if (b) syncVisual(b); }; });
+    // Mode Blocs : barre d'outils au-dessus des blocs, code Arduino généré replié en dessous (à déplier pour le lire).
+    $('#editor').insertAdjacentHTML('beforebegin', `<div class="visBar" id="visBanner" hidden>
+      <button type="button" class="btn small" id="visFull" data-tip="${tl('Les blocs sur tout l’écran, le code à côté · Échap pour revenir')}">${icon('expand')}<span>${tl('Plein écran')}</span></button>
+      <span class="grow"></span>
+      <button type="button" class="btn small subtle" id="visFromRules" data-tip="${tl('Remplacer les blocs par ceux des règles et du montage')}">${icon('workflow')}<span>${tl('Repartir des règles')}</span></button>
+      <button type="button" class="btn small subtle" id="visToCode" data-tip="${tl('Continuer en écrivant le code Arduino')}">${icon('code')}<span>${tl('Convertir en code')}</span></button></div>
+      <div class="visualHost" id="visualHost" hidden></div>
+      <button type="button" class="visCodeToggle" id="visCodeToggle" aria-expanded="false" hidden><span class="foldChev" aria-hidden="true"></span>${icon('code')}<span>${tl('Code Arduino généré par les blocs')}</span><small>${tl('lecture seule')}</small></button>`);
+    $('#visFull').onclick = () => fullScreen(!full);
+    $('#visCodeToggle').onclick = () => { showCode = !showCode; try { localStorage.setItem('jollof-vis-code', showCode ? '1' : '0'); } catch (e) { /* stockage indisponible */ } const b = board(); if (b) syncVisual(b); };
+    $('#visToCode').onclick = () => setMode('code');
+    $('#visFromRules').onclick = () => blocksFromRules(true);
+    document.querySelectorAll('#progModes [data-mode]').forEach(btn => { btn.onclick = () => setMode(btn.dataset.mode); });
   }
+  /** Façon de programmer la carte : règles (le code s'écrit tout seul), blocs, code écrit à la main, ou MicroPython. */
+  const progMode = b => (pyOf(b) ? 'python' : isVisual(b) ? 'blocks' : !entry(b) || entry(b).auto ? 'rules' : 'code');
+  const MODE_HINT = {
+    rules: () => tl('Sans écrire de code : quand une mesure change, un composant réagit. Le programme Arduino s’écrit tout seul, en dessous.'),
+    blocks: () => tl('Assemblez des blocs comme dans Scratch : le programme Arduino s’écrit en dessous.'),
+    code: () => tl('Vous écrivez le programme Arduino (C++) : les règles ne le réécrivent plus.')
+  };
   /** Interface selon le mode de la carte affichée : blocs (code en lecture seule, règles masquées) ou code. */
   function syncVisual(b) {
     visualUi();
-    const on = isVisual(b), py = pyOf(b);
-    $('#viewCode').setAttribute('aria-pressed', !on); $('#viewBlocks').setAttribute('aria-pressed', on);
-    $('#visualHost').hidden = !on; $('#visBanner').hidden = !on; $('#codeView').hidden = py;
-    // Règles et états par défaut : ils écrivent du code Arduino, sans objet pour des blocs ou du Python.
-    document.querySelectorAll('#pane-prog .rulesSec, #pane-prog .statesSec').forEach(el => { el.hidden = on || py; });
+    const on = isVisual(b), py = pyOf(b), mode = progMode(b);
+    $('#progMain').dataset.mode = mode;
+    $('#progModes').hidden = py;
+    document.querySelectorAll('#progModes [data-mode]').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.mode === mode));
+    $('#modeHint').textContent = MODE_HINT[mode] ? MODE_HINT[mode]() : '';
+    $('#visualHost').hidden = !on; $('#visBanner').hidden = !on; $('#visCodeToggle').hidden = !on;
+    const sec = $('#pane-prog .codeSec');
+    sec.classList.toggle('blocksMode', on); sec.classList.toggle('showCode', on && showCode);
+    $('#visCodeToggle').setAttribute('aria-expanded', on && showCode);
+    if (!on && full) fullScreen(false);
+    // Règles et états par défaut : ils n'écrivent le programme qu'en mode « Règles » (gardés dans les autres modes).
+    document.querySelectorAll('#pane-prog .rulesSec, #pane-prog .statesSec').forEach(el => { el.hidden = mode !== 'rules'; });
+    // Mode Règles, vue « Blocs » : l'éditeur de code laisse la place à l'aperçu en blocs.
+    const preview = mode === 'rules' && rulesView === 'blocks';
+    $('#rulesView').hidden = mode !== 'rules';
+    document.querySelectorAll('#rulesView [data-rv]').forEach(btn => btn.setAttribute('aria-pressed', btn.dataset.rv === (mode === 'rules' ? rulesView : 'code')));
+    $('#pane-prog .codeSec').classList.toggle('previewBlocks', preview);
+    $('#rulesBlocks').hidden = !preview;
+    if (preview) openPreview(b); else closePreview();
+    const kept = mode === 'code' ? rulesOf(b, snapshot()).length : 0, note = $('#rulesKept');
+    note.hidden = !kept;
+    if (kept) note.querySelector('span').textContent = tl('{0} règle(s) conservée(s) : choisissez « Règles » pour qu’elles écrivent de nouveau le programme.', kept);
     if (editor) editor.readOnly(on || !!(rts.get(b.id) && rts.get(b.id).state === 'paused'));
     if (on) openWorkspace(b); else closeWorkspace();
   }
@@ -566,12 +628,14 @@ export function createProgram(app) {
       if (!vis || vis.token !== token) return; // carte changée pendant le chargement
       host.innerHTML = '';
       const e = ensure(b);
+      const tidy = tidyNext.delete(b.id);
       const h = await openVisual(host, {
-        json: e.blocks || emptyWorkspace(), ctx: visCtx(b),
+        json: e.blocks || emptyWorkspace(), ctx: visCtx(b), tidy,
         onChange: json => {
           e.blocks = json;
           const code = codeOf(b);
           if (board() === b && editor) { editor.value = code; check(); const m = visMeta.get(b.id); if (vis && vis.h) vis.h.warn(m ? m.warnings : []); }
+          if (full) paintFullCode(code);
           app.markDirty(); renderCodeMode(); liveUi(true);
         }
       });
@@ -581,20 +645,126 @@ export function createProgram(app) {
       if (!$('.app').classList.contains('wide') && !wideAuto) { wideAuto = true; $('#progWide').click(); setTimeout(() => vis && vis.h && vis.h.resize(), 260); }
     } catch (err) { console.error(err); host.innerHTML = `<p class="visLoading err">${tl('Les blocs n’ont pas pu se charger : {0}', esc(err.message || err))}</p>`; }
   }
-  function closeWorkspace() { if (vis && vis.h) vis.h.dispose(); vis = null; const host = $('#visualHost'); if (host) host.innerHTML = ''; }
+  function closeWorkspace() { if (full) fullScreen(false); if (vis && vis.h) vis.h.dispose(); vis = null; const host = $('#visualHost'); if (host) host.innerHTML = ''; }
+  /**
+   * Plein écran : les blocs occupent le plan de travail et l'inspecteur, le code Arduino s'écrit à côté, en direct.
+   * La barre d'application reste visible (Simuler, Enregistrer…). Échap revient.
+   */
+  function paintFullCode(code) { if (full) full.code.innerHTML = highlight(code).map(l => `<span class="cl">${l || ' '}</span>`).join('\n'); }
+  function fullScreen(on) {
+    const host = $('#visualHost');
+    if (on && !full && host && !host.hidden) {
+      const b = board(), wrap = document.createElement('div');
+      wrap.className = 'visFull'; wrap.setAttribute('role', 'dialog'); wrap.setAttribute('aria-label', tl('Programme en blocs'));
+      wrap.innerHTML = `<header class="visFullHead">${icon('puzzle')}<b>${tl('Programme en blocs')}</b><small>${esc(b ? b.name : '')}</small><span class="grow"></span>
+        <button type="button" class="btn small" data-f="code" aria-pressed="true">${icon('code')}<span>${tl('Code Arduino')}</span></button>
+        <button type="button" class="btn small primary" data-f="exit">${icon('shrink')}<span>${tl('Quitter le plein écran')}</span><kbd>Esc</kbd></button></header>
+        <div class="visFullBody"><div class="visFullBlocks"></div><pre class="visFullCode" aria-label="${tl('Code Arduino généré par les blocs')}"></pre></div>`;
+      document.body.appendChild(wrap);
+      const mark = document.createComment('blocs'); host.before(mark);
+      wrap.querySelector('.visFullBlocks').appendChild(host);
+      full = { wrap, mark, host, code: wrap.querySelector('.visFullCode') };
+      full.key = e => { if (e.key === 'Escape' && !document.querySelector('.blocklyDropDownDiv[style*="display: block"], .blocklyWidgetDiv[style*="display: block"]')) { e.preventDefault(); fullScreen(false); } };
+      addEventListener('keydown', full.key);
+      wrap.querySelector('[data-f="exit"]').onclick = () => fullScreen(false);
+      wrap.querySelector('[data-f="code"]').onclick = e => { const btn = e.currentTarget, show = btn.getAttribute('aria-pressed') !== 'true'; btn.setAttribute('aria-pressed', show); wrap.classList.toggle('noCode', !show); requestAnimationFrame(() => vis && vis.h && vis.h.resize()); };
+      paintFullCode(editor ? editor.value : '');
+      $('#visFull').setAttribute('aria-pressed', 'true');
+      requestAnimationFrame(() => vis && vis.h && vis.h.resize());
+    } else if (!on && full) {
+      const f = full; full = null;
+      removeEventListener('keydown', f.key);
+      f.mark.replaceWith(f.host); f.wrap.remove();
+      const btn = $('#visFull'); if (btn) btn.setAttribute('aria-pressed', 'false');
+      requestAnimationFrame(() => vis && vis.h && vis.h.resize());
+    }
+  }
+  const cxOf = (b, sn = snapshot()) => ({ comps: comps(), A: sn.A, inspect: sn.inspect, rules: P.rules, states: P.states });
+  /** Aperçu en blocs du programme des règles (lecture seule) ; refait seulement si les blocs ont changé. */
+  async function openPreview(b) {
+    const json = rulesToBlocks(b, cxOf(b)).workspace, sig = JSON.stringify(json, (k, v) => (k === 'id' ? undefined : v));
+    if (prev && prev.boardId === b.id) { if (prev.h && prev.sig !== sig) { prev.sig = sig; prev.h.replace(json); } return; }
+    closePreview();
+    const host = $('#rulesBlocks'), token = {}; prev = { boardId: b.id, h: null, token, sig };
+    host.innerHTML = `<p class="visLoading">${tl('Chargement des blocs…')}</p>`;
+    try {
+      const { openVisual } = await import('./visual/workspace.js');
+      if (!prev || prev.token !== token) return;
+      host.innerHTML = '';
+      const h = await openVisual(host, { json, ctx: visCtx(b), readOnly: true, tidy: true });
+      if (!prev || prev.token !== token) { h.dispose(); return; }
+      prev.h = h;
+    } catch (err) { console.error(err); host.innerHTML = `<p class="visLoading err">${tl('Les blocs n’ont pas pu se charger : {0}', esc(err.message || err))}</p>`; }
+  }
+  function closePreview() { if (prev && prev.h) prev.h.dispose(); prev = null; const host = $('#rulesBlocks'); if (host) host.innerHTML = ''; }
+  /** Choix entre deux départs (ou rien) : rend la valeur du bouton, null si l'élève annule. */
+  const choose = (title, text, other, main) => dialog({ title, body: `<p class="dlgText">${text}</p>`, width: 460,
+    actions: [{ label: CANCEL, value: null }, { label: other[0], value: other[1] }, { label: main[0], value: main[1], kind: 'primary' }] });
+  /** Blocs reconstruits à partir des règles, des états par défaut et du montage (le même programme). */
+  async function blocksFromRules(ask) {
+    const b = board(); if (!b) return;
+    const e = ensure(b);
+    if (ask && hasBlocks(e.blocks) && !(await askConfirm(tl('Repartir des règles'), tl('Les blocs de {0} seront remplacés par ceux de ses règles et de son montage.', esc(b.name)), tl('Remplacer mes blocs')))) return;
+    const r = rulesToBlocks(b, cxOf(b));
+    e.blocks = r.workspace; tidyNext.add(b.id); closeWorkspace();
+    app.markDirty(); render();
+    const what = r.stats.rules ? tl('{0} règle(s) converties en blocs', r.stats.rules) : tl('Programme du montage converti en blocs');
+    app.status(`${what}${r.skipped.length ? ' ' + tl('(sans équivalent : {0})', r.skipped.join(', ')) : ''}. ${tl('Le programme fait la même chose.')}`, r.skipped.length ? 'warn' : 'ok');
+  }
   async function toBlocks() {
     const b = board(); if (!b || isVisual(b)) return;
-    const e = ensure(b);
-    if (!e.auto && e.code.trim() && !(await askConfirm(tl('Programmer avec des blocs'), tl('Le code de {0} sera remplacé par celui des blocs. Il reste récupérable avec Ctrl+Z dans l’éditeur avant de changer, ou en revenant au code plus tard (« Convertir en code »).', esc(b.name)), tl('Passer aux blocs')))) return;
-    e.codeBefore = e.code; e.mode = 'visual'; e.auto = false; e.blocks = e.blocks || emptyWorkspace(); delete e.bps;
-    app.markDirty(); render();
-    app.status(tl('Blocs de code : glissez des blocs depuis les catégories de gauche dans « au démarrage » ou « en boucle ». Le code Arduino s’écrit en dessous.'), 'ok');
+    const e = ensure(b), keep = hasBlocks(e.blocks), hand = !e.auto && e.code.trim();
+    if (keep) {
+      if (hand && !(await askConfirm(tl('Programmer avec des blocs'), tl('Le code de {0} sera remplacé par vos blocs. Il reste récupérable en revenant au code plus tard (« Convertir en code »).', esc(b.name)), tl('Passer aux blocs')))) return;
+      e.codeBefore = e.code; e.mode = 'visual'; e.auto = false; delete e.bps;
+      app.markDirty(); render(); app.status(tl('Vos blocs sont repris. « Repartir des règles » les recrée à partir de vos règles actuelles.'), 'ok'); return;
+    }
+    // Premier passage aux blocs : partir des règles (converties) ou de blocs vides.
+    const n = rulesOf(b, snapshot()).length;
+    const how = await choose(tl('Programmer avec des blocs'),
+      (n ? tl('Partir de vos {0} règle(s), converties en blocs (le programme reste le même), ou de blocs vides ?', n) : tl('Partir du programme du montage, converti en blocs, ou de blocs vides ?')) + (hand ? ' ' + tl('Le code écrit à la main ne se convertit pas en blocs.') : ''),
+      [tl('Blocs vides'), 'empty'], [n ? tl('Partir des règles') : tl('Partir du montage'), 'rules']);
+    if (!how) return;
+    e.codeBefore = e.code; e.mode = 'visual'; e.auto = false; delete e.bps;
+    if (how === 'rules') { await blocksFromRules(false); return; }
+    e.blocks = emptyWorkspace(); closeWorkspace(); app.markDirty(); render();
+    app.status(tl('Blocs vides : glissez des blocs depuis les catégories de gauche dans « au démarrage » ou « en boucle ». Le code Arduino s’écrit en dessous.'), 'ok');
   }
   async function toCode() {
     const b = board(); if (!b || !isVisual(b)) return;
-    if (!(await askConfirm(tl('Convertir en code'), tl('Le programme devient du code Arduino que vous pouvez modifier. Vos blocs restent enregistrés : vous pourrez y revenir, mais les modifications faites dans le code ne passeront pas dans les blocs.'), tl('Convertir')))) return;
-    const e = ensure(b); e.code = codeOf(b); delete e.mode; e.auto = false;
+    const how = await choose(tl('Écrire le code soi-même'), tl('Convertir vos blocs en code Arduino, ou partir d’un programme vide où vos composants sont déjà déclarés ? Vos blocs restent enregistrés : vous pourrez y revenir.'),
+      [tl('Programme vide'), 'blank'], [tl('Convertir mes blocs'), 'convert']);
+    if (!how) return;
+    const e = ensure(b); e.code = how === 'blank' ? skeleton(b, cxOf(b)) : codeOf(b); delete e.mode; e.auto = false; delete e.bps;
     closeWorkspace(); app.markDirty(); render();
+    app.status(how === 'blank' ? tl('Programme vide : vos composants sont déclarés, à vous d’écrire loop().') : tl('Vos blocs sont devenus du code Arduino, modifiable.'), 'ok');
+  }
+  /** Change la façon de programmer la carte affichée ; ce qui serait perdu est d'abord confirmé. */
+  async function setMode(m) {
+    const b = board(); if (!b || pyOf(b)) return;
+    const cur = progMode(b), e = ensure(b);
+    if (m === cur) return;
+    if (m === 'blocks') return toBlocks();
+    if (m === 'code') {
+      if (cur === 'blocks') return toCode();
+      const n = rulesOf(b, snapshot()).length;
+      const how = await choose(tl('Écrire le code soi-même'), n
+        ? tl('Partir du code écrit par vos {0} règle(s), ou d’un programme vide où vos composants sont déjà déclarés ? Les règles restent enregistrées.', n)
+        : tl('Partir du programme du montage, ou d’un programme vide où vos composants sont déjà déclarés ?'),
+        [tl('Programme vide'), 'blank'], [n ? tl('Partir du code des règles') : tl('Partir du montage'), 'rules']);
+      if (!how) return;
+      e.code = how === 'blank' ? skeleton(b, cxOf(b)) : codeOf(b); e.auto = false; delete e.bps; app.markDirty(); render();
+      app.status(how === 'blank' ? tl('Programme vide : vos composants sont déclarés, à vous d’écrire loop().') : tl('Le code est à vous : modifiez-le librement. Les règles sont conservées (« Règles » les remet aux commandes).'), 'ok');
+      editor && editor.el && editor.el.focus();
+      return;
+    }
+    // Retour aux règles : le programme est de nouveau écrit par les règles.
+    const generated = generate(b, cxOf(b));
+    if (cur === 'blocks' && !(await askConfirm(tl('Revenir aux règles'), tl('Le programme de {0} sera de nouveau écrit par ses règles. Vos blocs restent enregistrés : vous pourrez y revenir.', esc(b.name)), tl('Revenir aux règles')))) return;
+    if (cur === 'code' && e.code.trim() && e.code !== generated && !(await askConfirm(tl('Revenir aux règles'), tl('Le code écrit à la main sera remplacé par celui des règles.'), tl('Remplacer mon code')))) return;
+    if (cur === 'blocks') closeWorkspace();
+    delete e.mode; e.auto = true; if (editor) editor.value = codeOf(b); app.markDirty(); render(); check();
+    app.status(tl('Le programme est de nouveau écrit par les règles.'), 'ok');
   }
   /** Bloc en cours d'exécution, d'après la ligne du programme. */
   function visualHighlight(b, rt) {
@@ -608,7 +778,7 @@ export function createProgram(app) {
     const e = ensure(b);
     if (pyOf(b)) { const f = pyFile(b); if (e.files[f] !== text) { e.files[f] = text; app.markDirty(); } return; }
     if (e.mode === 'visual') return; // code en lecture seule : il vient des blocs
-    if (e.auto && text !== e.code) { e.auto = false; app.status(tl('Code modifié à la main : les règles ne le réécrivent plus. « Régénérer » revient au code des règles.')); }
+    if (e.auto && text !== e.code) { e.auto = false; app.status(tl('Code modifié à la main : les règles ne le réécrivent plus (« Règles » les remet aux commandes).')); syncVisual(b); }
     shiftBps(b, e.code, text);
     e.code = text;
     app.markDirty(); renderCodeMode();
@@ -699,6 +869,7 @@ export function createProgram(app) {
     }
     app.markDirty(); renderRules();
     const b = board();
+    if (b && prev && prev.boardId === b.id) openPreview(b); // l'aperçu en blocs suit les règles
     if (b && editor) { const e = entry(b); if (!e || e.auto) { editor.value = codeOf(b, sn); check(); } }
     renderCodeMode(); app.refreshSel();
   }
@@ -762,7 +933,13 @@ export function createProgram(app) {
     P.rules.push(r);
     if (b) { cur = b.id; ensure(b); }
     rulesChanged();
-    if (flashIt) flash(`#rules [data-rid="${r.id}"]`);
+    const mode = b ? progMode(b) : 'rules';
+    if (mode === 'blocks') {
+      // Programme en blocs : la nouvelle règle y arrive en blocs, à la fin de « en boucle ».
+      const e = ensure(b); e.blocks = appendRule(b, cxOf(b, sn), e.blocks, r); closeWorkspace(); app.markDirty(); render();
+      app.status(tl('Règle ajoutée en blocs, à la fin de « en boucle ».'), 'ok');
+    } else if (mode === 'code') app.status(tl('Règle enregistrée, mais le programme de {0} est écrit à la main : choisissez « Règles » pour qu’elle s’applique.', b.name), 'warn');
+    else if (flashIt) flash(`#rules [data-rid="${r.id}"]`);
     return r;
   }
 
@@ -789,7 +966,7 @@ export function createProgram(app) {
         ${A ? `<select data-sf="mode" aria-label="${tl('Quand appliquer cet état')}"><option value="always"${st.mode !== 'start' ? ' selected' : ''}>${tl('au démarrage et quand aucune règle ne le commande')}</option><option value="start"${st.mode === 'start' ? ' selected' : ''}>${tl('au démarrage seulement')}</option></select>` : ''}</div></div>`;
     }
     const fields = initFields(c); if (!fields.length) return '';
-    const vals = st.values || {}, cur = f => (f.env ? ENV[f.key] : c.inp ? c.inp[f.key] : '');
+    const vals = st.values || {}, cur = f => (f.env ? envOf(c, f.key) : c.inp ? c.inp[f.key] : '');
     return `<div class="state" data-sc="${esc(c.id)}">${head}<div class="sv">${fields.map(f => `<label>${esc(f.label)}${f.kind === 'bool'
       ? `<select data-sf="v:${f.key}"><option value="">${f.env ? tl('selon l’environnement') : tl('inchangé')}</option>${f.labels.map((l, i) => `<option value="${i}"${vals[f.key] !== undefined && +vals[f.key] === i ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`
       : `<span class="num"><input type="number" data-sf="v:${f.key}" min="${f.min}" max="${f.max}" step="${f.step}" value="${vals[f.key] ?? ''}" placeholder="${esc(cur(f) ?? '')}">${f.unit ? `<small>${esc(f.unit)}</small>` : ''}</span>`}</label>`).join('')}</div></div>`;
@@ -812,7 +989,8 @@ export function createProgram(app) {
     for (const [k, v] of Object.entries(st.values)) {
       const f = fields.find(x => x.key === k); if (!f) continue;
       const val = f.kind === 'bool' ? (f.env ? (v ? 1 : 0) : !!v) : Math.max(f.min, Math.min(f.max, +v));
-      if (f.env) ENV[k] = val; else if (c.inp) c.inp[k] = val;
+      // Capteur réglé à part : sa propre valeur ; sinon celle de l'environnement commun.
+      if (f.env && c.env && k in c.env) c.env[k] = val; else if (f.env) ENV[k] = val; else if (c.inp) c.inp[k] = val;
     }
     return true;
   }
@@ -855,7 +1033,9 @@ export function createProgram(app) {
     const dst = isActuator(c) ? c : comps().find(x => isActuator(x) && sameBoard(x)) || null;
     app.setTab('prog');
     addRule(src, dst);
-    app.status(tl('Règle ajoutée : {0} Réglez-la dans l’onglet Code.', ruleText(P.rules[P.rules.length - 1], byId, boardOf(board() || c))), 'ok');
+    const rb = board(), text = ruleText(P.rules[P.rules.length - 1], byId, boardOf(rb || c)), m = rb ? progMode(rb) : 'rules';
+    if (m === 'blocks') app.status(tl('Règle ajoutée en blocs, à la fin de « en boucle » : {0}', text), 'ok');
+    else if (m === 'rules') app.status(tl('Règle ajoutée : {0} Réglez-la dans l’onglet Code.', text), 'ok'); // en mode Code, addRule a déjà prévenu
   }
 
   /* ---------- Débogueur : points d'arrêt, pas à pas, variables ---------- */
@@ -1005,15 +1185,106 @@ export function createProgram(app) {
     $('#serialOut').hidden = serialView !== 'mon'; $('#plotBox').hidden = serialView !== 'plot'; $('#serialClear').hidden = serialView !== 'mon';
     try { localStorage.setItem('jollof-serial-view', serialView); } catch (e) { /* stockage indisponible */ }
     if (init) return;
-    if (serialView === 'mon') { logDirty = true; liveUi(true); } else if (plot) { const b = board(); if (b) plot.select(b.id); plot.kick(); }
+    if (serialView === 'mon') { logDirty = true; liveUi(true); } else if (plot) { const b = board(); plot.select(src === 'real' ? REAL : b && b.id); plot.kick(); }
+  }
+  const canSerial = () => isTauri() || webSerial() || !!globalThis.__serialMock;
+  const choosePorts = () => isTauri() || !!globalThis.__serialMock; // navigateur : le port se choisit à la connexion
+  const portLabel = name => { const p = realPorts.find(x => x.name === name); return p ? p.label : name ? name.replace(/^\/dev\//, '') : tl('port choisi'); };
+  const shownCode = () => { const b = board(), e = b && entry(b); return e ? e.code : ''; };
+  /** Source du moniteur série : la carte simulée affichée, ou la vraie carte branchée en USB. */
+  function setSrc(v) {
+    src = v === 'real' ? 'real' : 'sim';
+    try { localStorage.setItem('jollof-serial-src', src); } catch (e) { /* stockage indisponible */ }
+    document.querySelectorAll('#serialSrc [data-src]').forEach(b => b.setAttribute('aria-pressed', b.dataset.src === src));
+    $('#realBox').hidden = src !== 'real'; $('#serialEnd').hidden = src !== 'real';
+    $('#serialInput').placeholder = src === 'real' ? tl('Envoyer à la carte réelle…') : tl('Envoyer à la carte (Serial.read)…');
+    if (plot) { const b = board(); plot.select(src === 'real' ? REAL : b && b.id); }
+    logDirty = true; paintLog();
+    clearInterval(portPoll); portPoll = 0;
+    if (src === 'real') { refreshPorts(); portPoll = setInterval(() => { if (!$('#pane-prog').hidden && !real.connected()) refreshPorts(); }, 1500); }
+    paintReal();
+  }
+  /** Ports de la carte : les cartes USB d'abord ; une carte qui vient d'être branchée est choisie d'elle-même. */
+  async function refreshPorts() {
+    const sel = $('#realPort');
+    sel.hidden = !choosePorts();
+    if (!choosePorts()) { paintReal(); return; }
+    const list = await listPorts().catch(() => []), sig = list.map(p => p.name).join('|');
+    const before = new Set(realPorts.filter(p => p.usb).map(p => p.name)), first = portSig === null;
+    realPorts = list;
+    if (sig !== portSig) {
+      portSig = sig;
+      const usb = list.filter(p => p.usb), other = list.filter(p => !p.usb), opt = p => `<option value="${esc(p.name)}">${esc(p.label)}</option>`;
+      sel.innerHTML = (usb.length ? usb.map(opt).join('') : `<option value="">${tl('Aucune carte USB détectée')}</option>`)
+        + (other.length ? `<optgroup label="${tl('Autres ports (Bluetooth…)')}">${other.map(opt).join('')}</optgroup>` : '');
+      let remembered = ''; try { remembered = localStorage.getItem('jollof-real-port') || ''; } catch (e) { /* stockage indisponible */ }
+      const fresh = first ? null : usb.find(p => !before.has(p.name));
+      const pick = [real.state().port, fresh && fresh.name, remembered, usb[0] && usb[0].name].find(n => n && list.some(p => p.name === n)) || '';
+      const held = real.state().port;
+      sel.value = (real.connected() || real.state().state === 'lost') && list.some(p => p.name === held) ? held : pick; // le port connecté reste affiché
+      if (fresh && !real.connected()) { app.status(tl('Carte détectée : {0}. Cliquez sur « Connecter ».', fresh.label), 'ok'); $('#realGo').classList.add('pulse'); }
+    }
+    paintReal();
+  }
+  const noBoardHelp = () => `<b>${tl('Aucune carte détectée.')}</b><ul>
+    <li>${tl('Branchez-la avec un câble USB de données : certains câbles ne font que charger.')}</li>
+    <li>${tl('Une LED de la carte doit s’allumer.')}</li>
+    <li>${tl('Carte compatible (puce CH340 ou CP210x) : installez son pilote si aucun port n’apparaît.')}</li>
+    <li>${tl('Fermez l’IDE Arduino ou tout autre moniteur série qui utiliserait la carte.')}</li></ul>`;
+  /** Bouton, état et conseils de la carte réelle. */
+  function paintReal() {
+    if (!$('#realBox')) return;
+    const s = real.state(), on = s.state === 'on', busy = s.state === 'connecting', lost = s.state === 'lost', go = $('#realGo');
+    go.textContent = on || lost ? tl('Déconnecter') : busy ? tl('Connexion…') : tl('Connecter');
+    go.classList.toggle('primary', !on && !lost); go.disabled = busy || !canSerial();
+    if (on) go.classList.remove('pulse');
+    $('#realReset').disabled = !on;
+    const progBaud = baudOf(shownCode()), bs = $('#realBaud');
+    if (!on && !busy && !baudPicked && progBaud && +bs.value !== progBaud) bs.value = String(progBaud); // débit du programme, tant que l'élève n'en a pas choisi un autre
+    let txt = '', help = '';
+    if (!canSerial()) { txt = tl('Ce navigateur ne peut pas ouvrir de port série.'); help = tl('Utilisez Chrome ou Edge, ou l’application Jollof Studio installée.'); }
+    else if (on) {
+      txt = tl('Connectée · {0} · {1} bauds', portLabel(s.port), s.baud);
+      if (s.noisy) help = `<b>${tl('Texte illisible ?')}</b> ${tl('Le débit ne correspond pas à celui du programme.')}${progBaud && progBaud !== s.baud ? ` <button type="button" class="btn small" data-baud="${progBaud}">${tl('Passer à {0} bauds (Serial.begin du programme)', progBaud)}</button>` : ` ${tl('Essayez 9600 ou 115200 bauds.')}`}`;
+      else if (!s.rx) help = tl('Rien reçu pour l’instant : le programme de la carte écrit-il sur Serial ? « Redémarrer » le relance depuis le début.');
+    } else if (busy) txt = tl('Connexion à {0}…', portLabel(s.port));
+    else if (lost) txt = tl('Carte débranchée : reconnexion automatique dès qu’elle revient.');
+    else if (s.state === 'error') { txt = tl('Pas de connexion.'); help = esc(s.error); }
+    else if (s.by) txt = tl('Port pris par {0}.', whoLabel(s.by));
+    else if (choosePorts() && !realPorts.some(p => p.usb)) { txt = tl('En attente d’une carte…'); help = noBoardHelp(); }
+    else txt = tl('Prête : vérifiez le port et le débit, puis « Connecter ».');
+    const st = $('#realState'); st.dataset.kind = s.state; st.querySelector('.txt').textContent = txt;
+    const h = $('#realHelp'); h.hidden = !help; h.innerHTML = help;
+  }
+  function bindReal() {
+    $('#realBaud').innerHTML = BAUDS.map(b => `<option value="${b}">${tl('{0} bauds', b)}</option>`).join('');
+    let baud = 9600; try { baud = +localStorage.getItem('jollof-real-baud') || baudOf(shownCode()) || 9600; } catch (e) { /* stockage indisponible */ }
+    $('#realBaud').value = String(BAUDS.includes(baud) ? baud : 9600);
+    $('#serialEnd').innerHTML = ENDINGS.map(([v, l]) => `<option value="${esc(v)}">${l()}</option>`).join('');
+    try { const e = localStorage.getItem('jollof-serial-end'); if (e != null && ENDINGS.some(([v]) => v === e)) $('#serialEnd').value = e; } catch (e) { /* stockage indisponible */ }
+    $('#serialEnd').onchange = e => { try { localStorage.setItem('jollof-serial-end', e.target.value); } catch (err) { /* stockage indisponible */ } };
+    document.querySelectorAll('#serialSrc [data-src]').forEach(b => { b.onclick = () => setSrc(b.dataset.src); });
+    $('#realGo').onclick = async () => {
+      const s = real.state();
+      if (s.state === 'on' || s.state === 'lost') { await real.disconnect(); logKey(REAL, `\n${tl('— Déconnectée —')}\n`); return; }
+      const port = choosePorts() ? $('#realPort').value : '', baud = +$('#realBaud').value;
+      if (choosePorts() && !port) { app.status(tl('Branchez la carte, puis choisissez son port.'), 'warn'); return; }
+      try { localStorage.setItem('jollof-real-port', port); localStorage.setItem('jollof-real-baud', String(baud)); } catch (e) { /* stockage indisponible */ }
+      if (await real.connect(port, baud)) logKey(REAL, `${logs.get(REAL) ? '\n' : ''}${tl('— Connectée à {0}, {1} bauds —', portLabel(real.state().port), baud)}\n`);
+    };
+    $('#realReset').onclick = () => real.reset();
+    $('#realPort').onchange = e => { try { localStorage.setItem('jollof-real-port', e.target.value); } catch (err) { /* stockage indisponible */ } real.setPort(e.target.value); };
+    $('#realBaud').onchange = e => { baudPicked = true; try { localStorage.setItem('jollof-real-baud', e.target.value); } catch (err) { /* stockage indisponible */ } real.setBaud(+e.target.value); };
+    $('#realHelp').onclick = e => { const b = e.target.closest('[data-baud]'); if (b) { $('#realBaud').value = b.dataset.baud; baudPicked = true; real.setBaud(+b.dataset.baud); } };
+    setSrc(src);
   }
   function bindPlotter() {
     plot = createPlotter({
       canvas: $('#plotCv'), legend: $('#plotLegend'), win: $('#plotWin'), hold: $('#plotHold'), clear: $('#plotClear'), csv: $('#plotCsv'),
       fps: Q.simFps, light: LIGHT,
       shown: () => serialView === 'plot' && !$('#pane-prog').hidden && !$('#progMain').hidden,
-      clock: id => { const rt = rts.get(id); return rt ? rt.clock() : null; },
-      name: id => { const b = byId(id); return b ? b.name : id; },
+      clock: id => { if (id === REAL) return real.clock(); const rt = rts.get(id); return rt ? rt.clock() : null; },
+      name: id => { if (id === REAL) return tl('Carte réelle'); const b = byId(id); return b ? b.name : id; },
       save: (blob, name) => saveFile(blob, name, tl('Mesures (tableur)'), 'csv').catch(e => app.status(tl('Enregistrement impossible : ') + (e.message || e), 'err'))
     });
     for (const [id, rt] of rts) rt.setSerialTap((text, vt) => plot.feed(id, text, vt));
@@ -1103,10 +1374,14 @@ export function createProgram(app) {
       if (li.dataset.file && pyOf(b) && li.dataset.file in pyFiles(b) && li.dataset.file !== pyFile(b)) { ensure(b).file = li.dataset.file; render(); }
       editor.goLine(+li.dataset.line, +li.dataset.col || 1);
     };
-    $('#serialClear').onclick = () => { const b = board(); if (b) logs.set(b.id, ''); logDirty = true; liveUi(true); };
+    $('#serialClear').onclick = () => { const b = board(); if (src === 'real') { logs.set(REAL, ''); if (plot) plot.clear(REAL); } else if (b) logs.set(b.id, ''); logDirty = true; liveUi(true); };
     $('#serialForm').onsubmit = e => {
       e.preventDefault();
       const b = board(), rt = b && rts.get(b.id), inp = $('#serialInput');
+      if (src === 'real') { // vers la vraie carte, avec la fin de ligne choisie
+        if (!real.connected()) { app.status(tl('Connectez d’abord la carte réelle (bouton « Connecter »).'), 'warn'); return; }
+        real.send(inp.value, $('#serialEnd').value).then(ok => { if (ok) inp.value = ''; }); return;
+      }
       if (!rt || (rt.state !== 'run' && rt.state !== 'paused')) { app.status(tl('Le programme ne tourne pas : téléversez-le d’abord.'), 'warn'); return; }
       rt.send(inp.value + (rt.firmware === 'micropython' ? '\r' : '\n')); inp.value = ''; // REPL de MicroPython : Entrée = \r
     };
@@ -1130,11 +1405,58 @@ export function createProgram(app) {
       if (e.key === 'F9') { if (editor) toggleBp(editor.caretLine()); return; }
       dbgAction(e.key === 'F8' ? 'run' : e.key === 'F10' ? 'over' : e.shiftKey ? 'out' : 'into');
     });
-    bindPlotter();
+    bindPlotter(); bindReal();
   }
 
   return {
     rts, bind, render, frame, startAll, stopAll, upload, behaviorHtml, onBehavior,
+    /**
+     * Carte réelle (téléversement de l'édition Pro, modules) : release(port) libère le port et rend la fonction
+     * qui le reprend ; open({ port, baud }) montre le moniteur série de la carte réelle et s'y connecte.
+     */
+    realBoard: {
+      state: () => real.state(),
+      release: port => real.release(port),
+      async open({ port = '', baud } = {}) {
+        app.setTab('prog'); setSrc('real');
+        const sec = document.querySelector('#pane-prog .serialSec');
+        if (sec && sec.classList.contains('folded')) { const h = sec.querySelector('.foldHead'); if (h) h.click(); }
+        await refreshPorts();
+        const b = baud || baudOf(shownCode()) || +$('#realBaud').value || 9600;
+        if (port) $('#realPort').value = port;
+        $('#realBaud').value = String(b);
+        if (await real.connect(port || $('#realPort').value, b)) logKey(REAL, `${logs.get(REAL) ? '\n' : ''}${tl('— Connectée à {0}, {1} bauds —', portLabel(real.state().port), b)}\n`);
+        sec && sec.scrollIntoView({ block: 'nearest' });
+      }
+    },
+    /**
+     * Assistants IA (src/ai/tools.js) : programme d'une carte (façon de programmer, code, règles), code écrit à la
+     * main, retour aux règles, ajout et retrait de règles, moniteur série de la simulation.
+     */
+    ai: {
+      state(b) { const sn = snapshot(); return { mode: progMode(b), code: pyOf(b) ? pyFiles(b)['main.py'] || '' : codeOf(b, sn), rules: rulesOf(b, sn) }; },
+      setCode(b, code) {
+        const e = ensure(b);
+        if (e.mode === 'visual' && cur === b.id) closeWorkspace();
+        e.codeBefore = e.code; e.code = code; e.auto = false; delete e.mode; delete e.bps;
+        if (cur === b.id && editor) editor.value = code;
+        app.markDirty(); render(); check();
+      },
+      useRules(b) {
+        const e = ensure(b);
+        if (e.mode === 'visual' && cur === b.id) closeWorkspace();
+        delete e.mode; e.auto = true;
+        if (cur === b.id && editor) editor.value = codeOf(b);
+        app.markDirty(); render(); check();
+      },
+      rules: () => P.rules,
+      addRule(r) { P.rules.push(r); rulesChanged(); },
+      removeRules(test) { const n = P.rules.length; P.rules = P.rules.filter(r => !test(r)); rulesChanged(); return n - P.rules.length; },
+      ruleText: (r, b) => ruleText(r, byId, b ? boardOf(b) : null),
+      serial: b => logs.get(b.id) || '',
+      send(b, text) { const rt = rts.get(b.id); if (!rt) return false; rt.send(text + (rt.firmware === 'micropython' ? '\r' : '\n')); return true; },
+      show(b) { if (b) { cur = b.id; render(); } }
+    },
     /** Programme de la carte affichée dans l'onglet Code (pour un module : téléversement réel…). */
     current() {
       const b = board(); if (!b) return null; const e = entry(b);

@@ -19,7 +19,7 @@ export function createPreview(canvas) {
   const scene = new THREE.Scene();
   scene.add(new THREE.HemisphereLight(0xdfe8ee, 0x1a1f24, 0.85));
   const sun = new THREE.DirectionalLight(0xffffff, 1.05); sun.position.set(60, 140, 90); scene.add(sun);
-  const rim = new THREE.DirectionalLight(0xe0703a, 0.3); rim.position.set(-90, 40, -70); scene.add(rim);
+  const rim = new THREE.DirectionalLight(0x3b82f6, 0.3); rim.position.set(-90, 40, -70); scene.add(rim);
   const camera = new THREE.PerspectiveCamera(30, 1, 0.5, 3000);
   const controls = new OrbitControls(camera, canvas);
   Object.assign(controls, { enableDamping: true, enablePan: false, autoRotate: true, autoRotateSpeed: 1.4, maxPolarAngle: Math.PI * 0.62 });
@@ -74,7 +74,7 @@ export function createPreview(canvas) {
       for (const [k, p] of Object.entries(pins)) {
         if (!want.has(k) && !want.has(base(k))) continue;
         p.mesh.material = M.goldHi;
-        const tag = tagSprite(k, '#e0703a'), s = Math.max(7, radius * 0.36);
+        const tag = tagSprite(k, '#3b82f6'), s = Math.max(7, radius * 0.36);
         tag.scale.set(s, s * 0.31, 1);
         tag.position.copy(model.localToWorld(p.attach.clone())).add(new THREE.Vector3(0, s * 0.45, 0));
         scene.add(tag); lit.push([p, tag]);

@@ -17,7 +17,7 @@
 // (comparateurs à 1/3 et 2/3 de VCC lus à chaque pas, bascule gardée d'un pas à l'autre, décharge, étage de
 // sortie), générateur de fonctions (source de 50 Ω qui suit le temps virtuel).
 import { DERIVED, SOURCES, base, boardOf, isGnd } from './boards.js';
-import { partOf, MOTORS, NPNS } from './parts.js';
+import { partOf, MOTORS, NPNS, COILS, isContact } from './parts.js';
 import { pid, ohms } from './circuit.js';
 import { TIMERS, OPAMPS, MOSFETS, INDUCTORS, GENERATORS, GEN_DEFAULT, genValue, rdsOn } from './analog-parts.js';
 import { pkgLed, pkgLoad } from './pkgparts.js';
@@ -33,7 +33,7 @@ const R_SENS = 1e3;    // sortie d'un capteur ou d'un module
 const R_SW = 0.05;     // contact d'un bouton appuyé
 const R_POT = 10e3;
 const R_REG = 0.1;     // sortie d'un régulateur (LM7805, 5 V du L298N)
-const R_BAT = { bat9v: 1.5, bat18650: 0.05, mb102: 0.1 }; // résistance interne
+const R_BAT = { bat9v: 1.5, bat18650: 0.05, mb102: 0.1, psu24: 0.05 }; // résistance interne
 const LED_VF = { 'led-red': 2.0, 'led-yellow': 2.1, 'led-green': 2.2, 'led-blue': 3.0, 'led-white': 3.0 };
 const RGB_VF = { R: 2.0, G: 3.1, B: 3.1 }; // LED RVB : vert et bleu InGaN, ≈ 3,1 V
 const SEG = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'DP'];
@@ -58,7 +58,7 @@ const H_MAX = 0.002, SUB_MAX = 25; // pas de temps maximal (s) ; sous-pas par ap
 const MAXIT = 20, CALM = 8, TOL = 1e-6;
 // Broches qu'un module pilote lui-même (sorties de capteur, lignes de données) : ses VCC et GND
 // sont ignorées (haute impédance), sa sortie est une source vue de la masse.
-const DRIVEN = new Set(['in', 'adc', 'io', 'tx', 'miso', 'sda']);
+const DRIVEN = new Set(['in', 'adc', 'irq', 'io', 'tx', 'miso', 'sda']);
 
 // Éléments : résistance, diode, source de tension (branche MNA), source de Norton (GPIO, capteur),
 // condensateur, transistor NPN (a = C, b = E, c = B ; on = 0 bloqué, 1 linéaire, 2 saturé),
@@ -171,7 +171,9 @@ function topology(comps, A, profOf) {
       return true;
     }
     // Le courant d'un bouton n'est pas exposé : appuyé, l'analyse fond déjà ses deux pattes en un seul nœud.
-    if (t === 'button') { const e = two(RES, c, '1', '2'); if (e) e.sw = 'pressed'; return true; }
+    if (isContact(c)) { const e = two(RES, c, '1', '2'); if (e) e.sw = 'pressed'; return true; }
+    // Bobine d'électrovanne : une résistance (la bobine en régime établi).
+    if (COILS[t]) { const e = two(RES, c, COILS[t].plus, COILS[t].minus); if (e) { e.g = 1 / COILS[t].r; e.load = 'coil'; byComp.set(c, e); } return true; }
     if (t === 'pot') {
       // Curseur à 100 % : W rejoint la patte 3 (même convention que models.js).
       const lo = two(RES, c, '1', 'W'), hi = two(RES, c, 'W', '3');

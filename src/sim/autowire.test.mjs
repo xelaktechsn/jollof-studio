@@ -12,7 +12,7 @@ const noop = new Proxy(function () {}, { get: (t, k) => (k === Symbol.toPrimitiv
 globalThis.document = globalThis.document || { createElement: () => ({ width: 0, height: 0, getContext: () => noop, style: {} }) };
 const THREE = await import('three');
 const { LIBRARY, BY_ID } = await import('../library/catalog.js');
-const { pinKeys } = await import('../check/load.js');
+const { pinKeys, pinCountOf } = await import('../check/load.js');
 const { analyze, inspect } = await import('./circuit.js');
 const { planWiring } = await import('./autowire.js');
 const { partOf } = await import('./parts.js');
@@ -21,11 +21,14 @@ const { INPUTS } = await import('./models.js');
 const { solveDC } = await import('./dc.js');
 const { checkProject } = await import('../check/check.js');
 const { generate } = await import('../prog/rules.js');
-// Composants en paquet (.jpart, src/library/packs) : installés dans la bibliothèque, ils passent le même audit.
+// Composants en paquet : ceux des tests (src/library/packs) et les composants standard livrés avec l'application
+// (src/library/standard), installés dans la bibliothèque comme au démarrage : ils passent le même audit.
 {
   const fs = await import('node:fs'), J = await import('../library/jpart.js'), P = await import('../library/packages.js');
-  const dir = new URL('../library/packs/', import.meta.url);
-  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json'))) await P.installBytes(J.packJpart({ manifest: JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8')) }));
+  const read = dir => fs.readdirSync(dir).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(new URL(f, dir), 'utf8')));
+  for (const m of read(new URL('../library/packs/', import.meta.url))) await P.installBytes(J.packJpart({ manifest: m }));
+  const std = P.installStandard(read(new URL('../library/standard/', import.meta.url)));
+  if (std.errors.length) throw new Error(std.errors.join('\n'));
 }
 const { isResistor } = await import('./pkgparts.js');
 
@@ -95,7 +98,7 @@ function nominal(S, board) {
       switch (p.need) {
         case 'out': setup.push(`pinMode(${N}, OUTPUT);`); loop.push(`digitalWrite(${N}, HIGH);`); break;
         case 'pwm': setup.push(`pinMode(${N}, OUTPUT);`); loop.push(`analogWrite(${N}, 128);`); break;
-        case 'in': setup.push(`pinMode(${N}, INPUT);`); loop.push(`v = v + digitalRead(${N});`); break;
+        case 'in': case 'irq': setup.push(`pinMode(${N}, INPUT);`); loop.push(`v = v + digitalRead(${N});`); break;
         case 'adc': loop.push(`v = v + analogRead(${N});`); break;
         case 'pullup': setup.push(`pinMode(${N}, INPUT_PULLUP);`); loop.push(`v = v + digitalRead(${N});`); break;
         case 'io':
@@ -119,11 +122,16 @@ function verify(S, board, what) {
   }
 }
 
-const BOARD_TYPES = ['uno', 'nano', 'esp32', 'nodemcu', 'pico'];
-const PARTS_TO_WIRE = LIBRARY.filter(e => !['Cartes', 'Prototypage'].includes(e.cat) && !/^(res-|diode$|mb102$|lm7805$|cap-)/.test(e.id) && !isResistor(e.id)).map(e => e.id);
+const BOARD_TYPES = ['uno', 'nano', 'mega', 'esp32', 'esp32-38', 'esp32s3', 'esp32c3', 'nodemcu', 'd1mini', 'pico'];
+const PARTS_TO_WIRE = LIBRARY.filter(e => !['Cartes', 'Prototypage'].includes(e.cat) && !/^(res-|diode$|mb102$|lm7805$|cap-|psu24$)/.test(e.id) && !isResistor(e.id)).map(e => e.id);
 assert.ok(PARTS_TO_WIRE.includes('pk-led-red') && PARTS_TO_WIRE.includes('pk-ldr'), 'les paquets sont audités');
+assert.ok(['pk-sht31', 'pk-ina219', 'pk-max6675', 'pk-yfs201', 'pk-guva-s12sd', 'pk-tmp36', 'pk-mq7'].every(t => PARTS_TO_WIRE.includes(t)), 'les composants standard sont audités');
 // Combinaisons physiquement impossibles : le câblage est refusé avec une explication (rien n'est câblé à moitié).
-const REFUSED = new Set(['joystick@nodemcu', 'bat9v@pico', 'bat18650@uno', 'bat18650@nano', 'bat18650@esp32', 'bat18650@nodemcu']);
+const REFUSED = new Set(['joystick@nodemcu', 'joystick@d1mini', 'bat9v@pico', 'bat9v@d1mini', 'bat9v@esp32-38', 'bat9v@esp32s3', 'bat9v@esp32c3', 'bat18650@uno', 'bat18650@nano', 'bat18650@mega', 'bat18650@esp32', 'bat18650@nodemcu', 'bat18650@d1mini', 'bat18650@esp32-38', 'bat18650@esp32s3', 'bat18650@esp32c3']);
+
+test('Bibliothèque : le nombre de broches affiché (sans modèle 3D) est celui du modèle 3D', () => {
+  for (const e of LIBRARY) { let n = 0; e.build({ g: new THREE.Group(), pin: () => n++ }); assert.equal(pinCountOf(e), n, e.id); }
+});
 
 test('Chaque composant, câblé seul sur chaque carte, passe le vérificateur sans erreur ni avertissement', () => {
   for (const type of PARTS_TO_WIRE) for (const bt of BOARD_TYPES) {
@@ -148,7 +156,16 @@ const COMBOS = [
   ['uno', ['button', 'button', 'lcd1602', 'mpu6050', 'bmp280']],
   ['esp32', ['dcmotor', 'fan', 'pump', 'ir', 'ldr']],
   ['uno', ['sim800', 'hc05', 'led-rgb']],
-  ['pico', ['rc522', 'oled', 'buzzer', 'button']]
+  ['pico', ['rc522', 'oled', 'buzzer', 'button']],
+  ['mega', ['lcd1602', 'rc522', 'hc05', 'joystick', 'servo', 'traffic', 'lm35', 'flame']],
+  ['d1mini', ['oled', 'bmp280', 'irobst', 'laser', 'water']],
+  ['esp32s3', ['lcd1602', 'bmp280', 'rc522', 'hc05', 'servo', 'joystick', 'ldr', 'relay']],
+  ['esp32c3', ['oled', 'dht22', 'button', 'led-red', 'buzzer', 'pot']],
+  ['esp32-38', ['oled', 'rc522', 'hcsr04', 'servo', 'relay', 'sim800']],
+  ['uno', ['bme280', 'bh1750', 'lcd1602', 'mq135', 'rcwl0516']],
+  ['esp32', ['hx711', 'oled', 'ttp223', 'bh1750', 'mq135']],
+  ['esp32c3', ['bme280', 'bh1750', 'oled', 'ttp223']],
+  ['esp32s3', ['bme280', 'bh1750', 'hx711', 'ttp223', 'mq135', 'laser', 'traffic', 'lcd1602']]
 ];
 test('Montages à plusieurs modules (bus partagés, adaptateurs, étages de puissance) : zéro faute', () => {
   for (const [bt, list] of COMBOS) {

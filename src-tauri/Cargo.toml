@@ -17,7 +17,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+serde_json = { version = "1", features = ["preserve_order"] }
 percent-encoding = "2"
 # Déjà utilisé par Tauri (même version, mêmes options) : `block_in_place` pour écrire sans copie
 # les gros corps binaires reçus de la webview.
@@ -29,6 +29,9 @@ serialport = "4"
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 sha2 = "0.10"
 zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+# Supervision MA-ISA du circuit simulé : caisse locale sans Tauri, bâtie sur la caisse publiée maisa-core
+# (crates.io), utilisée telle quelle.
+jollof-supervision = { path = "supervision" }
 
 [profile.release]
 codegen-units = 1

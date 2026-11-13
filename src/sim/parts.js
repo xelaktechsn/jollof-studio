@@ -36,8 +36,18 @@ export const MOTORS = {
 export const isMotor = c => !!(c && MOTORS[c.type]);
 /** Bornes d'un moteur : [plus, minus], ou null. */
 export const motorPins = c => (isMotor(c) ? [MOTORS[c.type].plus, MOTORS[c.type].minus] : null);
+/**
+ * Bobines d'électrovanne (distributeurs du plan de travail pneumatique) : une résistance r (Ω) entre plus et minus ;
+ * tension nominale vNom ; le distributeur bascule à partir de vPull. coil24 : bobine 24 V continu de 3,0 W
+ * (série AirTAC 4V : DC24V ±10 %, 3,0 W ; r = 24² ÷ 3), soit 125 mA.
+ */
+export const COILS = { coil24: { plus: '+', minus: '-', r: 192, vNom: 24, vPull: 18, vMax: 26.4 } };
+export const isCoil = c => !!(c && COILS[c.type]);
+/** Contacts commandés de l'extérieur, lus comme un bouton (1–2 fermé quand inp.pressed) : bouton, capteur de vérin. */
+export const CONTACTS = new Set(['button', 'cylsensor', 'pressostat']);
+export const isContact = c => !!(c && CONTACTS.has(c.type));
 /** Charges commutées comme un moteur (transistor côté masse) : bornes [plus, minus]. */
-const LOADS = { buzzer: ['+', '-'] };
+const LOADS = { buzzer: ['+', '-'], coil24: ['+', '-'] };
 export const loadPins = c => motorPins(c) || (c && LOADS[c.type]) || null;
 /**
  * Transistors NPN de la bibliothèque : courant de collecteur (mA, conseillé / maximum), Vce maximale (V),
@@ -73,7 +83,8 @@ const spi = (o = {}) => [
 const serialCode = (prof, p, baud) => {
   const u = prof && prof.uart, hw = u && prof.code(u.rx, prof.gpio[u.rx]) === p.TXD;
   if (!hw) return tl('SoftwareSerial liaison({0}, {1}); // (RX, TX) côté carte\nliaison.begin({2});', p.TXD, p.RXD, baud);
-  return `${u.port}.begin(${baud}${u.port === 'Serial2' ? `, SERIAL_8N1, ${p.TXD}, ${p.RXD}` : ''});`;
+  // ESP32 : broches données à begin() (RX, TX), justes quelle que soit la version du cœur arduino-esp32.
+  return `${u.port}.begin(${baud}${u.pins ? `, SERIAL_8N1, ${p.TXD}, ${p.RXD}` : ''});`;
 };
 
 const dht = (model, what, v, period, ds) => ({
@@ -162,6 +173,121 @@ export const PARTS = {
     notes: [tl('Comptez 1 à 2 minutes de préchauffage (24 h la toute première fois) avant des mesures stables.')],
     code: p => `int gaz = analogRead(${p.AO});`
   },
+  'tilt-sw': {
+    what: tl('Capteur d’inclinaison à bille (KY-020, SW-520D) : une petite bille ferme le contact quand le capteur est droit et l’ouvre quand on le penche.'),
+    pins: [
+      io('S', IN, tl('Inclinaison'), tl('LOW quand le capteur est droit (contact fermé), HIGH quand il est penché de plus de 45° environ (la résistance du module tire S vers le haut).')),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : S reste dans la plage de ses entrées.')),
+      gnd()
+    ],
+    notes: [tl('Tout-ou-rien : il ne mesure pas un angle (pour un angle, prenez un MPU6050). La bille rebondit : filtrez les changements trop rapides.')],
+    code: p => `pinMode(${p.S}, INPUT);\nbool penche = digitalRead(${p.S}) == HIGH;`
+  },
+  hall: {
+    what: tl('Capteur à effet Hall (KY-003, A3144) : détecte la présence d’un aimant, sans contact.'),
+    pins: [
+      io('S', IN, tl('Aimant'), tl('Sortie à collecteur ouvert tirée vers le haut sur le module : LOW quand un pôle sud d’aimant s’approche, HIGH sinon.'), { idle: 1 }),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : S reste dans la plage de ses entrées.')),
+      gnd()
+    ],
+    notes: [tl('Il ne réagit qu’à un pôle de l’aimant (le sud) : retournez l’aimant s’il ne détecte rien.')],
+    code: p => `pinMode(${p.S}, INPUT);\nbool aimant = digitalRead(${p.S}) == LOW;`
+  },
+  flame: {
+    what: tl('Capteur de flamme (KY-026) : une photodiode infrarouge sensible à la lumière d’une flamme (760 à 1100 nm). Sortie analogique AO et sortie tout-ou-rien DO.'),
+    pins: [
+      io('AO', 'adc', tl('Analogique'), tl('Tension qui baisse quand la flamme est plus forte ou plus proche.'), { opt: true }),
+      gnd(),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte, AO ne dépasse jamais la plage de l’ADC.')),
+      io('DO', IN, tl('Alarme'), tl('Sortie du comparateur : passe à LOW quand une flamme dépasse le seuil réglé par le potentiomètre.'))
+    ],
+    ma: 5, ds: 'tiLm393',
+    notes: [tl('La lumière du soleil contient beaucoup d’infrarouge : elle peut déclencher le capteur. Faites les essais à l’intérieur.')],
+    code: p => `pinMode(${p.DO}, INPUT);\nbool flamme = digitalRead(${p.DO}) == LOW;`
+  },
+  rain: {
+    what: tl('Capteur de pluie (FC-37) : une plaque à pistes croisées reliée à un petit module comparateur. L’eau sur la plaque fait baisser sa résistance.'),
+    pins: [
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte, AO ne dépasse jamais la plage de l’ADC.')),
+      gnd(),
+      io('DO', IN, tl('Pluie'), tl('Sortie du comparateur : passe à LOW quand la plaque est mouillée au-delà du seuil réglé par le potentiomètre.')),
+      io('AO', 'adc', tl('Analogique'), tl('Tension qui baisse quand la plaque est plus mouillée.'), { opt: true })
+    ],
+    ma: 5, ds: 'tiLm393',
+    notes: [tl('Alimentée en permanence, la plaque se corrode vite : n’alimentez le module (par une broche) que le temps d’une mesure.')],
+    code: p => `pinMode(${p.DO}, INPUT);\nbool pluie = digitalRead(${p.DO}) == LOW;`
+  },
+  water: {
+    what: tl('Capteur de niveau d’eau : des pistes de cuivre parallèles ; plus elles trempent, plus la tension de sortie monte.'),
+    pins: [
+      io('S', 'adc', tl('Analogique'), tl('0 V au sec, jusqu’à environ 70 % de l’alimentation quand la partie cuivrée est entièrement immergée.')),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : S reste dans la plage de l’ADC.')),
+      gnd()
+    ],
+    notes: [tl('Ne plongez que la partie cuivrée, jamais les composants. Alimentée en permanence, la sonde se corrode : alimentez-la par une broche, le temps d’une mesure.')],
+    code: p => `int niveau = analogRead(${p.S});`
+  },
+  irobst: {
+    what: tl('Capteur d’obstacle infrarouge (FC-51) : une LED infrarouge éclaire devant elle, une photodiode reçoit la lumière renvoyée par un obstacle proche.'),
+    pins: [
+      io('OUT', IN, tl('Obstacle'), tl('LOW quand un obstacle est détecté (de 2 à 30 cm selon le potentiomètre et la couleur de l’objet), HIGH sinon.'), { idle: 1 }),
+      gnd(),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : OUT reste dans la plage de ses entrées.'))
+    ],
+    ma: 5, ds: 'tiLm393',
+    notes: [tl('Un objet noir renvoie peu d’infrarouge : il est vu de moins loin. Le soleil peut l’éblouir.')],
+    code: p => `pinMode(${p.OUT}, INPUT);\nbool obstacle = digitalRead(${p.OUT}) == LOW;`
+  },
+  line: {
+    what: tl('Capteur de ligne (TCRT5000) : une LED infrarouge et un phototransistor regardent le sol de près ; une ligne noire renvoie peu de lumière. Pour les robots suiveurs de ligne.'),
+    pins: [
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : ses sorties restent dans la plage de la carte.')),
+      gnd(),
+      io('DO', IN, tl('Ligne'), tl('HIGH au-dessus d’une ligne noire (peu de lumière renvoyée), LOW sur un fond clair.')),
+      io('AO', 'adc', tl('Analogique'), tl('Tension qui monte quand la surface est plus sombre.'), { opt: true })
+    ],
+    ma: 5, ds: 'tiLm393',
+    notes: [tl('Il voit de 1 à 8 mm : placez-le au ras du sol. Réglez le seuil avec le potentiomètre au-dessus de la ligne.')],
+    code: p => `pinMode(${p.DO}, INPUT);\nbool surLaLigne = digitalRead(${p.DO}) == HIGH;`
+  },
+  lm35: {
+    what: tl('Capteur de température LM35 : une tension proportionnelle à la température, 10 mV par °C. Un seul calcul, aucune bibliothèque.'),
+    pins: [
+      pwr('VS', [4, 30], tl('Il lui faut au moins 4 V : en 3,3 V, la tension de sortie n’est plus juste.'), 'tiLm35'),
+      io('VOUT', 'adc', tl('Analogique'), tl('10 mV par °C : 0,25 V à 25 °C. Température = tension × 100.')),
+      gnd()
+    ],
+    ma: 0.06, ds: 'tiLm35',
+    notes: [tl('Sur une carte 3,3 V, alimentez VS par le 5 V (VIN, VBUS) : VOUT ne dépasse 1,5 V qu’au-delà de 150 °C, sans risque pour l’entrée.')],
+    code: p => `float temperature = analogRead(${p.VOUT}) * (5.0 / 1023.0) * 100.0; // 10 mV par °C`
+  },
+  shock: {
+    what: tl('Capteur de vibration (SW-420) : un ressort dans un petit tube s’ouvre et se ferme quand le capteur est secoué. Sortie tout-ou-rien.'),
+    pins: [
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : DO reste dans la plage de ses entrées.')),
+      gnd(),
+      io('DO', IN, tl('Vibration'), tl('HIGH pendant une secousse (le contact s’ouvre), LOW au repos.'))
+    ],
+    ma: 5, ds: 'tiLm393',
+    notes: [tl('Il détecte des chocs et des secousses, pas un niveau de vibration : comptez les fronts pour estimer l’agitation.')],
+    code: p => `pinMode(${p.DO}, INPUT);\nbool secousse = digitalRead(${p.DO}) == HIGH;`
+  },
+  laser: {
+    what: tl('Module laser (KY-008) : une diode laser rouge de 5 mW (650 nm) avec sa résistance, commandée directement par une sortie.'),
+    pins: [io('S', OUT, tl('Commande'), tl('HIGH : le laser s’allume. La résistance du module limite le courant.')), gnd()],
+    notes: [tl('Ne visez jamais un œil, même un instant, ni une surface qui renvoie le faisceau.')],
+    code: p => `pinMode(${p.S}, OUTPUT);\ndigitalWrite(${p.S}, HIGH); // laser allumé`
+  },
+  traffic: {
+    what: tl('Module feu tricolore : trois LED (rouge, orange, verte) avec leurs résistances, sur une petite carte. Une sortie par couleur.'),
+    pins: [
+      io('R', OUT, tl('Rouge'), tl('HIGH allume la LED rouge (résistance déjà sur le module).')),
+      io('Y', OUT, tl('Orange'), tl('HIGH allume la LED orange.')),
+      io('G', OUT, tl('Vert'), tl('HIGH allume la LED verte.')),
+      gnd()
+    ],
+    code: p => `pinMode(${p.R}, OUTPUT); pinMode(${p.Y}, OUTPUT); pinMode(${p.G}, OUTPUT);\ndigitalWrite(${p.G}, HIGH); // vert`
+  },
   ds18b20: {
     what: tl('Sonde de température numérique 1-Wire (−55 à 125 °C, ±0,5 °C). Plusieurs sondes peuvent partager le même fil.'),
     pins: [
@@ -184,6 +310,76 @@ export const PARTS = {
     ],
     lib: 'Adafruit BMP280', ma: 1, ds: 'boschBmp280',
     code: () => `Adafruit_BMP280 bmp;\n// setup() : bmp.begin(0x76);\nfloat t = bmp.readTemperature();\nfloat hPa = bmp.readPressure() / 100;`
+  },
+  bme280: {
+    what: tl('Capteur météo BME280 : température, humidité de l’air et pression atmosphérique, en I2C. Le BMP280 avec l’humidité en plus.'),
+    pins: [
+      pwr('VCC', [1.71, 3.6], tl('Puce 3,3 V : le 5 V la détruirait.'), 'boschBme280'),
+      gnd(),
+      ...i2c({ lv3: true }),
+      nc('CSB', tl('Laissée libre : tirée au niveau haut sur le module, elle sélectionne le mode I2C.')),
+      { pin: 'SDO', kind: 'gnd', role: tl('Adresse'), why: tl('À la masse, elle fixe l’adresse I2C à 0x76 (0x77 si elle était reliée à 3,3 V).') }
+    ],
+    lib: 'Adafruit BME280', ma: 1, ds: 'boschBme280',
+    notes: [tl('Beaucoup de modules vendus « BME280 » portent en fait un BMP280 (sans humidité) : sensorID() rend 0x60 pour un vrai BME280, 0x58 pour un BMP280.')],
+    code: () => `Adafruit_BME280 bme;\n// setup() : bme.begin(0x76);\nfloat t = bme.readTemperature();\nfloat h = bme.readHumidity();\nfloat hPa = bme.readPressure() / 100;`
+  },
+  bh1750: {
+    what: tl('Capteur de lumière BH1750 (module GY-302) : mesure l’éclairement en lux, de 1 à 65 535 lx, en I2C. Plus juste qu’une photorésistance.'),
+    pins: [
+      pwr('VCC', 'logic', tl('Le module a son régulateur 3,3 V et ses résistances de tirage : alimenté à la tension logique de la carte, le bus I2C reste à son niveau.')),
+      gnd(),
+      ...i2c(),
+      { pin: 'ADDR', kind: 'gnd', role: tl('Adresse'), why: tl('À la masse, elle fixe l’adresse I2C à 0x23 (0x5C si elle était reliée à VCC).') }
+    ],
+    lib: 'BH1750',
+    code: () => `BH1750 lux1;\n// setup() : Wire.begin(); lux1.begin();\nfloat lux = lux1.readLightLevel();`
+  },
+  hx711: {
+    what: tl('Balance : un capteur de force (barre de 5 kg) et son amplificateur HX711, un convertisseur 24 bits. Mesure une masse, après étalonnage.'),
+    pins: [
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : DT reste dans la plage de ses entrées.')),
+      gnd(),
+      io('DT', IN, tl('Données'), tl('Sortie série du HX711 : passe au niveau bas quand une mesure est prête (10 par seconde), puis donne ses 24 bits au rythme de SCK.')),
+      io('SCK', OUT, tl('Horloge'), tl('Horloge envoyée par la carte : 24 impulsions pour lire la mesure, une 25ᵉ pour choisir le gain 128. Tenue au niveau haut plus de 60 µs, elle met le HX711 en veille.'))
+    ],
+    lib: 'HX711 Arduino Library',
+    notes: [tl('Étalonnage : posez une masse connue, puis réglez set_scale() pour que get_units() l’affiche. Avec cette barre de 5 kg, environ 430 coups par gramme.')],
+    code: p => `HX711 balance;\n// setup() : balance.begin(${p.DT}, ${p.SCK}); balance.set_scale(430.0); balance.tare();\nif (balance.is_ready()) { float grammes = balance.get_units(1); }`
+  },
+  ttp223: {
+    what: tl('Bouton tactile capacitif TTP223 : il détecte un doigt posé sur sa surface, sans pièce mobile.'),
+    pins: [
+      gnd(),
+      pwr('VCC', 'logic', tl('Alimenté à la tension logique de la carte : SIG reste dans la plage de ses entrées.')),
+      io('SIG', IN, tl('Contact'), tl('HIGH tant qu’un doigt touche la surface, LOW sinon (réglage d’usine : pastilles A et B ouvertes).'))
+    ],
+    notes: [tl('Il se règle seul à la mise sous tension : ne touchez pas la surface pendant la première demi-seconde.')],
+    code: p => `pinMode(${p.SIG}, INPUT);\nbool touche = digitalRead(${p.SIG}) == HIGH;`
+  },
+  rcwl0516: {
+    what: tl('Détecteur de mouvement radar RCWL-0516 : une onde de 3,2 GHz traverse le plastique et les cloisons fines ; il voit un mouvement jusqu’à 5 à 7 m.'),
+    pins: [
+      nc('3V3', tl('Sortie 3,3 V du régulateur du module : laissée libre.')),
+      gnd(),
+      io('OUT', IN, tl('Détection'), tl('Passe à 3,3 V pendant environ 2 s à chaque mouvement détecté.')),
+      pwr('VIN', [4, 28], tl('Le module a son propre régulateur 3,3 V : il lui faut au moins 4 V.'), 'rcwl0516'),
+      nc('CDS', tl('Pour une photorésistance facultative (le module ne détecte alors que dans le noir) : laissée libre.'))
+    ],
+    notes: [tl('Il voit aussi à travers une boîte en plastique, et réagit à tout ce qui bouge : ventilateur, rideau, branche d’arbre.')],
+    code: p => `pinMode(${p.OUT}, INPUT);\nbool mouvement = digitalRead(${p.OUT}) == HIGH;`
+  },
+  mq135: {
+    what: tl('Capteur de qualité de l’air MQ-135 : réagit à l’ammoniac, aux oxydes d’azote, à l’alcool, au benzène, à la fumée et au CO₂. Un filament chauffe la couche sensible.'),
+    pins: [
+      pwr('VCC', [4.9, 5.1], tl('Le filament chauffant demande 5 V et environ 170 mA.'), 'winsenMq135'),
+      gnd(),
+      io('DO', IN, tl('Alarme'), tl('Passe à l’état bas quand la pollution dépasse le seuil réglé sur le module ; au repos, tirée à la tension du module.'), { opt: true, lv5: true, idle: 1 }),
+      io('AO', 'adc', tl('Analogique'), tl('Tension qui monte quand l’air est plus pollué.'), { lv5: true })
+    ],
+    ma: 175, ds: 'winsenMq135',
+    notes: [tl('Il indique une tendance (air plus ou moins pollué), pas une concentration exacte de CO₂ : pour cela, il faut un capteur NDIR. Préchauffage : 24 h la première fois, quelques minutes ensuite.')],
+    code: p => `int air = analogRead(${p.AO});`
   },
   mpu6050: {
     what: tl('Accéléromètre et gyroscope 3 axes (module GY-521), en I2C : mesure l’inclinaison et les rotations.'),
@@ -436,6 +632,35 @@ export const PARTS = {
 
   /* ---------- Alimentation ---------- */
   bat9v: battery(9, tl('Pile 9 V.')),
+  // Alimentation 24 V continu des automatismes (bloc sur rail DIN) : une source, comme le module MB102, sans broche
+  // à câbler vers la carte ; les bobines d'électrovanne s'y branchent par leur étage de commande.
+  psu24: { what: tl('Alimentation 24 V continu (bloc sur rail DIN, 2,5 A) : celle des distributeurs pneumatiques et des automatismes. Son 0 V se relie à la masse de la carte ; le 24 V ne va jamais sur une broche de la carte.') },
+  coil24: {
+    what: tl('Électrovanne : la bobine 24 V d’un distributeur pneumatique. Alimentée, elle fait basculer le distributeur ; son repère (Y1, Y2…) la relie au plan de travail pneumatique.'),
+    // Étage de commande : + au 24 V de l'alimentation, − au collecteur d'un PN2222A (125 mA), diode de roue libre.
+    stage: { q: 'pn2222', base: 'res-1k', flyback: 'diode', src: 'psu24', need: 'out' },
+    pins: [
+      { pin: '+', kind: 'drv', role: tl('Plus'), why: tl('Vers le + 24 V de l’alimentation, avec la cathode de la diode de roue libre.') },
+      { pin: '-', kind: 'drv', role: tl('Moins'), why: tl('Vers le collecteur du transistor qui commande la bobine : la carte ne fournit ni 24 V ni 125 mA.') }
+    ],
+    notes: [tl('24 V continu, 3,0 W (≈ 125 mA) : commandée par un transistor ou un relais, avec une alimentation 24 V et la masse commune.'), tl('Câblage automatique : + au 24 V, − au collecteur d’un PN2222A, base par 1 kΩ vers une broche, diode de roue libre aux bornes de la bobine.')]
+  },
+  pressostat: {
+    what: tl('Pressostat (contact) : il ferme son contact quand la pression de l’air atteint son seuil. Son repère (S1, S2…) le relie au pressostat du plan de travail pneumatique, où se règle le seuil.'),
+    pins: [
+      io('1', 'pullup', tl('Entrée'), tl('Lue avec INPUT_PULLUP : HIGH sous le seuil, LOW quand la pression l’atteint.'), { switch: true }),
+      gnd('2', tl('Ferme le circuit vers la masse quand la pression atteint le seuil.'))
+    ],
+    code: p => `pinMode(${p['1']}, INPUT_PULLUP);\nbool pression = digitalRead(${p['1']}) == LOW;`
+  },
+  cylsensor: {
+    what: tl('Capteur de position de vérin (contact ILS) : l’aimant du piston ferme le contact quand il passe devant. Son repère (B1, B2…) le place sur un vérin du plan de travail pneumatique.'),
+    pins: [
+      io('1', 'pullup', tl('Entrée'), tl('Lue avec INPUT_PULLUP : HIGH quand le piston est loin, LOW quand il est devant le capteur.'), { switch: true }),
+      gnd('2', tl('Ferme le circuit vers la masse quand le piston est devant le capteur.'))
+    ],
+    code: p => `pinMode(${p['1']}, INPUT_PULLUP);\nbool piston = digitalRead(${p['1']}) == LOW;`
+  },
   bat18650: battery(3.7, tl('Accu lithium 18650 : 3,7 V nominal, 4,2 V chargé.'), [tl('Un accu lithium se recharge avec un module dédié (TP4056), jamais directement.')]),
   mb102: { what: tl('Module d’alimentation pour breadboard : fournit 5 V et 3,3 V à partir d’un bloc de 6,5 à 12 V. Il s’enfiche directement sur les rails de la breadboard.') },
   lm7805: { what: tl('Régulateur linéaire 5 V : IN de 7 à 35 V, GND, OUT à 5 V. Ajoutez 100 nF en entrée et en sortie ; il chauffe d’autant plus que l’écart de tension est grand.') },

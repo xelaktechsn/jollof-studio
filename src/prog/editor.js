@@ -23,7 +23,7 @@ const PY_RE = /(#[^\n]*)|((?:[rRbBfFuU]{1,2})?(?:'''[\s\S]*?(?:'''|(?![\s\S]))|"
 const pyClass = id => (PY_KW.has(id) ? 'tk' : PY_TY.has(id) ? 'tt' : PY_BI.has(id) ? 'tf' : id === 'self' || id === 'cls' ? 'to' : '');
 
 /** Jetons colorés, découpés ligne par ligne. lang : 'cpp' (Arduino) ou 'python'. */
-function highlight(src, lang = 'cpp') {
+export function highlight(src, lang = 'cpp') {
   const py = lang === 'python', re = py ? PY_RE : RE;
   const lines = [[]];
   const push = (cls, text) => {

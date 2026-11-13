@@ -7,14 +7,15 @@
 import { tl } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { createFirmata, MODE } from './firmata.js';
-import { listPorts, openPort, webSerial } from './serial.js';
+import { listPorts, openPort, webSerial, claim, unclaim } from './serial.js';
+import { whoLabel } from './monitor.js';
 import { isTauri } from '../native.js';
 
 const esc = s => String(s).replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`);
 
 /** app : { comps(), simOn(), rts() → Map id → moteur, boardOf(c) → profil ou null, status(texte, genre) }. */
 export function installHil(app) {
-  let sec = null, link = null, fm = null, board = null, timer = null, sig = '';
+  let sec = null, link = null, fm = null, board = null, timer = null, sig = '', held = null; // held : port tenu
 
   function mount() {
     if (sec) return true;
@@ -55,6 +56,9 @@ export function installHil(app) {
     if (isTauri() && !name) { setState(tl('Branchez la carte en USB, puis choisissez son port.')); return; }
     setState(tl('Connexion… (la carte redémarre, environ 2 s)'));
     try {
+      // Le port n'a qu'un utilisateur : le moniteur série de la carte réelle s'efface s'il l'avait.
+      await claim(name, 'firmata', who => { if (link) { app.status(tl('Carte réelle (Firmata) déconnectée : port pris par {0}.', whoLabel(who)), 'warn'); disconnect(); } });
+      held = name;
       link = await openPort(name, 57600);
       link.onClose(() => { if (link) { app.status(tl('Carte réelle déconnectée.'), 'warn'); disconnect(true); } });
       fm = createFirmata(link);
@@ -67,10 +71,12 @@ export function installHil(app) {
       const why = e && e.message === 'no-firmata' ? tl('aucune réponse Firmata : StandardFirmata est-il téléversé, à 57 600 bauds ?') : String((e && e.message) || e);
       setState(tl('Connexion impossible : {0}', why));
       if (link) link.close(); link = null; fm = null;
+      if (held != null) { unclaim(held, 'firmata'); held = null; }
     }
   }
   function disconnect(lost = false) {
     clearInterval(timer); timer = null;
+    if (held != null) { unclaim(held, 'firmata'); held = null; }
     if (fm && !lost) try { fm.release(); } catch (e) { /* port déjà fermé */ }
     if (link) { const l = link; link = null; setTimeout(() => l.close(), lost ? 0 : 100); }
     fm = null; sig = '';
@@ -118,7 +124,7 @@ export function installHil(app) {
   function refresh() {
     if (!mount()) return;
     const list = boards(), can = isTauri() || webSerial();
-    sec.hidden = !list.length || !can;
+    if (sec.hidden !== (!list.length || !can)) sec.hidden = !list.length || !can;
     const sel = document.getElementById('hilBoard'), ids = list.map(b => b.id).join();
     if (sel.dataset.ids !== ids) { sel.dataset.ids = ids; const cur = sel.value; sel.innerHTML = list.map(b => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join(''); if (list.some(b => b.id === cur)) sel.value = cur; }
     sel.disabled = !!link;

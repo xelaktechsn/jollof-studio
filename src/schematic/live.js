@@ -326,7 +326,7 @@ export function createSchView(stage, app) {
   function drawAnims(dt, now, sim) {
     const k = view.s * dpr;
     ctx.setTransform(k, 0, 0, k, -view.x * k, -view.y * k);
-    const ACC = '#f08a3c', REST = 'rgba(138,150,163,0.75)', lw = Math.max(0.3, 1.4 / view.s);
+    const ACC = '#60a5fa', REST = 'rgba(138,150,163,0.75)', lw = Math.max(0.3, 1.4 / view.s);
     ctx.lineCap = 'round';
     for (const m of anims) {
       const c = m.c, sp = sim ? c.motorV || 0 : 0, moving = Math.abs(sp) >= 0.02;
@@ -433,7 +433,7 @@ export function createSchView(stage, app) {
     const own = new Map(hits.map((hb, i) => [hb.c, i]));
     for (const [c, s] of L.syms) {
       if (!s.spokes) continue;
-      const a = c.type === 'button' ? { kind: 'sw', mA: c.inp && c.inp.pressed ? lanes.inj.get(`${c.id}|1`) ?? null : null } : dc.across(c); if (!a) continue;
+      const a = c.type === 'button' || c.type === 'cylsensor' || c.type === 'pressostat' ? { kind: 'sw', mA: c.inp && c.inp.pressed ? lanes.inj.get(`${c.id}|1`) ?? null : null } : dc.across(c); if (!a) continue;
       const mA = a.kind === 'npn' && a.extra ? a.extra.ic : a.mA;
       if (mA == null || Math.abs(mA) < 0.001) continue;
       const [x0, y0] = px(s.ox + s.box[0], s.oy + s.box[1]), [x1, y1] = px(s.ox + s.box[2], s.oy + s.box[3]), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;

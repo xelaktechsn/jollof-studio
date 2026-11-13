@@ -3,14 +3,14 @@
 // Espace classe : une page plein écran au-dessus du plan de travail, avec sa navigation
 // (accueil, classes, messages, groupes, notes), la connexion, le compte et les notifications.
 // Les pages sont enregistrées par rôle ; l'édition Pro ajoute celles de l'enseignant.
-import { tl } from '../i18n/index.js';
+import { tl, CANCEL } from '../i18n/index.js';
 import * as api from './api.js';
 import * as rt from './rt.js';
 import { ready as richReady } from './rich.js';
 import { icon, esc, avatar, toast, dialog, menu, relTime, COLORS, skeleton } from './ui.js';
 import { hydrateIcons } from '../ui/icons.js';
 
-export function createHub(app, { pro = false } = {}) {
+export function createHub(app) {
   const pages = new Map(); // id → [{ roles, render, nav }]
   const navItems = [];      // { id, label, icon, roles, badge }
   let route = { page: 'home', params: {} }, cleanup = null, open = false, unread = { messages: 0, notifications: 0 }, notifs = [];
@@ -31,7 +31,7 @@ export function createHub(app, { pro = false } = {}) {
 
   /* ---------- Enregistrement des pages ---------- */
   const hub = {
-    app, pro,
+    app,
     page(id, render, { roles = ['student', 'teacher'] } = {}) { if (!pages.has(id)) pages.set(id, []); pages.get(id).unshift({ roles, render }); },
     // Une entrée enregistrée plus tard (édition Pro) remplace celle du même nom pour les mêmes rôles.
     nav(id, label, ic, roles = ['student', 'teacher'], order = 50) {
@@ -135,7 +135,7 @@ export function createHub(app, { pro = false } = {}) {
       body: `<div class="profileHead">${avatar(u, 56)}<div><b>${esc(u.displayName)}</b><small>${esc(u.username || u.email || '')}</small></div></div>
         <label class="sField"><span>${tl('Nom affiché')}</span><input class="sInput" data-f="name" value="${esc(u.displayName)}" maxlength="60"></label>
         <div class="sField"><span>${tl('Couleur')}</span><div class="swatchRow">${COLORS.map(c => `<button type="button" class="swatch${c === color ? ' on' : ''}" data-c="${c}" style="--c:${c}" aria-label="${c}"></button>`).join('')}</div></div>`,
-      actions: [{ label: tl('Annuler'), value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }],
+      actions: [{ label: CANCEL, value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }],
       onOpen: el => el.addEventListener('click', e => { const s = e.target.closest('[data-c]'); if (!s) return; color = s.dataset.c; el.querySelectorAll('.swatch').forEach(x => x.classList.toggle('on', x === s)); }),
       onAction: async (v, el) => {
         if (v !== 'ok') return;
@@ -152,7 +152,7 @@ export function createHub(app, { pro = false } = {}) {
         <label class="sField"><span>${tl('Mot de passe actuel')}</span><input class="sInput" type="password" data-f="cur" autocomplete="current-password"></label>
         <label class="sField"><span>${tl('Nouveau mot de passe (8 caractères au moins)')}</span><input class="sInput" type="password" data-f="new" autocomplete="new-password" minlength="8"></label>
         <label class="sField"><span>${tl('Confirmer')}</span><input class="sInput" type="password" data-f="new2" autocomplete="new-password"></label><p class="formErr" hidden></p>`,
-      actions: forced ? [{ label: tl('Enregistrer'), value: 'ok', kind: 'primary' }] : [{ label: tl('Annuler'), value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }],
+      actions: forced ? [{ label: tl('Enregistrer'), value: 'ok', kind: 'primary' }] : [{ label: CANCEL, value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }],
       onAction: async (v, el) => {
         if (v !== 'ok') return;
         const f = k => el.querySelector(`[data-f="${k}"]`).value, err = el.querySelector('.formErr');
@@ -179,7 +179,7 @@ export function createHub(app, { pro = false } = {}) {
         <label class="sField"><span>${tl('Mot de passe')}</span><input class="sInput" type="password" data-f="pass" autocomplete="current-password"></label>
         <p class="formErr" hidden></p>
         <button type="button" class="btn primary wide big" data-login>${tl('Se connecter')}</button>
-        ${pro ? `<div class="authAlt"><span>${tl('Enseignant sans compte ?')}</span><button type="button" class="linkBtn" data-mode="register">${tl('Créer l’espace de mon école')}</button></div>` : `<div class="authAlt"><span>${tl('Enseignant ?')}</span><span class="muted">${tl('Créer une école et des classes demande Jollof Studio Pro.')}</span></div>`}` : `
+        <div class="authAlt"><span>${tl('Enseignant sans compte ?')}</span><button type="button" class="linkBtn" data-mode="register">${tl('Créer l’espace de mon école')}</button></div>` : `
         <h3>${tl('Créer l’espace de mon école')}</h3><p class="muted">${tl('Vous en serez l’administrateur. Essai gratuit, sans carte bancaire.')}</p>
         <label class="sField"><span>${tl('Nom de l’école')}</span><input class="sInput" data-f="school" maxlength="120" placeholder="${tl('ex. Lycée Blaise Diagne')}"></label>
         <label class="sField"><span>${tl('Votre nom')}</span><input class="sInput" data-f="name" maxlength="60"></label>

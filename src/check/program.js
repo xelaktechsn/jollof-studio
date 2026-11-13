@@ -8,10 +8,9 @@
 // Une broche calculée (boucle, variable modifiée) rend l'analyse « dynamique » : le vérificateur suppose
 // alors que toute broche reliée peut être une sortie, à l'état haut comme à l'état bas.
 import { parse } from '../prog/lang.js';
-import { BOARD_CONSTS, CONSTS } from '../prog/api.js';
+import { BOARD_CONSTS, CONSTS, AVR_INFO } from '../prog/api.js';
 import { pinMap } from '../prog/runtime.js';
 
-const AVR = new Set(['uno', 'nano']);
 // Broches confiées à une bibliothèque, par classe : [indice de l'argument du constructeur, usage].
 const CTOR_PINS = {
   DHT: [[0, 'lib']], OneWire: [[0, 'lib']], Adafruit_NeoPixel: [[1, 'out']],
@@ -71,7 +70,7 @@ export function pinFacts(src, kind, prof) {
   function keyOf(e, what) {
     const n = num(e);
     if (n == null) return undefined;
-    const k = AVR.has(kind) && what === 'adc' && n >= 0 && n <= 7 ? keys.get(n + 14) : keys.get(n);
+    const avr = AVR_INFO[kind], k = avr && what === 'adc' && n >= 0 && n < avr.an ? keys.get(n + avr.a0) : keys.get(n);
     return k || null;
   }
   const add = (e, at, field, v, what) => {
@@ -100,7 +99,7 @@ export function pinFacts(src, kind, prof) {
       }
     }
     // Serial2.begin(9600, SERIAL_8N1, 16, 17) (ESP32) : RX lue, TX tenue par le port série.
-    if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'begin' && n.f.o.e === 'id' && /^Serial[12]$/.test(n.f.o.name) && (n.args || []).length >= 4) {
+    if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'begin' && n.f.o.e === 'id' && /^Serial[123]$/.test(n.f.o.name) && (n.args || []).length >= 4) {
       add(n.args[2], n, 'reads', 'd', n.f.o.name + '.begin'); add(n.args[3], n, 'writes', LIB_WRITE, n.f.o.name + '.begin');
     }
     // IrReceiver.begin(2) : la bibliothèque IRremote lit cette broche.
@@ -109,6 +108,11 @@ export function pinFacts(src, kind, prof) {
     if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'attach' && n.f.o.e === 'id') {
       const o = objs.get(n.f.o.name);
       if (o && o.cls === 'Servo') add((n.args || [])[0], n, 'writes', 'servo', 'servo.attach');
+    }
+    // balance.begin(DT, SCK) : la bibliothèque HX711 lit DT et donne l'horloge sur SCK.
+    if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'begin' && n.f.o.e === 'id') {
+      const o = objs.get(n.f.o.name), a = n.args || [];
+      if (o && o.cls === 'HX711') { add(a[0], n, 'reads', 'd', 'HX711.begin'); add(a[1], n, 'writes', LIB_WRITE, 'HX711.begin'); }
     }
   });
   // Broches données au constructeur d'une bibliothèque.

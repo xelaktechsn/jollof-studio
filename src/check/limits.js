@@ -4,7 +4,7 @@
 // écrites dans les fiches). warn : au-delà, le composant s'use ou chauffe ; max : au-delà, il est détruit.
 // Sources : fiches techniques de sources.js, citées par la clé src de chaque limite, ou par LIMIT_SRC pour les nombres
 // simples (docs.js reprend ces chiffres pour les élèves).
-import { BOARDS, boardOf } from '../sim/boards.js';
+import { boardOf, kindOf } from '../sim/boards.js';
 import { NPNS } from '../sim/parts.js';
 import { tl, DEC } from '../i18n/index.js';
 
@@ -52,16 +52,19 @@ export const INDUCTOR = { 'ind-10m': { warn: 76, max: 110, src: 'bourns5800' } }
 /**
  * Broches d'une carte : courant par GPIO (mA), total des GPIO, broches 5V et 3V3 (mA), tension admise sur une GPIO.
  * Uno/Nano : 20 mA conseillés, 40 mA maximum, 200 mA au total ; 3V3 : 50 mA. ESP32 : 20/40 mA ; 3V3 : ≈ 300 mA.
+ * ESP32-S3 : 20/40 mA, 1500 mA au total ; ESP32-C3 : 20/40 mA, 1000 mA au total.
  * ESP8266 : 12/20 mA. Pico : 12/16 mA, 50 mA au total. 5V (USB) : 500 mA.
  */
 const BOARD = {
   uno: { pin: { warn: 20, max: 40 }, total: 200, five: 500, three: 50 },
   nano: { pin: { warn: 20, max: 40 }, total: 200, five: 500, three: 50 },
+  mega: { pin: { warn: 20, max: 40 }, total: 200, five: 500, three: 50 },
   esp32: { pin: { warn: 20, max: 40 }, total: 1200, five: 500, three: 300 },
+  esp32s3: { pin: { warn: 20, max: 40 }, total: 1500, five: 500, three: 300 },
+  esp32c3: { pin: { warn: 20, max: 40 }, total: 1000, five: 500, three: 300 },
   nodemcu: { pin: { warn: 8, max: 12 }, total: 300, five: 500, three: 300 },
   pico: { pin: { warn: 8, max: 12 }, total: 50, five: 500, three: 300 }
 };
-const FAMILY = { atmega328p: 'uno', esp8266: 'nodemcu', rp2040: 'pico' };
 /**
  * Sources des limites écrites en nombres simples (clé de SOURCES, ou liste de clés) ; celles des objets sont dans leur
  * clé src. BOARD : pour chaque carte, pin, total, five, three, et vmax (la marge des diodes de protection, qui donne
@@ -75,16 +78,25 @@ export const LIMIT_SRC = {
   BOARD: {
     uno: { pin: ['atmega328p', 'arduinoUno'], total: 'atmega328p', five: 'arduinoUno', three: 'arduinoUno', vmax: 'atmega328p' },
     nano: { pin: ['atmega328p', 'arduinoNano'], total: 'atmega328p', five: 'usb2', three: 'ft232r', vmax: 'atmega328p' },
+    mega: { pin: ['atmega2560', 'arduinoMega'], total: 'atmega2560', five: 'arduinoMega', three: 'arduinoMega', vmax: 'atmega2560' },
     // 3V3 des cartes ESP : régulateur AMS1117 de 1 A, dont la puce garde sa part (0,5 A demandés pour l'ESP32).
     esp32: { pin: 'esp32', total: 'esp32', five: 'usb2', three: ['ams1117', 'esp32'], vmax: 'esp32' },
+    // ESP32 à 38 broches, ESP32-S3-DevKitC-1, ESP32-C3 SuperMini : le régulateur 3,3 V n'est pas chiffré par leur
+    // documentation (et change selon le fabricant) : seuil de conception, celui des autres cartes ESP (300 mA).
+    'esp32-38': { pin: 'esp32', total: 'esp32', five: 'usb2', three: null, vmax: 'esp32' },
+    esp32s3: { pin: 'esp32s3', total: 'esp32s3', five: 'usb2', three: null, vmax: 'esp32s3' },
+    esp32c3: { pin: 'esp32c3', total: 'esp32c3', five: 'usb2', three: null, vmax: 'esp32c3' },
     nodemcu: { pin: 'esp8266', total: 'esp8266', five: 'usb2', three: ['ams1117', 'esp8266'], vmax: 'esp8266' },
+    // Wemos D1 mini : même ESP8266 ; son régulateur 3,3 V change selon le fabricant et Wemos n'en publie pas la fiche.
+    // Seuil de conception : celui du NodeMCU (300 mA pour les modules).
+    d1mini: { pin: 'esp8266', total: 'esp8266', five: 'usb2', three: null, vmax: 'esp8266' },
     pico: { pin: 'rp2040', total: 'rp2040', five: 'usb2', three: 'pico', vmax: 'rp2040' }
   }
 };
 /** Limites d'une carte (profil importé : celles de sa famille). */
 export function boardLimits(c) {
   const p = boardOf(c); if (!p) return null;
-  const kind = BOARDS[c.type] ? c.type : FAMILY[p.family] || 'esp32';
+  const kind = kindOf(c);
   const b = BOARD[kind] || BOARD.esp32;
   // Une GPIO ne supporte pas plus que sa tension logique plus la marge de ses diodes de protection : VCC + 0,5 V pour
   // l'ATmega328P, VDD + 0,3 V (3,6 V) pour l'ESP32, l'ESP8266 et le RP2040.

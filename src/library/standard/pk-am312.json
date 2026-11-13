@@ -1,0 +1,107 @@
+{
+  "format": 1,
+  "id": "pk-am312",
+  "version": 1,
+  "name": "AM312 mini PIR mouvement (module)",
+  "category": "Capteurs",
+  "prefix": "AM312",
+  "description": "Mini détecteur de mouvement infrarouge AM312 : tient sur une carte 3,3 V, là où le HC-SR501 demande 4,5 V. Très faible consommation, idéal sur batterie, avec sensibilité et durée fixes.",
+  "sources": {
+    "senba": {
+      "title": "AM312 Digital Intelligent Passive Infrared Sensor, Sensor Manual",
+      "publisher": "Nanyang Senba Optical and Electronic",
+      "section": "Technical Data : VDD 2,7 à 3,3 V, 3,6 V au plus ; IDD 15 µA typ., 20 µA max ; VOH  VDD − 1 V à 10 mA ; TOH 2,3 s, TOL 2,3 s, non réglables. L’alimentation 2,7 à 12 V du module à régulateur vient des vendeurs, pas de cette fiche.",
+      "url": "https://ocw.cs.pub.ro/courses/_media/pm/prj2023/ncaroi/pir_am312_datasheet.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 0.02,
+  "ds": "senba",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "pwr",
+      "why": "Module à régulateur : la tension logique de la carte convient, 3,3 V comme 5 V. Le capteur nu, sans module, est limité à 3,6 V.",
+      "v": "logic"
+    },
+    {
+      "name": "OUT",
+      "x": 0,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "io",
+      "need": "in",
+      "role": "Détection",
+      "why": "HIGH quand un mouvement est détecté, pendant environ 2,3 s. Niveau haut proche de 3 V, quelle que soit l’alimentation du module."
+    },
+    {
+      "name": "GND",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "gnd"
+    }
+  ],
+  "behaviour": {
+    "digitalOut": [
+      {
+        "pin": "OUT",
+        "quantity": "motion",
+        "activeLow": false
+      }
+    ],
+    "sample": {
+      "period": 0.05,
+      "tau": 0
+    }
+  },
+  "docs": {
+    "text": "Un capteur pyroélectrique et un traitement numérique, tout-en-un : il suffit de l’alimenter et de lire OUT. La sortie reste haute environ 2,3 s, puis le capteur ignore tout pendant 2,3 s. La simulation suit directement le mouvement, sans ces deux durées.",
+    "specs": [
+      [
+        "Alimentation",
+        "module : tension logique de la carte ; capteur nu : 2,7 à 3,3 V"
+      ],
+      [
+        "Consommation",
+        "15 µA"
+      ],
+      [
+        "Sortie",
+        "HIGH pendant ≈ 2,3 s"
+      ],
+      [
+        "Blocage",
+        "≈ 2,3 s entre deux détections"
+      ],
+      [
+        "Réglages",
+        "aucun : ni portée, ni durée"
+      ]
+    ],
+    "uses": [
+      "Lampe automatique sur batterie",
+      "Réveiller un ESP32 en sommeil profond",
+      "Détecteur de passage compact"
+    ],
+    "mistakes": [
+      "Alimenter un capteur nu en 5 V : seul un module à régulateur le permet, vérifiez le vôtre.",
+      "Compter sur une marge large en 5 V : le niveau haut ≈ 3 V est tout près du seuil d’une Uno.",
+      "Le placer près d’un ESP8266 ou ESP32 : le Wi-Fi provoque de fausses détections.",
+      "Ne pas attendre sa stabilisation, environ une minute."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1f7a3a",
+    "label": "AM312",
+    "size": [
+      11,
+      1.6,
+      16
+    ]
+  }
+}

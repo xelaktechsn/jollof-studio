@@ -27,6 +27,18 @@ export const SOURCES = {
     url: 'https://store.arduino.cc/products/arduino-nano',
     section: 'Tech Specs : DC Current per I/O Pin « 20 mA (I/O Pins) » ; FAQ, Input and Output : « Each pin can provide or receive a maximum of 40 mA »'
   },
+  atmega2560: {
+    title: 'ATmega640/V-1280/V-1281/V-2560/V-2561/V Datasheet (2549Q–AVR–02/2014)',
+    publisher: 'Microchip Technology (Atmel)',
+    url: 'https://ww1.microchip.com/downloads/en/devicedoc/atmel-2549-8-bit-avr-microcontroller-atmega640-1280-1281-2560-2561_datasheet.pdf',
+    section: '§ 31 Electrical Characteristics, Absolute Maximum Ratings, p. 355 : « DC Current per I/O Pin 40.0mA », « DC Current VCC and GND Pins 200.0mA », « Voltage on any Pin except RESET with respect to Ground -0.5V to VCC+0.5V »'
+  },
+  arduinoMega: {
+    title: 'Arduino Mega 2560 Rev3',
+    publisher: 'Arduino',
+    url: 'https://store.arduino.cc/products/arduino-mega-2560-rev3',
+    section: 'Tech Specs : « DC Current per I/O Pin 20 mA », « DC Current for 3.3V Pin 50 mA » ; Power : fusible réarmable de l’USB à 500 mA'
+  },
   ft232r: {
     title: 'FT232R USB UART IC Datasheet',
     publisher: 'Future Technology Devices International (FTDI)',
@@ -45,6 +57,18 @@ export const SOURCES = {
     publisher: 'Espressif Systems',
     url: 'https://documentation.espressif.com/esp32_datasheet_en.pdf',
     section: 'Table 5-1 Absolute Maximum Ratings : « Cumulative IO output current 1200 mA », VDD 3.6 V au plus ; Table 5-2 : alimentation de 0.5 A au moins ; Table 5-3 DC Characteristics : IOH 40 mA (typ.), IOL 28 mA (typ.), VIH jusqu’à VDD + 0.3 V'
+  },
+  esp32s3: {
+    title: 'ESP32-S3 Series Datasheet Version 2.2',
+    publisher: 'Espressif Systems',
+    url: 'https://documentation.espressif.com/esp32-s3_datasheet_en.pdf',
+    section: 'Table 5-1 Absolute Maximum Ratings : « Cumulative IO output current — 1500 mA », « Allowed input voltage −0.3 3.6 V » ; Table 5-4 DC Characteristics : IOH 40 mA (typ.), IOL 28 mA (typ.), VIH jusqu’à VDD + 0.3 V ; § 2 : « GPIO0, GPIO3, GPIO45, GPIO46: Strapping pins »'
+  },
+  esp32c3: {
+    title: 'ESP32-C3 Series Datasheet Version 2.4',
+    publisher: 'Espressif Systems',
+    url: 'https://documentation.espressif.com/esp32-c3_datasheet_en.pdf',
+    section: 'Table 5-1 Absolute Maximum Ratings : « Cumulative IO output current — 1000 mA », « Allowed input voltage −0.3 3.6 V » ; Table 5-4 DC Characteristics : IOH 40 mA (typ.), IOL 28 mA (typ.), VIH jusqu’à VDD + 0.3 V ; § 2 : « GPIO2, GPIO8, GPIO9: Strapping pins »'
   },
   esp8266: {
     title: 'ESP8266EX Datasheet Version 7.1',
@@ -225,6 +249,12 @@ export const SOURCES = {
     url: 'https://wiki.dfrobot.com/Capacitive_Soil_Moisture_Sensor_SKU_SEN0193',
     section: 'Specification : « Operating Voltage: 3.3 ~ 5.5 VDC », « Operating Current: 5mA »'
   },
+  tiLm35: {
+    title: 'LM35 Precision Centigrade Temperature Sensors (SNIS159)',
+    publisher: 'Texas Instruments',
+    url: 'https://www.ti.com/lit/ds/symlink/lm35.pdf',
+    section: '§ 1 Features : « Operates From 4 V to 30 V », « Less Than 60-µA Current Drain », « Linear + 10-mV/°C Scale Factor »'
+  },
   mq2: {
     title: 'MQ-2 Semiconductor Sensor for Combustible Gas',
     publisher: 'fabricant non indiqué (fiche diffusée par Pololu)',
@@ -237,6 +267,24 @@ export const SOURCES = {
     url: 'https://www.analog.com/media/en/technical-documentation/data-sheets/DS18B20.pdf',
     mirror: 'https://cdn.sparkfun.com/datasheets/Sensors/Temp/DS18B20.pdf',
     section: 'DC Electrical Characteristics : Supply Voltage VDD 3.0 à 5.5 V, Active Current IDD 1 à 1.5 mA'
+  },
+  boschBme280: {
+    title: 'BME280 – Data sheet (BST-BME280-DS001-24, revision 1.24)',
+    publisher: 'Bosch Sensortec',
+    url: 'https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bme280-ds002.pdf',
+    section: 'Table 1 Electrical parameter specification, p. 8 : VDD « 1.71 1.8 3.6 V » ; « Current during pressure measurement IDDP Max value at -40 °C 714 µA »'
+  },
+  winsenMq135: {
+    title: 'Air Quality Gas Sensor (Model: MQ135) Manual, Version 1.4',
+    publisher: 'Zhengzhou Winsen Electronics Technology',
+    url: 'https://www.winsen-sensor.com/d/files/PDF/Semiconductor%20Gas%20Sensor/MQ135%20(Ver1.4)%20-%20Manual.pdf',
+    section: 'Standard Circuit Conditions : « Heater Voltage VH 5.0V±0.1V AC or DC », « Heater Resistance RH 29Ω±3Ω (room tem.) », « Heater consumption PH ≤950mW » (5 V / 29 Ω ≈ 172 mA)'
+  },
+  rcwl0516: {
+    title: 'RCWL-0516 Doppler radar motion sensor module – reverse engineering notes',
+    publisher: 'Joe Desbonnet (documentation communautaire, le fabricant ne publie pas de fiche)',
+    url: 'https://github.com/jdesbonnet/RCWL-0516',
+    section: 'Tableau des broches : « VIN | 4 - 28V supply voltage », « 3V3 | 3.3V regulated output » ; « Working voltage: 4 - 28V »'
   },
   boschBmp280: {
     title: 'BMP280 – Data sheet (BST-BMP280-DS001-26, revision 1.26)',

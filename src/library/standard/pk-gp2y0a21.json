@@ -1,0 +1,189 @@
+{
+  "format": 1,
+  "id": "pk-gp2y0a21",
+  "version": 2,
+  "name": "Sharp GP2Y0A21 distance infrarouge 10–80 cm",
+  "category": "Capteurs",
+  "prefix": "GP2Y",
+  "description": "Télémètre infrarouge Sharp GP2Y0A21 : une tension qui dépend de la distance, de 10 à 80 cm. Un seul fil analogique, sans impulsion à chronométrer, et peu sensible à la couleur de l’objet.",
+  "sources": {
+    "sharp": {
+      "title": "GP2Y0A21YK/GP2Y0D21YK General Purpose Type Distance Measuring Sensors",
+      "publisher": "Sharp",
+      "section": "Recommended Operating Conditions : VCC 4,5 à 5,5 V. Electro-optical Characteristics : 10 à 80 cm ; VO 0,4 V typ. à 80 cm ; variation 1,9 V typ. de 80 à 10 cm ; ICC 30 mA typ., 40 mA max. Fig.3 : période 38,3 ms ±9,6 ms. Fig.5 : courbe relevée sur le graphique, papier blanc 90 %. Broches : 1 VO, 2 GND, 3 VCC.",
+      "url": "https://cdn.sparkfun.com/assets/6/3/5/0/4/GP2Y0A21YK.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 30,
+  "ds": "sharp",
+  "pins": [
+    {
+      "name": "VO",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "≈ 0,4 V à 80 cm, ≈ 2,3 V à 10 cm, 3,15 V au plus : la sortie reste dans la plage d’un ADC 3,3 V."
+    },
+    {
+      "name": "GND",
+      "x": 0,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "gnd"
+    },
+    {
+      "name": "VCC",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 7.3,
+      "kind": "pwr",
+      "why": "Il lui faut 4,5 à 5,5 V, même sur une carte 3,3 V : prenez le 5 V, VIN ou VBUS.",
+      "v": [
+        4.5,
+        5.5
+      ],
+      "ds": "sharp"
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "VO",
+        "quantity": "dist",
+        "from": [
+          1,
+          80
+        ],
+        "ratio": false,
+        "to": [
+          0.4,
+          3.15
+        ],
+        "curve": [
+          [
+            1,
+            0.6
+          ],
+          [
+            2,
+            1.25
+          ],
+          [
+            3,
+            1.9
+          ],
+          [
+            5,
+            3.05
+          ],
+          [
+            6,
+            3.15
+          ],
+          [
+            7,
+            3
+          ],
+          [
+            8,
+            2.75
+          ],
+          [
+            10,
+            2.3
+          ],
+          [
+            15,
+            1.65
+          ],
+          [
+            20,
+            1.3
+          ],
+          [
+            25,
+            1.07
+          ],
+          [
+            30,
+            0.92
+          ],
+          [
+            40,
+            0.74
+          ],
+          [
+            50,
+            0.6
+          ],
+          [
+            60,
+            0.5
+          ],
+          [
+            70,
+            0.45
+          ],
+          [
+            80,
+            0.4
+          ]
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.04,
+      "tau": 0
+    }
+  },
+  "docs": {
+    "text": "Une LED infrarouge éclaire l’objet ; un capteur de position mesure l’angle du rayon renvoyé. La tension suit à peu près l’inverse de la distance. Sous 6 cm la courbe se replie : un objet très proche se lit comme un objet plus lointain. Au-delà de 80 cm, hors plage de la fiche, la simulation garde 0,4 V.",
+    "specs": [
+      [
+        "Alimentation",
+        "4,5 à 5,5 V, 30 mA en moyenne"
+      ],
+      [
+        "Plage",
+        "10 à 80 cm"
+      ],
+      [
+        "Sortie",
+        "0,4 V à 80 cm, 2,3 V à 10 cm"
+      ],
+      [
+        "Rafraîchissement",
+        "≈ 38 ms"
+      ],
+      [
+        "Connecteur",
+        "VO, GND, VCC"
+      ]
+    ],
+    "uses": [
+      "Robot qui évite les murs",
+      "Mesurer un niveau sans contact",
+      "Détecter une présence devant un distributeur"
+    ],
+    "mistakes": [
+      "Le monter à moins de 10 cm de l’objet visé : une même tension correspond alors à deux distances.",
+      "Lire la distance avec une règle de trois : la courbe est en 1/distance.",
+      "Oublier les pics de courant de la LED : ajoutez un condensateur d’au moins 10 µF près du capteur.",
+      "L’alimenter en 3,3 V : hors de la plage de la fiche."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1c1c1c",
+    "label": "GP2Y0A21",
+    "size": [
+      44,
+      1.6,
+      19
+    ]
+  }
+}

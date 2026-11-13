@@ -36,8 +36,10 @@ pub struct Ports {
     next: AtomicU32,
 }
 
-/// Débits acceptés (ceux du moniteur série de l'IDE Arduino).
-pub const BAUDS: [u32; 9] = [300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200];
+/// Débits acceptés (ceux du moniteur série de l'IDE Arduino, jusqu'à 921 600 pour les ESP32).
+pub const BAUDS: [u32; 13] = [
+    300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400, 250000, 460800, 921600,
+];
 
 fn list() -> Vec<PortInfo> {
     serialport::available_ports()
@@ -45,12 +47,21 @@ fn list() -> Vec<PortInfo> {
         .into_iter()
         .map(|p| {
             let (kind, vid, pid, product, manufacturer) = match p.port_type {
-                serialport::SerialPortType::UsbPort(u) => ("usb", Some(u.vid), Some(u.pid), u.product, u.manufacturer),
+                serialport::SerialPortType::UsbPort(u) => {
+                    ("usb", Some(u.vid), Some(u.pid), u.product, u.manufacturer)
+                }
                 serialport::SerialPortType::BluetoothPort => ("bluetooth", None, None, None, None),
                 serialport::SerialPortType::PciPort => ("pci", None, None, None, None),
                 serialport::SerialPortType::Unknown => ("unknown", None, None, None, None),
             };
-            PortInfo { name: p.port_name, kind: kind.into(), vid, pid, product, manufacturer }
+            PortInfo {
+                name: p.port_name,
+                kind: kind.into(),
+                vid,
+                pid,
+                product,
+                manufacturer,
+            }
         })
         .collect()
 }
@@ -74,9 +85,17 @@ pub fn serial_list() -> Vec<PortInfo> {
 /// Ouvre le port ; les octets reçus arrivent par `on_data` jusqu'à la fermeture (ou la carte débranchée :
 /// un tableau vide signale la fin). Rend l'identifiant du port ouvert.
 #[tauri::command]
-pub fn serial_open(state: State<'_, Ports>, name: String, baud: u32, on_data: Channel<Vec<u8>>) -> Result<u32, String> {
+pub fn serial_open(
+    state: State<'_, Ports>,
+    name: String,
+    baud: u32,
+    on_data: Channel<Vec<u8>>,
+) -> Result<u32, String> {
     check_open(&name, baud, &list())?;
-    let port = serialport::new(&name, baud).timeout(Duration::from_millis(20)).open().map_err(|e| e.to_string())?;
+    let port = serialport::new(&name, baud)
+        .timeout(Duration::from_millis(20))
+        .open()
+        .map_err(|e| e.to_string())?;
     let mut reader = port.try_clone().map_err(|e| e.to_string())?;
     let stop = Arc::new(AtomicBool::new(false));
     let id = state.next.fetch_add(1, Ordering::Relaxed) + 1;
@@ -97,7 +116,11 @@ pub fn serial_open(state: State<'_, Ports>, name: String, baud: u32, on_data: Ch
         }
         let _ = on_data.send(Vec::new());
     });
-    state.open.lock().map_err(|e| e.to_string())?.insert(id, Open { port, stop });
+    state
+        .open
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(id, Open { port, stop });
     Ok(id)
 }
 
@@ -113,9 +136,13 @@ pub fn serial_write(state: State<'_, Ports>, id: u32, bytes: Vec<u8>) -> Result<
 pub fn serial_reset(state: State<'_, Ports>, id: u32) -> Result<(), String> {
     let mut map = state.open.lock().map_err(|e| e.to_string())?;
     let o = map.get_mut(&id).ok_or("port fermé")?;
-    o.port.write_data_terminal_ready(false).map_err(|e| e.to_string())?;
+    o.port
+        .write_data_terminal_ready(false)
+        .map_err(|e| e.to_string())?;
     std::thread::sleep(Duration::from_millis(50));
-    o.port.write_data_terminal_ready(true).map_err(|e| e.to_string())
+    o.port
+        .write_data_terminal_ready(true)
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -131,7 +158,14 @@ mod tests {
     use super::*;
 
     fn port(name: &str) -> PortInfo {
-        PortInfo { name: name.into(), kind: "usb".into(), vid: Some(0x2341), pid: Some(0x0043), product: None, manufacturer: None }
+        PortInfo {
+            name: name.into(),
+            kind: "usb".into(),
+            vid: Some(0x2341),
+            pid: Some(0x0043),
+            product: None,
+            manufacturer: None,
+        }
     }
 
     #[test]
@@ -139,6 +173,7 @@ mod tests {
         let known = [port("/dev/cu.usbmodem1101")];
         assert!(check_open("/dev/cu.usbmodem1101", 57600, &known).is_ok());
         assert!(check_open("/dev/cu.usbmodem1101", 123456, &known).is_err());
+        assert!(check_open("/dev/cu.usbmodem1101", 921600, &known).is_ok());
         assert!(check_open("/etc/passwd", 57600, &known).is_err());
         assert!(check_open("/dev/cu.usbmodem1102", 57600, &known).is_err());
     }

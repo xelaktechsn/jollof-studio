@@ -537,6 +537,38 @@ void loop() {}`, board('esp32', { read: k => (k === 'D34' ? { v: 1.2 } : null) }
   assert.ok(warned(rt, /25 et 26/));
 });
 
+test('ESP32-S3 et ESP32-C3 : touchRead, analogRead(A0), LED_BUILTIN, Serial1 sur les broches par défaut ou choisies', () => {
+  // S3 : la valeur tactile augmente au contact ; A0 = GPIO 1 ; LED_BUILTIN = LED RVB, hors des broches du connecteur.
+  const s3 = start(`void setup() {
+  Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT); digitalWrite(LED_BUILTIN, HIGH);
+  Serial.println(touchRead(T1) < 30000 ? "repos" : "touche");
+  Serial.println(touchRead(T2) > 30000 ? "touche" : "repos");
+  Serial.println(analogRead(A0));
+  dacWrite(25, 10);
+}
+void loop() {}`, board('esp32s3', { read: k => (k === 'IO1' ? { v: 3.3 } : k === 'IO2' ? { d: 0, v: 0 } : null) }));
+  s3.step(2);
+  assert.equal(s3.out, 'repos\ntouche\n4095\n');
+  assert.ok(warned(s3, /dacWrite/), 'pas de DAC sur l’ESP32-S3');
+  assert.ok(!warned(s3, /n’existe pas/), 'LED_BUILTIN existe');
+  // C3 : pas d'entrée tactile ; A0 = GPIO 0.
+  const c3 = start(`void setup() { Serial.begin(115200); touchRead(1); Serial.println(analogRead(A0)); }
+void loop() {}`, board('esp32c3', { read: k => (k === 'IO0' ? { v: 0 } : null) }));
+  c3.step(2);
+  assert.equal(c3.out, '0\n');
+  assert.ok(warned(c3, /ESP32-C3 n’a pas d’entrée tactile/));
+  // Module série : S3 sur Serial1 par défaut (RX 15, TX 16), C3 sur Serial1 avec ses broches (RX 20, TX 21).
+  const AT = begin => `void setup() { Serial.begin(115200); ${begin} Serial1.println("AT"); delay(200); while (Serial1.available()) Serial.write(Serial1.read()); }
+void loop() {}`;
+  const g1 = comp('sim800'), r1 = start(AT('Serial1.begin(9600);'), board('esp32s3', { wires: { IO15: [{ comp: g1, pin: 'TXD' }], IO16: [{ comp: g1, pin: 'RXD' }] } }));
+  r1.step(30);
+  assert.match(r1.out, /AT\r\r\nOK\r\n/);
+  const g2 = comp('sim800'), r2 = start(AT('Serial1.begin(9600, SERIAL_8N1, 20, 21);'), board('esp32c3', { wires: { IO20: [{ comp: g2, pin: 'TXD' }], IO21: [{ comp: g2, pin: 'RXD' }] } }));
+  r2.step(30);
+  assert.match(r2.out, /AT\r\r\nOK\r\n/);
+});
+
 test('pulseIn : HC-SR04 seulement après une impulsion de 10 µs sur TRIG, délai d’attente respecté', () => {
   const SRC = trig => `void setup() { Serial.begin(9600); pinMode(5, OUTPUT); pinMode(6, INPUT); }
 void loop() {
@@ -1151,4 +1183,64 @@ void loop() {
   // Adresse d'une carte absente : rappel « perdu ».
   const lost = start(TX('0x24, 0x0A, 0xC4, 1, 2, 3'), board('esp32', { self: { type: 'esp32', id: 'x', name: 'x' }, peers })); lost.step(2);
   assert.match(lost.out, /^perdu\n/);
+});
+
+test('BME280, BH1750 et balance HX711 : bibliothèques, adresses, tare, étalonnage, attente des mesures', () => {
+  // BME280 à 0x76 : température, humidité, pression ; identifiant 0x60. À 0x77 : aucun module ne répond.
+  const bme = comp('bme280', { data: { temp: 23.5, hum: 61, press: 1002.5 } });
+  const r1 = start(`#include <Adafruit_BME280.h>
+Adafruit_BME280 bme;
+void setup() {
+  Serial.begin(115200);
+  Serial.println(bme.begin(0x77) ? "0x77" : "rien");
+  Serial.println(bme.begin(0x76) ? "0x76" : "rien");
+  Serial.println(bme.sensorID(), HEX);
+  Serial.println(bme.readTemperature(), 1); Serial.println(bme.readHumidity(), 0); Serial.println(bme.readPressure() / 100.0, 1);
+}
+void loop() {}`, board('esp32', { bus: [{ comp: bme, addr: [0x76] }] }));
+  r1.step(2);
+  assert.equal(r1.out, 'rien\n0x76\n60\n23.5\n61\n1002.5\n');
+  // BH1750 : −1 avant begin() ; begin() reprend l'adresse 0x23 par défaut (comme la vraie bibliothèque).
+  const bh = comp('bh1750', { data: { lux: 351.7 } });
+  const r2 = start(`#include <Wire.h>
+#include <BH1750.h>
+BH1750 lux1(0x5C);
+void setup() {
+  Serial.begin(115200);
+  Serial.println(lux1.readLightLevel(), 0);
+  Wire.begin();
+  Serial.println(lux1.begin() ? "ok" : "absent");
+  Serial.println(lux1.readLightLevel(), 0);
+  lux1.configure(BH1750::CONTINUOUS_LOW_RES_MODE);
+  Serial.println(lux1.readLightLevel(), 0);
+}
+void loop() {}`, board('uno', { bus: [{ comp: bh, addr: [0x23] }] }));
+  r2.step(2);
+  assert.equal(r2.out, '-1\nok\n352\n352\n');
+  // HX711 : tare puis étalonnage en grammes ; 10 mesures par seconde, read_average(10) attend environ 1 s.
+  const cell = comp('hx711', { data: { grams: 0, raw: 52000 } });
+  const r3 = start(`#include <HX711.h>
+HX711 balance;
+void setup() {
+  Serial.begin(115200);
+  balance.begin(4, 5);
+  balance.tare();
+  balance.set_scale(430.0);
+  Serial.println(balance.get_offset() > 51900 && balance.get_offset() < 52100 ? "tare" : "?");
+}
+void loop() {
+  if (balance.is_ready()) { Serial.println(balance.get_units(1), 0); delay(1000); }
+}`, board('uno', { wires: { D4: [{ comp: cell, pin: 'DT' }], D5: [{ comp: cell, pin: 'SCK' }] } }));
+  r3.step(80);
+  assert.match(r3.out, /^tare\n-?0\n/);
+  cell.data = { grams: 250, raw: 52000 + 250 * 430 };
+  r3.step(90);
+  assert.match(r3.out.trim().split('\n').at(-1), /^25[01]$|^249$/);
+  // DT sur une broche où rien n'est relié : la bibliothèque le dit.
+  const r4 = start(`#include <HX711.h>
+HX711 b;
+void setup() { b.begin(7, 8); }
+void loop() {}`, board('uno'));
+  r4.step(2);
+  assert.ok(warned(r4, /aucun module HX711/));
 });

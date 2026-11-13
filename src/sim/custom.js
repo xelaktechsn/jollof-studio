@@ -108,6 +108,8 @@ export function buildBoardProfile(name, familyId, pinNames) {
       if (!fam.noPu.includes(n) && caps.has('in')) caps.add('pu');
       if (caps.has('out') && (fam.pwm ? fam.pwm.includes(n) : !(fam.noPwm || []).includes(n))) caps.add('pwm');
       if (fam.adc.includes(n)) caps.add('adc');
+      // Interruption externe : D2 et D3 seulement sur l'ATmega328P, toute entrée ailleurs (sauf GPIO 16 de l'ESP8266).
+      if (caps.has('in') && (familyId === 'atmega328p' ? n === 2 || n === 3 : !(familyId === 'esp8266' && n === 16))) caps.add('irq');
       if (fam.uart0.includes(n)) { caps.add('uart0'); notes.push(tl('port série USB')); }
       if (fam.usb.includes(n)) notes.push(tl('lignes USB natives : à éviter si vous utilisez l’USB'));
       if (fam.inOnly.includes(n)) notes.push(tl('entrée seulement, sans résistance de tirage interne'));
@@ -123,7 +125,7 @@ export function buildBoardProfile(name, familyId, pinNames) {
   const spare = keys.filter(k => g(k).caps.has('out') && !g(k).note && !g(k).caps.has('adc'));
   prof.i2c = { sda: pinFor(fam.i2c.sda) || (!fam.fixedBus ? spare[0] : null), scl: pinFor(fam.i2c.scl) || (!fam.fixedBus ? spare[1] : null) };
   prof.spi = { sck: pinFor(fam.spi.sck), miso: pinFor(fam.spi.miso), mosi: pinFor(fam.spi.mosi), ss: pinFor(fam.spi.ss) };
-  if (fam.uart && pinFor(fam.uart.rx) && pinFor(fam.uart.tx)) prof.uart = { rx: pinFor(fam.uart.rx), tx: pinFor(fam.uart.tx), port: fam.uart.port };
+  if (fam.uart && pinFor(fam.uart.rx) && pinFor(fam.uart.tx)) prof.uart = { rx: pinFor(fam.uart.rx), tx: pinFor(fam.uart.tx), port: fam.uart.port, pins: /^esp32/.test(familyId) };
   const bus = new Set([...Object.values(prof.i2c), ...Object.values(prof.spi)].filter(Boolean));
   const rank = k => (g(k).note ? 3 : 0) + (bus.has(k) ? 2 : 0) + (g(k).caps.has('adc') ? 1 : 0);
   prof.order = keys.filter(k => g(k).caps.has('out') && !g(k).caps.has('uart0') && !g(k).caps.has('flash')).sort((a, b) => rank(a) - rank(b) || g(a).n - g(b).n);

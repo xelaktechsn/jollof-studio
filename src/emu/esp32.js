@@ -14,6 +14,7 @@
 import { pinMap } from '../prog/runtime.js';
 import { tl } from '../i18n/index.js';
 import { UNBRIDGED, unbridgedWarning } from './esp32-limits.js';
+import { pkgTypes } from '../sim/pkgparts.js';
 
 const GPIO = 0x3ff44000, LEDC = 0x3ff59000, APB_HZ = 80e6, REF_HZ = 1e6;
 const WINDOW = 60;        // ms : fenêtre d'analyse des fronts (signaux faits à coups de digitalWrite)
@@ -307,7 +308,7 @@ export function createEsp32Runtime(image, hw, opts = {}) {
     // Modules branchés que le mode fidèle ne fait pas encore répondre (revu de temps en temps : le montage change).
     if (now - lastUnbridged > 2000) {
       lastUnbridged = now;
-      const msg = unbridgedWarning(hw.comps ? hw.comps(UNBRIDGED) : []);
+      const msg = unbridgedWarning(hw.comps ? hw.comps([...UNBRIDGED, ...pkgTypes('i2c'), ...pkgTypes('spi'), ...pkgTypes('pulse')]) : []);
       if (msg) warnings.set('unbridged', { line: 0, msg, n: 1 }); else warnings.delete('unbridged');
     }
     if (lastBeatAt && now - lastBeatAt > STALL_MS) warnings.set('stall', { line: 0, msg: tl('L’ESP32 ne donne plus signe de vie depuis {0} s (programme bloqué, interruptions coupées ?).', Math.round((now - lastBeatAt) / 1000)), n: 1 });

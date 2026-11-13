@@ -6,19 +6,21 @@
 // modèle 3D vient du model.glb du paquet, de son dessin look.svg posé sur une plaquette, ou d'une forme simple
 // (module, bloc, LED, résistance) dessinée ici d'après le manifeste : jamais de code venu du paquet.
 import * as THREE from 'three';
-import { LIBRARY, BY_ID } from './catalog.js';
+import { LIBRARY, BY_ID, MINE } from './catalog.js';
 import { M, V3, mat, block, cyl, dome, text, board, add, boxGeo, canvasTex } from './kit.js';
 import { stdMat } from '../quality.js';
 import { PKG_SYMBOLS } from '../schematic/sheet.js';
-import { unpackJpart, registerSim, unregisterSim, toB64, fromB64, LED_COLORS } from './jpart.js';
+import { unpackJpart, validateManifest, registerSim, unregisterSim, toB64, fromB64, LED_COLORS } from './jpart.js';
 import { pkgOhms } from '../sim/pkgparts.js';
 import { tl, DEC } from '../i18n/index.js';
 
-/** type → { manifest, glb, symbol, svg, bytes, template, saved } */
+/** type → { manifest, glb, symbol, svg, bytes, template, saved, standard } */
 const STORE = new Map();
 export const installed = () => [...STORE.values()].map(p => p.manifest);
 export const packageOf = type => STORE.get(type) || null;
 export const isInstalled = type => STORE.has(type);
+/** Composant standard : livré avec l'application (src/library/standard), rangé dans sa catégorie. */
+export const isStandard = type => { const p = STORE.get(type); return !!(p && p.standard); };
 
 /* ---------- Modèle 3D ---------- */
 const GLOW = { '#d8322f': 0xff2a1a, '#2fbf5a': 0x30ff70, '#2f6fe0': 0x3080ff, '#f2c94c': 0xffd030, '#f2f2ee': 0xffffff, '#f28c28': 0xff9a30 };
@@ -186,13 +188,17 @@ function symbolFor(p) {
 /* ---------- Installation ---------- */
 /**
  * Installe un paquet lu (unpackJpart) et ses octets. opts.template : modèle .glb déjà lu ; opts.saved : présent dans
- * la bibliothèque personnelle. Remplace une version déjà installée du même identifiant. Rend le manifeste.
+ * la bibliothèque personnelle ; opts.standard : composant livré avec l'application. Les composants standard gardent
+ * la catégorie de leur manifeste ; tous les autres (créés dans l'atelier ou par un assistant IA, importés, apportés
+ * par un projet) sont rangés dans « Mes composants ». Remplace une version déjà installée du même identifiant, sauf
+ * un composant standard par une copie qui n'est pas plus récente. Rend le manifeste installé.
  */
 export function installUnpacked(pk, bytes, opts = {}) {
-  const m = pk.manifest, t = m.id;
+  const m = pk.manifest, t = m.id, std = !!opts.standard, cur = STORE.get(t);
+  if (cur && cur.standard && !std && m.version <= cur.manifest.version) return cur.manifest;
   registerSim(m);
-  const p = { manifest: m, glb: pk.glb, symbol: pk.symbol, svg: pk.svg, bytes, template: opts.template || null, saved: !!opts.saved };
-  const entry = { id: t, name: tl(m.name), cat: tl(m.category), pre: m.prefix, build: builder(p), custom: true, pkg: true, ...(m.behaviour.led ? { led: true } : {}) };
+  const p = { manifest: m, glb: pk.glb, symbol: pk.symbol, svg: pk.svg, bytes, template: opts.template || null, saved: !std && !!opts.saved, standard: std };
+  const entry = { id: t, name: tl(m.name), cat: std ? tl(m.category) : MINE, group: tl(m.category), pre: m.prefix, build: builder(p), custom: !std, pkg: true, ...(std ? { std: true } : {}), ...(m.behaviour.led ? { led: true } : {}) };
   const i = LIBRARY.findIndex(e => e.id === t);
   if (opts.hidden) { if (i >= 0) LIBRARY.splice(i, 1); }
   else if (i >= 0) LIBRARY[i] = entry; else LIBRARY.push(entry);
@@ -201,6 +207,20 @@ export function installUnpacked(pk, bytes, opts = {}) {
   if (sym) PKG_SYMBOLS[t] = sym; else delete PKG_SYMBOLS[t];
   STORE.set(t, p);
   return m;
+}
+/**
+ * Composants standard (manifestes de src/library/standard) : vérifiés comme tout paquet, installés sans archive.
+ * Rend { ids, errors } ; un manifeste invalide est ignoré (et signalé).
+ */
+export function installStandard(manifests) {
+  const out = { ids: [], errors: [] };
+  for (const raw of manifests || []) {
+    const v = validateManifest(raw);
+    if (!v.ok) { out.errors.push(`${raw && raw.id} : ${v.errors[0]}`); continue; }
+    installUnpacked({ manifest: v.manifest, glb: null, symbol: null, svg: null }, null, { standard: true });
+    out.ids.push(v.manifest.id);
+  }
+  return out;
 }
 /** Lit, vérifie et installe une archive .jpart (octets). Le modèle .glb est lu avant l'installation. */
 export async function installBytes(bytes, opts = {}) {
@@ -211,7 +231,7 @@ export async function installBytes(bytes, opts = {}) {
 }
 /** Retire un paquet. keep : il reste utilisable (composants posés) mais quitte la liste de la bibliothèque. */
 export function uninstall(type, keep = false) {
-  const p = STORE.get(type); if (!p) return;
+  const p = STORE.get(type); if (!p || p.standard) return;
   const i = LIBRARY.findIndex(e => e.id === type); if (i >= 0) LIBRARY.splice(i, 1);
   p.saved = false;
   if (keep) return;
@@ -221,9 +241,12 @@ export function uninstall(type, keep = false) {
 export function markSaved(type, saved = true) { const p = STORE.get(type); if (p) p.saved = saved; }
 
 /* ---------- Projets ---------- */
-/** Paquets utilisés par ces composants, à enregistrer dans le projet (.jollof) : [{ id, version, jpart }]. */
+/**
+ * Paquets utilisés par ces composants, à enregistrer dans le projet (.jollof) : [{ id, version, jpart }]. Les
+ * composants standard n'y sont pas : comme ceux de la bibliothèque, l'application les a déjà.
+ */
 export function embedFor(comps) {
-  const types = [...new Set(comps.map(c => c.type))].filter(t => STORE.has(t));
+  const types = [...new Set(comps.map(c => c.type))].filter(t => STORE.has(t) && !STORE.get(t).standard);
   return types.length ? types.map(t => { const p = STORE.get(t); return { id: t, version: p.manifest.version, jpart: toB64(p.bytes) }; }) : undefined;
 }
 /**

@@ -44,7 +44,7 @@ export function createGuides(o) {
       let s = tagOf.get(c);
       if (!s || s.userData.name !== c.name) {
         if (s) { tags.remove(s); dispose(s); }
-        s = textSprite(c.name, { color: '#f2f4f5', size: 34, bg: 'rgba(13,16,19,.82)', border: '#e0703a', onTop: false });
+        s = textSprite(c.name, { color: '#f2f4f5', size: 34, bg: 'rgba(13,16,19,.82)', border: '#3b82f6', onTop: false });
         s.userData.name = c.name; tagOf.set(c, s); tags.add(s);
       }
       const b = o.boxOf(c), k = c.boxKey;

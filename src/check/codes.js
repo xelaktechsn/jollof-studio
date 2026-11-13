@@ -80,6 +80,8 @@ export const CODES = {
   J0608: { level: 'error', title: m => tl('{0} en sortie contre la sortie de {1}', m.name, m.b) },
   J0609: { level: 'error', title: m => tl('Broche {0} inconnue sur {1}', m.name, m.b) },
   J0610: { level: 'error', title: m => tl('{0} et {1} répondent à la même adresse I2C (0x{2})', m.a, m.b, m.addr) },
+  // Plan pneumatique et électropneumatique : le titre vient du vérificateur du plan (src/pneu/check.js).
+  J0701: { level: 'error' }, J0702: { level: 'warning' }, J0703: { level: 'error' }, J0704: { level: 'warning' },
   J0901: { level: 'warning', title: m => tl('{0} sans diode de roue libre', m.name) },
   J0902: { level: 'warning', title: m => tl('{0} : {1} demandés, la pile se videra vite', m.name, fmtMA(m.value)) },
   J0903: { level: 'warning', title: m => tl('{0} : broche de démarrage tirée au niveau {1}', m.name, m.high ? tl('haut') : tl('bas')) },
@@ -92,6 +94,6 @@ export const BY_KEY = Object.fromEntries(Object.entries(CODES).filter(([, c]) =>
 /** Famille d'un code, pour regrouper. */
 export const FAMILY = {
   J01: tl('Alimentation et courts-circuits'), J02: tl('Signaux et broches'), J03: tl('Valeurs nominales'), J04: tl('Polarité'),
-  J05: tl('Moteurs'), J06: tl('Programme et montage'), J09: tl('Conseils'), J1: tl('Code du programme')
+  J05: tl('Moteurs'), J06: tl('Programme et montage'), J07: tl('Pneumatique et électropneumatique'), J09: tl('Conseils'), J1: tl('Code du programme')
 };
 export const familyOf = code => FAMILY[code.slice(0, 3)] || FAMILY[code.slice(0, 2)] || '';

@@ -31,7 +31,7 @@ function keysOf(c) {
   if (prof) return [...Object.keys(prof.gpio), ...Object.keys(prof.power), 'GND', 'GND (2)', 'GND (3)', 'VIN', 'EN', 'RST', 'AREF', 'IOREF', 'VSYS', 'VBUS', '3V3_EN', 'RUN'];
   if (/^breadboard/.test(c.type)) return bbGroups(c).flatMap(g => g.keys);
   if (/^res-/.test(c.type)) return ['1', '2'];
-  if (c.type === 'bat9v' || c.type === 'bat18650') return ['+', '-'];
+  if (c.type === 'bat9v' || c.type === 'bat18650' || c.type === 'psu24') return ['+', '-'];
   const sp = PARTS[c.type]; return sp && sp.pins ? sp.pins.map(p => p.pin) : [];
 }
 function mount(compList, wireList) {
@@ -167,7 +167,8 @@ for (const type of ['uno', 'esp32']) {
   test(`traceur série (${type}) : lignes nom:valeur`, () => {
     const m = kit(type);
     const { code } = gen(m, program({ loop: seq(blk(B.PLOT, { LABEL: 'pot' }, { VALUE: sigN('POT1', 'pos') }), blk(B.PLOT, { LABEL: 'mes valeurs' }, { VALUE: arith('MULTIPLY', num(2), num(3)) }), delay(50)) }));
-    has(code, 'Serial.print("pot:");', 'Serial.println(analogRead(POT1));', 'Serial.print("mes_valeurs:");', 'Serial.println(2 * 3);');
+    const lit = t => (type === 'uno' ? `F(${t})` : t); // texte fixe en mémoire flash sur les cartes AVR
+    has(code, `Serial.print(${lit('"pot:"')});`, 'Serial.println(analogRead(POT1));', `Serial.print(${lit('"mes_valeurs:"')});`, 'Serial.println(2 * 3);');
     const prof = BOARDS[type], c = compile(code, { board: type });
     const rt = createRuntime(c.js, { kind: type, label: type, prof, read: () => null, echo: () => null, onPin: () => null, bus: () => [], data: () => null });
     for (let i = 0; i < 30; i++) rt.run(20);
@@ -187,7 +188,7 @@ for (const type of ['uno', 'esp32']) {
     });
     const { code } = gen(m, ws);
     has(code, 'int compteur = 0;', 'String nom = "";', 'float moyenne = 0;', 'unsigned long debut = 0;', 'bool etat = false;', 'int delay_v = 0;', 'bool petit = false;',
-      'compteur += 1;', 'moyenne = compteur / 2.0;', 'debut = millis();', 'Serial.println("compteur : " + String(compteur));',
+      'compteur += 1;', 'moyenne = compteur / 2.0;', 'debut = millis();', `Serial.print(${type === 'uno' ? 'F("compteur : ")' : '"compteur : "'});`, 'Serial.println(compteur);',
       `unsigned long ${isEn ? 'timer' : 'minuterie'}1 = 0;`, `if (millis() - ${isEn ? 'timer' : 'minuterie'}1 >= 500) {`, `  ${isEn ? 'timer' : 'minuterie'}1 = millis();`,
       'etat = !etat;', 'digitalWrite(LED1, etat ? HIGH : LOW);', 'digitalWrite(LED2, (millis() / 300) % 2 ? HIGH : LOW);');
     assert.equal(count(code, 'pinMode(LED1, OUTPUT);'), 1);
@@ -259,7 +260,9 @@ test('chaque capteur se lit en une expression (UNO, ESP32)', () => {
     const { code, warnings } = gen(m, program({ loop: seq(...reads, act('LCD1', 'line0', sigN('DHT1', 'temp')), act('LCD1', 'line1', text('ok')), act('LCD1', 'clear')) }));
     assert.deepEqual(warnings, []);
     has(code, 'dht1.readTemperature()', 'ds1_temperature()', isEn ? 'measureDistance(US1_TRIG, US1_ECHO)' : 'mesurerDistance(US1_TRIG, US1_ECHO)', `${isEn ? 'tilt' : 'inclinaison'}(mpu1)`,
-      'bmp1.readPressure() / 100.0', `ecrireLigne(lcd1, 0, String(dht1.readTemperature()));`.replace('ecrireLigne', isEn ? 'writeLine' : 'ecrireLigne'));
+      'bmp1.readPressure() / 100.0', isEn ? 'writeLine(lcd1, lcd1_lines, 0, String(dht1_temperature));' : 'ecrireLigne(lcd1, lcd1_lignes, 0, String(dht1_temperature));');
+    // DHT1 sert deux fois dans « en boucle » : lu une seule fois, en tête de loop().
+    assert.equal(code.split('dht1.readTemperature()').length - 1, 1, 'une seule lecture');
     assert.ok(!/^\s*(float|int|bool) \w+ = .*;\s*\/\/ Mesures/m.test(code) && !code.includes(isEn ? '// Measures' : '// Mesures'), 'lectures en ligne, rien dans loop() avant');
     assert.equal(ctx.pins.find(p => p.key === pins[0]).label, `${pins[0]} (DHT1)`);
   }

@@ -26,17 +26,42 @@ use tauri::{AppHandle, Manager, State};
 /// Version de l'émulateur : fork d'Espressif esp-develop-9.2.2-20250817, révision j1 de scripts/esp32-qemu/build-qemu.sh.
 pub const VERSION: &str = "9.2.2-20250817-j1";
 /// Page de la publication (GitHub Releases), remplie par .github/workflows/qemu-esp32.yml.
-const RELEASE_URL: &str = "https://github.com/xelaktechsn/jollof-studio/releases/download/qemu-esp32-9.2.2-20250817-j1";
+const RELEASE_URL: &str =
+    "https://github.com/xelaktechsn/jollof-studio/releases/download/qemu-esp32-9.2.2-20250817-j1";
 /// Paquet de chaque plateforme : (plateforme, archive, SHA-256). Empreinte vide : pas encore publié, installation
 /// refusée. Les empreintes viennent du fichier SHA256SUMS.txt de la publication.
 const PACKAGES: &[(&str, &str, &str)] = &[
-    ("x86_64-apple-darwin", "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-apple-darwin.zip", ""),
-    ("aarch64-apple-darwin", "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-apple-darwin.zip", ""),
-    ("x86_64-linux-gnu", "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-linux-gnu.zip", ""),
-    ("aarch64-linux-gnu", "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-linux-gnu.zip", ""),
-    ("x86_64-w64-mingw32", "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-w64-mingw32.zip", ""),
+    (
+        "x86_64-apple-darwin",
+        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-apple-darwin.zip",
+        "",
+    ),
+    (
+        "aarch64-apple-darwin",
+        "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-apple-darwin.zip",
+        "",
+    ),
+    (
+        "x86_64-linux-gnu",
+        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-linux-gnu.zip",
+        "",
+    ),
+    (
+        "aarch64-linux-gnu",
+        "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-linux-gnu.zip",
+        "",
+    ),
+    (
+        "x86_64-w64-mingw32",
+        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-w64-mingw32.zip",
+        "",
+    ),
 ];
-const EXE: &str = if cfg!(windows) { "qemu-system-xtensa.exe" } else { "qemu-system-xtensa" };
+const EXE: &str = if cfg!(windows) {
+    "qemu-system-xtensa.exe"
+} else {
+    "qemu-system-xtensa"
+};
 const MAX_ZIP: u64 = 100 * 1024 * 1024;
 /// Image de la flash : 1 à 16 Mo, par blocs de 64 Kio, chargeur d'amorçage de l'ESP32 à 0x1000 (octet magique 0xE9).
 const MAX_FLASH: usize = 16 * 1024 * 1024;
@@ -59,15 +84,27 @@ fn package(p: &str) -> Option<(&'static str, &'static str)> {
 
 /// Dossier de l'émulateur installé (une version par dossier).
 fn install_root(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_local_data_dir().map_err(|e| e.to_string())?.join("qemu-esp32").join(VERSION))
+    Ok(app
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("qemu-esp32")
+        .join(VERSION))
 }
 /// Dossier des images de flash des cartes lancées.
 fn run_dir(app: &AppHandle) -> Result<PathBuf, String> {
-    Ok(app.path().app_cache_dir().map_err(|e| e.to_string())?.join("qemu-run"))
+    Ok(app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| e.to_string())?
+        .join("qemu-run"))
 }
 
 pub fn sha256_hex(bytes: &[u8]) -> String {
-    Sha256::digest(bytes).iter().map(|b| format!("{b:02x}")).collect()
+    Sha256::digest(bytes)
+        .iter()
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 /// L'archive téléchargée doit avoir l'empreinte figée ; une empreinte vide veut dire « pas encore publié ».
 pub fn check_hash(bytes: &[u8], expected: &str) -> Result<(), String> {
@@ -78,17 +115,22 @@ pub fn check_hash(bytes: &[u8], expected: &str) -> Result<(), String> {
     if got.eq_ignore_ascii_case(expected) {
         Ok(())
     } else {
-        Err(format!("Archive de l’émulateur corrompue (SHA-256 {got}, attendu {expected})."))
+        Err(format!(
+            "Archive de l’émulateur corrompue (SHA-256 {got}, attendu {expected})."
+        ))
     }
 }
 
 /// Décompresse l'archive dans dest. Toutes les entrées doivent rester sous qemu/ (pas de « .. », pas de chemin
 /// absolu) ; les droits d'exécution sont gardés.
 pub fn extract(bytes: &[u8], dest: &Path) -> Result<(), String> {
-    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).map_err(|e| format!("Archive illisible : {e}"))?;
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+        .map_err(|e| format!("Archive illisible : {e}"))?;
     for i in 0..zip.len() {
         let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-        let rel = f.enclosed_name().ok_or_else(|| format!("Chemin refusé dans l’archive : {}", f.name()))?;
+        let rel = f
+            .enclosed_name()
+            .ok_or_else(|| format!("Chemin refusé dans l’archive : {}", f.name()))?;
         if rel.components().next().map(|c| c.as_os_str()) != Some(std::ffi::OsStr::new("qemu")) {
             return Err(format!("Entrée inattendue dans l’archive : {}", f.name()));
         }
@@ -106,7 +148,8 @@ pub fn extract(bytes: &[u8], dest: &Path) -> Result<(), String> {
         #[cfg(unix)]
         if let Some(mode) = f.unix_mode() {
             use std::os::unix::fs::PermissionsExt;
-            fs::set_permissions(&out, fs::Permissions::from_mode(mode & 0o755)).map_err(|e| e.to_string())?;
+            fs::set_permissions(&out, fs::Permissions::from_mode(mode & 0o755))
+                .map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -120,15 +163,30 @@ struct Installed {
 /// L'émulateur à lancer : celui de JOLLOF_QEMU, sinon celui installé, dont l'exécutable a toujours l'empreinte notée
 /// à l'installation (un fichier remplacé depuis n'est pas lancé).
 fn installed(app: &AppHandle) -> Option<Installed> {
-    if let Some(p) = std::env::var_os("JOLLOF_QEMU").map(PathBuf::from).filter(|p| p.is_file()) {
-        let share = p.parent().and_then(|b| b.parent()).map(|r| r.join("share").join("qemu")).filter(|s| s.is_dir());
-        return Some(Installed { exe: p, share, dev: true });
+    if let Some(p) = std::env::var_os("JOLLOF_QEMU")
+        .map(PathBuf::from)
+        .filter(|p| p.is_file())
+    {
+        let share = p
+            .parent()
+            .and_then(|b| b.parent())
+            .map(|r| r.join("share").join("qemu"))
+            .filter(|s| s.is_dir());
+        return Some(Installed {
+            exe: p,
+            share,
+            dev: true,
+        });
     }
     let root = install_root(app).ok()?.join("qemu");
     let exe = root.join("bin").join(EXE);
     let want = fs::read_to_string(root.join("installed.sha256")).ok()?;
     let bytes = fs::read(&exe).ok()?;
-    (sha256_hex(&bytes) == want.trim()).then(|| Installed { exe, share: Some(root.join("share").join("qemu")), dev: false })
+    (sha256_hex(&bytes) == want.trim()).then(|| Installed {
+        exe,
+        share: Some(root.join("share").join("qemu")),
+        dev: false,
+    })
 }
 
 #[derive(Serialize)]
@@ -161,13 +219,19 @@ pub async fn qemu_status(app: AppHandle) -> Result<QemuStatus, String> {
 /// Télécharge l'émulateur de cette plateforme (adresse et empreinte figées), le vérifie et l'installe. Avancement :
 /// octets reçus, envoyés par `on_progress` (avec le total quand le serveur le donne).
 #[tauri::command]
-pub async fn qemu_install(app: AppHandle, on_progress: Channel<(u64, u64)>) -> Result<QemuStatus, String> {
+pub async fn qemu_install(
+    app: AppHandle,
+    on_progress: Channel<(u64, u64)>,
+) -> Result<QemuStatus, String> {
     let root = install_root(&app)?;
     tauri::async_runtime::spawn_blocking(move || {
         let p = platform().ok_or("Plateforme non prise en charge par l’émulateur ESP32.")?;
-        let (file, hash) = package(p).ok_or("Plateforme non prise en charge par l’émulateur ESP32.")?;
+        let (file, hash) =
+            package(p).ok_or("Plateforme non prise en charge par l’émulateur ESP32.")?;
         if hash.is_empty() {
-            return Err("L’émulateur ESP32 n’est pas encore publié pour cette plateforme.".to_string());
+            return Err(
+                "L’émulateur ESP32 n’est pas encore publié pour cette plateforme.".to_string(),
+            );
         }
         let bytes = download(&format!("{RELEASE_URL}/{file}"), &|got, total| {
             let _ = on_progress.send((got, total));
@@ -178,12 +242,20 @@ pub async fn qemu_install(app: AppHandle, on_progress: Channel<(u64, u64)>) -> R
         let _ = fs::remove_dir_all(&tmp);
         extract(&bytes, &tmp)?;
         let exe = tmp.join("qemu").join("bin").join(EXE);
-        if !exe.is_file() || !tmp.join("qemu").join("share").join("qemu").join("esp32-v3-rom.bin").is_file() {
+        if !exe.is_file()
+            || !tmp
+                .join("qemu")
+                .join("share")
+                .join("qemu")
+                .join("esp32-v3-rom.bin")
+                .is_file()
+        {
             let _ = fs::remove_dir_all(&tmp);
             return Err("Archive de l’émulateur incomplète.".into());
         }
         let exe_hash = sha256_hex(&fs::read(&exe).map_err(|e| e.to_string())?);
-        fs::write(tmp.join("qemu").join("installed.sha256"), exe_hash).map_err(|e| e.to_string())?;
+        fs::write(tmp.join("qemu").join("installed.sha256"), exe_hash)
+            .map_err(|e| e.to_string())?;
         let _ = fs::remove_dir_all(&root);
         fs::rename(&tmp, &root).map_err(|e| format!("Installation impossible : {e}"))?;
         Ok(())
@@ -194,7 +266,9 @@ pub async fn qemu_install(app: AppHandle, on_progress: Channel<(u64, u64)>) -> R
 }
 
 fn download(url: &str, progress: &dyn Fn(u64, u64)) -> Result<Vec<u8>, String> {
-    let mut res = ureq::get(url).call().map_err(|e| format!("Téléchargement impossible ({url}) : {e}"))?;
+    let mut res = ureq::get(url)
+        .call()
+        .map_err(|e| format!("Téléchargement impossible ({url}) : {e}"))?;
     let total = res
         .headers()
         .get("content-length")
@@ -204,7 +278,9 @@ fn download(url: &str, progress: &dyn Fn(u64, u64)) -> Result<Vec<u8>, String> {
     let mut reader = res.body_mut().with_config().limit(MAX_ZIP).reader();
     let (mut buf, mut chunk, mut last) = (Vec::new(), vec![0u8; 64 * 1024], Instant::now());
     loop {
-        let n = reader.read(&mut chunk).map_err(|e| format!("Téléchargement interrompu : {e}"))?;
+        let n = reader
+            .read(&mut chunk)
+            .map_err(|e| format!("Téléchargement interrompu : {e}"))?;
         if n == 0 {
             break;
         }
@@ -222,7 +298,10 @@ fn download(url: &str, progress: &dyn Fn(u64, u64)) -> Result<Vec<u8>, String> {
 
 /// L'image doit ressembler à une flash d'ESP32 : taille, alignement, chargeur d'amorçage à 0x1000.
 pub fn check_flash(bytes: &[u8]) -> Result<(), String> {
-    let ok = bytes.len() >= 0x10000 && bytes.len() <= MAX_FLASH && bytes.len().is_multiple_of(0x10000) && bytes[0x1000] == 0xE9;
+    let ok = bytes.len() >= 0x10000
+        && bytes.len() <= MAX_FLASH
+        && bytes.len().is_multiple_of(0x10000)
+        && bytes[0x1000] == 0xE9;
     if ok {
         Ok(())
     } else {
@@ -235,11 +314,26 @@ pub fn check_flash(bytes: &[u8]) -> Result<(), String> {
 /// redémarrer la carte sans faute du programme), flash de la carte, UART0 (Serial) et UART1 (cale du mode fidèle)
 /// sur des sockets locales où QEMU se connecte, trace des écritures de registres (GPIO, LEDC) sur la sortie
 /// d'erreur. Dans -drive, une virgule du chemin se double.
-pub fn qemu_args(share: Option<&Path>, flash: &Path, uart_port: u16, side_port: u16) -> Vec<OsString> {
-    let mut a: Vec<OsString> = ["-machine", "esp32", "-display", "none", "-monitor", "none", "-nodefaults", "-global", "driver=timer.esp32.timg,property=wdt_disable,value=true"]
-        .iter()
-        .map(OsString::from)
-        .collect();
+pub fn qemu_args(
+    share: Option<&Path>,
+    flash: &Path,
+    uart_port: u16,
+    side_port: u16,
+) -> Vec<OsString> {
+    let mut a: Vec<OsString> = [
+        "-machine",
+        "esp32",
+        "-display",
+        "none",
+        "-monitor",
+        "none",
+        "-nodefaults",
+        "-global",
+        "driver=timer.esp32.timg,property=wdt_disable,value=true",
+    ]
+    .iter()
+    .map(OsString::from)
+    .collect();
     if let Some(s) = share {
         a.push("-L".into());
         a.push(s.as_os_str().to_owned());
@@ -312,7 +406,11 @@ pub struct QemuExit {
 /// Image de la flash d'une carte (corps binaire, carte dans l'en-tête x-board), écrite avant `qemu_start`.
 #[tauri::command]
 pub async fn qemu_flash(app: AppHandle, request: Request<'_>) -> Result<(), String> {
-    let board = request.headers().get("x-board").and_then(|v| v.to_str().ok()).ok_or("En-tête x-board manquant")?;
+    let board = request
+        .headers()
+        .get("x-board")
+        .and_then(|v| v.to_str().ok())
+        .ok_or("En-tête x-board manquant")?;
     let board = crate::safe_id(board)?;
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Le corps de la requête doit être binaire".into());
@@ -332,7 +430,11 @@ fn stamp(t0: Instant) -> [u8; 4] {
     ((t0.elapsed().as_micros() / 10) as u32).to_le_bytes()
 }
 /// Attend la connexion de QEMU sur une socket locale (il se connecte au démarrage), ou son arrêt prématuré.
-fn accept(l: &TcpListener, child: &Arc<Mutex<Child>>, deadline: Instant) -> Result<TcpStream, String> {
+fn accept(
+    l: &TcpListener,
+    child: &Arc<Mutex<Child>>,
+    deadline: Instant,
+) -> Result<TcpStream, String> {
     l.set_nonblocking(true).map_err(|e| e.to_string())?;
     loop {
         match l.accept() {
@@ -392,7 +494,10 @@ pub async fn qemu_start(
     }
     let inst = {
         let app = app.clone();
-        crate::blocking(move || installed(&app).ok_or_else(|| "L’émulateur ESP32 n’est pas installé.".to_string())).await?
+        crate::blocking(move || {
+            installed(&app).ok_or_else(|| "L’émulateur ESP32 n’est pas installé.".to_string())
+        })
+        .await?
     };
     let flash = run_dir(&app)?.join(format!("{board}.bin"));
     if !flash.is_file() {
@@ -401,20 +506,35 @@ pub async fn qemu_start(
     let instance = crate::blocking(move || {
         let lu = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
         let ls = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
-        let args = qemu_args(inst.share.as_deref(), &flash, lu.local_addr().map_err(|e| e.to_string())?.port(), ls.local_addr().map_err(|e| e.to_string())?.port());
+        let args = qemu_args(
+            inst.share.as_deref(),
+            &flash,
+            lu.local_addr().map_err(|e| e.to_string())?.port(),
+            ls.local_addr().map_err(|e| e.to_string())?.port(),
+        );
         let mut cmd = Command::new(&inst.exe);
-        cmd.args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped());
+        cmd.args(&args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped());
         #[cfg(windows)]
         {
             use std::os::windows::process::CommandExt;
             cmd.creation_flags(0x0800_0000); // CREATE_NO_WINDOW : pas de console qui s'ouvre
         }
-        let mut child = cmd.spawn().map_err(|e| format!("QEMU n’a pas pu démarrer : {e}"))?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("QEMU n’a pas pu démarrer : {e}"))?;
         let stderr = child.stderr.take().ok_or("sortie d’erreur indisponible")?;
         let child = Arc::new(Mutex::new(child));
         let t0 = Instant::now();
         let deadline = t0 + Duration::from_secs(20); // premier lancement : le système peut examiner le programme
-        let (uart, side) = match (|| Ok::<_, String>((accept(&lu, &child, deadline)?, accept(&ls, &child, deadline)?)))() {
+        let (uart, side) = match (|| {
+            Ok::<_, String>((
+                accept(&lu, &child, deadline)?,
+                accept(&ls, &child, deadline)?,
+            ))
+        })() {
             Ok(x) => x,
             Err(e) => {
                 let _ = child.lock().map(|mut c| c.kill());
@@ -428,7 +548,12 @@ pub async fn qemu_start(
         let waiter = child.clone();
         std::thread::spawn(move || {
             let mut r = BufReader::new(stderr);
-            let (mut raw, mut batch, mut since, mut tail) = (Vec::<u8>::new(), Vec::<u8>::new(), Instant::now(), String::new());
+            let (mut raw, mut batch, mut since, mut tail) = (
+                Vec::<u8>::new(),
+                Vec::<u8>::new(),
+                Instant::now(),
+                String::new(),
+            );
             loop {
                 raw.clear();
                 match r.read_until(b'\n', &mut raw) {
@@ -446,7 +571,9 @@ pub async fn qemu_start(
                 } else if !line.starts_with("memory_region_ops_write") {
                     tail.push_str(&line);
                     if tail.len() > 4000 {
-                        let cut = (tail.len() - 3000..tail.len()).find(|&i| tail.is_char_boundary(i)).unwrap_or(tail.len());
+                        let cut = (tail.len() - 3000..tail.len())
+                            .find(|&i| tail.is_char_boundary(i))
+                            .unwrap_or(tail.len());
                         tail = tail[cut..].to_string();
                     }
                 }
@@ -473,13 +600,22 @@ pub async fn qemu_start(
         Ok(Instance { child, uart, side })
     })
     .await?;
-    state.runs.lock().map_err(|e| e.to_string())?.insert(board, instance);
+    state
+        .runs
+        .lock()
+        .map_err(|e| e.to_string())?
+        .insert(board, instance);
     Ok(())
 }
 
 /// Octets vers la carte : port 0, son Serial (UART0) ; port 1, la cale (UART1 : niveaux des entrées, ADC).
 #[tauri::command]
-pub fn qemu_input(state: State<'_, Qemu>, board: String, port: u8, bytes: Vec<u8>) -> Result<(), String> {
+pub fn qemu_input(
+    state: State<'_, Qemu>,
+    board: String,
+    port: u8,
+    bytes: Vec<u8>,
+) -> Result<(), String> {
     let mut m = state.runs.lock().map_err(|e| e.to_string())?;
     let i = m.get_mut(&board).ok_or("émulateur arrêté")?;
     let s = match port {
@@ -502,16 +638,38 @@ mod tests {
 
     #[test]
     fn arguments_are_fixed() {
-        let a = qemu_args(Some(Path::new("/app/qemu/share/qemu")), Path::new("/cache/qemu-run/esp,32.bin"), 40001, 40002);
+        let a = qemu_args(
+            Some(Path::new("/app/qemu/share/qemu")),
+            Path::new("/cache/qemu-run/esp,32.bin"),
+            40001,
+            40002,
+        );
         let s: Vec<String> = a.iter().map(|x| x.to_string_lossy().into_owned()).collect();
-        assert_eq!(&s[..9], ["-machine", "esp32", "-display", "none", "-monitor", "none", "-nodefaults", "-global", "driver=timer.esp32.timg,property=wdt_disable,value=true"]);
+        assert_eq!(
+            &s[..9],
+            [
+                "-machine",
+                "esp32",
+                "-display",
+                "none",
+                "-monitor",
+                "none",
+                "-nodefaults",
+                "-global",
+                "driver=timer.esp32.timg,property=wdt_disable,value=true"
+            ]
+        );
         assert!(s.windows(2).any(|w| w == ["-L", "/app/qemu/share/qemu"]));
         // Une virgule du chemin est doublée : elle ne peut pas ajouter d'option à -drive.
         assert!(s.contains(&"file=/cache/qemu-run/esp,,32.bin,if=mtd,format=raw".to_string()));
         assert!(s.contains(&"socket,id=uart0,host=127.0.0.1,port=40001".to_string()));
         assert!(s.contains(&"socket,id=uart1,host=127.0.0.1,port=40002".to_string()));
-        assert!(s.windows(2).any(|w| w == ["-trace", "memory_region_ops_write"]));
-        assert!(!qemu_args(None, Path::new("/f.bin"), 1, 2).iter().any(|x| x == "-L"));
+        assert!(s
+            .windows(2)
+            .any(|w| w == ["-trace", "memory_region_ops_write"]));
+        assert!(!qemu_args(None, Path::new("/f.bin"), 1, 2)
+            .iter()
+            .any(|x| x == "-L"));
     }
 
     #[test]
@@ -536,10 +694,24 @@ mod tests {
 
     #[test]
     fn hashes() {
-        assert_eq!(sha256_hex(b"abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
-        assert!(check_hash(b"abc", "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD").is_ok());
-        assert!(check_hash(b"abd", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad").is_err());
-        assert!(check_hash(b"abc", "").is_err(), "pas d'empreinte figée : refusé");
+        assert_eq!(
+            sha256_hex(b"abc"),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+        assert!(check_hash(
+            b"abc",
+            "BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD"
+        )
+        .is_ok());
+        assert!(check_hash(
+            b"abd",
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        )
+        .is_err());
+        assert!(
+            check_hash(b"abc", "").is_err(),
+            "pas d'empreinte figée : refusé"
+        );
         for (p, f, _) in PACKAGES {
             assert!(f.contains(VERSION) && f.ends_with(&format!("{p}.zip")));
         }
@@ -550,11 +722,18 @@ mod tests {
     /// registres GPIO. Sans ces variables, le test ne fait rien.
     #[test]
     fn live_qemu() {
-        let (Some(exe), Some(img)) = (std::env::var_os("JOLLOF_QEMU"), std::env::var_os("JOLLOF_ESP32_IMAGE")) else {
+        let (Some(exe), Some(img)) = (
+            std::env::var_os("JOLLOF_QEMU"),
+            std::env::var_os("JOLLOF_ESP32_IMAGE"),
+        ) else {
             return;
         };
         let exe = PathBuf::from(exe);
-        let share = exe.parent().and_then(|b| b.parent()).map(|r| r.join("share").join("qemu")).filter(|s| s.is_dir());
+        let share = exe
+            .parent()
+            .and_then(|b| b.parent())
+            .map(|r| r.join("share").join("qemu"))
+            .filter(|s| s.is_dir());
         let dir = std::env::temp_dir().join(format!("jollof-qemu-live-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
         let flash = dir.join("flash,1.bin"); // virgule dans le chemin : doublée dans -drive
@@ -563,15 +742,34 @@ mod tests {
         fs::write(&flash, &bytes).unwrap();
         let lu = TcpListener::bind("127.0.0.1:0").unwrap();
         let ls = TcpListener::bind("127.0.0.1:0").unwrap();
-        let args = qemu_args(share.as_deref(), &flash, lu.local_addr().unwrap().port(), ls.local_addr().unwrap().port());
-        let mut child = Command::new(&exe).args(&args).stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::piped()).spawn().unwrap();
+        let args = qemu_args(
+            share.as_deref(),
+            &flash,
+            lu.local_addr().unwrap().port(),
+            ls.local_addr().unwrap().port(),
+        );
+        let mut child = Command::new(&exe)
+            .args(&args)
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
         let stderr = child.stderr.take().unwrap();
         let child = Arc::new(Mutex::new(child));
         let deadline = Instant::now() + Duration::from_secs(20);
         let mut uart = accept(&lu, &child, deadline).unwrap();
         let _side = accept(&ls, &child, deadline).unwrap();
-        let gpio = std::thread::spawn(move || BufReader::new(stderr).lines().map_while(Result::ok).filter_map(|l| parse_trace(&l)).take(1).count());
-        uart.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+        let gpio = std::thread::spawn(move || {
+            BufReader::new(stderr)
+                .lines()
+                .map_while(Result::ok)
+                .filter_map(|l| parse_trace(&l))
+                .take(1)
+                .count()
+        });
+        uart.set_read_timeout(Some(Duration::from_secs(20)))
+            .unwrap();
         let (mut text, mut buf) = (String::new(), [0u8; 512]);
         while !text.contains("entry 0x") {
             let n = uart.read(&mut buf).unwrap();
@@ -597,7 +795,12 @@ mod tests {
         let _ = fs::remove_dir_all(&d);
         extract(&bytes, &d).unwrap();
         let exe = d.join("qemu").join("bin").join(EXE);
-        for f in [exe.clone(), d.join("qemu/share/qemu/esp32-v3-rom.bin"), d.join("qemu/SOURCE.md"), d.join("qemu/COPYING")] {
+        for f in [
+            exe.clone(),
+            d.join("qemu/share/qemu/esp32-v3-rom.bin"),
+            d.join("qemu/SOURCE.md"),
+            d.join("qemu/COPYING"),
+        ] {
             assert!(f.is_file(), "{f:?}");
         }
         #[cfg(unix)]
@@ -605,14 +808,19 @@ mod tests {
             use std::os::unix::fs::PermissionsExt;
             assert_ne!(fs::metadata(&exe).unwrap().permissions().mode() & 0o100, 0);
             let out = Command::new(&exe).arg("--version").output().unwrap();
-            assert!(String::from_utf8_lossy(&out.stdout).contains(VERSION), "{out:?}");
+            assert!(
+                String::from_utf8_lossy(&out.stdout).contains(VERSION),
+                "{out:?}"
+            );
         }
         let _ = fs::remove_dir_all(&d);
     }
 
     fn zip_of(entries: &[(&str, &[u8])]) -> Vec<u8> {
         let mut w = zip::ZipWriter::new(std::io::Cursor::new(Vec::new()));
-        let o = zip::write::SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored).unix_permissions(0o755);
+        let o = zip::write::SimpleFileOptions::default()
+            .compression_method(zip::CompressionMethod::Stored)
+            .unix_permissions(0o755);
         for (n, d) in entries {
             w.start_file(*n, o).unwrap();
             w.write_all(d).unwrap();
@@ -624,12 +832,29 @@ mod tests {
     fn extraction_stays_inside() {
         let d = std::env::temp_dir().join(format!("jollof-qemu-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
-        extract(&zip_of(&[("qemu/bin/qemu-system-xtensa", b"x"), ("qemu/share/qemu/esp32-v3-rom.bin", b"r")]), &d).unwrap();
-        assert_eq!(fs::read(d.join("qemu/bin/qemu-system-xtensa")).unwrap(), b"x");
+        extract(
+            &zip_of(&[
+                ("qemu/bin/qemu-system-xtensa", b"x"),
+                ("qemu/share/qemu/esp32-v3-rom.bin", b"r"),
+            ]),
+            &d,
+        )
+        .unwrap();
+        assert_eq!(
+            fs::read(d.join("qemu/bin/qemu-system-xtensa")).unwrap(),
+            b"x"
+        );
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            assert_eq!(fs::metadata(d.join("qemu/bin/qemu-system-xtensa")).unwrap().permissions().mode() & 0o111, 0o111);
+            assert_eq!(
+                fs::metadata(d.join("qemu/bin/qemu-system-xtensa"))
+                    .unwrap()
+                    .permissions()
+                    .mode()
+                    & 0o111,
+                0o111
+            );
         }
         assert!(extract(&zip_of(&[("qemu/../../evil", b"x")]), &d).is_err());
         assert!(extract(&zip_of(&[("/etc/evil", b"x")]), &d).is_err());

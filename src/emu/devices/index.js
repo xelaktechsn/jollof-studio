@@ -18,6 +18,9 @@
 import lcd from './lcd.js';
 import ssd1306 from './ssd1306.js';
 import bmp280 from './bmp280.js';
+import bme280 from './bme280.js';
+import bh1750 from './bh1750.js';
+import hx711 from './hx711.js';
 import mpu6050 from './mpu6050.js';
 import dht from './dht.js';
 import ds18b20 from './ds18b20.js';
@@ -28,8 +31,10 @@ import irnec from './irnec.js';
 import mfrc522 from './mfrc522.js';
 import nrf24 from './nrf24.js';
 import uart from './uart.js';
+import { pkgI2cModel, pkgSpiModel, pkgPulseModel } from './pkg.js';
 
-export const MODELS = [lcd, ssd1306, bmp280, mpu6050, dht, ds18b20, hcsr04, ws2812, keypad, irnec, mfrc522, nrf24, uart].filter(m => m.types.length);
+// Modules en paquet : leurs types se lisent à chaque rattachement (paquets installés pendant la simulation).
+export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht, ds18b20, hcsr04, ws2812, keypad, irnec, mfrc522, nrf24, uart].filter(m => m.types.length).concat([pkgI2cModel, pkgSpiModel, pkgPulseModel]);
 
 /**
  * Branche les modèles sur un processeur émulé. ctx : { cpu, MHZ, twi, spi, hw, pinApi, uart } (avr8js). Un autre

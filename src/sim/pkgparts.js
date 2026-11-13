@@ -31,3 +31,11 @@ export const pkgLimit = (t, k) => { const p = pkgOf(t); return (p && p.limits &&
 export const pkgSensorOut = t => { const p = pkgOf(t); return (p && p.sensorOut) || null; };
 /** Résistance : celles de la bibliothèque (res-220…) et les résistances en paquet. */
 export const isResistor = t => /^res-/.test(t) || pkgOhms(t) > 0;
+/** Module I2C déclaré : { address, alt, addressPin, regBytes, registers, commands }, ou null. */
+export const pkgI2c = t => { const p = pkgOf(t); return (p && p.i2c) || null; };
+/** Module SPI déclaré : { mode, cs, frame | registers… }, ou null. */
+export const pkgSpi = t => { const p = pkgOf(t); return (p && p.spi) || null; };
+/** Sorties à impulsions déclarées : [{ pin, quantity, hzPer | curve }], ou null. */
+export const pkgPulse = t => { const p = pkgOf(t); return (p && p.pulse && p.pulse.length && p.pulse) || null; };
+/** Types en paquet qui ont ce comportement (bus « i2c », « spi » ou « pulse ») : les modèles du mode fidèle s'y branchent. */
+export const pkgTypes = kind => Object.keys(PKG).filter(t => (kind === 'i2c' ? pkgI2c(t) : kind === 'spi' ? pkgSpi(t) : pkgPulse(t)));

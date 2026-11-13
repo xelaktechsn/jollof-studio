@@ -334,3 +334,50 @@ test('Règles : la LED en paquet a les actions d’une LED, le capteur en paquet
   assert.deepEqual(diags(b.r), diags(a.r), 'mêmes diagnostics pour le programme des règles');
   assert.equal(a.r.errors + a.r.warnings, 0, diags(a.r).join('\n'));
 });
+
+/* ---------- Composants standard et « Mes composants » ---------- */
+const STD_DIR = new URL('src/library/standard/', ROOT);
+const STD = fs.readdirSync(STD_DIR).filter(f => f.endsWith('.json')).map(f => JSON.parse(fs.readFileSync(new URL(f, STD_DIR), 'utf8')));
+const stdOf = id => clone(STD.find(m => m.id === id));
+
+test('Composants standard : valides, documentés et sourcés, rangés dans leur catégorie, jamais embarqués dans un projet', async () => {
+  const r = P.installStandard(STD);
+  assert.deepEqual(r.errors, []);
+  assert.equal(r.ids.length, STD.length);
+  assert.ok(STD.length >= 16);
+  for (const m of STD) {
+    const e = BY_ID[m.id];
+    assert.ok(e && LIBRARY.includes(e), `${m.id} dans la bibliothèque`);
+    assert.equal(e.cat, m.category, `${m.id} : catégorie du manifeste`);
+    assert.ok(e.std && !e.custom && P.isStandard(m.id), m.id);
+    assert.ok(m.description && m.docs && m.docs.text && m.docs.specs.length && m.docs.uses.length && m.docs.mistakes.length, `${m.id} documenté`);
+    assert.ok(Object.keys(m.sources || {}).length, `${m.id} : fiche technique citée`);
+    assert.ok(PARTS[m.id] && DOCS[m.id] && DOCS[m.id].how, m.id);
+    assert.ok(!/\(paquet\)/.test(m.name), `${m.id} : nom de bibliothèque`);
+  }
+  assert.deepEqual(P.embedFor([{ type: 'pk-tmp36' }, { type: 'pk-sht31' }, { type: 'pk-ldr' }]).map(x => x.id), ['pk-ldr'], 'seul le paquet personnel part avec le projet');
+  // Copie identique gardée dans la bibliothèque personnelle (composant créé avant d'être livré) : le standard reste.
+  await P.installBytes(J.packJpart({ manifest: stdOf('pk-tmp36') }), { saved: true });
+  assert.ok(P.isStandard('pk-tmp36'));
+  assert.equal(BY_ID['pk-tmp36'].cat, 'Capteurs');
+  const before = await P.installEmbedded([{ id: 'pk-tmp36', version: stdOf('pk-tmp36').version, jpart: J.toB64(J.packJpart({ manifest: stdOf('pk-tmp36') })) }]);
+  assert.deepEqual(before.added, [], 'projet qui embarquait la même version : rien à installer');
+  P.uninstall('pk-tmp36');
+  assert.ok(BY_ID['pk-tmp36'] && P.isStandard('pk-tmp36'), 'un composant standard ne se retire pas');
+});
+
+test('Mes composants : créés, importés ou apportés par un projet, rangés à part avec leur propre catégorie', async () => {
+  for (const id of PACKS) {
+    assert.equal(BY_ID[id].cat, 'Mes composants', id);
+    assert.ok(BY_ID[id].custom && !BY_ID[id].std && !P.isStandard(id), id);
+  }
+  assert.equal(BY_ID['pk-ldr'].group, 'Capteurs');
+  assert.equal(BY_ID['pk-led-red'].group, 'Sorties');
+  // Version personnelle plus récente d'un composant standard : elle le remplace, dans Mes composants.
+  await P.installBytes(J.packJpart({ manifest: { ...stdOf('pk-sht31'), version: 5, name: 'SHT31 de mon club' } }), { saved: true });
+  assert.ok(!P.isStandard('pk-sht31'));
+  assert.equal(BY_ID['pk-sht31'].cat, 'Mes composants');
+  assert.equal(BY_ID['pk-sht31'].name, 'SHT31 de mon club');
+  P.installStandard([stdOf('pk-sht31')]);
+  assert.ok(P.isStandard('pk-sht31') && BY_ID['pk-sht31'].cat === 'Capteurs');
+});

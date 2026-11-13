@@ -13,7 +13,7 @@ import { analyze, bbGroups, inspect, pid } from './circuit.js';
 import { collectFaults } from './faults.js';
 
 const EX = new URL('../../exemples/', import.meta.url), TP = new URL('../lab/tp/', import.meta.url);
-const LEGS = { diode: ['A', 'K'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'] };
+const LEGS = { diode: ['A', 'K'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'], psu24: ['+', '-'] };
 const keys = type => {
   const prof = BOARDS[type];
   if (prof) return [...Object.keys(prof.gpio), ...Object.keys(prof.power), 'GND', ...[2, 3, 4, 5, 6, 7, 8].map(n => `GND (${n})`), 'VIN', 'EN', 'RST', 'AREF', 'IOREF', 'VSYS', 'VBUS', '3V3_EN', 'RUN'];
@@ -50,7 +50,8 @@ const SNAPSHOT = {
     'err:short-g|esp32_1|3V3|esp32_1|GND',
     'err:undervolt|hcsr04_1|VCC',
     'warn:pullup|ds18b20_1|DQ'
-  ]
+  ],
+  '08-verin-electropneumatique.jollof': []
 };
 
 test('Instantané des erreurs : exemples, puis départ et solution de chaque TP', () => {

@@ -15,7 +15,9 @@ const read = p => JSON.parse(fs.readFileSync(path.join(ROOT, p), 'utf8'));
 // Licences sans obligation gênante pour une diffusion AGPL ou commerciale (permissives, ou faiblement copyleft
 // quand le composant reste un module séparé et remplaçable).
 const OK = new Set(['MIT', 'MIT-0', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', '0BSD', 'Apache-2.0', 'Apache-2.0 WITH LLVM-exception', 'Zlib',
-  'Unlicense', 'CC0-1.0', 'BSL-1.0', 'Unicode-DFS-2016', 'Unicode-3.0', 'OFL-1.1', 'CC-BY-4.0', 'Python-2.0', 'BlueOak-1.0.0', 'WTFPL']);
+  'Unlicense', 'CC0-1.0', 'BSL-1.0', 'Unicode-DFS-2016', 'Unicode-3.0', 'OFL-1.1', 'CC-BY-4.0', 'Python-2.0', 'BlueOak-1.0.0', 'WTFPL',
+  // Licence de données permissive (Linux Foundation) : certificats racine de webpki-roots, sans obligation de partage.
+  'CDLA-Permissive-2.0']);
 // Acceptées sous condition (notées dans le rapport) : module séparé (LGPL), fichiers sous la même licence (MPL, CC-BY-SA).
 const COND = { 'LGPL-2.1': 'module WebAssembly séparé et remplaçable', 'LGPL-2.1-only': 'module séparé et remplaçable', 'LGPL-2.1-or-later': 'module séparé et remplaçable',
   'MPL-2.0': 'copyleft par fichier : les fichiers MPL restent sous MPL', 'CC-BY-SA-4.0': 'modèles 3D : les fichiers convertis restent sous CC-BY-SA, crédit obligatoire' };
@@ -62,6 +64,8 @@ function cratePackages() {
     for (const d of (nodes.get(id) || { deps: [] }).deps) if (d.dep_kinds.some(k => k.kind == null)) stack.push(d.pkg);
   }
   seen.delete(meta.resolve.root);
+  // Caisses du dépôt lui-même (chemin local, membres de l'espace de travail) : le code de Jollof Studio, pas des tiers.
+  for (const id of [...seen]) { const p = byId.get(id); if (p && !p.source) seen.delete(id); }
   return dedupe([...seen].map(id => byId.get(id)).filter(Boolean).map(p => ({ kind: 'crate', name: p.name, version: p.version, license: p.license || (p.license_file ? 'voir ' + p.license_file : ''), url: p.repository || '' })));
 }
 

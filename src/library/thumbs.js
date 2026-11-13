@@ -28,6 +28,7 @@ const memo = { simple: null, real: null };
  * même au premier lancement sur un vieux PC. Les autres sont calculées puis gardées.
  */
 export function thumbnail(id, mode) {
+  // Livrées aussi pour les composants standard en paquet ; calculées pour ceux de l'utilisateur (custom).
   if (BY_ID[id] && !BY_ID[id].custom) return `thumbs/${mode}/${id}.webp`;
   return renderThumbnail(id, mode);
 }

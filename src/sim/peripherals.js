@@ -11,7 +11,7 @@ import './peripherals.css';
 import { tl, quote } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { firstMsg } from './circuit.js';
-import { boardOf } from './boards.js';
+import { boardOf, kindOf, BOARDS } from './boards.js';
 import {
   IR_KEYS, BADGES, KEYPAD_KEYS, PHONE, FAKE_HOSTS, hex2, periph, irPress, presentBadge, keypadDown, keypadUp, serialDevice, btSerial,
   macOf, cleanHtml, parseUrl, parseQuery, fakeHttp
@@ -25,7 +25,7 @@ const shown = s => String(s).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, c => (c === '\
 const phoneText = n => n.replace(/^\+221(\d{2})(\d{3})(\d{2})(\d{2})$/, '+221 $1 $2 $3 $4');
 const REPEAT_MS = 110; // trame de répétition NEC tant que la touche reste enfoncée
 const WAIT_MS = 8000; // le navigateur abandonne une page qui ne vient pas
-const isWifiBoard = c => c.type === 'esp32' || c.type === 'nodemcu';
+const isWifiBoard = c => !!BOARDS[c.type] && ['esp32', 'esp32s3', 'esp32c3', 'nodemcu'].includes(kindOf(c));
 const FIELD_COLORS = ['#e0703a', '#5b9cf5', '#3fb27f', '#f2c94c'];
 
 /**
@@ -42,7 +42,7 @@ export function installPeripherals(app) {
   function mount() {
     if (sec) return true;
     const after = document.getElementById('probeSec'); if (!after) return false;
-    after.insertAdjacentHTML('afterend', `<section id="periphSec" hidden><h2>${icon('radio')}${tl('Périphériques')}</h2><ul class="probes periphs" id="periphs"></ul></section>`);
+    after.insertAdjacentHTML('afterend', `<section id="periphSec" data-fold="periph" hidden><h2>${icon('radio')}${tl('Périphériques')}</h2><ul class="probes periphs" id="periphs"></ul></section>`);
     sec = document.getElementById('periphSec'); list = document.getElementById('periphs');
     bind();
     return true;
@@ -295,7 +295,7 @@ export function installPeripherals(app) {
     if (!app.simOn()) { if (wasOn) reset(); wasOn = false; sec.hidden = true; return; }
     wasOn = true;
     const its = items();
-    sec.hidden = !its.length;
+    if (sec.hidden !== !its.length) sec.hidden = !its.length;
     const s = its.map(x => x.key).join('|');
     if (s !== sig) {
       // Liste changée : les cartes sont refaites (sauf si l'élève écrit dans l'une d'elles).

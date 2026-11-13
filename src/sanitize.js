@@ -29,7 +29,7 @@ export function sanitizeProject(d) {
   out.wires = (Array.isArray(d.wires) ? d.wires : []).filter(w => w && Array.isArray(w.a) && Array.isArray(w.b)).map(w => ({
     ...w, a: [cleanId(w.a[0]), pinKey(w.a[1])], b: [cleanId(w.b[0]), pinKey(w.b[1])], color: cleanColor(w.color), role: w.role == null ? w.role : cleanText(w.role, 80)
   })).filter(w => w.a[0] && w.b[0]);
-  if (Array.isArray(d.blocks)) out.blocks = d.blocks.map(b => ({ ...b, id: cleanId(b && b.id) || undefined, name: cleanText(b && b.name, 40), color: cleanColor(b && b.color, '#e0703a'), comps: Array.isArray(b && b.comps) ? b.comps.map(cleanId).filter(Boolean) : [] }));
+  if (Array.isArray(d.blocks)) out.blocks = d.blocks.map(b => ({ ...b, id: cleanId(b && b.id) || undefined, name: cleanText(b && b.name, 40), color: cleanColor(b && b.color, '#3b82f6'), comps: Array.isArray(b && b.comps) ? b.comps.map(cleanId).filter(Boolean) : [] }));
   if (d.settings && typeof d.settings === 'object') {
     out.settings = { ...d.settings };
     const nn = d.settings.netNames;

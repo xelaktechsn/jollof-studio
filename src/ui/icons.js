@@ -3,6 +3,8 @@
 // Jeu d'icônes de l'interface : tracés SVG 24 × 24 au trait, dessinés pour Jollof Studio.
 // <i data-icon="nom"></i> dans le HTML est remplacé au démarrage ; icon('nom') sert dans le code.
 import { tl } from '../i18n/index.js';
+import { LOGO, WORDMARK } from './brand.js';
+export { LOGO, WORDMARK };
 const P = {
   filePlus: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5 M12 11v6 M9 14h6',
   file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z M14 3v5h5',
@@ -46,10 +48,12 @@ const P = {
   cube: 'M12 2.5 3.5 7.2v9.6l8.5 4.7 8.5-4.7V7.2z M3.5 7.2 12 12l8.5-4.8 M12 12v9.5',
   shapes: 'M4 4h7v7H4z M17.5 4a3.5 3.5 0 1 1 0 7 3.5 3.5 0 0 1 0-7z M7.5 13.5 11 20H4z M14 14h7v7h-7z',
   sidebar: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M9.5 4v16 M6.5 8h.01 M6.5 11h.01',
+  split: 'M5 4h14a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z M12 4v16 M7 9h2 M15 9h2 M7 13h2 M15 13h2',
   chevsLeft: 'M11 17l-5-5 5-5 M18 17l-5-5 5-5',
   chevsRight: 'M13 17l5-5-5-5 M6 17l5-5-5-5',
   chevUp: 'M6 15l6-6 6 6',
   chevDown: 'M6 9l6 6 6-6',
+  pointer: 'M5 3.5l13 6.2-5.6 1.7-2.2 5.6z M12.6 11.6l5.4 5.4',
   pin: 'M12 21s6.5-5.8 6.5-11.2a6.5 6.5 0 1 0-13 0C5.5 15.2 12 21 12 21z M12 12a2.3 2.3 0 1 0 0-4.6 2.3 2.3 0 0 0 0 4.6z',
   code: 'M8.5 7 3.5 12l5 5 M15.5 7l5 5-5 5 M13.5 4.5l-3 15',
   puzzle: 'M4 7h4a2 2 0 1 1 4 0h4v4a2 2 0 1 1 0 4v4H4z',
@@ -67,6 +71,8 @@ const P = {
   present: 'M3 4h18 M4 4v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V4 M12 16v4 M8 21l4-1 4 1 M10 8l4 2.5-4 2.5z',
   graduation: 'M12 4 2 9l10 5 10-5z M6 11v5c0 1.5 2.7 3 6 3s6-1.5 6-3v-5 M22 9v6',
   route: 'M5 19V12h7V5h7 M5 19h.01 M19 5h.01',
+  pneu: 'M2 8h13v8H2z M6 8v8 M15 12h7 M22 9v6 M4 19h3 M5.5 16v3',
+  train: 'M8 3h8a4 4 0 0 1 4 4v7a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a4 4 0 0 1 4-4z M4 10h16 M8 14h.01 M16 14h.01 M9 17l-2 4 M15 17l2 4',
   curve: 'M4 19C4 9 20 15 20 5 M4 19h.01 M20 5h.01',
   lock: 'M6 11h12a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-7a1 1 0 0 1 1-1z M8.5 11V8a3.5 3.5 0 0 1 7 0v3 M12 15v2',
   schematic: 'M3 12h3l2-4 3 8 2-4h2 M15 12h2 M17 8v8 M20 9.5v5 M3 4h7 M3 20h7',
@@ -124,7 +130,11 @@ const P = {
   alignRight: 'M4 6h16 M10 10h10 M4 14h16 M10 18h10',
   heading: 'M6 4v16 M18 4v16 M6 12h12',
   sparkle: 'M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z M19 16l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z',
-  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0'
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M4 21a8 8 0 0 1 16 0',
+  logic: 'M7 5h5a7 7 0 0 1 0 14H7z M2 9h5 M2 15h5 M19 12h3',
+  usb: 'M12 3v14 M9.5 5.5 12 3l2.5 2.5 M12 14l-4-2.5V9 M12 12l4-2.5V7 M7 7h2v2H7z M15 5h2v2h-2z M12 17a2 2 0 1 0 0 4 2 2 0 1 0 0-4',
+  target: 'M12 2.5v4 M12 17.5v4 M2.5 12h4 M17.5 12h4 M12 5.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 1 0 0-13 M12 11a1 1 0 1 0 0 2 1 1 0 1 0 0-2',
+  flipflop: 'M6 4h12v16H6z M6 9l3 2.5L6 14 M2 7h4 M2 11.5h4 M18 7h4 M18 17h4 M11 7h4'
 };
 
 export function icon(name, cls = '') {
@@ -132,15 +142,13 @@ export function icon(name, cls = '') {
   if (!d) return '';
   return `<svg class="ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="${d}"/></svg>`;
 }
-/** Logo : une carte stylisée, piste en J et pastille de soudure. */
-export const LOGO = '<svg class="logo" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="7" fill="#e0703a"/><path d="M17 7.5v9a4.5 4.5 0 0 1-9 0" fill="none" stroke="#1e0d04" stroke-width="2.6" stroke-linecap="round"/><circle cx="17" cy="7.5" r="2.4" fill="#1e0d04"/><circle cx="8" cy="16.5" r="1.4" fill="#1e0d04"/></svg>';
 
 /** Remplit chaque <i data-icon> de son icône. */
 export function hydrateIcons(root = document) {
   root.querySelectorAll('[data-icon]').forEach(el => {
     if (el.dataset.done) return;
     el.dataset.done = '1';
-    el.insertAdjacentHTML('afterbegin', el.dataset.icon === 'logo' ? LOGO : icon(el.dataset.icon));
+    el.insertAdjacentHTML('afterbegin', el.dataset.icon === 'logo' ? LOGO : el.dataset.icon === 'wordmark' ? WORDMARK : icon(el.dataset.icon));
   });
 }
 /** Icône de chaque catégorie de la bibliothèque. */

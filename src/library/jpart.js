@@ -15,6 +15,7 @@ import { MODELS, QUANT } from '../sim/models.js';
 import { DOCS } from './docs.js';
 import { SOURCES } from '../check/sources.js';
 import { PKG } from '../sim/pkgparts.js';
+import { pulseHz } from '../sim/pkgbus.js';
 import { SIGNALS, ACTIONS } from '../prog/rules.js';
 import { volts } from '../sim/boards.js';
 import { sanitizeSvg } from '../import/xml.js';
@@ -27,7 +28,7 @@ const ENTRIES = ['part.json', 'model.glb', 'symbol.json', 'look.svg'];
 /** Catégories de la bibliothèque (noms français, traduits à l'affichage) ; cartes et prototypage exclus. */
 export const PKG_CATEGORIES = ['Capteurs', 'Entrées', 'Affichage', 'Sorties', 'Moteurs', 'Passifs', 'Alimentation', 'Communication'];
 export const PIN_KINDS = ['pwr', 'gnd', 'io', 'nc', 'drv', 'contact', 'passive'];
-export const NEEDS = ['io', 'in', 'out', 'pullup', 'pwm', 'adc', 'sda', 'scl', 'sck', 'mosi', 'miso', 'ss', 'rx', 'tx'];
+export const NEEDS = ['io', 'in', 'out', 'pullup', 'pwm', 'adc', 'irq', 'sda', 'scl', 'sck', 'mosi', 'miso', 'ss', 'rx', 'tx'];
 /** Résistances de la bibliothèque qu'une broche peut demander en série (via) ou en tirage (pull). */
 export const RESISTORS = ['res-22', 'res-220', 'res-330', 'res-1k', 'res-4k7', 'res-10k'];
 export const LOOKS = ['module', 'block', 'led', 'resistor', 'glb', 'svg'];
@@ -200,7 +201,7 @@ export function validateManifest(raw) {
 
   // Comportement déclaratif : aucune formule, aucun code ; des pins, des nombres et des grandeurs connues.
   m.behaviour = {};
-  if (raw.behaviour != null && keys(raw.behaviour, 'part.behaviour', ['load', 'led', 'analogOut', 'digitalOut', 'sample'])) {
+  if (raw.behaviour != null && keys(raw.behaviour, 'part.behaviour', ['load', 'led', 'analogOut', 'digitalOut', 'pulseOut', 'i2c', 'spi', 'sample'])) {
     const B = raw.behaviour;
     if (B.load != null && keys(B.load, 'part.behaviour.load', ['pin', 'to', 'ohms'])) {
       const g = m.pins.find(q => q.kind === 'gnd');
@@ -246,15 +247,100 @@ export function validateManifest(raw) {
       if (D.quantity && !QUANT[D.quantity].bool) D.threshold = number(o.threshold, `${path}.threshold`, -1e6, 1e6, { req: true });
       return D.pin && D.quantity && (QUANT[D.quantity].bool || D.threshold != null) ? D : null;
     }).filter(Boolean);
+    // Impulsions : fréquence proportionnelle à une grandeur (débitmètre, anémomètre), comptée par une interruption.
+    m.behaviour.pulseOut = list(B.pulseOut).slice(0, 4).map((o, i) => {
+      const path = `part.behaviour.pulseOut[${i}]`;
+      if (!keys(o, path, ['pin', 'quantity', 'hzPer', 'curve'])) return null;
+      const P = { pin: out(o, path), quantity: quantity(o.quantity, `${path}.quantity`) };
+      if (o.curve != null) {
+        const c = arr(o.curve, `${path}.curve`, 64).map((x, j) => (Array.isArray(x) && x.length === 2 && x.every(num) && x[1] >= 0 && x[1] <= 1e5 ? [x[0], x[1]] : (fail(`${path}.curve[${j}]`, tl('[grandeur, fréquence en Hz] attendu')), null))).filter(Boolean);
+        if (c.some((x, j) => j && x[0] <= c[j - 1][0])) fail(`${path}.curve`, tl('grandeurs strictement croissantes attendues'));
+        if (c.length >= 2) P.curve = c; else fail(`${path}.curve`, tl('au moins deux points'));
+      } else P.hzPer = number(o.hzPer, `${path}.hzPer`, 0.0001, 1e5, { req: true });
+      return P.pin && P.quantity && (P.curve || P.hzPer) ? P : null;
+    }).filter(Boolean);
     for (const o of [...m.behaviour.analogOut, ...m.behaviour.digitalOut]) {
       const q = pinOf(o.pin);
       if (q && !(q.kind === 'io' && ['in', 'adc', 'io'].includes(q.need))) fail('part.behaviour', tl('la sortie {0} doit être une broche io (in, adc ou io)', o.pin));
+    }
+    for (const o of m.behaviour.pulseOut) {
+      const q = pinOf(o.pin);
+      if (q && !(q.kind === 'io' && ['irq', 'in', 'io'].includes(q.need))) fail('part.behaviour', tl('la sortie à impulsions {0} doit être une broche io (irq conseillé : broche à interruption)', o.pin));
+    }
+    // Valeur codée sur un bus : grandeur → brut = arrondi(grandeur × scale + offset), bits, signe, décalage, ordre des octets.
+    const byteList = (v, path, max) => arr(v, path, max).map((b, j) => (Number.isInteger(b) && b >= 0 && b <= 255 ? b : (fail(`${path}[${j}]`, tl('octet 0 à 255 attendu')), 0)));
+    const item = (o, path, { crc = false, at = null } = {}) => {
+      const extra = at != null ? ['at'] : [];
+      if (o && o.crc != null) {
+        if (!crc) { fail(path, tl('CRC seulement dans une réponse ou une trame')); return null; }
+        if (!keys(o, path, ['crc'])) return null;
+        return o.crc === 'sensirion' ? { crc: 'sensirion' } : (fail(`${path}.crc`, tl('« sensirion » attendu')), null);
+      }
+      if (o && o.bytes != null) {
+        if (!keys(o, path, ['bytes', ...extra])) return null;
+        const b = byteList(o.bytes, `${path}.bytes`, 32);
+        return b.length ? { bytes: b } : (fail(`${path}.bytes`, tl('au moins un octet')), null);
+      }
+      if (!keys(o, path, ['quantity', 'bits', 'signed', 'scale', 'offset', 'shift', 'endian', ...extra])) return null;
+      const V = { quantity: oneOf(o.quantity, `${path}.quantity`, Object.keys(QUANT), true) };
+      V.bits = o.bits == null ? 16 : oneOf(o.bits, `${path}.bits`, [8, 16, 24, 32]);
+      if (bool(o.signed, `${path}.signed`)) V.signed = true;
+      V.scale = o.scale == null ? 1 : number(o.scale, `${path}.scale`, -1e9, 1e9, { req: true });
+      if (V.scale === 0) fail(`${path}.scale`, tl('ne peut pas valoir 0'));
+      if (o.offset != null) V.offset = number(o.offset, `${path}.offset`, -1e12, 1e12);
+      if (o.shift != null) V.shift = number(o.shift, `${path}.shift`, 0, 7, { int: true });
+      if (o.endian != null) V.endian = oneOf(o.endian, `${path}.endian`, ['big', 'little']);
+      return V.quantity && V.bits ? V : null;
+    };
+    const regs = (v, path, maxAt) => arr(v, path, 64).map((o, j) => {
+      const at = number(o && o.at, `${path}[${j}].at`, 0, maxAt, { int: true, req: true }), it = o ? item(o, `${path}[${j}]`, { at }) : null;
+      return it && at != null ? { at, ...it } : null;
+    }).filter(Boolean);
+    const busPin = (need, why) => { const q = m.pins.find(p => p.kind === 'io' && p.need === need); if (!q) fail('part.pins', tl('{0} : une broche io « {1} » est nécessaire', why, need)); return q; };
+    if (B.i2c != null && keys(B.i2c, 'part.behaviour.i2c', ['address', 'alt', 'addressPin', 'regBytes', 'regSize', 'registers', 'commands'])) {
+      const I = B.i2c, path = 'part.behaviour.i2c';
+      busPin('sda', 'I2C'); busPin('scl', 'I2C');
+      const S = { address: number(I.address, `${path}.address`, 0x03, 0x77, { int: true, req: true }), regBytes: I.regBytes == null ? 1 : oneOf(I.regBytes, `${path}.regBytes`, [1, 2]) };
+      if (I.regSize != null) S.regSize = oneOf(I.regSize, `${path}.regSize`, [1, 2, 4]);
+      if (I.alt != null) S.alt = number(I.alt, `${path}.alt`, 0x03, 0x77, { int: true });
+      if (I.addressPin != null) { S.addressPin = pin(I.addressPin, `${path}.addressPin`); if (S.alt == null) fail(`${path}.alt`, tl('obligatoire avec addressPin')); }
+      S.registers = regs(I.registers, `${path}.registers`, S.regBytes === 2 ? 0xffff : 0xff);
+      S.commands = arr(I.commands, `${path}.commands`, 16).map((c, j) => {
+        const p2 = `${path}.commands[${j}]`;
+        if (!keys(c, p2, ['write', 'reply'])) return null;
+        const w = byteList(c.write, `${p2}.write`, 4), r = arr(c.reply, `${p2}.reply`, 24).map((x, k) => item(x, `${p2}.reply[${k}]`, { crc: true })).filter(Boolean);
+        if (!w.length) fail(`${p2}.write`, tl('au moins un octet'));
+        if (!r.length) fail(`${p2}.reply`, tl('au moins un élément'));
+        return w.length && r.length ? { write: w, reply: r } : null;
+      }).filter(Boolean);
+      if (!S.registers.some(r => r.quantity) && !S.commands.some(c => c.reply.some(x => x.quantity))) fail(path, tl('aucune mesure : déclarez un registre ou une commande qui rend une grandeur'));
+      if (S.address) m.behaviour.i2c = S;
+    }
+    if (B.spi != null && keys(B.spi, 'part.behaviour.spi', ['mode', 'cs', 'frame', 'registers', 'readBit', 'readWhenSet', 'addrMask'])) {
+      const P2 = B.spi, path = 'part.behaviour.spi';
+      busPin('sck', 'SPI'); busPin('miso', 'SPI');
+      const S = { mode: oneOf(P2.mode, `${path}.mode`, ['frame', 'register'], true), cs: pin(P2.cs, `${path}.cs`) };
+      const csq = S.cs && pinOf(S.cs);
+      if (csq && !(csq.kind === 'io' && csq.need === 'ss')) fail(`${path}.cs`, tl('la broche de sélection doit être io, need « ss »'));
+      if (S.mode === 'frame') {
+        S.frame = arr(P2.frame, `${path}.frame`, 24).map((x, k) => item(x, `${path}.frame[${k}]`, { crc: true })).filter(Boolean);
+        if (!S.frame.some(x => x.quantity)) fail(`${path}.frame`, tl('aucune mesure dans la trame'));
+      } else if (S.mode === 'register') {
+        busPin('mosi', 'SPI');
+        S.registers = regs(P2.registers, `${path}.registers`, 0xff);
+        S.readBit = P2.readBit == null ? 0x80 : number(P2.readBit, `${path}.readBit`, 0, 255, { int: true });
+        S.readWhenSet = P2.readWhenSet == null ? true : !!bool(P2.readWhenSet, `${path}.readWhenSet`);
+        S.addrMask = P2.addrMask == null ? 0x7f : number(P2.addrMask, `${path}.addrMask`, 1, 255, { int: true });
+        if (!S.registers.some(r => r.quantity)) fail(`${path}.registers`, tl('aucune mesure : déclarez un registre qui rend une grandeur'));
+      }
+      if (S.mode && S.cs) m.behaviour.spi = S;
     }
     if (B.sample != null && keys(B.sample, 'part.behaviour.sample', ['period', 'tau'])) {
       m.behaviour.sample = { period: number(B.sample.period ?? 0.2, 'part.behaviour.sample.period', 0.02, 10), tau: number(B.sample.tau ?? 0.3, 'part.behaviour.sample.tau', 0, 60) };
     }
     if (!m.behaviour.analogOut.length) delete m.behaviour.analogOut;
     if (!m.behaviour.digitalOut.length) delete m.behaviour.digitalOut;
+    if (!m.behaviour.pulseOut.length) delete m.behaviour.pulseOut;
   }
 
   // Documentation.
@@ -443,11 +529,16 @@ export function analogValue(o, q) {
 }
 const fmt = (v, d = 2) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d).replace('.', DEC);
 
-/** Modèle de capteur (forme de MODELS) pour les sorties analogiques et tout-ou-rien déclarées, ou null. */
+/** Grandeurs lues sur un bus (I2C, SPI) : celles des registres, des réponses et des trames. */
+export function busQuantities(B) {
+  const items = [...((B.i2c && B.i2c.registers) || []), ...((B.i2c && B.i2c.commands) || []).flatMap(c => c.reply), ...((B.spi && (B.spi.frame || B.spi.registers)) || [])];
+  return [...new Set(items.filter(x => x.quantity).map(x => x.quantity))];
+}
+/** Modèle de capteur (forme de MODELS) pour les sorties déclarées (analogiques, tout-ou-rien, impulsions, bus), ou null. */
 export function modelOf(m) {
-  const B = m.behaviour || {}, A = B.analogOut || [], D = B.digitalOut || [];
-  if (!A.length && !D.length) return null;
-  const q = [...new Set([...A, ...D].map(o => o.quantity))];
+  const B = m.behaviour || {}, A = B.analogOut || [], D = B.digitalOut || [], PU = B.pulseOut || [], BQ = busQuantities(B);
+  if (!A.length && !D.length && !PU.length && !BQ.length) return null;
+  const q = [...new Set([...A, ...D, ...PU].map(o => o.quantity).concat(BQ))];
   return {
     q, period: (B.sample && B.sample.period) || 0.2, tau: B.sample && B.sample.tau != null ? B.sample.tau : 0.3, pkg: m.id,
     read(phy, cx) {
@@ -467,8 +558,20 @@ export function modelOf(m) {
         parts.push(`${o.pin} ${d ? 'HIGH' : 'LOW'}`);
         if (short == null) short = `${m.prefix} ${d ? 'HIGH' : 'LOW'}`;
       }
-      const detail = q.map(k => { const Q = QUANT[k]; return Q.bool ? `${Q.label} : ${phy[k] ? tl('oui') : tl('non')}` : `${Q.label} : ${fmt(+phy[k], Q.dec || 0)} ${Q.unit}`; }).join(' · ');
-      return { value: parts.join(' · '), detail, short, warn, out };
+      // Impulsions : la carte lit un signal carré à cette fréquence (digitalRead, attachInterrupt, pulseIn).
+      for (const o of PU) {
+        const hz = pulseHz(o, +phy[o.quantity]);
+        out[o.pin] = { d: 0, v: 0, hz };
+        parts.push(`${o.pin} ${fmt(hz, hz < 10 ? 1 : 0)} Hz`);
+        if (short == null) short = `${m.prefix} ${fmt(hz, 0)} Hz`;
+      }
+      const fmtQ = k => { const Q = QUANT[k]; return Q.bool ? (phy[k] ? tl('oui') : tl('non')) : `${fmt(+phy[k], Q.dec || 0)}${Q.unit ? ' ' + Q.unit : ''}`; };
+      if (BQ.length) { parts.push(BQ.map(fmtQ).join(' · ')); if (short == null) short = `${m.prefix} ${fmtQ(BQ[0])}`; }
+      const detail = q.map(k => `${QUANT[k].label} : ${fmtQ(k)}`).join(' · ') + (B.i2c ? ` · I2C 0x${B.i2c.address.toString(16).toUpperCase()}` : B.spi ? ' · SPI' : '');
+      // data : les grandeurs mesurées, codées par le module à chaque lecture du bus (sim/pkgbus.js).
+      const DQ = [...new Set([...BQ, ...PU.map(o => o.quantity)])];
+      const data = DQ.length ? Object.fromEntries(DQ.map(k => [k, QUANT[k].bool ? !!phy[k] : +phy[k]])) : undefined;
+      return { value: parts.join(' · '), detail, short, warn, out, ...(data ? { data } : {}) };
     }
   };
 }
@@ -478,6 +581,7 @@ export function sensorOutOf(m) {
   const B = m.behaviour || {}, out = {};
   for (const o of B.analogOut || []) out[o.pin] = [Math.min(...o.to), Math.max(...o.to), !o.ratio];
   for (const o of B.digitalOut || []) out[o.pin] = [0, 1];
+  for (const o of B.pulseOut || []) out[o.pin] = [0, 1];
   return Object.keys(out).length ? out : null;
 }
 
@@ -504,13 +608,30 @@ export function signalsOf(m) {
   const v = pin => `${pin.toLowerCase().replace(/[^a-z0-9]/g, '_')}`, opt = pin => { const q = m.pins.find(p => p.name === pin); return !!(q && q.opt); };
   for (const o of B.analogOut || []) out[o.pin] = { label: tl('{0} (valeur lue)', QUANT[o.quantity].label.toLowerCase()), adc: true, def: 0.5, v: v(o.pin), pin: o.pin, opt: opt(o.pin) };
   for (const o of B.digitalOut || []) out[o.pin] = { label: tl('{0} est actif', o.pin), neg: tl('{0} est au repos', o.pin), kind: 'bool', v: v(o.pin), pin: o.pin, low: o.activeLow, short: o.pin, opt: opt(o.pin) };
+  // Impulsions : la grandeur (hz par unité), sinon la fréquence ; comptées par une interruption pendant 1 s.
+  for (const o of B.pulseOut || []) {
+    const Q = QUANT[o.quantity], key = o.hzPer && !out[o.quantity] ? o.quantity : o.pin;
+    out[key] = o.hzPer
+      ? { label: Q.label.toLowerCase(), unit: Q.unit, def: (Q.min + Q.max) / 2, range: [Q.min, Q.max], v: o.quantity, type: 'float', pulse: { pin: o.pin, hzPer: o.hzPer } }
+      : { label: tl('fréquence de {0}', o.pin), unit: 'Hz', def: 10, range: [0, 1000], v: `${v(o.pin)}_hz`, type: 'float', pulse: { pin: o.pin, hzPer: 1 } };
+  }
+  // Bus : une mesure par grandeur, lue par le code généré (Wire ou SPI), sans bibliothèque.
+  for (const k of busQuantities(B)) {
+    const Q = QUANT[k];
+    if (out[k]) continue;
+    out[k] = Q.bool ? { label: Q.label.toLowerCase(), neg: tl('{0} : non', Q.label), kind: 'bool', v: k, bus: B.i2c ? 'i2c' : 'spi', quantity: k }
+      : { label: Q.label.toLowerCase(), unit: Q.unit, def: (Q.min + Q.max) / 2, range: [Q.min, Q.max], v: k, type: 'float', bus: B.i2c ? 'i2c' : 'spi', quantity: k };
+  }
   return Object.keys(out).length ? out : null;
 }
 
 /** Comportement électrique (sim/pkgparts.js). */
 function behaviourOf(m) {
   const B = m.behaviour || {}, led = B.led && { ...B.led, color: LED_COLORS[B.led.color] || B.led.color };
-  return { pins: m.pins.map(p => p.name), led: led || null, load: B.load ? { ...B.load } : null, limits: { current: m.limits.current || null, power: m.limits.power || null }, sensorOut: sensorOutOf(m) };
+  return {
+    pins: m.pins.map(p => p.name), led: led || null, load: B.load ? { ...B.load } : null, limits: { current: m.limits.current || null, power: m.limits.power || null }, sensorOut: sensorOutOf(m),
+    i2c: B.i2c || null, spi: B.spi || null, pulse: B.pulseOut || null
+  };
 }
 
 /** Manifestes installés (type → manifeste) : la vérification en arrière-plan les reçoit pour les installer à son tour. */

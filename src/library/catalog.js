@@ -10,6 +10,8 @@ import { tl } from '../i18n/index.js';
 import { stdMat } from '../quality.js';
 import { ANALOG_LIBRARY, ANALOG_CATEGORIES } from './analog.js';
 
+/** Composants de l'utilisateur : créés dans l'atelier ou par un assistant IA, importés, apportés par un projet. */
+export const MINE = tl('Mes composants');
 export const CATEGORIES = [tl('Cartes'), tl('Prototypage'), tl('Capteurs'), tl('Entrées'), tl('Affichage'), tl('Sorties'), tl('Moteurs'), tl('Passifs'), tl('Alimentation'), tl('Communication'), ...ANALOG_CATEGORIES];
 
 const BLUE = '#1b4f8c', GREEN = '#22603a', BLACK = '#17191c', RED = '#9b2226', PURPLE = '#4b2d7a';
@@ -31,6 +33,41 @@ function esp32(c) {
   if (!cad(c, 'usb-micro-b', 0, T, 24.4)) block(c, 8, 2.8, 5.6, 0, T, 24, M.silver);
   [-7.5, 7.5].forEach(xx => { block(c, 4, 1.4, 3, xx, T, 22.2, M.plastic); cyl(c, 0.9, 0.8, xx, T + 1.4, 22.2, 0x2a2a2a); });
   block(c, 1, 0.6, 0.6, 4, T, 17, 0xff2a2a, { e: 0x991111 });
+}
+/** ESP32-DevKitC V4 / NodeMCU-32S : 2 × 19 broches, module en haut, USB en bas. */
+function esp32w(c) {
+  const T = dualRow(c, { w: 27.9, l: 54.4, pcb: BLACK, rowX: 12.7, z0: -22.86,
+    left: ['3V3','EN','VP','VN','IO34','IO35','IO32','IO33','IO25','IO26','IO27','IO14','IO12','GND','IO13','SD2','SD3','CMD','5V'],
+    right: ['GND','IO23','IO22','TX','RX','IO21','GND','IO19','IO18','IO5','IO17','IO16','IO4','IO0','IO2','IO15','SD1','SD0','CLK'],
+    paint: (x, k) => { text(x, k, 'ESP32-DevKitC', 13.95, 36, 1.4); text(x, k, 'EN          BOOT', 13.95, 49.5, 1.05, { weight: 500 }); } });
+  if (!cad(c, 'esp32-wroom-32', 0, T, -12.75)) espModule(c, T);
+  if (!cad(c, 'usb-micro-b', 0, T, 25.6)) block(c, 8, 2.8, 5.6, 0, T, 25.2, M.silver);
+  [-7.5, 7.5].forEach(xx => { block(c, 4, 1.4, 3, xx, T, 22.6, M.plastic); cyl(c, 0.9, 0.8, xx, T + 1.4, 22.6, 0x2a2a2a); });
+  block(c, 1, 0.6, 0.6, 4, T, 17, 0xff2a2a, { e: 0x991111 });
+}
+/** ESP32-S3-DevKitC-1 : 2 × 22 broches (J1 à gauche, J3 à droite), module ESP32-S3-WROOM-1, deux prises USB-C. */
+function esp32s3(c) {
+  const T = dualRow(c, { w: 25.4, l: 69, pcb: BLACK, rowX: 11.43, z0: -26.67,
+    left: ['3V3','3V3','RST','IO4','IO5','IO6','IO7','IO15','IO16','IO17','IO18','IO8','IO3','IO46','IO9','IO10','IO11','IO12','IO13','IO14','5V','GND'],
+    right: ['GND','TX','RX','IO1','IO2','IO42','IO41','IO40','IO39','IO38','IO37','IO36','IO35','IO0','IO45','IO48','IO47','IO21','IO20','IO19','GND','GND'],
+    paint: (x, k) => { text(x, k, 'ESP32-S3-DevKitC-1', 12.7, 47, 0.95); text(x, k, 'UART        USB', 12.7, 60.5, 1.05, { weight: 500 }); } });
+  block(c, 15.6, 0.8, 25.5, 0, T, -21.5, '#1c2733');
+  shield(c, 13.6, 17.5, 0, T + 0.8, -18.5, ['ESP32-S3-WROOM-1', 'Wi-Fi + BLE 5', '240 MHz']);
+  [-5.5, 5.5].forEach(xx => block(c, 9, 3.2, 7.4, xx, T, 31.2, M.silver));
+  [-7.5, 7.5].forEach(xx => { block(c, 4, 1.4, 3, xx, T, 24.5, M.plastic); cyl(c, 0.9, 0.8, xx, T + 1.4, 24.5, 0x2a2a2a); });
+  block(c, 1.6, 0.8, 1.6, 0, T, 22, 0xf2f2f2);
+}
+/** ESP32-C3 SuperMini : 2 × 8 broches, USB-C en haut, antenne céramique en bas. */
+function esp32c3(c) {
+  const T = dualRow(c, { w: 18, l: 22.5, pcb: '#1b4f8c', rowX: 7.62, z0: -8.89,
+    left: ['5V','GND','3V3','IO4','IO3','IO2','IO1','IO0'],
+    right: ['IO5','IO6','IO7','IO8','IO9','IO10','IO20','IO21'],
+    paint: (x, k) => text(x, k, 'C3 SuperMini', 9, 18.6, 1.05) });
+  block(c, 8.4, 3.2, 7.4, 0, T, -9.4, M.silver);
+  block(c, 5, 0.9, 5, 0, T, 1, M.plastic, { rot: [0, Math.PI / 4, 0] });
+  block(c, 7, 1.2, 2, 0, T, 9.6, 0xd8d2c4);
+  [-3.6, 3.6].forEach(xx => block(c, 2.6, 1.2, 1.8, xx, T, -3.4, M.plastic));
+  block(c, 1, 0.6, 0.6, 2.4, T, 5.2, 0x3b82f6, { e: 0x1d4ed8 });
 }
 /** Module ESP32-WROOM-32 dessiné (rendu simple). */
 function espModule(c, T) {
@@ -68,6 +105,44 @@ function nano(c) {
   block(c, 7, 1, 7, 0, T, 3, M.plastic, { rot: [0, Math.PI / 4, 0] });
   if (!cad(c, 'usb-mini-b', 0, T, -20, { rotY: Math.PI })) block(c, 7.5, 3.8, 8, 0, T, -20, M.silver);
   block(c, 3, 1.4, 3, 0, T, -6, 0xe8e8e8);
+}
+/** Wemos D1 mini : ESP8266 (ESP-12F) entre deux rangées de 8 broches, USB au bout. */
+function d1mini(c) {
+  const T = dualRow(c, { w: 25.6, l: 34.2, pcb: '#1b4f8c', rowX: 11.43, z0: -8.89,
+    left: ['RST','A0','D0','D5','D6','D7','D8','3V3'],
+    right: ['TX','RX','D1','D2','D3','D4','GND','5V'],
+    paint: (x, k) => text(x, k, 'D1 mini', 12.8, 29.6, 1.5) });
+  block(c, 16, 0.8, 22, 0, T, -5.5, '#1c2733');
+  shield(c, 12, 14, 0, T + 0.8, -3.5, ['ESP8266', 'ESP-12F', '80 MHz']);
+  if (!cad(c, 'usb-micro-b', 0, T, 15.4)) block(c, 8, 2.8, 5.6, 0, T, 15, M.silver);
+  block(c, 3, 1.2, 2, -8.5, T, 14.5, M.plastic);
+}
+/** Arduino Mega 2560 : la disposition de l'Uno, allongée, avec la double rangée D22 à D53 au bout. */
+function mega(c) {
+  const b = board(c, 101.6, 53.3, '#0b6e79');
+  const top = { board: b, axis: 'x', z: -24.4, female: true, labels: 1 }, bottom = { board: b, axis: 'x', z: 24.4, female: true, labels: -1 };
+  header(c, ['SCL','SDA','AREF','GND','D13','D12','D11','D10','D9','D8'], { ...top, x: -20.5 });
+  header(c, ['D7','D6','D5','D4','D3','D2','D1','D0'], { ...top, x: 4.5 });
+  header(c, ['D14','D15','D16','D17','D18','D19','D20','D21'], { ...top, x: 27 });
+  header(c, ['IOREF','RST','3V3','5V','GND','GND','VIN'], { ...bottom, x: -18.5 });
+  header(c, ['A0','A1','A2','A3','A4','A5','A6','A7'], { ...bottom, x: 5.5 });
+  header(c, ['A8','A9','A10','A11','A12','A13','A14','A15'], { ...bottom, x: 28.4 });
+  const even = [], odd = [];
+  for (let n = 22; n <= 52; n += 2) { even.push(`D${n}`); odd.push(`D${n + 1}`); }
+  header(c, ['5V', ...even, 'GND'], { board: b, axis: 'z', x: 44.46, female: true, labels: -1 });
+  header(c, ['5V', ...odd, 'GND'], { board: b, axis: 'z', x: 47, female: true, labels: 1 });
+  b.finish((x, k) => {
+    text(x, k, 'MEGA 2560', 58, 30, 4); text(x, k, 'DIGITAL (PWM ~)', 54, 11.5, 1.2, { weight: 500 });
+    text(x, k, 'TX3 RX3 TX2 RX2 TX1 RX1', 77.8, 6.6, 0.85, { weight: 500 }); text(x, k, 'POWER        ANALOG IN', 62, 42, 1.2, { weight: 500 });
+  });
+  block(c, 16, 11, 12, -45.5, b.top, -14, M.silver);
+  if (!cad(c, 'barrel-jack', -45, b.top, 17, { rotY: -Math.PI / 2 })) block(c, 14, 11, 9, -46, b.top, 17, M.plastic);
+  // ATmega2560 en boîtier TQFP-100 : un carré noir tourné de 45°, pattes sur les quatre côtés.
+  const chip = [0, Math.PI / 4, 0];
+  block(c, 15.4, 0.3, 15.4, 8, b.top, 4, M.leg, { rot: chip });
+  block(c, 14, 1.2, 14, 8, b.top + 0.1, 4, M.plastic, { rot: chip });
+  cad(c, 'crystal-hc49', -26, b.top, -8, { rotY: Math.PI / 2 });
+  block(c, 3, 1.4, 3, -40, b.top, -1, 0xd03a2c);
 }
 const PICO_L = ['GP0','GP1','GND','GP2','GP3','GP4','GP5','GND','GP6','GP7','GP8','GP9','GND','GP10','GP11','GP12','GP13','GND','GP14','GP15'];
 const PICO_R = ['VBUS','VSYS','GND','3V3_EN','3V3','VREF','GP28','AGND','GP27','GP26','RUN','GP22','GND','GP21','GP20','GP19','GP18','GND','GP17','GP16'];
@@ -178,6 +253,45 @@ function ds18b20(c) {
   const body = add(c, new THREE.CylinderGeometry(2.4, 2.4, 4.8, 24, 1, false, 0, Math.PI), mat(0x151515), 0, 10.5, -1.4);
   body.rotation.y = Math.PI / 2;
   [-1.27, 0, 1.27].forEach(x => block(c, 0.4, 5.5, 0.4, x, s.top, -1.4, M.leg));
+}
+function bme280(c) {
+  const b = moduleBoard(c, 15, 12, PURPLE, ['VCC', 'GND', 'SCL', 'SDA', 'CSB', 'SDO']); b.finish((x, k) => text(x, k, 'BME280', 7.5, 3.4, 1));
+  block(c, 2.5, 0.9, 2.5, 0, b.top, -2, M.silver); cyl(c, 0.35, 0.05, 0.6, b.top + 0.9, -2.6, 0x111111);
+}
+/** BH1750 (module GY-302) : la puce derrière sa petite fenêtre, en I2C. */
+function bh1750(c) {
+  const b = moduleBoard(c, 18.5, 14, BLUE, ['VCC', 'GND', 'SCL', 'SDA', 'ADDR']); b.finish((x, k) => text(x, k, 'GY-302', 9.25, 3, 1.1));
+  block(c, 3, 1, 1.8, 0, b.top, -1.5, M.plastic); block(c, 1.2, 0.08, 0.8, 0, b.top + 1, -1.5, 0xc9d6e3, { e: 0x223344 });
+  block(c, 2.2, 0.8, 1.6, -5.5, b.top, -1.5, M.plastic);
+}
+/** Balance : barre de force en aluminium (5 kg) et module HX711, reliés par leurs quatre fils. */
+function hx711(c) {
+  const b = moduleBoard(c, 20.5, 33.5, GREEN, ['GND', 'DT', 'SCK', 'VCC']); b.finish((x, k) => text(x, k, 'HX711', 10.25, 12, 1.4));
+  block(c, 6.2, 1.4, 4, 0, b.top, 0, M.plastic);
+  [['E+', -4.5], ['E-', -1.5], ['A-', 1.5], ['A+', 4.5]].forEach(([, xx]) => block(c, 2.54, 6, 2.54, xx, b.top, -14.5, 0x2e7d32));
+  const X = 31, cols = [0xd03a2c, 0x111111, 0xf2f2f2, 0x2f9e44];
+  block(c, 12.7, 12.7, 80, X, 0, -6, 0xb8bec6, { m: 0.6, r: 0.35 });
+  [-1, 1].forEach(s => cyl(c, 3.2, 0.4, X, 12.7, -6 + s * 13, 0x6c7178));
+  block(c, 9, 0.5, 12, X, 12.7, -6, 0xf0e3b0);
+  cols.forEach((col, i) => block(c, 0.9, 0.9, 16, 14 + i * 1.3, 1, -14, col));
+}
+/** TTP223 : pastille tactile ronde sur une petite carte. */
+function ttp223(c) {
+  const b = moduleBoard(c, 15, 11, RED, ['SIG', 'VCC', 'GND']); b.finish((x, k) => text(x, k, 'TTP223B', 7.5, 2.4, 0.85));
+  cyl(c, 4.2, 0.12, 0, b.top, -1.5, 0xc9a35a, { seg: 36 });
+  block(c, 1.6, 0.6, 1.2, 5, b.top, -3, 0xff2a2a, { e: 0x991111 });
+}
+/** RCWL-0516 : radar Doppler à 3,2 GHz, carte bleue nue. */
+function rcwl0516(c) {
+  const b = moduleBoard(c, 17.3, 35.9, BLUE, ['3V3', 'GND', 'OUT', 'VIN', 'CDS']); b.finish((x, k) => { text(x, k, 'RCWL-0516', 8.65, 30, 1.1); x.strokeStyle = '#c9a35a'; x.lineWidth = 0.5 * k; x.strokeRect(3 * k, 3 * k, 11.3 * k, 15 * k); });
+  block(c, 4.9, 1, 3.9, -3, b.top, 4, M.plastic); block(c, 2.6, 1.2, 1.4, 3.5, b.top, 4.5, 0x111111);
+  cyl(c, 1, 1.2, 4, b.top, -6, 0x8a6b3e);
+}
+/** MQ-135 : même boîtier que le MQ-2 (capteur chauffé sous sa grille). */
+function mq135(c) {
+  const b = moduleBoard(c, 21, 33, BLUE, ['VCC', 'GND', 'DO', 'AO']); b.finish((x, k) => text(x, k, 'MQ-135', 10.5, 26, 1.2));
+  cyl(c, 9.5, 3, 0, b.top, -4, 0x2f3a46); cyl(c, 8.5, 8, 0, b.top + 3, -4, M.silver, { seg: 36 });
+  cyl(c, 7.8, 0.3, 0, b.top + 11, -4, 0x8d9196);
 }
 function bmp280(c) { const b = moduleBoard(c, 15, 12, PURPLE, ['VCC', 'GND', 'SCL', 'SDA', 'CSB', 'SDO']); b.finish(); block(c, 2.5, 0.9, 2.5, 0, b.top, -2, M.silver); }
 function mpu6050(c) {
@@ -327,6 +441,59 @@ function ws2812(c) {
   }
 }
 
+/* ---------- Capteurs : modules tout-ou-rien et analogiques ---------- */
+const POT = (c, top, z) => { block(c, 6.5, 4, 6.5, 0, top, z, 0x2f6fd6); cyl(c, 1.2, 1, 0, top + 4, z, 0xe8d9a8); }; // potentiomètre de seuil
+function tiltSw(c) {
+  const b = moduleBoard(c, 15, 18.5, BLACK, ['S', 'VCC', 'GND']); b.finish((x, k) => text(x, k, 'KY-020', 7.5, 3.4, 1.1));
+  cyl(c, 2.7, 8.5, 0, b.top, -3.5, M.silver, { seg: 24 }); cyl(c, 2.9, 0.6, 0, b.top, -3.5, 0x222426, { seg: 24 });
+}
+function hall(c) {
+  const b = moduleBoard(c, 15, 18.5, BLACK, ['S', 'VCC', 'GND']); b.finish((x, k) => text(x, k, 'KY-003', 7.5, 3.4, 1.1));
+  block(c, 4, 3, 1.6, 0, b.top + 2.5, -5.5, 0x151515); [-1.27, 0, 1.27].forEach(x => block(c, 0.4, 2.5, 0.4, x, b.top, -5.5, M.leg));
+  block(c, 1.6, 0.8, 1, 4.5, b.top, 1, 0xd03a2c);
+}
+function flame(c) {
+  const b = moduleBoard(c, 15, 33, BLUE, ['AO', 'GND', 'VCC', 'DO']); b.finish((x, k) => text(x, k, 'FLAME', 7.5, 20, 1.1));
+  [-1.27, 1.27].forEach(x => block(c, 0.4, 6, 0.4, x, b.top, -14, M.leg));
+  cyl(c, 2.5, 4.4, 0, b.top + 6, -14, 0x101012); dome(c, 2.5, 0, b.top + 10.4, -14, 0x101012);
+  POT(c, b.top, -3);
+}
+function rain(c) {
+  const b = moduleBoard(c, 16, 30, BLUE, ['VCC', 'GND', 'DO', 'AO']); b.finish((x, k) => text(x, k, 'FC-37', 8, 18, 1.1));
+  POT(c, b.top, -6); block(c, 5, 5, 6, 0, b.top, -12.5, M.plastic); // borne de la plaque
+  // La plaque de pluie, reliée au module par deux fils : posée à côté.
+  block(c, 40, 1.6, 54, 34, 0, -2, '#27412a');
+  for (let i = 0; i < 9; i++) block(c, 36, 0.1, 0.9, 34, 1.6, -26 + i * 6, 0xc9a35a);
+  for (let i = 0; i < 8; i++) block(c, 30, 0.1, 0.9, 37, 1.6, -23 + i * 6, 0xd8b56b);
+}
+function water(c) {
+  const b = moduleBoard(c, 20, 62, RED, ['S', 'VCC', 'GND']); b.finish((x, k) => text(x, k, 'WATER', 10, 52, 1.3));
+  for (let i = 0; i < 10; i++) block(c, 0.9, 0.08, 40, -8.1 + i * 1.8, b.top, -8, i % 2 ? 0xd8b56b : 0xc9a35a);
+  block(c, 1.6, 0.8, 1, 6, b.top, 18, 0xd03a2c);
+}
+function irobst(c) {
+  const b = moduleBoard(c, 14, 31, BLUE, ['OUT', 'GND', 'VCC']); b.finish((x, k) => text(x, k, 'FC-51', 7, 19, 1.1));
+  const leds = [[-3, 0xe9eef2], [3, 0x101012]];
+  leds.forEach(([x, col]) => { cyl(c, 2.5, 4, x, b.top + 2, -13, col, { seg: 24 }); dome(c, 2.5, x, b.top + 6, -13, col); [-1, 1].forEach(s => block(c, 0.4, 2, 0.4, x + s * 1.2, b.top, -13, M.leg)); });
+  POT(c, b.top, -3);
+}
+function line(c) {
+  const b = moduleBoard(c, 11, 32, BLUE, ['VCC', 'GND', 'DO', 'AO']); b.finish((x, k) => text(x, k, 'TCRT5000', 5.5, 21, 0.9));
+  block(c, 6, 4.5, 10.5, 0, b.top, -10.5, 0x111214); [-1.5, 1.5].forEach(z => cyl(c, 1.4, 0.4, 0, b.top + 4.5, -10.5 + z * 2, z < 0 ? 0x2a6bd8 : 0x0e0e10));
+  POT(c, b.top, 1);
+}
+function lm35(c) {
+  const s = socket(c, 8, 7, ['VS', 'VOUT', 'GND']);
+  if (cad(c, 'to-92', 0, s.top, -1.4)) return;
+  const body = add(c, new THREE.CylinderGeometry(2.4, 2.4, 4.8, 24, 1, false, 0, Math.PI), mat(0x151515), 0, 10.5, -1.4);
+  body.rotation.y = Math.PI / 2;
+  [-1.27, 0, 1.27].forEach(x => block(c, 0.4, 5.5, 0.4, x, s.top, -1.4, M.leg));
+}
+function shock(c) {
+  const b = moduleBoard(c, 13, 32, BLUE, ['VCC', 'GND', 'DO']); b.finish((x, k) => text(x, k, 'SW-420', 6.5, 21, 1));
+  block(c, 4, 4, 9, 0, b.top, -11, 0x2a63d6, { r: 0.6 }); POT(c, b.top, 1);
+}
+
 /* ---------- Sorties ---------- */
 const LED_COLORS = { rouge: [0xd8322f, 0xff2a1a], verte: [0x2fbf5a, 0x30ff70], bleue: [0x2f6fe0, 0x3080ff], jaune: [0xf2c94c, 0xffd030], blanche: [0xf2f2ee, 0xffffff] };
 const LED_CAD = { rouge: 'led-5mm-red', verte: 'led-5mm-green', bleue: 'led-5mm-blue', jaune: 'led-5mm-yellow', blanche: 'led-5mm-clear' };
@@ -357,6 +524,26 @@ function rgbLed(c) {
   }
   const light = { intensity: 0, color: new THREE.Color(0xffffff), position: new THREE.Vector3(0, 12, -1.8) };
   c.rgb = { mat: m, light };
+}
+function laser(c) {
+  const b = moduleBoard(c, 15, 18.5, BLACK, ['S', 'GND']); b.finish((x, k) => text(x, k, 'KY-008', 7.5, 3.4, 1.1));
+  block(c, 6, 6, 10, 0, b.top, -4, 0xc9a24a, { r: 0.8 });
+  const m = stdMat({ color: 0x5a1010, emissive: 0, roughness: 0.3 });
+  dome(c, 1.4, 0, b.top + 3, -9.2, m);
+  // Faisceau court (pour l'encombrement du composant) : visible seulement quand le laser est allumé.
+  const beam = block(c, 0.5, 0.5, 22, 0, b.top + 2.75, -20.5, stdMat({ color: 0xff2020, emissive: 0xff1a1a, emissiveIntensity: 1.4, transparent: true, opacity: 0.55 }));
+  if (beam) beam.visible = false;
+  c.laser = { mat: m, beam };
+}
+function traffic(c) {
+  const b = moduleBoard(c, 14, 46, BLACK, ['R', 'Y', 'G', 'GND']); b.finish((x, k) => text(x, k, 'TRAFFIC', 7, 41, 1));
+  const cols = [[0xc0261f, 0xff2a1a], [0xe0a020, 0xffb020], [0x1f9a48, 0x30ff70]];
+  const lamps = cols.map(([body, glow], i) => {
+    const z = -15 + i * 9.5, m = stdMat({ color: body, roughness: 0.25, transparent: true, opacity: 0.92, emissive: 0 });
+    cyl(c, 3.6, 0.8, 0, b.top, z, 0x111214); cyl(c, 2.9, 1.6, 0, b.top + 0.8, z, m); dome(c, 2.9, 0, b.top + 2.4, z, m);
+    return { mat: m, glow };
+  });
+  c.traffic = { lamps };
 }
 function buzzer(c) {
   socket(c, 13, 13, ['+', '-'], { pitch: 7.6 });
@@ -528,6 +715,39 @@ function to92(names) {
 }
 
 /* ---------- Alimentation ---------- */
+/* ---------- Électropneumatique : alimentation 24 V, électrovanne, capteur de vérin ---------- */
+/** Bloc d'alimentation 24 V sur rail DIN, couché sur le plan de travail : boîtier métallique, bornier à l'avant. */
+function psu24(c) {
+  block(c, 30, 20, 56, 0, 0, -16, 0xb9bdc2, { r: 0.5 });
+  decal(c, 30, 56, 0, 20.02, -16, (x, k) => { x.fillStyle = '#b9bdc2'; x.fillRect(0, 0, 30 * k, 56 * k); text(x, k, '24 V', 15, 24, 7, { color: '#1b1b1b' }); text(x, k, 'DC · 2,5 A', 15, 34, 3.2, { color: '#33373b' }); });
+  block(c, 12, 5, 8, 0, 0, 16, M.plastic);
+  [['+', -2.54], ['-', 2.54]].forEach(([n, x]) => leg(c, n, x, 18, 5, 4));
+  block(c, 0.9, 0.9, 6, -2.54, 5.2, 14, 0xd8322f); block(c, 0.9, 0.9, 6, 2.54, 5.2, 14, 0x1b1b1b);
+}
+/** Électrovanne : corps du distributeur en aluminium avec ses orifices, bobine noire et son connecteur. */
+function coil24(c) {
+  leads2(c, 12);
+  block(c, 18, 14, 36, 0, 0, -30, 0xc9ccd0, { r: 0.4 });
+  [-42, -30, -18].forEach(z => cyl(c, 2.6, 1.4, 0, 14, z, 0x8a9096, { seg: 18 }));
+  block(c, 16, 18, 14, 0, 0, -4, 0x1c1c1c, { r: 0.6 });
+  block(c, 10, 6, 10, 0, 18, -4, 0x2b2b2b);
+}
+/** Capteur de position de vérin (ILS) : corps fin, voyant rouge, deux fils. */
+function cylsensor(c) {
+  block(c, 8, 2, 6, 0, 0, 3, M.plastic);
+  [['1', -1.27], ['2', 1.27]].forEach(([n, x]) => leg(c, n, x, 4, 2, 5));
+  block(c, 0.8, 0.8, 8, -1.27, 2, -4, 0x8b5a2b); block(c, 0.8, 0.8, 8, 1.27, 2, -4, 0x2f62d8);
+  block(c, 5, 4.5, 26, 0, 0, -21, 0x30343a, { r: 0.4 });
+  cyl(c, 1, 0.8, 0, 4.5, -31, 0xd8322f, { seg: 14 });
+}
+/** Pressostat : boîtier, raccord d'air dessous, deux fils. */
+function pressostat(c) {
+  block(c, 8, 2, 6, 0, 0, 3, M.plastic);
+  [['1', -1.27], ['2', 1.27]].forEach(([n, x]) => leg(c, n, x, 4, 2, 5));
+  block(c, 0.8, 0.8, 8, -1.27, 2, -4, 0x8b5a2b); block(c, 0.8, 0.8, 8, 1.27, 2, -4, 0x2f62d8);
+  block(c, 16, 16, 16, 0, 0, -16, 0x2b5aa8, { r: 0.6 });
+  cyl(c, 3, 3, 0, 16, -16, 0xb0b6bc, { seg: 18 });
+}
 function battery9v(c) {
   if (!cad(c, 'battery-9v', 0, 0, -10)) batteryBody(c);
   block(c, 12, 4, 8, 0, 0, 18, M.plastic);
@@ -579,11 +799,16 @@ function sim800(c) { const b = moduleBoard(c, 25, 23, '#c23b32', ['NET', 'VCC', 
 
 /* ---------- Catalogue ---------- */
 export const LIBRARY = [
-  { id: 'esp32', name: tl('ESP32 DevKit V1'), cat: tl('Cartes'), pre: 'ESP32', single: true, build: esp32 },
-  { id: 'nodemcu', name: tl('ESP8266 NodeMCU'), cat: tl('Cartes'), pre: 'NODEMCU', single: true, build: nodemcu },
-  { id: 'uno', name: tl('Arduino Uno R3'), cat: tl('Cartes'), pre: 'UNO', single: true, build: uno },
-  { id: 'nano', name: tl('Arduino Nano'), cat: tl('Cartes'), pre: 'NANO', single: true, build: nano },
-  { id: 'pico', name: 'Raspberry Pi Pico', cat: tl('Cartes'), pre: 'PICO', single: true, build: pico },
+  { id: 'esp32', name: tl('ESP32 DevKit V1'), cat: tl('Cartes'), pre: 'ESP32', single: true, pins: 30, build: esp32 },
+  { id: 'esp32-38', name: tl('ESP32 DevKitC (38 broches)'), cat: tl('Cartes'), pre: 'ESP32C', single: true, pins: 38, build: esp32w },
+  { id: 'esp32s3', name: 'ESP32-S3 DevKitC-1', cat: tl('Cartes'), pre: 'S3', single: true, pins: 44, build: esp32s3 },
+  { id: 'esp32c3', name: 'ESP32-C3 SuperMini', cat: tl('Cartes'), pre: 'C3', single: true, pins: 16, build: esp32c3 },
+  { id: 'nodemcu', name: tl('ESP8266 NodeMCU'), cat: tl('Cartes'), pre: 'NODEMCU', single: true, pins: 30, build: nodemcu },
+  { id: 'd1mini', name: 'Wemos D1 mini', cat: tl('Cartes'), pre: 'D1MINI', single: true, pins: 16, build: d1mini },
+  { id: 'uno', name: tl('Arduino Uno R3'), cat: tl('Cartes'), pre: 'UNO', single: true, pins: 31, build: uno },
+  { id: 'nano', name: tl('Arduino Nano'), cat: tl('Cartes'), pre: 'NANO', single: true, pins: 30, build: nano },
+  { id: 'mega', name: tl('Arduino Mega 2560'), cat: tl('Cartes'), pre: 'MEGA', single: true, pins: 85, build: mega },
+  { id: 'pico', name: 'Raspberry Pi Pico', cat: tl('Cartes'), pre: 'PICO', single: true, pins: 40, build: pico },
 
   { id: 'breadboard', name: tl('Breadboard 400 points'), cat: tl('Prototypage'), pre: 'BB', build: breadboard },
   { id: 'breadboard-mini', name: tl('Mini breadboard 170 points'), cat: tl('Prototypage'), pre: 'BB', build: miniBreadboard },
@@ -595,12 +820,29 @@ export const LIBRARY = [
   { id: 'ldr', name: tl('Module photorésistance'), cat: tl('Capteurs'), pre: 'LDR', build: ldr },
   { id: 'soil', name: tl('Humidité du sol capacitif'), cat: tl('Capteurs'), pre: 'SOL', build: soil },
   { id: 'mq2', name: tl('MQ-2 gaz et fumée'), cat: tl('Capteurs'), pre: 'MQ', build: mq2 },
+  { id: 'mq135', name: tl('MQ-135 qualité de l’air'), cat: tl('Capteurs'), pre: 'AIR', build: mq135 },
+  { id: 'bme280', name: tl('BME280 température, humidité, pression'), cat: tl('Capteurs'), pre: 'BME', build: bme280 },
+  { id: 'bh1750', name: tl('BH1750 lumière (lux)'), cat: tl('Capteurs'), pre: 'LUX', build: bh1750 },
+  { id: 'hx711', name: tl('Balance HX711 (capteur de force 5 kg)'), cat: tl('Capteurs'), pre: 'BAL', build: hx711 },
+  { id: 'rcwl0516', name: tl('RCWL-0516 radar de mouvement'), cat: tl('Capteurs'), pre: 'RADAR', build: rcwl0516 },
+  { id: 'ttp223', name: tl('TTP223 bouton tactile'), cat: tl('Capteurs'), pre: 'TOUCH', build: ttp223 },
+  { id: 'lm35', name: tl('LM35 température (analogique)'), cat: tl('Capteurs'), pre: 'LM', build: lm35 },
+  { id: 'flame', name: tl('Capteur de flamme'), cat: tl('Capteurs'), pre: 'FLAM', build: flame },
+  { id: 'rain', name: tl('Capteur de pluie'), cat: tl('Capteurs'), pre: 'PLUIE', build: rain },
+  { id: 'water', name: tl('Capteur de niveau d’eau'), cat: tl('Capteurs'), pre: 'EAU', build: water },
+  { id: 'irobst', name: tl('Capteur d’obstacle infrarouge'), cat: tl('Capteurs'), pre: 'OBS', build: irobst },
+  { id: 'line', name: tl('Capteur de ligne (suiveur)'), cat: tl('Capteurs'), pre: 'LIGNE', build: line },
+  { id: 'hall', name: tl('Capteur à effet Hall (aimant)'), cat: tl('Capteurs'), pre: 'HALL', build: hall },
+  { id: 'tilt-sw', name: tl('Capteur d’inclinaison (bille)'), cat: tl('Capteurs'), pre: 'INC', build: tiltSw },
+  { id: 'shock', name: tl('Capteur de vibration'), cat: tl('Capteurs'), pre: 'CHOC', build: shock },
   { id: 'ds18b20', name: tl('DS18B20 température'), cat: tl('Capteurs'), pre: 'DS', build: ds18b20 },
   { id: 'bmp280', name: tl('BMP280 pression'), cat: tl('Capteurs'), pre: 'BMP', build: bmp280 },
   { id: 'mpu6050', name: tl('MPU6050 accéléromètre'), cat: tl('Capteurs'), pre: 'IMU', build: mpu6050 },
   { id: 'sound', name: tl('Module micro (son)'), cat: tl('Capteurs'), pre: 'MIC', build: soundSensor },
 
   { id: 'button', name: tl('Bouton poussoir'), cat: tl('Entrées'), pre: 'BTN', build: button },
+  { id: 'pressostat', name: tl('Pressostat (contact)'), cat: tl('Entrées'), pre: 'S', build: pressostat },
+  { id: 'cylsensor', name: tl('Capteur de position de vérin (ILS)'), cat: tl('Entrées'), pre: 'B', build: cylsensor },
   { id: 'pot', name: tl('Potentiomètre 10 kΩ'), cat: tl('Entrées'), pre: 'POT', build: potentiometer },
   { id: 'joystick', name: tl('Module joystick'), cat: tl('Entrées'), pre: 'JOY', build: joystick },
   { id: 'ir', name: tl('Récepteur infrarouge'), cat: tl('Entrées'), pre: 'IR', build: irReceiver },
@@ -620,6 +862,8 @@ export const LIBRARY = [
   { id: 'buzzer', name: tl('Buzzer actif'), cat: tl('Sorties'), pre: 'BZ', build: buzzer },
   { id: 'speaker', name: tl('Haut-parleur 8 Ω'), cat: tl('Sorties'), pre: 'HP', build: speaker },
   { id: 'relay', name: tl('Module relais 1 canal'), cat: tl('Sorties'), pre: 'K', build: relay },
+  { id: 'laser', name: tl('Module laser'), cat: tl('Sorties'), pre: 'LASER', build: laser },
+  { id: 'traffic', name: tl('Feu tricolore (module)'), cat: tl('Sorties'), pre: 'FEU', build: traffic },
 
   { id: 'servo', name: tl('Servomoteur SG90'), cat: tl('Moteurs'), pre: 'SERVO', build: servo },
   { id: 'dcmotor', name: tl('Moteur à courant continu'), cat: tl('Moteurs'), pre: 'M', build: dcMotor },
@@ -627,6 +871,7 @@ export const LIBRARY = [
   { id: 'l298n', name: tl('Pilote moteur L298N'), cat: tl('Moteurs'), pre: 'DRV', build: l298n },
   { id: 'fan', name: tl('Ventilateur 5 V'), cat: tl('Moteurs'), pre: 'FAN', build: fan },
   { id: 'pump', name: tl('Mini pompe à eau 5 V'), cat: tl('Moteurs'), pre: 'PMP', build: pump },
+  { id: 'coil24', name: tl('Électrovanne 24 V (bobine de distributeur)'), cat: tl('Sorties'), pre: 'Y', build: coil24 },
   { id: 'vibro', name: tl('Moteur vibreur'), cat: tl('Moteurs'), pre: 'VIB', build: vibro },
 
   { id: 'res-22', name: tl('Résistance 22 Ω'), cat: tl('Passifs'), pre: 'R', build: resistor([2, 2, 0, 'g']) },
@@ -642,6 +887,7 @@ export const LIBRARY = [
   { id: 'pn2222', name: tl('Transistor NPN PN2222A'), cat: tl('Passifs'), pre: 'Q', build: to92(['E', 'B', 'C']) },
 
   { id: 'bat9v', name: tl('Pile 9 V'), cat: tl('Alimentation'), pre: 'BAT', build: battery9v },
+  { id: 'psu24', name: tl('Alimentation 24 V (rail DIN)'), cat: tl('Alimentation'), pre: 'PS', build: psu24 },
   { id: 'bat18650', name: tl('Batterie 18650'), cat: tl('Alimentation'), pre: 'BAT', build: battery18650 },
   { id: 'mb102', name: tl('Module alimentation MB102'), cat: tl('Alimentation'), pre: 'PWR', build: mb102 },
   { id: 'lm7805', name: tl('Régulateur LM7805'), cat: tl('Alimentation'), pre: 'U', build: lm7805 },

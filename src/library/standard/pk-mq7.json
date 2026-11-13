@@ -1,0 +1,171 @@
+{
+  "format": 1,
+  "id": "pk-mq7",
+  "version": 1,
+  "name": "MQ-7 monoxyde de carbone (CO)",
+  "category": "Capteurs",
+  "prefix": "MQ7",
+  "description": "Capteur MQ-7 de monoxyde de carbone (module) : la tension AO monte avec la concentration de CO. Utile pour apprendre et pour une alerte d’appoint près d’un fourneau, mais ce n’est pas une alarme de sécurité.",
+  "sources": {
+    "hanwei": {
+      "title": "MQ-7 Semiconductor Sensor for Carbon Monoxide",
+      "publisher": "Henan Hanwei Electronics",
+      "section": "Technical Data : chauffe 5,0 V ±0,2 V pendant 60 s puis 1,5 V ±0,1 V pendant 90 s ; RH 31 Ω ±3 Ω, soit 161 mA sous 5 V ; 10 à 10 000 ppm CO ; Rs 2 à 20 kΩ à 100 ppm ; préchauffage plus de 48 h. Fig.1 : Rs/Ro relevé à 200 et 1000 ppm CO, air ≈ 10. Modèle : RL 10 kΩ et Rs(100 ppm) 6,3 kΩ, milieu géométrique de la plage ; au-delà de 1000 ppm, droite prolongée.",
+      "url": "https://www.pololu.com/file/0j313/mq7.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 161,
+  "ds": "hanwei",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "pwr",
+      "why": "Le filament demande 5 V ±0,2 V et environ 160 mA : prenez le 5 V, VIN ou VBUS, même sur une carte 3,3 V.",
+      "v": [
+        4.8,
+        5.2
+      ],
+      "ds": "hanwei"
+    },
+    {
+      "name": "GND",
+      "x": -1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "gnd"
+    },
+    {
+      "name": "DO",
+      "x": 1.27,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "in",
+      "role": "Alarme",
+      "why": "LOW au-dessus du seuil réglé par le potentiomètre (100 ppm dans la simulation), tirée à la tension du module au repos.",
+      "opt": true,
+      "lv5": true,
+      "idle": 1
+    },
+    {
+      "name": "AO",
+      "x": 3.81,
+      "y": 8.1,
+      "z": 13.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "Monte avec le CO et peut approcher 5 V : pont diviseur nécessaire sur une carte 3,3 V.",
+      "lv5": true
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "AO",
+        "quantity": "gas",
+        "from": [
+          0,
+          10000
+        ],
+        "ratio": true,
+        "to": [
+          0.269,
+          0.932
+        ],
+        "curve": [
+          [
+            0,
+            0.269
+          ],
+          [
+            20,
+            0.426
+          ],
+          [
+            100,
+            0.613
+          ],
+          [
+            200,
+            0.686
+          ],
+          [
+            500,
+            0.771
+          ],
+          [
+            1000,
+            0.823
+          ],
+          [
+            10000,
+            0.932
+          ]
+        ]
+      }
+    ],
+    "digitalOut": [
+      {
+        "pin": "DO",
+        "quantity": "gas",
+        "activeLow": true,
+        "threshold": 100
+      }
+    ],
+    "sample": {
+      "period": 0.2,
+      "tau": 3
+    }
+  },
+  "docs": {
+    "text": "Le CO ne se lit bien qu’à basse température : la fiche prévoit 60 s à 5 V, qui nettoient la couche, puis 90 s à 1,5 V, où se fait la mesure. Un module ordinaire laisse le filament à 5 V : la mesure sert alors d’indication, pas de valeur en ppm. La simulation donne une courbe stable, sans ce cycle, et n’a pas d’étalonnage.",
+    "specs": [
+      [
+        "Alimentation",
+        "5 V ±0,2 V, ≈ 160 mA pendant la chauffe"
+      ],
+      [
+        "Détection",
+        "monoxyde de carbone, 10 à 10 000 ppm"
+      ],
+      [
+        "Cycle de la fiche",
+        "60 s à 5 V, puis 90 s à 1,5 V"
+      ],
+      [
+        "Préchauffage",
+        "plus de 48 h la première fois"
+      ],
+      [
+        "Sorties",
+        "AO analogique · DO numérique (seuil réglable)"
+      ]
+    ],
+    "uses": [
+      "Démonstration de détection du CO",
+      "Alerte d’appoint près d’un fourneau à charbon, en plus d’un vrai détecteur",
+      "Comparer la qualité de l’air entre deux pièces"
+    ],
+    "mistakes": [
+      "Le prendre pour une alarme de sécurité : il n’est pas certifié. Pour protéger des personnes, achetez un détecteur CO homologué.",
+      "Lire des ppm sur un module à 5 V fixe : sans le cycle de chauffe et sans étalonnage, le chiffre n’est pas fiable.",
+      "L’alimenter par une sortie 3V3 ou une broche : il tire ≈ 160 mA.",
+      "Il chauffe : ne le touchez pas et éloignez-le du plastique."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1b4f8c",
+    "label": "MQ-7",
+    "size": [
+      20,
+      1.6,
+      32
+    ]
+  }
+}

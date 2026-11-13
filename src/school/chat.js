@@ -3,7 +3,7 @@
 // Messagerie : discussions de classe, de groupe et messages directs, en temps réel.
 // Texte simple (liens cliquables), pièces jointes, modification pendant 15 minutes,
 // suppression par l'auteur ou par l'enseignant (modération), indicateur « écrit… ».
-import { tl } from '../i18n/index.js';
+import { tl, CANCEL } from '../i18n/index.js';
 import * as api from './api.js';
 import * as rt from './rt.js';
 import { icon, esc, avatar, relTime, timeOnly, dateOnly, empty, toast, confirm, dialog, menu } from './ui.js';
@@ -84,7 +84,7 @@ export function installChat(hub) {
       const v = await menu(b, [...(editable ? [{ label: tl('Modifier'), icon: 'edit', value: 'edit' }] : []), { label: tl('Copier le texte'), icon: 'copy', value: 'copy' }, { label: mine ? tl('Supprimer') : tl('Supprimer (modération)'), icon: 'trash', value: 'del', danger: true }]);
       if (v === 'copy') navigator.clipboard && navigator.clipboard.writeText(m.body || '');
       if (v === 'edit') {
-        const body = await dialog({ title: tl('Modifier le message'), body: `<textarea class="sInput" rows="5" maxlength="4000">${esc(m.body)}</textarea>`, actions: [{ label: tl('Annuler'), value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }], onAction: (x, el) => (x === 'ok' ? el.querySelector('textarea').value.trim() || false : undefined) });
+        const body = await dialog({ title: tl('Modifier le message'), body: `<textarea class="sInput" rows="5" maxlength="4000">${esc(m.body)}</textarea>`, actions: [{ label: CANCEL, value: null }, { label: tl('Enregistrer'), value: 'ok', kind: 'primary' }], onAction: (x, el) => (x === 'ok' ? el.querySelector('textarea').value.trim() || false : undefined) });
         if (body) { try { Object.assign(m, await api.patch(`/messages/${m.id}`, { body })); paintMsgs(); } catch (err) { toast(api.errorText(err), 'err'); } }
       }
       if (v === 'del' && await confirm(tl('Supprimer le message'), tl('Le message sera remplacé par « Message supprimé » pour tout le monde.'), tl('Supprimer'), true)) {
@@ -152,7 +152,7 @@ export function installChat(hub) {
       const id = await dialog({
         title: tl('Nouveau message'), width: 420,
         body: `<div class="convSearch">${icon('search')}<input placeholder="${tl('Rechercher une personne')}"></div><div class="pickList">${people.map(p => `<button type="button" class="pick" data-u="${p.userId}">${avatar(p, 32)}<span><b>${esc(p.displayName)}</b><small>${esc(p.classes.join(', '))}</small></span></button>`).join('')}</div>`,
-        actions: [{ label: tl('Annuler'), value: null }],
+        actions: [{ label: CANCEL, value: null }],
         onOpen: (el, close) => {
           el.querySelector('input').oninput = e => { const f = e.target.value.toLowerCase(); el.querySelectorAll('.pick').forEach(b => (b.hidden = !b.textContent.toLowerCase().includes(f))); };
           el.onclick = e => { const b = e.target.closest('[data-u]'); if (b) close(b.dataset.u); };

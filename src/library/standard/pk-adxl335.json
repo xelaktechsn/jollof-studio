@@ -1,0 +1,324 @@
+{
+  "format": 1,
+  "id": "pk-adxl335",
+  "version": 1,
+  "name": "ADXL335 accéléromètre analogique (GY-61)",
+  "category": "Capteurs",
+  "prefix": "ADXL",
+  "description": "Accéléromètre 3 axes ADXL335 sur module GY-61 : une tension par axe, 1,65 V à 0 g. Sans I2C, il se lit avec analogRead() et se contente d’un axe sur une carte à une seule entrée analogique.",
+  "sources": {
+    "adi": {
+      "title": "ADXL335 Small, Low Power, 3-Axis ±3 g Accelerometer (Rev. 0)",
+      "publisher": "Analog Devices",
+      "section": "Table 1 : ±3 g min. ; 300 mV/g et 1,5 V à 0 g sous VS = 3 V, ratiométriques ; 1,8 à 3,6 V ; 350 µA. Sous 3,3 V : 330 mV/g et 1,65 V par proportion. Le régulateur 3,3 V du module GY-61 n’est pas décrit par cette fiche.",
+      "url": "https://www.abelectronics.co.uk/viewpdf/adxl335"
+    }
+  },
+  "limits": {},
+  "ma": 0.35,
+  "ds": "adi",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -5.08,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "pwr",
+      "why": "Le régulateur 3,3 V du module GY-61 alimente la puce, limitée à 3,6 V : 3,3 V ou 5 V conviennent. Une puce nue ne supporte pas le 5 V.",
+      "v": "logic"
+    },
+    {
+      "name": "X",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Axe X",
+      "why": "1,65 V à plat, ±0,33 V à ±1 g : la tension suit le sinus de l’inclinaison."
+    },
+    {
+      "name": "Y",
+      "x": 0,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Axe Y",
+      "why": "Comme X, sur l’autre axe. Facultatif : un ESP8266 n’a qu’une entrée analogique.",
+      "opt": true
+    },
+    {
+      "name": "Z",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Axe Z",
+      "why": "1,98 V à plat, face vers le haut. Facultatif, utile pour distinguer le haut du bas.",
+      "opt": true
+    },
+    {
+      "name": "GND",
+      "x": 5.08,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "gnd"
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "X",
+        "quantity": "tilt",
+        "from": [
+          -90,
+          90
+        ],
+        "ratio": false,
+        "to": [
+          1.32,
+          1.98
+        ],
+        "curve": [
+          [
+            -90,
+            1.32
+          ],
+          [
+            -75,
+            1.331
+          ],
+          [
+            -60,
+            1.364
+          ],
+          [
+            -45,
+            1.417
+          ],
+          [
+            -30,
+            1.485
+          ],
+          [
+            -15,
+            1.565
+          ],
+          [
+            0,
+            1.65
+          ],
+          [
+            15,
+            1.735
+          ],
+          [
+            30,
+            1.815
+          ],
+          [
+            45,
+            1.883
+          ],
+          [
+            60,
+            1.936
+          ],
+          [
+            75,
+            1.969
+          ],
+          [
+            90,
+            1.98
+          ]
+        ]
+      },
+      {
+        "pin": "Y",
+        "quantity": "tiltY",
+        "from": [
+          -90,
+          90
+        ],
+        "ratio": false,
+        "to": [
+          1.32,
+          1.98
+        ],
+        "curve": [
+          [
+            -90,
+            1.32
+          ],
+          [
+            -75,
+            1.331
+          ],
+          [
+            -60,
+            1.364
+          ],
+          [
+            -45,
+            1.417
+          ],
+          [
+            -30,
+            1.485
+          ],
+          [
+            -15,
+            1.565
+          ],
+          [
+            0,
+            1.65
+          ],
+          [
+            15,
+            1.735
+          ],
+          [
+            30,
+            1.815
+          ],
+          [
+            45,
+            1.883
+          ],
+          [
+            60,
+            1.936
+          ],
+          [
+            75,
+            1.969
+          ],
+          [
+            90,
+            1.98
+          ]
+        ]
+      },
+      {
+        "pin": "Z",
+        "quantity": "tilt",
+        "from": [
+          -90,
+          90
+        ],
+        "ratio": false,
+        "to": [
+          1.65,
+          1.98
+        ],
+        "curve": [
+          [
+            -90,
+            1.65
+          ],
+          [
+            -75,
+            1.735
+          ],
+          [
+            -60,
+            1.815
+          ],
+          [
+            -45,
+            1.883
+          ],
+          [
+            -30,
+            1.936
+          ],
+          [
+            -15,
+            1.969
+          ],
+          [
+            0,
+            1.98
+          ],
+          [
+            15,
+            1.969
+          ],
+          [
+            30,
+            1.936
+          ],
+          [
+            45,
+            1.883
+          ],
+          [
+            60,
+            1.815
+          ],
+          [
+            75,
+            1.735
+          ],
+          [
+            90,
+            1.65
+          ]
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.05,
+      "tau": 0.02
+    }
+  },
+  "docs": {
+    "text": "La puce mesure la gravité sur chaque axe : tension = 1,65 V + 0,33 V × sin(inclinaison). Angle en degrés = asin((tension − 1,65) / 0,33). Simulation : X suit l’inclinaison X, Y l’inclinaison Y, et Z seulement l’inclinaison X.",
+    "specs": [
+      [
+        "Alimentation",
+        "module 3,3 à 5 V ; puce 1,8 à 3,6 V"
+      ],
+      [
+        "Plage",
+        "±3 g"
+      ],
+      [
+        "Sortie",
+        "1,65 V à 0 g, 330 mV/g sous 3,3 V"
+      ],
+      [
+        "Consommation",
+        "350 µA"
+      ],
+      [
+        "Entrées",
+        "une à trois entrées analogiques"
+      ]
+    ],
+    "uses": [
+      "Mesurer une inclinaison sans bus I2C",
+      "Alarme de basculement",
+      "Niveau à bulle électronique"
+    ],
+    "mistakes": [
+      "Brancher une puce nue en 5 V : elle est limitée à 3,6 V ; seul le module GY-61 a un régulateur.",
+      "Se fier aux valeurs théoriques : ±10 % d’écart entre puces, étalonnez à plat puis à ±90°.",
+      "Calculer un angle pendant un mouvement : l’accélération s’ajoute à la gravité."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#5b2a86",
+    "label": "ADXL335",
+    "size": [
+      20,
+      1.6,
+      16
+    ]
+  }
+}

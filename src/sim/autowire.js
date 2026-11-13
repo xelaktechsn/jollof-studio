@@ -4,7 +4,7 @@
 // d'un composant, la broche de la carte qui convient (tension, ADC, bus I2C/SPI, port
 // série), ajoute les résistances nécessaires et décrit chaque fil. `explain` relit le
 // montage existant et dit, broche par broche, à quoi elle sert et si elle est bien reliée.
-import { BOARDS, NEED_CAPS, base, volts, vrange, pickPower, pinName, codePin, boardOf, isGnd } from './boards.js';
+import { BOARDS, NEED_CAPS, base, volts, vrange, pickPower, pinName, codePin, boardOf, isGnd, SOURCES } from './boards.js';
 import { PARTS, partOf, motorPins, loadPins } from './parts.js';
 import { inspect, bbGroups, isBreadboard } from './circuit.js';
 import { boardLimits } from '../check/limits.js';
@@ -60,10 +60,12 @@ function makeRouter(cx, P, anchor) {
   const wiresAt = r => [...cx.wires.filter(w => !removed.has(w)), ...P.wires].filter(w => id(w.a) === id(r) || id(w.b) === id(r));
   // Broche de carte occupée (les alias, comme SDA = A4 sur l'Uno, comptent ensemble).
   const pinUsed = k => used(on(k)) || (prof.alias || []).some(al => al.includes(k) && al.some(x => used(on(x))));
-  const tkey = t => (t.type === 'pin' ? 'pin:' + base(t.key) : t.type === 'pwr' ? 'pwr:' + t.v : 'gnd');
-  const boardPins = t => (t.type === 'pin' ? [t.key] : t.type === 'gnd' ? Object.keys(board.pins).filter(k => isGnd(prof, base(k))) : named(t.name)).filter(k => board.pins[k]);
+  // ext : borne d'une source extérieure (+ 24 V d'une alimentation psu24), rejointe par une bande de la breadboard.
+  const tkey = t => (t.type === 'pin' ? 'pin:' + base(t.key) : t.type === 'pwr' ? 'pwr:' + t.v : t.type === 'ext' ? 'ext:' + id(t.ref) : 'gnd');
+  const boardPins = t => (t.type === 'ext' ? [] : t.type === 'pin' ? [t.key] : t.type === 'gnd' ? Object.keys(board.pins).filter(k => isGnd(prof, base(k))) : named(t.name)).filter(k => board.pins[k]);
   // Un rail ne sert que pour son signe (+ alimentation, − masse), même si un court-circuit relie les deux.
   const matches = (net, t, g) => (g.rail && g.rail !== (t.type === 'pwr' ? '+' : t.type === 'gnd' ? '-' : null) ? false
+    : t.type === 'ext' ? !!t.ref.comp && net.src.some(x => x.comp === t.ref.comp && x.key === t.ref.key)
     : t.type === 'gnd' ? net.gnd.some(x => x.comp === board)
       : t.type === 'pwr' ? net.src.some(x => x.comp === board && x.v === t.v)
         : net.gpio.some(x => x.comp === board && base(x.key) === base(t.key)));
@@ -111,6 +113,8 @@ function makeRouter(cx, P, anchor) {
     const g = pickGroup(t, near);
     if (!g) return null;
     const hub = { t, groups: [g] }; hubs.set(tkey(t), hub);
+    // Source extérieure : sa borne rejoint la bande, puis chaque charge s'y branche.
+    if (t.type === 'ext') { wire(t.ref, takeHole(hub, t.ref.h ? near : t.ref, color), color, t.role); return hub; }
     const pins = boardPins(t), free = pins.filter(k => !pinUsed(k));
     if (free.length) {
       const k = nearest(free.map(on), { comp: g.bb, key: g.keys[0] }).key;
@@ -165,7 +169,7 @@ function makeRouter(cx, P, anchor) {
 
 // Sens d'un signal vu du module (même tableau que circuit.js) : reçu de la carte, ou envoyé vers elle.
 const FROM_BOARD = new Set(['out', 'pwm', 'mosi', 'sck', 'ss', 'rx', 'sda', 'scl', 'io']);
-const TO_BOARD = new Set(['in', 'adc', 'miso', 'tx', 'sda', 'scl', 'io', 'pullup']);
+const TO_BOARD = new Set(['in', 'adc', 'irq', 'miso', 'tx', 'sda', 'scl', 'io', 'pullup']);
 const BUS_NEED = new Set(['sda', 'scl', 'sck', 'mosi', 'miso', 'ss']);
 // Pont diviseur 4,7 kΩ / 10 kΩ : 5 V → 3,40 V (3,18 V derrière la sortie d'un module), dans la plage d'une entrée 3,3 V.
 const DIV_TOP = 'res-4k7', DIV_BOT = 'res-10k';
@@ -246,7 +250,16 @@ export function planWiring(comp, cx) {
   if (spec.stage) {
     const st = spec.stage, [lp, lm] = loadPins(comp);
     if (wired(lp) || wired(lm)) return P;
-    const sup = power(st.v);
+    // Source extérieure (bobine 24 V : alimentation psu24, une seule pour toutes les bobines) : son + rejoint une bande
+    // de la breadboard où se branchent les charges, son − la masse commune.
+    let sup;
+    if (st.src) {
+      const x = cx.comps.find(c2 => c2.type === st.src), v = (SOURCES[st.src] || {})['+'];
+      let plus, minus;
+      if (x) { plus = { comp: x, key: '+' }; minus = { comp: x, key: '-' }; } else { const hid = helper(st.src); plus = H(hid, '+'); minus = H(hid, '-'); }
+      if (!x || !A.deg(minus)) R.connect(minus, GND, COL.gnd, tl('0 V de l’alimentation {0} à la masse commune', volts(v)), me(lp));
+      sup = { type: 'ext', ref: plus, v, role: tl('Alimentation {0} vers la breadboard', volts(v)) };
+    } else sup = power(st.v);
     if (!sup) return { error: tl('{0} : {1} ne fournit pas {2}.', comp.name, board.name, volts(st.v)) };
     const k = gpio(st.need, me(lm));
     if (!k) return { error: busErr || tl('{0} : plus de broche libre adaptée sur {1} ({2}). Câblage annulé : libérez une broche ou prenez une carte qui en a davantage.', comp.name, board.name, ROLE[st.need]) };

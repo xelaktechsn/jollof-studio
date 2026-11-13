@@ -5,7 +5,9 @@
 // boucle sans delay() rend la main toutes les quelques millisecondes. Les broches de la
 // carte gardent leur état (mode, niveau, PWM, tone, servo…) ; l'application en déduit ce
 // que font LED, moteurs et écrans. Les lectures passent par `hw`, qui connaît le câblage.
-import { BOARD_CONSTS } from './api.js';
+import { BOARD_CONSTS, AVR_INFO, isEsp32 } from './api.js';
+import { createI2c, createSpi } from '../sim/pkgbus.js';
+import { pkgI2c, pkgSpi } from '../sim/pkgparts.js';
 import { periph, serialDevice, btSerial, macOf, hashBytes, fakeHttp, parseUrl, parseQuery, NET_DEFAULT, FAKE_HOSTS, BADGES, hex2 } from '../sim/models.js';
 import { tl } from '../i18n/index.js';
 
@@ -13,7 +15,6 @@ export class RunError extends Error {}
 const err = msg => { throw new RunError(msg); };
 const SLICE = 6; // ms de calcul par image au plus
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-const AVR = new Set(['uno', 'nano']);
 
 /** Numéro de broche du code → nom de la broche sur la carte (D7, A0, GP15…). */
 export function pinMap(prof, kind) {
@@ -217,7 +218,7 @@ export function showValue(x, type = 'auto') {
  * res.debug, ou { globals: res.globals } sans le mode débogage).
  */
 export function createRuntime(js, hw, meta = {}) {
-  const prof = hw.prof, keys = pinMap(prof, hw.kind), consts = BOARD_CONSTS[hw.kind] || {};
+  const prof = hw.prof, keys = pinMap(prof, hw.kind), consts = BOARD_CONSTS[hw.kind] || {}, avr = AVR_INFO[hw.kind];
   const pins = new Map(), warnings = new Map(), irqs = [], ledc = new Map();
   let out = '', serialIn = '', T = 0, vt = 0, wake = null, state = 'run', error = null, irqOn = true, started = false;
   // analogRead() rend prof.adcRead bits par défaut : 10 sur le Pico (cœur arduino-pico), dont l'ADC fait 12 bits
@@ -238,7 +239,7 @@ export function createRuntime(js, hw, meta = {}) {
   const keyOf = (n, what) => {
     const num = Math.trunc(+n);
     // Sur un AVR, analogRead(0) lit A0 : les petits numéros désignent les entrées analogiques.
-    let k = AVR.has(hw.kind) && what === 'adc' && num >= 0 && num <= 7 ? keys.get(num + 14) : keys.get(num);
+    let k = avr && what === 'adc' && num >= 0 && num < avr.an ? keys.get(num + avr.a0) : keys.get(num);
     if (!k && num === consts.LED_BUILTIN) return 'LED_BUILTIN';
     if (!k) { warn(tl('La broche {0} n’existe pas sur {1}', n, hw.label)); return null; }
     return k;
@@ -256,6 +257,7 @@ export function createRuntime(js, hw, meta = {}) {
   };
   const digitalIn = k => {
     const r = input(k);
+    if (r && r.hz > 0) return Math.floor(vt * r.hz / 500) % 2; // signal carré d'un module à impulsions
     if (r) return r.d != null ? r.d : +(r.v > prof.logic / 2);
     if (k !== 'LED_BUILTIN') warn(tl('{0} n’est reliée à rien et n’a pas de tirage : son niveau flotte (lecture au hasard). Utilisez pinMode(…, INPUT_PULLUP) ou une résistance de tirage', k));
     return rnd() < 0.5 ? 0 : 1;
@@ -286,6 +288,7 @@ export function createRuntime(js, hw, meta = {}) {
       if (hi && !p.d) p.riseAt = vt; else if (!hi && p.d && p.riseAt != null) p.pulse = { end: vt, w: vt - p.riseAt, used: false };
       p.dac = null;
       if (p.d !== hi || wasPwm) { p.d = hi; p.weak = false; traced(k, p); } else p.weak = false;
+      spiChip(k, hi);
     },
     digitalRead(n) { const k = keyOf(n); return k ? digitalIn(k) : 0; },
     analogRead(n) {
@@ -317,6 +320,9 @@ export function createRuntime(js, hw, meta = {}) {
     pulseIn(n, level, timeout = 1000000) {
       const k = keyOf(n); if (!k) return 0;
       timeout = Math.max(0, +timeout || 0);
+      // Module à impulsions (débitmètre…) : signal carré, chaque niveau dure une demi-période.
+      const sq = input(k);
+      if (sq && sq.hz > 0) { const half = 500000 / sq.hz; return half > timeout ? new Wait(timeout / 1000, 0) : new Wait(half * 2 / 1000, Math.round(half)); }
       const us = level ? hw.echo(k) : null, none = () => new Wait(timeout / 1000, 0);
       // HC-SR04 : il n'envoie d'écho qu'après une impulsion HIGH d'au moins 10 µs sur TRIG ; l'écho commence
       // environ 0,25 ms après la fin de l'impulsion (salve de 8 ultrasons) : pulseIn() doit être appelé avant.
@@ -347,15 +353,15 @@ export function createRuntime(js, hw, meta = {}) {
     randomSeed(s) { rnd = prng(+s || 0); },
     bit: n => 2 ** n, bitRead: (x, n) => Math.floor(x / 2 ** n) & 1, highByte: x => (x >> 8) & 255, lowByte: x => x & 255,
     bitWrite: (x, n, b) => (b ? x | (1 << n) : x & ~(1 << n)), bitSet: (x, n) => x | (1 << n), bitClear: (x, n) => x & ~(1 << n),
-    digitalPinToInterrupt(p) { if (AVR.has(hw.kind)) return p === 2 ? 0 : p === 3 ? 1 : -1; return p; },
+    digitalPinToInterrupt(p) { return avr ? avr.irq.indexOf(Math.trunc(+p)) : p; },
     attachInterrupt(num, fn, mode) {
-      if (num < 0) { warn(tl('Cette broche n’a pas d’interruption sur {0}{1}', hw.label, AVR.has(hw.kind) ? tl(' : seulement D2 et D3') : '')); return; }
-      const n = AVR.has(hw.kind) ? (num === 0 ? 2 : num === 1 ? 3 : -1) : num;
+      if (num < 0) { warn(tl('Cette broche n’a pas d’interruption sur {0}{1}', hw.label, avr ? tl(' : seulement {0}', avr.irq.map(n => 'D' + n).join(', ')) : '')); return; }
+      const n = avr ? (avr.irq[num] ?? -1) : num;
       const k = n >= 0 && keyOf(n); if (!k) return;
       const i = irqs.findIndex(q => q.k === k); if (i >= 0) irqs.splice(i, 1);
-      irqs.push({ k, fn, mode, last: digitalIn(k) });
+      irqs.push({ k, fn, mode, last: digitalIn(k), t: vt, acc: 0 });
     },
-    detachInterrupt(num) { const n = AVR.has(hw.kind) ? (num === 0 ? 2 : num === 1 ? 3 : -1) : num, k = keys.get(n); const i = irqs.findIndex(q => q.k === k); if (i >= 0) irqs.splice(i, 1); },
+    detachInterrupt(num) { const n = avr ? (avr.irq[num] ?? -1) : num, k = keys.get(n); const i = irqs.findIndex(q => q.k === k); if (i >= 0) irqs.splice(i, 1); },
     interrupts() { irqOn = true; }, noInterrupts() { irqOn = false; },
     isDigit: c => c >= 48 && c <= 57, isAlpha: c => /[A-Za-z]/.test(String.fromCharCode(c)), isAlphaNumeric: c => /[A-Za-z0-9]/.test(String.fromCharCode(c)),
     isSpace: c => /\s/.test(String.fromCharCode(c)), isUpperCase: c => c >= 65 && c <= 90, isLowerCase: c => c >= 97 && c <= 122,
@@ -380,11 +386,14 @@ export function createRuntime(js, hw, meta = {}) {
       p.mode = 1; p.weak = false; p.dac = x / 255 * prof.logic; p.pwm = x / 255; p.d = x > 0 ? 1 : 0; traced(k, p);
     },
     // ESP32 : entrée tactile, environ 60 au repos, beaucoup moins quand un doigt (ou la masse) touche la broche.
+    // ESP32-S3 : T1 à T14 (GPIO 1 à 14), la valeur augmente au contact (de l'ordre de 20 000 au repos). ESP32-C3 : aucune.
     touchRead(n) {
-      const T = [4, 0, 2, 15, 13, 12, 14, 27, 33, 32];
-      if (hw.kind !== 'esp32' || !T.includes(n)) { warn(tl('touchRead({0}) : cette broche n’est pas une entrée tactile (ESP32 : T0 à T9)', n)); return 0; }
-      const k = keyOf(n), r = k && hw.read(k);
-      return r && r.d === 0 && r.v === 0 ? 8 + Math.round(rnd() * 4) : 58 + Math.round(rnd() * 4);
+      if (hw.kind === 'esp32c3') { warn(tl('touchRead() : l’ESP32-C3 n’a pas d’entrée tactile')); return 0; }
+      const s3 = hw.kind === 'esp32s3', T = s3 ? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14] : [4, 0, 2, 15, 13, 12, 14, 27, 33, 32];
+      if (!isEsp32(hw.kind) || !T.includes(n)) { warn(s3 ? tl('touchRead({0}) : cette broche n’est pas une entrée tactile (ESP32-S3 : GPIO 1 à 14)', n) : tl('touchRead({0}) : cette broche n’est pas une entrée tactile (ESP32 : T0 à T9)', n)); return 0; }
+      const k = keyOf(n), r = k && hw.read(k), touched = r && r.d === 0 && r.v === 0;
+      if (s3) return touched ? 60000 + Math.round(rnd() * 2000) : 20000 + Math.round(rnd() * 600);
+      return touched ? 8 + Math.round(rnd() * 4) : 58 + Math.round(rnd() * 4);
     },
     analogReadMilliVolts(n) {
       const k = keyOf(n, 'adc'); if (!k) return 0;
@@ -427,8 +436,10 @@ export function createRuntime(js, hw, meta = {}) {
   // Serial : le moniteur série (USB). Sur l'Uno, le Nano, l'ESP32 et le NodeMCU, il partage les broches RX0/TX0, où un
   // module peut aussi être câblé. Serial1, Serial2 (ESP32, Pico) et SoftwareSerial n'ont que leurs broches. Un module
   // série (HC-05, SIM800) y est relié par ses fils : TXD vers la broche RX de la carte, RXD vers sa broche TX.
-  const SERIAL0 = { uno: [0, 1], nano: [0, 1], esp32: [3, 1], nodemcu: [3, 1] };
-  const UARTS = { esp32: { Serial1: [9, 10], Serial2: [16, 17] }, pico: { Serial1: [1, 0], Serial2: [9, 8] }, nodemcu: { Serial1: [null, 2] } };
+  // ESP32-S3 : Serial passe par la puce USB-série (UART0, GPIO 44/43). ESP32-C3 SuperMini : Serial est l'USB natif
+  // (CDC), il ne touche aucune broche. Ports Serial1/Serial2 par défaut du cœur arduino-esp32 (HardwareSerial.h).
+  const SERIAL0 = { uno: [0, 1], nano: [0, 1], mega: [0, 1], esp32: [3, 1], esp32s3: [44, 43], nodemcu: [3, 1] };
+  const UARTS = { esp32: { Serial1: [9, 10], Serial2: [16, 17] }, esp32s3: { Serial1: [15, 16], Serial2: [19, 20] }, esp32c3: { Serial1: [18, 19] }, pico: { Serial1: [1, 0], Serial2: [9, 8] }, nodemcu: { Serial1: [null, 2] }, mega: { Serial1: [19, 18], Serial2: [17, 16], Serial3: [15, 14] } };
   const LINKED = ['hc05', 'sim800'];
   class HardwareSerial {
     constructor(name) { this.name = name; this.label = name || 'Serial'; this.main = name === 'Serial'; this.baud = 0; this.rx = ''; this.link = null; }
@@ -436,7 +447,7 @@ export function createRuntime(js, hw, meta = {}) {
     begin(b, cfg, rx, tx) {
       this.baud = +b || 0;
       let p = this.main ? SERIAL0[hw.kind] : (UARTS[hw.kind] || {})[this.name];
-      if (!this.main && hw.kind === 'esp32' && rx >= 0 && tx >= 0) p = [rx, tx];
+      if (!this.main && isEsp32(hw.kind) && rx >= 0 && tx >= 0) p = [rx, tx];
       if (!this.main && !p) warn(tl('{0} n’existe pas sur {1} : utilisez SoftwareSerial', this.name, hw.label));
       this.connect(p && p.map(n => (n == null ? null : keys.get(n) || null)));
     }
@@ -510,20 +521,60 @@ export function createRuntime(js, hw, meta = {}) {
     listen() { return true; } isListening() { return true; }
   }
   $.O.Serial = new HardwareSerial('Serial');
-  $.O.Serial1 = new HardwareSerial('Serial1'); $.O.Serial2 = new HardwareSerial('Serial2');
+  $.O.Serial1 = new HardwareSerial('Serial1'); $.O.Serial2 = new HardwareSerial('Serial2'); $.O.Serial3 = new HardwareSerial('Serial3');
   // Bus I2C : endTransmission() rend 0 si un module répond à l'adresse, 2 (NACK) sinon : un scanner I2C ne liste que les modules câblés.
+  // Un module en paquet (.jpart) répond par ses registres et ses commandes déclarés (sim/pkgbus.js) ; les modules
+  // de la bibliothèque passent par leurs bibliothèques simulées (LiquidCrystal_I2C…) et rendent 0 en lecture directe.
   const i2cAt = a => (hw.i2c ? hw.i2c() : []).some(d => d.addr.includes(a));
-  $.O.Wire = {
-    addr: -1, rq: 0,
-    begin() {}, setClock() {}, setPins() { return true; },
-    beginTransmission(a) { this.addr = (a | 0) & 127; },
-    write(x) { return typeof x === 'string' ? x.length : 1; },
-    endTransmission() { const ok = this.addr >= 0 && i2cAt(this.addr); this.addr = -1; return ok ? 0 : 2; },
-    requestFrom(a, n) { this.rq = i2cAt((a | 0) & 127) ? Math.max(0, n | 0) : 0; return this.rq; },
-    available() { return this.rq; },
-    read() { if (this.rq <= 0) return -1; this.rq--; return 0; }
+  const busDevs = new Map();
+  const i2cDev = a => {
+    const hit = (hw.i2c ? hw.i2c() : []).find(d => d.addr.includes(a)), spec = hit && pkgI2c(hit.comp.type);
+    if (!spec) return null;
+    if (!busDevs.has(hit.comp.id)) busDevs.set(hit.comp.id, createI2c(spec, () => hw.data(hit.comp)));
+    return busDevs.get(hit.comp.id);
   };
-  $.O.SPI = { begin() {}, end() {}, transfer: () => 0, beginTransaction() {}, endTransaction() {} };
+  $.O.Wire = {
+    addr: -1, tx: [], rx: [],
+    begin() {}, setClock() {}, setPins() { return true; },
+    beginTransmission(a) { this.addr = (a | 0) & 127; this.tx = []; },
+    write(x, n) {
+      const add = b => this.tx.push((b | 0) & 255);
+      if (typeof x === 'string') { for (const ch of x) add(ch.charCodeAt(0)); return x.length; }
+      if (Array.isArray(x)) { const k = n == null ? x.length : Math.max(0, n | 0); x.slice(0, k).forEach(add); return k; }
+      add(x); return 1;
+    },
+    endTransmission(stop = true) {
+      const a = this.addr; this.addr = -1;
+      if (a < 0 || !i2cAt(a)) return 2;
+      const d = i2cDev(a);
+      if (d) { d.start(true); this.tx.forEach(b => d.write(b)); if (stop !== false && stop !== 0) d.stop(); }
+      return 0;
+    },
+    requestFrom(a, n) {
+      a = (a | 0) & 127; n = Math.max(0, Math.min(255, n | 0)); this.rx = [];
+      if (!i2cAt(a)) return 0;
+      const d = i2cDev(a);
+      if (d) { d.start(false); for (let i = 0; i < n; i++) this.rx.push(d.read()); d.stop(); } else this.rx = new Array(n).fill(0);
+      return n;
+    },
+    available() { return this.rx.length; },
+    read() { return this.rx.length ? this.rx.shift() : -1; },
+    peek() { return this.rx.length ? this.rx[0] : -1; }
+  };
+  // SPI : un module en paquet écoute tant que sa broche CS est à LOW (digitalWrite), et répond octet par octet.
+  let spiSel = null;
+  function spiChip(k, level) {
+    const hit = at(k).find(x => { const sp = pkgSpi(x.comp.type); return sp && sp.cs === x.pin; });
+    if (!hit) return;
+    if (!busDevs.has(hit.comp.id)) busDevs.set(hit.comp.id, createSpi(pkgSpi(hit.comp.type), () => hw.data(hit.comp)));
+    const d = busDevs.get(hit.comp.id);
+    if (!level) { d.select(); spiSel = d; } else { d.deselect(); if (spiSel === d) spiSel = null; }
+  }
+  $.O.SPI = {
+    begin() {}, end() {}, beginTransaction() {}, endTransaction() {},
+    transfer: b => (spiSel ? spiSel.transfer((b | 0) & 255) : 0),
+    transfer16(w) { const hi = this.transfer((w >> 8) & 255), lo = this.transfer(w & 255); return (hi << 8) | lo; }
+  };
 
   /* ---------- Bibliothèques ---------- */
   const busDevice = (types, addr, what) => {
@@ -614,6 +665,81 @@ export function createRuntime(js, hw, meta = {}) {
     takeForcedMeasurement() { if (!this.c || this.mode !== 1) return false; this.snap = hw.data(this.c); return true; }
     getStatus() { return 0; }
     sensorID() { return 0x58; }
+  }
+  // BME280 : la même interface que le BMP280, l'humidité en plus ; sensorID() rend 0x60 (0x58 pour un BMP280).
+  class Adafruit_BME280 {
+    constructor() { this.mode = 3; this.snap = null; this.dt = 0; }
+    begin(addr = 0x77) { this.c = busDevice(['bme280'], addr, 'BME280'); this.mode = 3; return !!this.c; }
+    d() { if (!this.c) return null; if (this.mode === 3) return hw.data(this.c); return this.snap || (this.snap = hw.data(this.c)); }
+    readTemperature() { const d = this.d(); return d ? d.temp + this.dt : NaN; }
+    readPressure() { const d = this.d(); return d ? d.press * 100 : NaN; }
+    readHumidity() { const d = this.d(); return d ? d.hum : NaN; }
+    readAltitude(sea = 1013.25) { const d = this.d(); return d ? 44330 * (1 - Math.pow(d.press / sea, 1 / 5.255)) : NaN; }
+    seaLevelForAltitude(alt, p) { return p / Math.pow(1 - alt / 44330, 5.255); }
+    setSampling(mode = 3) { this.mode = mode; this.snap = null; }
+    takeForcedMeasurement() { if (!this.c || this.mode !== 1) return false; this.snap = hw.data(this.c); return true; }
+    setTemperatureCompensation(t) { this.dt = +t || 0; }
+    getTemperatureCompensation() { return this.dt; }
+    sensorID() { return this.c ? 0x60 : 0; }
+  }
+  // BH1750 (bibliothèque de Christopher Laws) : begin() reprend l'adresse 0x23 par défaut, même si le constructeur en
+  // donnait une autre (comme la vraie bibliothèque) ; readLightLevel() rend −1 avant begin(), −2 si le module ne répond pas.
+  class BH1750 {
+    constructor(addr = 0x23) { this.addr = addr; this.mode = 0; this.mt = 69; this.t0 = 0; }
+    begin(mode = 0x10, addr = 0x23) { if (addr) this.addr = addr; this.c = busDevice(['bh1750'], this.addr, 'BH1750'); return !!this.c && this.configure(mode); }
+    configure(mode) {
+      if (![0x10, 0x11, 0x13, 0x20, 0x21, 0x23].includes(mode)) { warn(tl('BH1750 : mode de mesure inconnu ({0})', mode)); return false; }
+      this.mode = mode; this.t0 = vt; return !!this.c;
+    }
+    setMTreg(mt) { if (mt < 31 || mt > 254) { warn(tl('BH1750 : setMTreg({0}) hors de la plage 31 à 254', mt)); return false; } this.mt = mt; this.t0 = vt; return true; }
+    low() { return this.mode === 0x13 || this.mode === 0x23; }
+    measurementReady() { return !!this.c && !!this.mode && vt - this.t0 >= (this.low() ? 24 : 180) * this.mt / 69; }
+    readLightLevel() {
+      if (!this.mode) return -1;
+      const d = this.c && hw.data(this.c); if (!d) return -2;
+      const step = this.low() ? 4 : this.mode === 0x11 || this.mode === 0x21 ? 0.5 : 1;
+      return Math.round(d.lux * 69 / this.mt / step) * step * this.mt / 69;
+    }
+  }
+  // HX711 (bibliothèque de Bogdan Necula) : une mesure toutes les 100 ms ; read(), read_average(), get_value(),
+  // get_units() et tare() attendent les mesures qui ne sont pas encore prêtes.
+  class HX711 {
+    constructor() { this.off = 0; this.scale = 1; this.gain = 128; this.next = 0; this.down = false; this.told = false; }
+    begin(dout, sck, gain = 128) { this.dout = dout; this.sck = sck; this.set_gain(gain); this.next = vt + 100; this.cell(); }
+    cell() {
+      const k = keyOf(this.dout), c = k && hw.onPin(k, ['hx711']);
+      if (!c) { warn(tl('HX711 : aucun module HX711 n’a sa broche DT reliée à la broche {0}', this.dout)); return null; }
+      const ks = keyOf(this.sck);
+      if (ks && !at(ks).some(x => x.comp === c && x.pin === 'SCK')) warn(tl('HX711 : la broche SCK du module n’est pas reliée à la broche {0}', this.sck));
+      return c;
+    }
+    data() { const c = this.cell(); return c && !this.down ? hw.data(c) : null; }
+    is_ready() { return !!this.data() && vt >= this.next; }
+    sample(d) { return this.gain === 32 ? Math.round((rnd() - 0.5) * 40) : (this.gain === 64 ? d.raw / 2 : d.raw) + (rnd() - 0.5) * 60; }
+    /** times mesures : leur moyenne, et l'attente jusqu'à la dernière (null si le module ne répond pas). */
+    take(times) {
+      const d = this.data();
+      if (!d) { if (!this.told) { this.told = true; warn(tl('HX711 ne répond pas (DT reste au niveau haut) : sur une vraie carte, la lecture attendrait sans fin. Vérifiez VCC, GND, DT et SCK')); } return null; }
+      const n = Math.max(1, Math.trunc(+times) || 1), first = Math.max(this.next, vt), last = first + (n - 1) * 100;
+      this.next = last + 100;
+      let sum = 0; for (let i = 0; i < n; i++) sum += this.sample(d);
+      return { ms: last - vt, v: sum / n };
+    }
+    read() { const r = this.take(1); return r ? new Wait(r.ms, Math.round(r.v)) : new Wait(1000, 0); }
+    read_average(times = 10) { const r = this.take(times); return r ? new Wait(r.ms, Math.round(r.v)) : new Wait(1000, 0); }
+    get_value(times = 1) { const r = this.take(times); return r ? new Wait(r.ms, r.v - this.off) : new Wait(1000, 0); }
+    get_units(times = 1) { const r = this.take(times); return r ? new Wait(r.ms, (r.v - this.off) / this.scale) : new Wait(1000, 0); }
+    tare(times = 10) { const r = this.take(times); if (r) this.off = Math.round(r.v); return new Wait(r ? r.ms : 1000); }
+    wait_ready() { return this.data() ? new Wait(Math.max(0, this.next - vt)) : new Wait(1000); }
+    wait_ready_retry(retries = 3, delay = 0) { const limit = (Math.max(1, retries) + 1) * Math.max(1, +delay || 1); return this.wait_ready_timeout(limit); }
+    wait_ready_timeout(timeout = 1000) { const w = Math.max(0, this.next - vt); return this.data() && w <= timeout ? new Wait(w, true) : new Wait(timeout, false); }
+    set_gain(g = 128) { this.gain = g === 64 ? 64 : g === 32 ? 32 : 128; }
+    set_scale(s = 1) { this.scale = +s || 1; }
+    get_scale() { return this.scale; }
+    set_offset(o = 0) { this.off = Math.trunc(+o || 0); }
+    get_offset() { return this.off; }
+    power_down() { this.down = true; }
+    power_up() { this.down = false; this.next = vt + 100; }
   }
   class Adafruit_MPU6050 {
     constructor() { this.ar = 0; this.gr = 0; this.bw = 0; }
@@ -1085,10 +1211,10 @@ export function createRuntime(js, hw, meta = {}) {
   // et à l'enregistrement. Une EEPROM neuve contient 0xFF partout. Sur l'Uno et le Nano, chaque write() est aussitôt en
   // mémoire ; sur l'ESP32, l'ESP8266 et le Pico, l'EEPROM est émulée en flash : begin(taille), puis commit() pour garder.
   const memSt = () => (hw.mem ? hw.mem() : (hw._mem || (hw._mem = { ee: '', prefs: {} })));
-  const FLASH = !AVR.has(hw.kind);
+  const FLASH = !avr;
   let memDirty = false;
   class EEPROMClass {
-    constructor() { this.store = null; this.ram = null; this.size = FLASH ? 0 : 1024; this.w0 = 0; this.wn = 0; }
+    constructor() { this.store = null; this.ram = null; this.size = FLASH ? 0 : avr.ee; this.w0 = 0; this.wn = 0; }
     flash() {
       if (!this.store) {
         const hex = memSt().ee || '', cap = FLASH ? 4096 : 1024;
@@ -1212,7 +1338,7 @@ export function createRuntime(js, hw, meta = {}) {
   // La connexion aboutit (ou échoue) 2 s après WiFi.begin(), en temps simulé. Aucun accès au vrai réseau.
   const net = () => (hw.net ? hw.net() : (hw._net || (hw._net = NET_DEFAULT())));
   const myMac = macOf(me);
-  const peerBoards = () => (hw.peers ? hw.peers(['esp32', 'nodemcu']).map(p => p.comp) : []);
+  const peerBoards = () => (hw.peers ? hw.peers(['esp32', 'esp32-38', 'esp32s3', 'esp32c3', 'nodemcu', 'd1mini']).map(p => p.comp) : []);
   class IPAddress {
     constructor(a, b, c, d) { this.s = a instanceof IPAddress ? a.s : typeof a === 'string' ? a : b === undefined ? (a == null ? '0.0.0.0' : [a & 255, (a >>> 8) & 255, (a >>> 16) & 255, (a >>> 24) & 255].join('.')) : [a, b, c, d].map(x => (x | 0) & 255).join('.'); }
     toString() { return this.s; }
@@ -1481,7 +1607,7 @@ export function createRuntime(js, hw, meta = {}) {
     memset(dst, v, n) { refStore(dst, new Array(Math.max(0, n | 0)).fill(v & 255), n); }
   });
   $.C = {
-    HardwareSerial, SoftwareSerial, DHT, OneWire, DallasTemperature, Adafruit_BMP280, Adafruit_MPU6050, LiquidCrystal_I2C, Adafruit_SSD1306, Servo, ESP32PWM,
+    HardwareSerial, SoftwareSerial, DHT, OneWire, DallasTemperature, Adafruit_BMP280, Adafruit_BME280, BH1750, HX711, Adafruit_MPU6050, LiquidCrystal_I2C, Adafruit_SSD1306, Servo, ESP32PWM,
     Adafruit_NeoPixel, Stepper, IRrecv, decode_results, MFRC522, Uid, MIFARE_Key, Keypad, RF24, MPU6050, EEPROMClass, Preferences, BluetoothSerial,
     WiFiClass, IPAddress, MDNSResponder, WebServer, ESP8266WebServer: WebServer, HTTPClient, WiFiClient,
     esp_now_peer_info_t: class { constructor() { this.peer_addr = new Array(6).fill(0); this.channel = 0; this.encrypt = false; this.ifidx = 0; } },
@@ -1524,6 +1650,19 @@ export function createRuntime(js, hw, meta = {}) {
     pollCb();
     while (cbq.length) { const c = cbq.shift(); if (!runCb(c.fn, c.args)) return; }
     for (const q of irqs) {
+      // Module à impulsions : les fronts sont comptés exactement depuis le dernier passage (fréquence × temps),
+      // quelle que soit la fréquence à laquelle le programme laisse la main.
+      const r = input(q.k);
+      if (r && r.hz > 0) {
+        const a0 = q.acc || 0, a1 = a0 + (vt - (q.t ?? vt)) * r.hz / 500;
+        q.t = vt; q.acc = a1;
+        for (let n = Math.floor(a0) + 1, fired = 0; n <= Math.floor(a1) && fired < 4000; n++) {
+          const up = n % 2 === 1;
+          if (q.mode === 1 || ((q.mode === 2 || q.mode === 0) && !up) || (q.mode === 3 && up)) { fired++; if (!runCb(q.fn)) return; }
+        }
+        continue;
+      }
+      q.t = vt;
       const v = digitalIn(q.k), last = q.last; q.last = v;
       if (v === last) continue;
       // CHANGE (1) : tout front ; FALLING (2) ou LOW (0) : passage à 0 ; RISING (3) : passage à 1.

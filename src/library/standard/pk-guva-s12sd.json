@@ -1,0 +1,98 @@
+{
+  "format": 1,
+  "id": "pk-guva-s12sd",
+  "version": 1,
+  "name": "GUVA-S12SD indice UV (analogique)",
+  "category": "Capteurs",
+  "prefix": "UV",
+  "description": "Capteur d’ultraviolets GUVA-S12SD (240 à 370 nm : UVB et la plupart des UVA) avec son amplificateur : environ 0,1 V par point d’indice UV.",
+  "sources": {
+    "adafruit": {
+      "title": "Analog UV Light Sensor Breakout - GUVA-S12SD (produit 1918)",
+      "publisher": "Adafruit Industries",
+      "section": "Description : V+ de 2,7 à 5,5 V ; photodiode sensible de 240 à 370 nm ; Vo = 4,3 × courant de la photodiode (µA) ; indice UV = tension de sortie ÷ 0,1 V.",
+      "url": "https://www.adafruit.com/product/1918"
+    }
+  },
+  "limits": {},
+  "pins": [
+    {
+      "name": "GND",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd"
+    },
+    {
+      "name": "VCC",
+      "x": 0,
+      "y": 8.1,
+      "z": 6,
+      "kind": "pwr",
+      "v": "logic",
+      "why": "2,7 à 5,5 V : alimenté à la tension logique de la carte."
+    },
+    {
+      "name": "OUT",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "Environ 0,1 V par point d’indice UV : 0,5 V pour un indice de 5, 1,1 V pour un indice de 11."
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "OUT",
+        "quantity": "uv",
+        "from": [
+          0,
+          15
+        ],
+        "to": [
+          0,
+          1.5
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.2,
+      "tau": 0.3
+    }
+  },
+  "docs": {
+    "text": "Lisez OUT avec analogRead() et convertissez en tension : indice UV ≈ tension ÷ 0,1 V. Même au soleil de midi sous les tropiques (indice 11 et plus), la sortie reste sous 1,5 V : une plage étroite pour le convertisseur de la carte.",
+    "specs": [
+      [
+        "Alimentation",
+        "2,7 à 5,5 V"
+      ],
+      [
+        "Spectre",
+        "240 à 370 nm (UVB et UVA)"
+      ],
+      [
+        "Sortie",
+        "environ 0,1 V par point d’indice UV"
+      ]
+    ],
+    "uses": [
+      "Indicateur de risque solaire pour la cour de l’école",
+      "Station météo",
+      "Test de lunettes de soleil ou de crème solaire"
+    ],
+    "mistakes": [
+      "Le placer derrière une vitre : le verre arrête une grande partie des UV.",
+      "Convertir avec la mauvaise tension de référence (3,3 V ou 5 V selon la carte).",
+      "Prendre l’indice d’une lampe UV pour celui du soleil : leurs spectres diffèrent."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#1b4f8c",
+    "label": "UV"
+  }
+}

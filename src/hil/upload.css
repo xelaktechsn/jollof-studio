@@ -1,0 +1,10 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Téléversement sur une vraie carte (src/hil/upload.js) : fenêtre, choix du port, journal d'arduino-cli. */
+.boardSheet { width: min(720px, 100%); }
+.portRow { display: flex; gap: 6px; }
+.portRow .sel { flex: 1; }
+.boardLog { margin: 0; height: 240px; overflow: auto; padding: 8px 10px; background: #0a0d10; border: 1px solid var(--line); border-radius: 8px; font: 11.5px/1.5 var(--mono); color: var(--fg-2); white-space: pre-wrap; -webkit-user-select: text; user-select: text; }
+.boardLog .cmd { color: var(--info); } .boardLog .ok { color: var(--ok); } .boardLog .err { color: var(--danger); }
+.boardLog:empty::before { content: "Les messages d’arduino-cli s’affichent ici."; color: var(--muted); font-family: var(--sans); }
+:root[lang="en"] .boardLog:empty::before { content: "Messages from arduino-cli show up here."; }

@@ -1,0 +1,175 @@
+{
+  "format": 1,
+  "id": "pk-fsr402",
+  "version": 1,
+  "name": "FSR 402 capteur de force (avec 10 kΩ)",
+  "category": "Capteurs",
+  "prefix": "FSR",
+  "description": "Résistance sensible à la force Interlink FSR 402 en pont avec 10 kΩ : plus on appuie, plus la tension monte. Mince comme une feuille, idéale pour détecter une présence ou un appui, pas pour peser.",
+  "sources": {
+    "guide": {
+      "title": "FSR Integration Guide (EIG-10000 Rev. C)",
+      "publisher": "Interlink Electronics",
+      "section": "§ 6.1 Figure 11 : courbe modèle 402, RM = 10 kΩ, V+ = 5 V, valeurs relevées de 20 g à 1 kg et « for reference only ». Courant limité à 1 mA/cm². Courant du montage : 5 V sur 10 kΩ, soit 0,5 mA au plus.",
+      "url": "https://cdn.sparkfun.com/assets/4/d/0/f/7/DS-9375-Force_Sensitive_Resistor_0.5in.pdf"
+    },
+    "ds": {
+      "title": "FSR 400 Series Data Sheet (PDS-10004-C)",
+      "publisher": "Interlink Electronics",
+      "section": "Device Characteristics : déclenchement dès 0,2 N, sensibilité jusqu’à 20 N, plus de 10 MΩ sans appui, usage de −40 à +85 °C.",
+      "url": "https://www.teachengineering.org/content/uconn_/activities/uconn-2662-contractions-calculations-force-resistance-activity/uconn-2662-contractions-calculations-FSR400series-datasheet.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 0.5,
+  "ds": "guide",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 12.8,
+      "kind": "pwr",
+      "why": "Le pont est ratiométrique : alimenté à la tension logique de la carte, AO reste dans la plage de l’ADC.",
+      "v": "logic"
+    },
+    {
+      "name": "GND",
+      "x": 0,
+      "y": 8.1,
+      "z": 12.8,
+      "kind": "gnd",
+      "why": "Côté bas de la résistance de mesure de 10 kΩ."
+    },
+    {
+      "name": "AO",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 12.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "0 V sans appui, environ 36 % de VCC à 100 g et 68 % à 1 kg, d’après la courbe RM = 10 kΩ de la fiche."
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "AO",
+        "quantity": "weight",
+        "from": [
+          0,
+          2000
+        ],
+        "ratio": true,
+        "to": [
+          0,
+          0.774
+        ],
+        "curve": [
+          [
+            0,
+            0
+          ],
+          [
+            15,
+            0
+          ],
+          [
+            20,
+            0.17
+          ],
+          [
+            50,
+            0.27
+          ],
+          [
+            100,
+            0.36
+          ],
+          [
+            200,
+            0.44
+          ],
+          [
+            320,
+            0.5
+          ],
+          [
+            450,
+            0.56
+          ],
+          [
+            570,
+            0.6
+          ],
+          [
+            710,
+            0.63
+          ],
+          [
+            900,
+            0.676
+          ],
+          [
+            1000,
+            0.684
+          ],
+          [
+            2000,
+            0.774
+          ]
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.05,
+      "tau": 0.01
+    }
+  },
+  "docs": {
+    "text": "Deux couches se touchent davantage sous la force et la résistance chute. Le capteur nu a deux pattes : reliez l’une à VCC et l’autre à AO, avec 10 kΩ entre AO et GND. La simulation suit la figure 11 jusqu’à 1 kg, puis prolonge la loi de puissance jusqu’à 2 kg et reste stable au-delà.",
+    "specs": [
+      [
+        "Alimentation",
+        "3,3 à 5 V (tension logique de la carte)"
+      ],
+      [
+        "Plage",
+        "0,2 à 20 N, soit ≈ 20 g à 2 kg"
+      ],
+      [
+        "Sans appui",
+        "plus de 10 MΩ : AO à 0 V"
+      ],
+      [
+        "Sortie",
+        "≈ 36 % de VCC à 100 g, ≈ 68 % à 1 kg"
+      ],
+      [
+        "Surface active",
+        "disque de 12,7 mm"
+      ]
+    ],
+    "uses": [
+      "Détecter une personne sur un siège ou un tapis",
+      "Vérifier qu’un objet est posé",
+      "Mesurer la force d’un appui ou d’une prise"
+    ],
+    "mistakes": [
+      "S’en servir de balance : l’écart de répétabilité est trop grand ; prenez une HX711.",
+      "Laisser AO en l’air : sans 10 kΩ vers GND, la lecture flotte.",
+      "Le souder à fer chaud : les pattes fondent ; utilisez un connecteur."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#2b2b2b",
+    "label": "FSR 402",
+    "size": [
+      14,
+      1.6,
+      30
+    ]
+  }
+}

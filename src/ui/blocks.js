@@ -5,11 +5,13 @@
 // déplacements ; son étiquette se saisit pour déplacer tout le bloc. Un bloc sélectionné
 // montre huit poignées : on l'agrandit ou on le réduit, et les composants qu'il couvre alors
 // le rejoignent (ceux qu'il ne couvre plus le quittent). Les blocs se retrouvent sur le schéma.
+// Un composant posé ou déposé sur un cadre rejoint ce bloc ; déplacé hors du cadre de son bloc, il le
+// quitte (blockAt, settle). Le dernier composant d'un bloc ne le quitte pas : le cadre le suit.
 import * as THREE from 'three';
 import { textSprite, dispose } from './guides.js';
 import { tl } from '../i18n/index.js';
 
-export const BLOCK_COLORS = ['#e0703a', '#3b82f6', '#3fb27f', '#9b7be0', '#f2c94c', '#e5484d', '#3fbfbf'];
+export const BLOCK_COLORS = ['#3b82f6', '#e0703a', '#3fb27f', '#9b7be0', '#f2c94c', '#e5484d', '#3fbfbf'];
 const PAD = 7, Y = 0.08;
 const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
 const HGEO = new THREE.BoxGeometry(2.6, 1.2, 2.6);
@@ -25,9 +27,10 @@ export function createBlocks(o) {
   const handles = HANDLES.map(h => { const m = new THREE.Mesh(HGEO, handleMat); m.userData.handle = h; m.renderOrder = 27; m.visible = false; root.add(m); return m; });
 
   const members = b => o.comps().filter(c => b.comps.includes(c.id));
-  /** Emprise des composants du bloc et de leurs fils internes, marge comprise. */
-  function fit(b) {
-    const ms = members(b);
+  const hot = new Map(); // bloc → fin de son clignotement (un composant vient de le rejoindre)
+  /** Emprise des composants du bloc (sauf without) et de leurs fils internes, marge comprise. */
+  function fit(b, without = null) {
+    const ms = members(b).filter(c => c !== without);
     if (!ms.length) return null;
     let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
     for (const c of ms) { const bx = o.boxOf(c); x0 = Math.min(x0, bx.min.x); z0 = Math.min(z0, bx.min.z); x1 = Math.max(x1, bx.max.x); z1 = Math.max(z1, bx.max.z); }
@@ -39,8 +42,8 @@ export function createBlocks(o) {
     return [x0 - PAD, z0 - PAD, x1 + PAD, z1 + PAD];
   }
   /** Emprise du bloc : ses composants, agrandie au rectangle choisi à la main s'il y en a un. */
-  function bounds(b) {
-    const f = fit(b), r = b.rect;
+  function bounds(b, without = null) {
+    const f = fit(b, without), r = b.rect;
     if (!f) return r ? [...r] : null;
     if (!r || !b.manual) return f;
     return [Math.min(f[0], r[0]), Math.min(f[1], r[1]), Math.max(f[2], r[2]), Math.max(f[3], r[3])];
@@ -49,7 +52,8 @@ export function createBlocks(o) {
     if (view.get(b)) drop(b);
     const g = new THREE.Group(), col = new THREE.Color(b.color);
     const [x0, z0, x1, z1] = r, w = x1 - x0, d = z1 - z0;
-    const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: b === selected ? 0.12 : 0.07, depthWrite: false }));
+    const lit = hot.has(b) && performance.now() < hot.get(b);
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: lit ? 0.24 : b === selected ? 0.12 : 0.07, depthWrite: false }));
     fill.rotation.x = -Math.PI / 2; fill.position.set(x0 + w / 2, Y, z0 + d / 2); fill.renderOrder = 1;
     const pts = [[x0, z0], [x1, z0], [x1, z1], [x0, z1], [x0, z0]].map(([x, z]) => new THREE.Vector3(x, Y + 0.04, z));
     const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: col, dashSize: 3, gapSize: 2, transparent: true, opacity: 0.95, depthWrite: false }));
@@ -73,7 +77,8 @@ export function createBlocks(o) {
     for (const b of list) {
       const r = bounds(b);
       if (!r) { drop(b); continue; }
-      const sig = r.map(v => v.toFixed(1)).join(',') + b.name + b.color + (b === selected);
+      const lit = hot.has(b) && performance.now() < hot.get(b); if (hot.has(b) && !lit) hot.delete(b);
+      const sig = r.map(v => v.toFixed(1)).join(',') + b.name + b.color + (b === selected) + lit;
       let v = view.get(b);
       if (!v || v.sig !== sig) { build(b, r); v = view.get(b); v.sig = sig; }
       v.label.scale.set(h * v.label.userData.aspect, h, 1);
@@ -87,8 +92,20 @@ export function createBlocks(o) {
       m.scale.setScalar(k);
     });
   }
+  const center = c => { const b = o.boxOf(c); return [(b.min.x + b.max.x) / 2, (b.min.z + b.max.z) / 2]; };
+  const holds = (r, [x, z]) => !!r && x >= r[0] && x <= r[2] && z >= r[1] && z <= r[3];
   /** Composants dont le centre tombe dans le rectangle. */
-  const inside = r => o.comps().filter(c => { const b = o.boxOf(c), cx = (b.min.x + b.max.x) / 2, cz = (b.min.z + b.max.z) / 2; return cx >= r[0] && cx <= r[2] && cz >= r[1] && cz <= r[3]; });
+  const inside = r => o.comps().filter(c => holds(r, center(c)));
+  /** Bloc dont le cadre (tracé sans ce composant) contient son centre : le plus petit si des cadres se chevauchent. */
+  function blockAt(c) {
+    const p = center(c); let best = null, area = Infinity;
+    for (const b of list) {
+      const r = bounds(b, c); if (!holds(r, p)) continue;
+      const a = (r[2] - r[0]) * (r[3] - r[1]); if (a < area) { best = b; area = a; }
+    }
+    return best;
+  }
+  const blockOf = c => list.find(b => b.comps.includes(c.id)) || null;
   return {
     get list() { return list; },
     get selected() { return selected; },
@@ -126,6 +143,24 @@ export function createBlocks(o) {
     hit(ray) { const labels = [...view.values()].map(v => v.label); const h = ray.intersectObjects(labels, false)[0]; return h ? h.object.userData.block : null; },
     /** Poignée du bloc sélectionné sous le rayon. */
     hitHandle(ray) { if (!selected) return null; const h = ray.intersectObjects(handles.filter(m => m.visible), false)[0]; return h ? h.object.userData.handle : null; },
-    blockOf(c) { return list.find(b => b.comps.includes(c.id)) || null; }
+    blockOf, blockAt,
+    /**
+     * Un composant vient d'être posé (fresh) ou déposé après un déplacement : il rejoint le bloc dont le
+     * cadre le contient, ou quitte le sien s'il en est sorti. Rend { joined, left } (blocs), ou null si rien ne change.
+     */
+    settle(c, fresh = false) {
+      const cur = blockOf(c), to = blockAt(c);
+      if (to === cur) return null;
+      if (fresh && cur) return null; // composant neuf déjà rangé (collé avec son bloc…)
+      if (!to) {
+        // Hors de tout cadre : il quitte son bloc, sauf s'il en est le dernier composant (le cadre le suit alors).
+        if (!members(cur).some(m => m !== c) && !(cur.manual && cur.rect)) return null;
+        cur.comps = cur.comps.filter(id => id !== c.id);
+        return { joined: null, left: cur };
+      }
+      if (cur) cur.comps = cur.comps.filter(id => id !== c.id);
+      to.comps.push(c.id); hot.set(to, performance.now() + 900);
+      return { joined: to, left: cur };
+    },
   };
 }

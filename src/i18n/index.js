@@ -25,6 +25,8 @@ function resolve() {
 }
 export const LANG = resolve();
 export const isEn = LANG === 'en';
+/** Bouton « Annuler » d'une boîte de dialogue : en anglais « Cancel » (la clé « Annuler » d'en.js veut dire « Undo »). */
+export const CANCEL = isEn ? 'Cancel' : 'Annuler';
 
 /**
  * Traduit un texte français. Les espaces autour du texte sont conservés ; {0}, {1}… sont remplacés

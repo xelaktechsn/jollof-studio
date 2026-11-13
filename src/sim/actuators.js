@@ -6,7 +6,7 @@
 // allumée dès qu'elle est câblée), géré ailleurs.
 import * as audio from './audio.js';
 import { tl, DEC } from '../i18n/index.js';
-import { MOTORS, isMotor } from './parts.js';
+import { MOTORS, isMotor, COILS } from './parts.js';
 
 const IDLE = { mode: 0, d: 0, pwm: null, freq: 0, servo: null, px: null, stepper: null, weak: false };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -51,6 +51,13 @@ export function driveActuators(comps, cx, dt) {
   const volt = (c, k) => (dc ? dc.volts({ comp: c, key: k }) : null);
   for (const c of comps) {
     if (isMotor(c)) { if (motor(c, across(c), dt)) any = true; continue; }
+    // Bobine d'électrovanne : excitée au-delà de sa tension d'appel ; le plan de travail pneumatique lit c.coilOn.
+    if (COILS[c.type]) {
+      const m = COILS[c.type], a = across(c), v = a && a.v != null ? Math.abs(a.v) : 0, on = v >= m.vPull;
+      c.coilOn = on; any = true;
+      c.actR = { value: on ? tl('excitée ({0} V)', String(Math.round(v * 10) / 10).replace('.', DEC)) : v > 0.5 ? tl('trop peu de tension ({0} V)', String(Math.round(v * 10) / 10).replace('.', DEC)) : tl('au repos'), level: v > m.vMax || (v > 0.5 && !on) ? 'warn' : 'ok', live: on };
+      continue;
+    }
     if (c.led) {
       const s = pin(c, 'A'), led = cx.dc && cx.dc.ok && cx.dc.leds ? cx.dc.leds.get(c) : null;
       if (!s) {
@@ -104,6 +111,24 @@ export function driveActuators(comps, cx, dt) {
           c.seg7.mesh.material.emissiveIntensity = on.size ? 0.9 : 0;
         }
         c.actR = { value: on.size ? `segments ${[...on].join(' ')}` : tl('éteint'), sig: '', level: ok(c) ? 'ok' : 'err' };
+        break;
+      }
+      case 'laser': {
+        const s = pin(c, 'S'); if (!s || !c.laser) break; any = true;
+        const on = ok(c) && duty(s.p) > 0;
+        c.laser.mat.emissive.setHex(on ? 0xff1a1a : 0); c.laser.mat.emissiveIntensity = on ? 2 : 0;
+        if (c.laser.beam) c.laser.beam.visible = on;
+        c.actR = { value: on ? tl('faisceau allumé') : tl('éteint'), sig: s.key, level: ok(c) ? 'ok' : 'err' };
+        break;
+      }
+      case 'traffic': {
+        const st = ['R', 'Y', 'G'].map(k => pin(c, k)); if (!c.traffic || st.every(s => !s)) break;
+        if (st.some(s => s === undefined)) break;
+        any = true;
+        const lit = st.map(s => (ok(c) && s ? duty(s.p) : 0)), names = [tl('rouge'), tl('orange'), tl('vert')];
+        c.traffic.lamps.forEach((l, i) => { l.mat.emissive.setHex(lit[i] > 0 ? l.glow : 0); l.mat.emissiveIntensity = 1.5 * lit[i]; });
+        const on = names.filter((n, i) => lit[i] > 0);
+        c.actR = { value: on.length ? on.join(' + ') : tl('éteint'), sig: (st.find(Boolean) || {}).key || '', level: ok(c) ? 'ok' : 'err' };
         break;
       }
       case 'buzzer': {

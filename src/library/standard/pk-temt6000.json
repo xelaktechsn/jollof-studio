@@ -1,0 +1,114 @@
+{
+  "format": 1,
+  "id": "pk-temt6000",
+  "version": 1,
+  "name": "TEMT6000 lumière ambiante (analogique)",
+  "category": "Capteurs",
+  "prefix": "TEMT",
+  "description": "Phototransistor TEMT6000 avec résistance de 10 kΩ : une tension proportionnelle à l’éclairement, avec une sensibilité proche de l’œil humain. Linéaire, et lu sans bibliothèque ni bus I2C.",
+  "sources": {
+    "vishay": {
+      "title": "TEMT6000X01 Ambient Light Sensor (Rev. 1.9)",
+      "publisher": "Vishay Semiconductors",
+      "section": "Document 81579. Absolute Maximum Ratings : VCEO 6 V, IC 20 mA, 100 mW. Basic Characteristics à VCE = 5 V : IPCE 10 µA typ. à 20 lx, 50 µA typ. à 100 lx ; pic à 570 nm ; ±60°. Courant du module : 5 V sur 10 kΩ, soit 0,5 mA au plus.",
+      "url": "https://www.vishay.com/docs/81579/temt6000.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 0.5,
+  "ds": "vishay",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "pwr",
+      "why": "Alimenté à la tension logique de la carte, OUT reste dans la plage de l’ADC. La puce supporte 6 V au plus.",
+      "v": "logic"
+    },
+    {
+      "name": "GND",
+      "x": 0,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "gnd"
+    },
+    {
+      "name": "OUT",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 5.8,
+      "kind": "io",
+      "need": "adc",
+      "role": "Analogique",
+      "why": "Courant du phototransistor dans 10 kΩ : ≈ 0,1 V à 20 lx et ≈ 0,5 V à 100 lx. Éclairement (lx) ≈ tension × 200."
+    }
+  ],
+  "behaviour": {
+    "analogOut": [
+      {
+        "pin": "OUT",
+        "quantity": "lux",
+        "from": [
+          0,
+          640
+        ],
+        "ratio": false,
+        "to": [
+          0,
+          3.2
+        ]
+      }
+    ],
+    "sample": {
+      "period": 0.05,
+      "tau": 0.02
+    }
+  },
+  "docs": {
+    "text": "Le phototransistor laisse passer un courant proportionnel à la lumière : 10 kΩ le transforment en tension, soit environ 5 mV par lux. La sortie sature près de VCC : vers 640 lx sur une carte 3,3 V et vers 980 lx sur une carte 5 V. La simulation plafonne à 3,2 V sur toutes les cartes, donc au-dessus de 640 lx elle sous-estime une carte 5 V.",
+    "specs": [
+      [
+        "Alimentation",
+        "3,3 à 5 V (tension logique de la carte)"
+      ],
+      [
+        "Sortie",
+        "≈ 5 mV par lux avec 10 kΩ"
+      ],
+      [
+        "Saturation",
+        "≈ 640 lx en 3,3 V, ≈ 980 lx en 5 V"
+      ],
+      [
+        "Spectre",
+        "pic à 570 nm, proche de l’œil"
+      ],
+      [
+        "Angle",
+        "±60°"
+      ]
+    ],
+    "uses": [
+      "Éclairage automatique selon la lumière ambiante",
+      "Régler la luminosité d’un écran",
+      "Mesurer l’éclairage intérieur sans bibliothèque"
+    ],
+    "mistakes": [
+      "L’exposer au plein soleil : il sature, prenez un BH1750.",
+      "Attendre des lux exacts : l’écart d’une pièce à l’autre est important (3,5 à 16 µA à 20 lx).",
+      "Oublier la résistance avec le composant nu : sans elle, la sortie ne donne aucune mesure."
+    ]
+  },
+  "look": {
+    "kind": "module",
+    "color": "#a51c30",
+    "label": "TEMT6000",
+    "size": [
+      11,
+      1.6,
+      16
+    ]
+  }
+}

@@ -6,7 +6,7 @@
 // la résolution, l'inertie et la période d'échantillonnage du composant réel.
 // `data` porte les grandeurs que lisent les bibliothèques (DHT, BMP280…), `out` la tension
 // ou le niveau que chaque broche de sortie du capteur présente à la carte.
-import { volts } from './boards.js';
+import { volts, kindOf } from './boards.js';
 import { tl, DEC } from '../i18n/index.js';
 import { GEN_DEFAULT } from './analog-parts.js';
 
@@ -23,15 +23,51 @@ export const QUANT = {
   sound: { label: tl('Niveau sonore'), unit: 'dB', min: 30, max: 110, step: 1, def: 45 },
   tilt: { label: tl('Inclinaison (axe X)'), unit: '°', min: -90, max: 90, step: 1, def: 0 },
   tiltY: { label: tl('Inclinaison (axe Y)'), unit: '°', min: -90, max: 90, step: 1, def: 0 },
-  rotZ: { label: tl('Rotation (axe Z)'), unit: '°/s', min: -250, max: 250, step: 5, def: 0 }
+  rotZ: { label: tl('Rotation (axe Z)'), unit: '°/s', min: -250, max: 250, step: 5, def: 0 },
+  magnet: { label: tl('Aimant près du capteur'), bool: true, def: 0 },
+  flame: { label: tl('Flamme devant le capteur'), unit: '%', min: 0, max: 100, step: 1, def: 0 },
+  rain: { label: tl('Pluie sur la plaque'), unit: '%', min: 0, max: 100, step: 1, def: 0 },
+  water: { label: tl('Niveau d’eau sur la sonde'), unit: 'mm', min: 0, max: 40, step: 1, def: 0 },
+  line: { label: tl('Ligne noire sous le capteur'), bool: true, def: 0 },
+  shake: { label: tl('Secousses'), bool: true, def: 0 },
+  touch: { label: tl('Doigt sur le capteur tactile'), bool: true, def: 0 },
+  air: { label: tl('Pollution de l’air (équivalent CO₂)'), unit: 'ppm', min: 400, max: 5000, step: 50, def: 400 },
+  weight: { label: tl('Masse sur la balance'), unit: 'g', min: 0, max: 5000, step: 10, def: 0 },
+  current: { label: tl('Courant mesuré'), unit: 'A', min: -5, max: 5, step: 0.01, def: 0, dec: 2 },
+  voltage: { label: tl('Tension mesurée'), unit: 'V', min: 0, max: 30, step: 0.1, def: 12, dec: 1 },
+  uv: { label: tl('Indice UV'), unit: '', min: 0, max: 15, step: 0.1, def: 0, dec: 1 },
+  dust: { label: tl('Poussières fines (PM2,5)'), unit: 'µg/m³', min: 0, max: 500, step: 1, def: 10 },
+  flow: { label: tl('Débit d’eau'), unit: 'L/min', min: 0, max: 30, step: 0.1, def: 0, dec: 1 },
+  wind: { label: tl('Vitesse du vent'), unit: 'm/s', min: 0, max: 40, step: 0.1, def: 0, dec: 1 },
+  ph: { label: tl('pH de l’eau'), unit: '', min: 0, max: 14, step: 0.1, def: 7, dec: 1 },
+  tds: { label: tl('Sels dissous dans l’eau (TDS)'), unit: 'ppm', min: 0, max: 2000, step: 10, def: 150 }
 };
+/** Balance HX711 : mesure brute de la barre vide, et coups par gramme (barre de 5 kg à 1 mV/V, gain 128, sous 5 V). */
+export const HX711_ZERO = 52000, HX711_PER_G = 430;
 export const ENV = Object.fromEntries(Object.entries(QUANT).map(([k, q]) => [k, q.def]));
 /** Commandes propres à certains composants d'entrée. */
 // Générateur de fonctions : forme, fréquence (Hz), amplitude crête et décalage (V), réglés dans l'onglet Simulation.
-export const INPUTS = { button: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false }, siggen: { ...GEN_DEFAULT } };
+export const INPUTS = { button: { pressed: false }, cylsensor: { pressed: false }, pressostat: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false }, siggen: { ...GEN_DEFAULT } };
 
 export const num = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d).replace('.', DEC).replace('-', '−');
-export const fmtQ = q => (QUANT[q].bool ? (ENV[q] ? 'oui' : 'non') : `${num(ENV[q], QUANT[q].dec || 0)} ${QUANT[q].unit}`);
+/**
+ * Valeur d'une grandeur vue par ce capteur : son réglage à part (comp.env, « Réglage à part » de l'onglet Simulation),
+ * sinon celle de l'environnement commun. Deux capteurs du même type peuvent ainsi voir deux mesures différentes.
+ */
+export const envOf = (comp, q) => (comp && comp.env && comp.env[q] != null ? +comp.env[q] : +ENV[q]);
+/** Réglages à part d'un capteur, nettoyés (grandeurs connues, bornées) : undefined s'il n'y en a pas. */
+export function cleanEnv(e) {
+  if (!e || typeof e !== 'object') return undefined;
+  const out = {};
+  for (const [k, v] of Object.entries(e)) {
+    const Q = QUANT[k]; if (!Q || v == null || !Number.isFinite(+v)) continue;
+    out[k] = Q.bool ? (+v ? 1 : 0) : Math.max(Q.min, Math.min(Q.max, +v));
+  }
+  return Object.keys(out).length ? out : undefined;
+}
+/** Valeur d'une grandeur, avec son unité (ou « oui »/« non »). */
+export const fmtV = (q, v) => (QUANT[q].bool ? (v ? 'oui' : 'non') : `${num(v, QUANT[q].dec || 0)} ${QUANT[q].unit}`);
+export const fmtQ = q => fmtV(q, ENV[q]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const jitter = a => (Math.random() * 2 - 1) * a;
 const v2 = v => `${num(v, 2)} V`;
@@ -101,12 +137,121 @@ export const MODELS = {
       return { value: `AOUT ${raw} · ${v2(v)}`, detail: tl('sol à {0} % : plus humide, valeur plus basse', num(soil)), short: tl('Sol {0}', raw), warn: over(v, cx.prof), out: { AOUT: { v } } };
     }
   },
+  bme280: {
+    q: ['temp', 'hum', 'press'], period: 0.5, tau: 1,
+    read({ temp, hum, press }) {
+      const T = temp + jitter(0.02), H = clamp(hum + jitter(0.3), 0, 100), P = press + jitter(0.03), alt = 44330 * (1 - Math.pow(P / 1013.25, 1 / 5.255));
+      return { value: `${num(T, 1)} °C · ${num(H)} % · ${num(P)} hPa`, detail: tl('altitude estimée {0} m', num(alt)), short: `${num(T, 1)}°C ${num(H)}%`,
+        warn: temp < -40 || temp > 85 ? tl('hors de la plage de mesure (−40 à 85 °C)') : null, data: { temp: T, hum: H, press: P } };
+    }
+  },
+  bh1750: {
+    q: ['lux'], period: 0.12, tau: 0.12,
+    read({ lux }) {
+      const L = clamp(Math.round(Math.max(lux, 0) * 1.2) / 1.2, 0, 65535);
+      return { value: `${num(L)} lx`, detail: tl('haute résolution (1 lx), une mesure toutes les 120 ms'), short: `${num(L)} lx`, data: { lux: L } };
+    }
+  },
+  hx711: {
+    q: ['weight'], period: 0.1, tau: 0.25,
+    read({ weight }) {
+      const g = Math.max(0, weight + jitter(0.3)), raw = Math.round(HX711_ZERO + g * HX711_PER_G);
+      return { value: `${num(g, 1)} g`, detail: tl('mesure brute {0} (24 bits), 10 mesures par seconde', raw), short: `${num(g)} g`,
+        warn: weight > 5000 ? tl('au-delà de 5 kg, la barre est surchargée') : null, data: { grams: g, raw } };
+    }
+  },
+  ttp223: {
+    q: ['touch'], period: 0.03, tau: 0,
+    read({ touch }, cx) {
+      const on = !!touch;
+      return { value: on ? tl('Touché') : tl('Pas de contact'), detail: `SIG = ${on ? 'HIGH' : 'LOW'}`, short: on ? tl('Touché !') : tl('Libre'), out: { SIG: { d: on ? 1 : 0, v: on ? cx.v : 0 } } };
+    }
+  },
+  rcwl0516: {
+    q: ['motion'], period: 0.1, tau: 0,
+    read({ motion }, cx) {
+      if (motion) cx.st.until = cx.t + 2;
+      const on = cx.t < (cx.st.until || 0);
+      return { value: on ? tl('Mouvement détecté') : tl('Aucun mouvement'), detail: `OUT = ${on ? 'HIGH' : 'LOW'}${on && !motion ? tl(' (temporisation de 2 s)') : ''}`, short: on ? tl('Mouvement !') : tl('Calme'), out: { OUT: { d: on ? 1 : 0, v: on ? 3.3 : 0 } } };
+    }
+  },
+  mq135: {
+    q: ['air'], period: 0.2, tau: 4,
+    read({ air }, cx) {
+      // Courbe de la fiche (Rs/R0 en fonction de la concentration), résistance de charge de 1 kΩ sur le module.
+      const ratio = Math.pow(Math.max(air, 1) / 116.6, -1 / 2.769), v = cx.v * 1000 / (1000 + 6200 * ratio), raw = adc(v, cx.prof), alarm = v > 0.3 * cx.v;
+      const dout = cx.io.DO ? ` · DO ${alarm ? tl('LOW (alarme)') : 'HIGH'}` : '';
+      return { value: `AO ${raw} · ${v2(v)}`, detail: `${num(air)} ppm · Rs/R0 = ${num(ratio, 2)}${dout}`, short: tl('Air {0}', raw), warn: over(v, cx.prof), out: { AO: { v }, DO: { d: alarm ? 0 : 1 } } };
+    }
+  },
   mq2: {
     q: ['gas'], period: 0.2, tau: 3,
     read({ gas }, cx) {
       const ratio = gas < 1 ? 9.8 : Math.min(9.8, 26 * Math.pow(gas, -0.48)), v = cx.v * 1000 / (1000 + 2000 * ratio), raw = adc(v, cx.prof);
       const dout = cx.io.DO ? ` · DO ${v > 1.5 ? tl('LOW (alarme)') : 'HIGH'}` : '';
       return { value: `AO ${raw} · ${v2(v)}`, detail: `${num(gas)} ppm · Rs/R0 = ${num(ratio, 2)}${dout}`, short: tl('Gaz {0}', raw), warn: over(v, cx.prof), out: { AO: { v }, DO: { d: v > 1.5 ? 0 : 1 } } };
+    }
+  },
+  'tilt-sw': {
+    q: ['tilt'], period: 0.05, tau: 0,
+    read({ tilt }, cx) {
+      const on = Math.abs(tilt) > 45;
+      return { value: on ? tl('Penché') : tl('Droit'), detail: tl('S = {0} · inclinaison {1}°', on ? 'HIGH' : 'LOW', num(tilt)), short: on ? tl('Penché') : tl('Droit'), out: { S: { d: on ? 1 : 0, v: on ? cx.v : 0 } } };
+    }
+  },
+  hall: {
+    q: ['magnet'], period: 0.02, tau: 0,
+    read({ magnet }, cx) {
+      return { value: magnet ? tl('Aimant détecté') : tl('Pas d’aimant'), detail: `S = ${magnet ? 'LOW' : 'HIGH'}`, short: magnet ? tl('Aimant !') : tl('Rien'), out: { S: { d: magnet ? 0 : 1, v: magnet ? 0 : cx.v } } };
+    }
+  },
+  flame: {
+    q: ['flame'], period: 0.05, tau: 0.1,
+    read({ flame }, cx) {
+      const v = cx.v * (0.95 - 0.87 * clamp(flame, 0, 100) / 100), raw = adc(v, cx.prof), fire = flame > 30;
+      return { value: `AO ${raw} · ${v2(v)}`, detail: tl('flamme {0} % : plus forte, valeur plus basse · DO {1}', num(flame), fire ? tl('LOW (flamme)') : 'HIGH'), short: fire ? tl('Flamme !') : tl('IR {0}', raw), warn: over(v, cx.prof), out: { AO: { v }, DO: { d: fire ? 0 : 1, v: fire ? 0 : cx.v } } };
+    }
+  },
+  rain: {
+    q: ['rain'], period: 0.2, tau: 1,
+    read({ rain }, cx) {
+      const v = cx.v * (0.95 - 0.85 * clamp(rain, 0, 100) / 100), raw = adc(v, cx.prof), wet = rain > 25;
+      return { value: `AO ${raw} · ${v2(v)}`, detail: tl('plaque mouillée à {0} % : plus d’eau, valeur plus basse · DO {1}', num(rain), wet ? tl('LOW (pluie)') : 'HIGH'), short: wet ? tl('Pluie') : tl('Sec'), warn: over(v, cx.prof), out: { AO: { v }, DO: { d: wet ? 0 : 1, v: wet ? 0 : cx.v } } };
+    }
+  },
+  water: {
+    q: ['water'], period: 0.2, tau: 0.5,
+    read({ water }, cx) {
+      const v = cx.v * 0.7 * Math.pow(clamp(water, 0, 40) / 40, 0.8), raw = adc(v, cx.prof);
+      return { value: `S ${raw} · ${v2(v)}`, detail: tl('{0} mm d’eau : plus d’eau, valeur plus haute', num(water)), short: tl('Eau {0}', raw), warn: over(v, cx.prof), out: { S: { v } } };
+    }
+  },
+  irobst: {
+    q: ['dist'], period: 0.02, tau: 0,
+    read({ dist }, cx) {
+      const near = dist <= 20;
+      return { value: near ? tl('Obstacle détecté') : tl('Rien devant'), detail: tl('obstacle à {0} cm (seuil réglé à 20 cm) · OUT = {1}', num(dist), near ? 'LOW' : 'HIGH'), short: near ? tl('Obstacle') : tl('Libre'), out: { OUT: { d: near ? 0 : 1, v: near ? 0 : cx.v } } };
+    }
+  },
+  line: {
+    q: ['line'], period: 0.01, tau: 0,
+    read({ line }, cx) {
+      const v = cx.v * (line ? 0.85 : 0.1);
+      return { value: line ? tl('Sur la ligne noire') : tl('Fond clair'), detail: `DO = ${line ? 'HIGH' : 'LOW'} · AO ${adc(v, cx.prof)}`, short: line ? tl('Ligne') : tl('Clair'), out: { DO: { d: line ? 1 : 0, v: line ? cx.v : 0 }, AO: { v } } };
+    }
+  },
+  lm35: {
+    q: ['temp'], period: 0.1, tau: 1.5,
+    read({ temp }, cx) {
+      const T = clamp(temp, 2, 150), v = T * 0.01, raw = adc(v, cx.prof);
+      const warn = cx.v < 4 ? tl('alimenté sous 4 V : la tension de sortie n’est plus juste (VS au 5 V)') : temp < 2 ? tl('sous 2 °C, ce montage simple ne descend pas plus bas') : over(v, cx.prof);
+      return { value: `${num(T, 1)} °C · ${v2(v)}`, detail: tl('10 mV par °C · analogRead() = {0}', raw), short: `${num(T, 1)}°C`, warn, out: { VOUT: { v } }, data: { temp: T } };
+    }
+  },
+  shock: {
+    q: ['shake'], period: 0.02, tau: 0,
+    read({ shake }, cx) {
+      return { value: shake ? tl('Secousse') : tl('Au repos'), detail: `DO = ${shake ? 'HIGH' : 'LOW'}`, short: shake ? tl('Secousse !') : tl('Calme'), out: { DO: { d: shake ? 1 : 0, v: shake ? cx.v : 0 } } };
     }
   },
   sound: {
@@ -151,6 +296,22 @@ export const MODELS = {
       return { value, detail: `${pin.key} = ${lvl}`, short };
     }
   },
+  // Capteur de position de vérin : contact fermé par le piston du plan de travail pneumatique (inp.pressed).
+  // Pressostat : contact fermé par le pressostat du plan de travail pneumatique (inp.pressed).
+  pressostat: {
+    q: [], period: 0.02,
+    read(p, cx) {
+      const r = MODELS.button.read(p, cx), on = !!cx.inp.pressed;
+      return { ...r, value: on ? tl('Pression atteinte') : tl('Sous le seuil'), short: `${cx.comp.name} ${on ? 'ON' : 'OFF'}` };
+    }
+  },
+  cylsensor: {
+    q: [], period: 0.02,
+    read(p, cx) {
+      const r = MODELS.button.read(p, cx), on = !!cx.inp.pressed;
+      return { ...r, value: on ? tl('Piston devant le capteur') : tl('Piston absent'), short: `${cx.comp.name} ${on ? 'ON' : 'OFF'}` };
+    }
+  },
   pot: {
     q: [], period: 0.1,
     read(p, cx) {
@@ -177,7 +338,7 @@ export const MODELS = {
 export function advance(comp, m, dt) {
   const st = comp.simS || (comp.simS = { phy: {}, next: 0, out: null, pulse: 0 });
   for (const q of m.q) {
-    const target = +ENV[q];
+    const target = envOf(comp, q);
     if (st.phy[q] == null || !m.tau) st.phy[q] = target;
     else st.phy[q] += (target - st.phy[q]) * (1 - Math.exp(-dt / m.tau));
   }
@@ -190,7 +351,7 @@ export function sample(comp, m, cx, t) {
   st.next = t + m.period;
   const out = m.read(st.phy, { ...cx, st, t, comp, inp: comp.inp || {} });
   const q = m.q[0], Q = q && QUANT[q];
-  out.trend = Q && !Q.bool ? Math.sign(Math.round((ENV[q] - st.phy[q]) / Q.step)) : 0;
+  out.trend = Q && !Q.bool ? Math.sign(Math.round((envOf(comp, q) - st.phy[q]) / Q.step)) : 0;
   st.out = out;
   return { ...out, sampled: true };
 }
@@ -296,7 +457,7 @@ export function hashBytes(id, n) {
 }
 /** Adresse MAC Wi-Fi d'une carte : préfixe du fabricant (Espressif), puis trois octets propres à la carte. */
 export function macOf(b) {
-  const pre = b.type === 'nodemcu' ? [0x5c, 0xcf, 0x7f] : [0x24, 0x0a, 0xc4];
+  const pre = kindOf(b) === 'nodemcu' ? [0x5c, 0xcf, 0x7f] : [0x24, 0x0a, 0xc4];
   return [...pre, ...hashBytes(b.id, 3)].map(hex2).join(':');
 }
 /**

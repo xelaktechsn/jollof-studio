@@ -1,0 +1,112 @@
+{
+  "format": 1,
+  "id": "pk-yfs201",
+  "version": 1,
+  "name": "YF-S201 débitmètre d’eau (impulsions)",
+  "category": "Capteurs",
+  "prefix": "FLOW",
+  "description": "Débitmètre à turbine YF-S201 (filetage 1/2 pouce) : un aimant tourne avec l’eau et un capteur à effet Hall donne une impulsion à chaque passage, soit 7,5 impulsions par seconde pour 1 L/min.",
+  "sources": {
+    "yifa": {
+      "title": "YF-S201 black flow sensor",
+      "publisher": "Foshan Shunde Zhongjiang Energy Saving Electronics (fiche diffusée par Adafruit)",
+      "section": "Technical parameters : operating voltage range DC 5 to 18 V ; maximum working current 15 mA (DC 5 V) ; output pulse high level supérieur à DC 4,5 V (input voltage DC 5 V) ; flow rate-pulse characteristic : frequency (Hz) = 7,5 Q ± 3 % (Q en L/min) ; accuracy 1 à 30 L/min ± 5 %.",
+      "url": "https://cdn-shop.adafruit.com/product-files/828/C898+datasheet.pdf"
+    }
+  },
+  "limits": {},
+  "ma": 15,
+  "ds": "yifa",
+  "pins": [
+    {
+      "name": "VCC",
+      "x": -2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "pwr",
+      "v": [
+        5,
+        18
+      ],
+      "ds": "yifa",
+      "why": "Fil rouge : 5 à 18 V. En 5 V, la sortie monte à plus de 4,5 V."
+    },
+    {
+      "name": "GND",
+      "x": 0,
+      "y": 8.1,
+      "z": 6,
+      "kind": "gnd",
+      "why": "Fil noir."
+    },
+    {
+      "name": "OUT",
+      "x": 2.54,
+      "y": 8.1,
+      "z": 6,
+      "kind": "io",
+      "need": "irq",
+      "lv5": true,
+      "role": "Impulsions",
+      "why": "Fil jaune : une impulsion par passage de l’aimant, 7,5 Hz pour 1 L/min. Sur une broche d’interruption, aucune n’est perdue."
+    }
+  ],
+  "behaviour": {
+    "pulseOut": [
+      {
+        "pin": "OUT",
+        "quantity": "flow",
+        "hzPer": 7.5
+      }
+    ],
+    "sample": {
+      "period": 0.1,
+      "tau": 0.5
+    }
+  },
+  "docs": {
+    "text": "Comptez les impulsions avec attachInterrupt() pendant une seconde : débit (L/min) = impulsions par seconde ÷ 7,5. Pour le volume, chaque impulsion vaut environ 2,2 mL (450 impulsions par litre). Les règles et les blocs génèrent ce comptage sans bibliothèque.",
+    "specs": [
+      [
+        "Alimentation",
+        "5 à 18 V ; 15 mA au plus en 5 V"
+      ],
+      [
+        "Plage de débit",
+        "1 à 30 L/min, ±5 %"
+      ],
+      [
+        "Signal",
+        "7,5 Hz par L/min, rapport cyclique 50 % ±10 %"
+      ],
+      [
+        "Pression",
+        "1,75 MPa au plus"
+      ],
+      [
+        "Fils",
+        "rouge +, noir masse, jaune signal"
+      ]
+    ],
+    "uses": [
+      "Compteur d’eau d’une maison ou d’une école",
+      "Arrosage qui coupe la pompe quand l’eau ne coule plus",
+      "Alerte de fuite : débit hors des heures d’utilisation"
+    ],
+    "mistakes": [
+      "Lire le signal avec digitalRead() dans loop() : des impulsions se perdent, utilisez une interruption.",
+      "Brancher la sortie directement sur une carte en 3,3 V quand le capteur est alimenté en 5 V.",
+      "Le monter à l’envers : suivez la flèche moulée sur le corps."
+    ]
+  },
+  "look": {
+    "kind": "block",
+    "color": "#2a2d30",
+    "label": "YF-S201",
+    "size": [
+      26,
+      24,
+      40
+    ]
+  }
+}

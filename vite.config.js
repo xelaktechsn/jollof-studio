@@ -29,10 +29,31 @@ function jollofPro(mode) {
   };
 }
 
+/**
+ * Démarrage : le gros module de l'application (src/main.js) n'est importé par boot.js qu'après la langue. Un
+ * <link rel="modulepreload"> dans la page le fait télécharger et compiler dès la lecture du HTML, en même temps que
+ * les feuilles de style, les polices et le dictionnaire.
+ */
+function preloadMain() {
+  return {
+    name: 'jollof-preload-main',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(html, ctx) {
+        // Le module de main.js (avec ce qu'il partage avec d'autres morceaux, d'où pas de « facade » unique).
+        const main = ctx.bundle && Object.values(ctx.bundle).find(c => c.type === 'chunk' && (c.moduleIds || Object.keys(c.modules || {})).some(id => id.replace(/\\/g, '/').endsWith('/src/main.js')));
+        if (!main) return html;
+        return { html, tags: [{ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: '/' + main.fileName }, injectTo: 'head' }] };
+      }
+    }
+  };
+}
+
 // Réglages recommandés par Tauri : port fixe, pas d'effacement de la console.
 export default defineConfig(({ mode }) => ({
   clearScreen: false,
-  plugins: [jollofPro(mode)],
+  plugins: [jollofPro(mode), preloadMain()],
   resolve: { alias: [{ find: /^@jollof\//, replacement: SRC + '/' }] },
   server: {
     port: 1420, strictPort: true, watch: { ignored: ['**/src-tauri/**'] },

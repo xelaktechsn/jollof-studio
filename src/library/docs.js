@@ -34,6 +34,27 @@ export const DOCS = {
     mistakes: [tl('Envoyer 5 V sur une entrée (écho du HC-SR04, sortie d’un module 5 V) : passez par un pont diviseur.'), tl('Brancher sur D12 un module qui la tire au niveau haut : la carte ne démarre plus.'), tl('Lire un capteur analogique sur l’ADC2 (D4, D13, D25…) avec le Wi-Fi actif : la lecture échoue. Préférez D32 à D39.'), tl('Téléversement qui échoue : maintenez BOOT appuyé au début du téléversement.')],
     code: blink(2, tl('LED bleue de la carte'))
   },
+  'esp32-38': {
+    specs: [[tl('Puce'), tl('ESP32-WROOM-32, double cœur Xtensa LX6 jusqu’à 240 MHz')], [tl('Sans fil'), tl('Wi-Fi 802.11 b/g/n 2,4 GHz, Bluetooth 4.2 et BLE')], [tl('Broches'), tl('2 × 19, marquées IO0, IO2… (le numéro de GPIO)')], [tl('Logique'), tl('3,3 V : aucune broche ne tolère 5 V')], [tl('Alimentation'), tl('USB 5 V, ou broche 5V')], [tl('Analogique'), tl('ADC 12 bits (0 à 4095), 2 DAC 8 bits sur IO25 et IO26')]],
+    how: tl('Le même ESP32 que la DevKit V1, sur une carte à 38 broches (ESP32-DevKitC d’Espressif, NodeMCU-32S et leurs copies). Le programme est identique ; seules la disposition et les noms des broches changent. Dans l’Arduino IDE : « ESP32 Dev Module » ou « NodeMCU-32S ».'),
+    uses: [tl('Objets connectés en Wi-Fi ou en Bluetooth'), tl('Projets qui ont besoin de beaucoup de broches sur une carte ESP32')],
+    mistakes: [tl('Envoyer 5 V sur une entrée : passez par un pont diviseur.'), tl('Brancher sur IO12 un module qui la tire au niveau haut : la carte ne démarre plus.'), tl('Utiliser SD0 à SD3, CMD ou CLK : elles appartiennent à la mémoire flash.'), tl('La poser sur une breadboard de 400 points : trop large, il ne reste qu’une rangée libre d’un côté.')],
+    code: blink(2, tl('LED bleue de la NodeMCU-32S'))
+  },
+  esp32s3: {
+    specs: [[tl('Puce'), tl('ESP32-S3 (module WROOM-1), double cœur Xtensa LX7 jusqu’à 240 MHz')], [tl('Mémoire'), tl('512 Ko de SRAM, 8 à 16 Mo de flash, PSRAM selon le module')], [tl('Sans fil'), tl('Wi-Fi 802.11 b/g/n 2,4 GHz et Bluetooth LE 5 (pas de Bluetooth classique)')], [tl('Logique'), tl('3,3 V : aucune broche ne tolère 5 V')], [tl('Analogique'), tl('ADC 12 bits : IO1 à IO10 (ADC1, utilisables avec le Wi-Fi), pas de DAC')], [tl('USB'), tl('deux prises USB-C : UART (puce USB-série) et USB natif')], [tl('Tactile'), tl('14 entrées tactiles (IO1 à IO14)')]],
+    how: tl('Le successeur de l’ESP32 : plus rapide, plus de broches, l’USB natif et des instructions pour l’intelligence artificielle. Dans l’Arduino IDE, choisissez « ESP32S3 Dev Module » et branchez la prise « UART » pour téléverser et lire le moniteur série. Le numéro écrit à côté de chaque broche est son numéro de GPIO.'),
+    uses: [tl('Objets connectés plus exigeants (écran, caméra, son)'), tl('Clavier ou souris USB grâce à l’USB natif'), tl('Reconnaissance vocale ou d’images simple')],
+    mistakes: [tl('Utiliser BluetoothSerial : l’ESP32-S3 n’a que le Bluetooth LE.'), tl('Utiliser IO35 à IO37 sur un module N8R8 ou N16R8 : elles servent à sa PSRAM.'), tl('Chercher dacWrite() : l’ESP32-S3 n’a pas de convertisseur numérique-analogique.'), tl('Brancher la prise « USB » au lieu de « UART » : le moniteur série reste muet tant que l’option USB CDC n’est pas activée.')],
+    code: blink('LED_BUILTIN', tl('LED RVB de la carte (s’allume en blanc)'))
+  },
+  esp32c3: {
+    specs: [[tl('Puce'), tl('ESP32-C3, un cœur RISC-V jusqu’à 160 MHz')], [tl('Mémoire'), tl('400 Ko de SRAM, 4 Mo de flash')], [tl('Sans fil'), tl('Wi-Fi 802.11 b/g/n 2,4 GHz et Bluetooth LE 5 (pas de Bluetooth classique)')], [tl('Logique'), tl('3,3 V : aucune broche ne tolère 5 V')], [tl('Analogique'), tl('ADC 12 bits sur IO0 à IO4, pas de DAC')], [tl('Format'), tl('22,5 × 18 mm, 2 rangées de 8 broches, USB-C')]],
+    how: tl('Une toute petite carte Wi-Fi bon marché. Le moniteur série passe directement par l’USB de la puce : dans l’Arduino IDE, choisissez « Nologo ESP32C3 Super Mini » (ou « ESP32C3 Dev Module » avec « USB CDC On Boot » activé). Si le téléversement échoue, maintenez BOOT en branchant l’USB.'),
+    uses: [tl('Capteur Wi-Fi miniature, dans un boîtier ou sur pile'), tl('Remplacer un ESP8266 : même prix, plus moderne, Bluetooth LE en plus')],
+    mistakes: [tl('Moniteur série muet : l’option « USB CDC On Boot » est désactivée.'), tl('Utiliser BluetoothSerial : l’ESP32-C3 n’a que le Bluetooth LE.'), tl('Brancher un module qui tire IO9 au niveau bas : la carte reste en mode téléversement.'), tl('Vouloir plus de 5 entrées analogiques : seules IO0 à IO4 en sont.')],
+    code: blink('LED_BUILTIN', tl('LED bleue de la carte (IO8)'))
+  },
   nodemcu: {
     specs: [[tl('Puce'), tl('ESP8266 (module ESP-12E), 80 MHz (160 MHz possible)')], [tl('Mémoire'), tl('≈ 80 Ko de RAM pour le programme, 4 Mo de flash')], [tl('Sans fil'), tl('Wi-Fi 802.11 b/g/n 2,4 GHz, pas de Bluetooth')], [tl('Logique'), tl('3,3 V')], [tl('Alimentation'), tl('USB 5 V, ou VIN 4,5 à 10 V')], [tl('Analogique'), tl('une seule entrée, A0, 10 bits (0 à 1023 pour 0 à 3,3 V)')], [tl('Courant par broche'), tl('12 mA conseillés')]],
     how: tl('Se programme avec l’Arduino IDE (paquet « esp8266 ») : les noms D0 à D8 sont définis pour cette carte. L’ESP8266 n’a qu’un cœur, partagé avec le Wi-Fi : évitez les boucles bloquantes trop longues, appelez delay() ou yield().'),
@@ -61,6 +82,20 @@ export const DOCS = {
     uses: [tl('Apprendre MicroPython'), tl('Signaux très précis grâce aux PIO (LED WS2812, protocoles maison)'), tl('Projets à petit budget')],
     mistakes: [tl('Envoyer du 5 V sur une broche : aucune n’est tolérante.'), tl('Confondre le numéro de broche physique (1 à 40) et le numéro GPIO (GP0 à GP28) dans le code.'), tl('Mettre plus de 5,5 V sur VSYS.')],
     code: blink('LED_BUILTIN', 'GP25')
+  },
+  d1mini: {
+    specs: [[tl('Puce'), tl('ESP8266 (module ESP-12F), 80 MHz (160 MHz possible)')], [tl('Mémoire'), tl('≈ 80 Ko de RAM pour le programme, 4 Mo de flash')], [tl('Sans fil'), tl('Wi-Fi 802.11 b/g/n 2,4 GHz, pas de Bluetooth')], [tl('Logique'), tl('3,3 V')], [tl('Alimentation'), tl('USB 5 V, ou broche 5V (6 V au plus)')], [tl('Analogique'), tl('une seule entrée, A0, 10 bits (0 à 1023 pour 0 à 3,3 V)')], [tl('Format'), tl('34 × 26 mm, 2 rangées de 8 broches')]],
+    how: tl('Le même ESP8266 que le NodeMCU sur une carte deux fois plus petite : mêmes noms D0 à D8, même programme. Dans l’Arduino IDE, choisissez la carte « LOLIN(WEMOS) D1 R2 & mini » du paquet « esp8266 ». Les cartes d’extension (relais, écran, capteur) s’empilent dessus.'),
+    uses: [tl('Capteur Wi-Fi compact, sur pile ou dans un petit boîtier'), tl('Prise ou interrupteur connecté'), tl('Objet connecté qui doit tenir dans peu de place')],
+    mistakes: [tl('Vouloir plusieurs capteurs analogiques : une seule entrée A0 ; ajoutez un convertisseur I2C (ADS1115).'), tl('D3, D4 ou D8 au mauvais niveau au démarrage : la carte ne démarre pas.'), tl('Mettre plus de 6 V sur la broche 5V : son régulateur grille.')],
+    code: blink('LED_BUILTIN', tl('LED de la carte, allumée à LOW'))
+  },
+  mega: {
+    specs: [[tl('Puce'), tl('ATmega2560, 16 MHz')], [tl('Mémoire'), tl('256 Ko de flash, 8 Ko de SRAM, 4 Ko d’EEPROM')], [tl('Entrées/sorties'), tl('54 numériques dont 15 PWM (2 à 13, 44 à 46), 16 analogiques')], [tl('Ports série'), tl('4 : Serial (USB), Serial1, Serial2 et Serial3')], [tl('Analogique'), tl('ADC 10 bits (0 à 1023 pour 0 à 5 V)')], [tl('Logique'), '5 V'], [tl('Alimentation'), tl('USB 5 V, ou jack / VIN 7 à 12 V')], [tl('Courant'), tl('20 mA conseillés par broche, 40 mA au maximum')]],
+    how: tl('La grande sœur de l’Uno : même logique 5 V, mêmes fonctions, mais bien plus de broches, de mémoire et de ports série. Un programme d’Uno y tourne presque sans changement ; seules les broches I2C (D20, D21) et SPI (D50 à D53) changent de place.'),
+    uses: [tl('Projets à beaucoup de capteurs et d’actionneurs : robot, imprimante 3D, serre automatique'), tl('Plusieurs modules série en même temps (GPS, GSM, Bluetooth) sur Serial1 à Serial3'), tl('Programmes trop gros pour les 2 Ko de RAM de l’Uno')],
+    mistakes: [tl('Chercher l’I2C sur A4 et A5 comme sur l’Uno : sur le Mega, il est sur D20 (SDA) et D21 (SCL).'), tl('Utiliser D0 et D1 : le téléversement échoue.'), tl('Brancher un module 3,3 V (BMP280, RC522) sur le 5 V : il grille.'), tl('Alimenter servos ou moteurs par le 5 V de la carte : redémarrages.')],
+    code: blink(13, tl('LED « L » de la carte'))
   },
 
   /* ---------- Prototypage ---------- */
@@ -121,6 +156,108 @@ export const DOCS = {
     how: tl('Une couche d’oxyde d’étain chauffée par un filament voit sa résistance baisser en présence de gaz combustibles. Le module la place dans un pont diviseur : AO monte avec la concentration.'),
     uses: [tl('Détecteur de fuite de gaz d’initiation'), tl('Détecteur de fumée de démonstration')],
     mistakes: [tl('L’alimenter en 3,3 V : le filament chauffe mal, les mesures dérivent.'), tl('Le prendre pour un détecteur de sécurité certifié : il ne l’est pas.'), tl('Il chauffe : ne le touchez pas et éloignez-le du plastique.')]
+  },
+  bme280: {
+    specs: [[tl('Mesures'), tl('température −40 à 85 °C (±1 °C), humidité 0 à 100 % (±3 %), pression 300 à 1100 hPa (±1 hPa)')], [tl('Alimentation'), tl('1,71 à 3,6 V : modules « 3,3 V » sans régulateur')], [tl('Bus'), tl('I2C, adresse 0x76 (SDO à la masse) ou 0x77')], [tl('Consommation'), tl('moins de 1 mA pendant une mesure, quelques µA au repos')]],
+    how: tl('Trois capteurs dans une puce de 2,5 mm : une membrane qui se déforme avec la pression, une couche dont la capacité change avec l’humidité, et une sonde de température. La bibliothèque lit leurs mesures brutes et les corrige avec les coefficients d’étalonnage gravés en usine.'),
+    uses: [tl('Station météo complète'), tl('Altimètre (la pression baisse de 1 hPa tous les 8 m environ)'), tl('Confort d’une salle de classe ou d’une serre')],
+    mistakes: [tl('L’alimenter en 5 V : un module sans régulateur grille.'), tl('Acheter un « BME280 » qui est en fait un BMP280 : pas d’humidité, et begin() échoue (identifiant 0x58 au lieu de 0x60).'), tl('Le coller contre la carte : il mesure sa chaleur, pas celle de l’air.')]
+  },
+  bh1750: {
+    specs: [[tl('Plage'), tl('1 à 65 535 lx, au lux près')], [tl('Alimentation'), tl('3 à 5 V (module GY-302 avec régulateur)')], [tl('Bus'), tl('I2C, adresse 0x23 (ADDR à la masse) ou 0x5C')], [tl('Mesure'), tl('120 ms en haute résolution')]],
+    how: tl('Une photodiode filtrée pour voir la lumière comme l’œil humain, suivie d’un convertisseur : la puce donne directement l’éclairement en lux, sans calcul ni étalonnage. Le programme doit démarrer le bus I2C (Wire.begin()) avant begin().'),
+    uses: [tl('Allumer l’éclairage quand il fait sombre, sans à-coups'), tl('Vérifier l’éclairage d’un poste de travail (300 à 500 lx)'), tl('Suivre l’ensoleillement d’une serre ou d’un panneau solaire')],
+    mistakes: [tl('Oublier Wire.begin() : begin() échoue.'), tl('Changer l’adresse dans le constructeur seulement : begin() reprend 0x23 si on ne lui redonne pas l’adresse.'), tl('Le placer à l’ombre d’un boîtier : il mesure l’ombre.')]
+  },
+  hx711: {
+    specs: [[tl('Capteur'), tl('barre de force (jauges de contrainte en pont), 5 kg, 1 mV/V')], [tl('Convertisseur'), tl('HX711, 24 bits, gain 128, 10 mesures par seconde')], [tl('Alimentation'), tl('2,6 à 5,5 V')], [tl('Liaison'), tl('2 fils : DT (données) et SCK (horloge), sur deux broches quelconques')]],
+    how: tl('Quatre jauges collées sur la barre changent très légèrement de résistance quand elle plie : quelques millivolts au plus. Le HX711 amplifie ce signal 128 fois et le convertit en un nombre de 24 bits. Le programme retire la valeur à vide (tare) puis divise par le nombre de coups par gramme (étalonnage).'),
+    uses: [tl('Balance de cuisine ou de marché'), tl('Peser une ruche, un sac de récolte, un réservoir'), tl('Compter des pièces identiques par leur masse')],
+    mistakes: [tl('Fixer la barre sans espace sous son extrémité libre : elle ne peut pas plier, la mesure reste à zéro.'), tl('Poser la barre à l’envers (flèche gravée vers le haut) : les masses deviennent négatives.'), tl('Oublier l’étalonnage : get_units() rend des coups, pas des grammes.'), tl('Inverser les fils A+ et A− de la barre : même effet qu’une barre à l’envers.')]
+  },
+  ttp223: {
+    specs: [[tl('Détection'), tl('un doigt à travers 0 à 3 mm de plastique ou de verre')], [tl('Alimentation'), tl('2 à 5,5 V')], [tl('Sortie'), tl('SIG : HIGH tant que le doigt est posé (réglable)')], [tl('Temps de réponse'), tl('environ 60 ms')]],
+    how: tl('La pastille forme un petit condensateur avec son environnement. Un doigt, conducteur, augmente sa capacité ; la puce le repère et change sa sortie. Elle se recalibre en permanence pour suivre l’humidité et la température.'),
+    uses: [tl('Bouton sans pièce mobile, étanche derrière une vitre'), tl('Interrupteur de lampe tactile'), tl('Clavier ou jeu à boutons tactiles')],
+    mistakes: [tl('Toucher la pastille à la mise sous tension : elle prend le doigt pour la référence et ne réagit plus.'), tl('La coller sur du métal : elle détecte en permanence.')]
+  },
+  rcwl0516: {
+    specs: [[tl('Principe'), tl('radar Doppler à 3,2 GHz')], [tl('Portée'), tl('5 à 7 m, à travers le plastique, le bois ou une cloison fine')], [tl('Alimentation'), tl('4 à 28 V sur VIN')], [tl('Sortie'), tl('OUT : 3,3 V pendant environ 2 s à chaque mouvement')]],
+    how: tl('Le module émet une onde radio et écoute son écho. Quand quelque chose bouge, l’écho change légèrement de fréquence (effet Doppler) : le module le détecte et met OUT au niveau haut. Contrairement au PIR, il ne mesure pas la chaleur : il voit aussi les objets.'),
+    uses: [tl('Éclairage automatique d’un couloir ou d’un escalier'), tl('Détecteur caché dans un boîtier fermé'), tl('Compter les passages')],
+    mistakes: [tl('Le placer près d’un ventilateur ou d’un rideau : il détecte en permanence.'), tl('Mettre du métal devant : le radar ne le traverse pas.'), tl('Croire qu’il donne une distance : il dit seulement « mouvement » ou « rien ».')]
+  },
+  mq135: {
+    specs: [[tl('Gaz détectés'), tl('ammoniac, oxydes d’azote, alcool, benzène, fumée, CO₂')], [tl('Chauffage'), tl('5 V, environ 170 mA')], [tl('Sorties'), tl('AO analogique (monte avec la pollution) · DO numérique (LOW au-delà du seuil)')], [tl('Préchauffage'), tl('24 h la première fois, quelques minutes ensuite')]],
+    how: tl('Une couche d’oxyde d’étain chauffée par un filament devient plus conductrice en présence de ces gaz. Le module la place dans un pont diviseur : la tension AO monte quand l’air est plus pollué, et un comparateur fait passer DO à LOW au-delà du seuil réglé.'),
+    uses: [tl('Indicateur de qualité de l’air d’une salle de classe'), tl('Déclencher une aération quand l’air est vicié'), tl('Détecter la fumée ou des vapeurs d’alcool')],
+    mistakes: [tl('Lire la valeur comme des ppm de CO₂ exacts : c’est une tendance, pas une mesure étalonnée.'), tl('L’alimenter par une broche ou en 3,3 V : le filament demande 5 V et 170 mA.'), tl('Relier AO directement à une carte 3,3 V : passez par un pont diviseur.')]
+  },
+  lm35: {
+    specs: [[tl('Alimentation'), tl('4 à 30 V, moins de 60 µA')], [tl('Sortie'), tl('10 mV par °C (0,25 V à 25 °C)')], [tl('Plage'), tl('2 à 150 °C avec ce montage simple')], [tl('Précision'), tl('±0,5 °C à 25 °C')], [tl('Boîtier'), tl('TO-92, trois pattes')]],
+    how: tl('La puce produit une tension proportionnelle à la température en degrés Celsius : il suffit de la lire avec analogRead() et de la multiplier. Température (°C) = tension (V) × 100.'),
+    uses: [tl('Thermomètre sans bibliothèque'), tl('Alarme de surchauffe'), tl('Premier capteur analogique')],
+    mistakes: [tl('Le monter à l’envers (face plate vers soi : VS, VOUT, GND de gauche à droite) : il chauffe très vite.'), tl('L’alimenter en 3,3 V : sous 4 V, la mesure n’est plus juste.'), tl('Oublier la conversion : analogRead() rend une valeur brute, pas des degrés.')]
+  },
+  flame: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Détection'), tl('infrarouge de 760 à 1100 nm, environ 60°, jusqu’à 1 m pour une bougie')], [tl('Comparateur'), tl('LM393, seuil réglable')], [tl('Sorties'), tl('AO analogique · DO numérique (LOW quand une flamme est vue)')]],
+    how: tl('Une photodiode infrarouge noire reçoit le rayonnement d’une flamme. AO baisse quand la flamme est plus forte ou plus proche ; le comparateur fait passer DO à LOW au-delà du seuil du potentiomètre.'),
+    uses: [tl('Alarme incendie de démonstration'), tl('Robot pompier qui cherche une bougie')],
+    mistakes: [tl('Tester au soleil : il est plein d’infrarouge.'), tl('Le prendre pour un détecteur de sécurité certifié : il ne l’est pas.'), tl('Approcher la flamme trop près : le capteur chauffe et se déforme.')]
+  },
+  rain: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Plaque'), tl('pistes croisées nickelées, environ 5 × 4 cm')], [tl('Comparateur'), tl('LM393, seuil réglable')], [tl('Sorties'), tl('AO analogique · DO numérique (LOW quand c’est mouillé)')]],
+    how: tl('Les gouttes relient les pistes de la plaque : sa résistance baisse, la tension AO aussi. Le comparateur fait passer DO à LOW au-delà du seuil réglé.'),
+    uses: [tl('Fermer une fenêtre de toit quand il pleut'), tl('Arrêter l’arrosage par temps de pluie')],
+    mistakes: [tl('Laisser la plaque alimentée en permanence : elle se corrode en quelques jours.'), tl('Mouiller le module comparateur : seule la plaque va dehors.')]
+  },
+  water: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Zone de mesure'), tl('environ 40 mm de pistes de cuivre')], [tl('Sortie'), tl('S analogique : 0 V au sec, jusqu’à environ 70 % de l’alimentation immergé')]],
+    how: tl('Des pistes reliées à l’alimentation et d’autres reliées à un transistor alternent sur la plaque. Plus elles trempent, plus l’eau les relie et plus la tension S monte.'),
+    uses: [tl('Alarme de fuite d’eau'), tl('Niveau d’un réservoir d’arrosage'), tl('Détecter une baignoire qui déborde')],
+    mistakes: [tl('Immerger tout le module : les composants ne supportent pas l’eau.'), tl('Attendre une mesure en millimètres précise : la valeur dépend de l’eau (sel, minéraux).'), tl('Le laisser alimenté en continu : les pistes se corrodent.')]
+  },
+  irobst: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Portée'), tl('2 à 30 cm, réglable par le potentiomètre')], [tl('Angle'), '≈ 35°'], [tl('Sortie'), tl('OUT numérique : LOW quand un obstacle est vu')]],
+    how: tl('La LED transparente envoie de l’infrarouge ; la photodiode noire reçoit ce qu’un obstacle renvoie. Au-delà du seuil réglé, le comparateur fait passer OUT à LOW et allume la LED témoin.'),
+    uses: [tl('Robot qui évite les obstacles'), tl('Compter des objets qui passent'), tl('Distributeur de gel sans contact')],
+    mistakes: [tl('Attendre une distance : il dit seulement « obstacle » ou « rien ».'), tl('Viser un objet noir mat : il renvoie peu de lumière et n’est vu que de très près.')]
+  },
+  line: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Capteur'), tl('TCRT5000 : LED infrarouge et phototransistor côte à côte')], [tl('Distance au sol'), tl('1 à 8 mm, idéalement 2 à 3 mm')], [tl('Sorties'), tl('DO numérique (HIGH sur une ligne noire) · AO analogique')]],
+    how: tl('La LED éclaire le sol ; une surface claire renvoie beaucoup de lumière, une ligne noire presque rien. Le comparateur transforme cette différence en un niveau logique sur DO.'),
+    uses: [tl('Robot suiveur de ligne (deux ou trois capteurs)'), tl('Compte-tours avec une bande noire'), tl('Détecter une marque sur un tapis roulant')],
+    mistakes: [tl('Le placer à plusieurs centimètres du sol : il ne voit plus rien.'), tl('Ne pas régler le seuil au-dessus de la vraie ligne et du vrai sol.')]
+  },
+  hall: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Capteur'), tl('A3144, tout-ou-rien, réagit au pôle sud')], [tl('Sortie'), tl('S : LOW près d’un aimant, HIGH sinon')]],
+    how: tl('Un champ magnétique dévie les électrons qui traversent la puce et crée une petite tension (effet Hall). La puce la compare à un seuil et commande sa sortie.'),
+    uses: [tl('Détecter une porte fermée (aimant sur la porte)'), tl('Compte-tours d’une roue avec un aimant'), tl('Interrupteur sans contact')],
+    mistakes: [tl('Présenter le mauvais pôle de l’aimant : retournez-le.'), tl('Croire qu’il mesure la force du champ : celui-ci répond seulement oui ou non.')]
+  },
+  'tilt-sw': {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Contact'), tl('SW-520D, bille métallique')], [tl('Sortie'), tl('S : LOW droit, HIGH penché au-delà d’environ 45°')]],
+    how: tl('Une bille roule dans un petit tube : capteur droit, elle relie les deux contacts ; penché, elle s’en écarte et le contact s’ouvre.'),
+    uses: [tl('Alarme de chute ou de renversement'), tl('Jouet qui réagit quand on le retourne')],
+    mistakes: [tl('Attendre un angle : il dit seulement « droit » ou « penché ».'), tl('Ne pas filtrer les rebonds de la bille : plusieurs changements pour un seul mouvement.')]
+  },
+  shock: {
+    specs: [[tl('Alimentation'), tl('3,3 à 5 V')], [tl('Capteur'), tl('SW-420, à ressort, normalement fermé')], [tl('Comparateur'), tl('LM393, sensibilité réglable')], [tl('Sortie'), tl('DO : HIGH pendant une secousse')]],
+    how: tl('Au repos, le ressort du tube touche le contact. Une secousse le fait vibrer et ouvrir le contact par instants ; le comparateur transforme ces coupures en impulsions sur DO.'),
+    uses: [tl('Alarme antivol sur un objet'), tl('Détecter un choc sur un colis'), tl('Machine qui vibre anormalement')],
+    mistakes: [tl('Lire DO une seule fois : une secousse donne des impulsions brèves, comptez-les ou utilisez une interruption.')]
+  },
+  laser: {
+    specs: [[tl('Commande'), tl('S à HIGH : allumé (3,3 ou 5 V)')], [tl('Diode'), tl('rouge 650 nm, ≤ 5 mW (classe 3R)')], [tl('Courant'), tl('environ 30 mA')]],
+    how: tl('La diode laser et sa résistance sont commandées directement par la sortie de la carte : HIGH l’allume, LOW l’éteint, une PWM fait varier sa puissance moyenne.'),
+    uses: [tl('Barrière laser avec une photorésistance'), tl('Pointeur de démonstration')],
+    mistakes: [tl('Viser un œil ou un miroir : danger pour la vue, même brièvement.'), tl('Croire qu’il éclaire comme une lampe : c’est un point, pas une zone.')]
+  },
+  traffic: {
+    specs: [[tl('LED'), tl('rouge, orange, verte, avec leurs résistances')], [tl('Commande'), tl('une broche par couleur, HIGH allume')], [tl('Masse'), tl('commune (GND)')]],
+    how: tl('Chaque couleur est une LED avec sa résistance sur la carte : on la relie directement à une sortie. Le programme allume une couleur à la fois, comme un vrai feu.'),
+    uses: [tl('Feu tricolore d’un carrefour'), tl('Témoin d’état (OK, attention, alarme)'), tl('Feu de passage piéton avec un bouton')],
+    mistakes: [tl('Allumer deux couleurs à la fois par oubli d’un digitalWrite(…, LOW).'), tl('Ajouter une résistance : elle est déjà sur le module.')]
   },
   ds18b20: {
     specs: [[tl('Alimentation'), tl('3,0 à 5,5 V')], [tl('Température'), tl('−55 à 125 °C, ±0,5 °C entre −10 et 85 °C')], [tl('Résolution'), tl('9 à 12 bits (0,0625 °C)')], [tl('Conversion'), tl('750 ms en 12 bits')], [tl('Interface'), tl('1-Wire, adresse unique de 64 bits')], [tl('Formats'), tl('boîtier TO-92 ou sonde étanche en inox')]],
@@ -250,6 +387,30 @@ export const DOCS = {
     how: tl('Un moteur sans balais : une petite électronique alimente tour à tour les bobines pour faire tourner l’hélice. Elle ne fonctionne que dans un sens de branchement.'),
     uses: [tl('Refroidir un boîtier quand la température monte'), tl('Aérer une serre'), tl('Ventilateur de bureau commandé par un capteur')],
     mistakes: [tl('Le brancher à l’envers : il ne tourne pas.'), tl('Le relier à une broche de la carte : 100 mA, c’est trop pour elle.'), tl('L’alimenter en 9 V ou 12 V : il chauffe et s’use vite.')]
+  },
+  psu24: {
+    specs: [[tl('Sortie'), tl('24 V continu, 2,5 A (60 W) ; réglable de 21,6 à 29 V')], [tl('Entrée'), tl('85 à 264 V alternatif (secteur)')], [tl('Montage'), tl('rail DIN, dans une armoire ou sur un banc')], [tl('Source'), 'MEAN WELL HDR-60 (spécification) : 24 V, 2,5 A, plage de réglage 21,6 à 29 V']],
+    how: tl('Un bloc secteur à découpage transforme le 230 V du réseau en 24 V continu, la tension des automatismes industriels : distributeurs pneumatiques, capteurs, voyants. Dans le simulateur, il alimente les bobines d’électrovanne ; son 0 V est relié à la masse de la carte pour que le transistor de commande fonctionne.'),
+    uses: [tl('Alimenter les bobines des distributeurs pneumatiques'), tl('Banc d’électropneumatique avec une carte Arduino ou ESP32'), tl('Armoire d’automatisme')],
+    mistakes: [tl('Relier le 24 V à une broche de la carte : elle est détruite.'), tl('Oublier de relier le 0 V à la masse de la carte : la commande par transistor ne marche plus.'), tl('Câbler le côté secteur sans protection : seul un adulte qualifié le fait, appareil débranché.')]
+  },
+  coil24: {
+    specs: [[tl('Tension'), tl('24 V continu, ±10 %')], [tl('Puissance'), tl('3,0 W, soit ≈ 125 mA')], [tl('Temps de réponse'), tl('0,05 s au plus')], [tl('Pression du distributeur'), tl('1,5 à 8 bar')], [tl('Source'), 'AirTAC, distributeurs série 4V (tableau des bobines) : DC24V ±10 %, 3,0 W, 0,05 s']],
+    how: tl('Une bobine de fil de cuivre devient un électroaimant quand le courant la traverse : elle attire le noyau qui fait basculer le tiroir du distributeur. Dans le simulateur, la bobine est excitée au-delà de 18 V : le distributeur du plan de travail pneumatique qui porte le même repère (Y1…) bascule. Au repos, son ressort le ramène.'),
+    uses: [tl('Commander un vérin depuis un programme Arduino'), tl('Porte automatique, presse, tri de pièces'), tl('Apprendre l’électropneumatique')],
+    mistakes: [tl('La brancher sur une broche de la carte : elle demande 24 V et 125 mA.'), tl('Oublier la diode de roue libre : à la coupure, la bobine renvoie une pointe de tension qui détruit le transistor.'), tl('Donner un repère qui n’existe pas dans le plan pneumatique : le distributeur ne bascule jamais.')]
+  },
+  pressostat: {
+    specs: [[tl('Contact'), tl('normalement ouvert, fermé au-dessus du seuil')], [tl('Câblage'), tl('2 fils : entrée INPUT_PULLUP et masse')], [tl('Seuil'), tl('réglé sur le pressostat du plan de travail pneumatique')]],
+    how: tl('Une membrane, poussée par l’air, actionne un contact quand la pression dépasse le seuil réglé. La carte sait alors que le réseau ou un vérin est sous pression : démarrage autorisé, serrage assuré, alarme de chute de pression. Dans le plan de travail pneumatique, le pressostat porte le repère de ce contact (S1…).'),
+    uses: [tl('Vérifier qu’une pièce est bien serrée avant d’usiner'), tl('Alarme de chute de pression du réseau d’air'), tl('Démarrer un cycle seulement quand l’air est là')],
+    mistakes: [tl('Régler le seuil au-dessus de la pression du réseau : le contact ne se ferme jamais.'), tl('Lire l’entrée sans INPUT_PULLUP : elle flotte quand le contact est ouvert.')]
+  },
+  cylsensor: {
+    specs: [[tl('Contact'), tl('ILS (ampoule à lames souples), normalement ouvert')], [tl('Câblage'), tl('2 fils : entrée INPUT_PULLUP et masse')], [tl('Lecture'), tl('LOW quand le piston est devant')]],
+    how: tl('Le piston d’un vérin « magnétique » porte un aimant. Le capteur, fixé sur le tube du vérin, ferme son contact quand l’aimant passe devant : la carte sait alors que le vérin est rentré (capteur B1) ou sorti (capteur B2). Dans le plan de travail pneumatique, un vérin porte les repères de ses capteurs.'),
+    uses: [tl('Savoir qu’un vérin est arrivé en fin de course'), tl('Enchaîner les mouvements d’un cycle automatique'), tl('Compter les cycles d’une machine')],
+    mistakes: [tl('Lire l’entrée sans INPUT_PULLUP : elle flotte quand le contact est ouvert.'), tl('Placer les deux capteurs au même repère : le programme ne distingue plus rentré et sorti.'), tl('Utiliser un vérin sans aimant : le capteur ne voit jamais le piston.')]
   },
   pump: {
     specs: [[tl('Alimentation'), tl('3 à 6 V')], [tl('Courant'), tl('130 à 220 mA')], [tl('Débit'), tl('≈ 1,5 L/min à 5 V')], [tl('Usage'), tl('immergée dans l’eau')]],
