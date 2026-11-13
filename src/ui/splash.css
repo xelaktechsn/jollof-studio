@@ -1,0 +1,22 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Écran d'ouverture : fond sombre de circuit imprimé, logo au centre (src/ui/splash.js). */
+.jsSplash { position: fixed; inset: 0; z-index: 10000; display: grid; place-items: center; overflow: hidden; cursor: default;
+  background: radial-gradient(ellipse at 50% 45%, #10203a 0%, #0b0f14 60%, #080b0f 100%); transition: opacity .3s ease, transform .3s ease; }
+.jsSplash.out { opacity: 0; transform: scale(1.015); pointer-events: none; }
+/* Grille de pastilles, comme une plaque à trous. */
+.jsSplash::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(#ffffff10 1px, transparent 1.4px); background-size: 22px 22px; mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%); }
+.jsBg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.jsTr { fill: none; stroke: #3b82f633; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.jsMark { position: relative; display: flex; flex-direction: column; align-items: center; gap: 26px; }
+.jsIcon svg { display: block; width: clamp(110px, 18vmin, 176px); height: auto; filter: drop-shadow(0 18px 40px #000a); }
+.jsWord svg { display: block; width: clamp(280px, 52vmin, 560px); height: auto; overflow: visible; }
+.jsWord { --fg: #f1f5f9; --accent: #3b82f6; }
+/* LED éteinte : cabochon sombre posé sur l'allumée, effacé à la mise sous tension. */
+.jsOff { fill: #0d3440; stroke: #164e5c; stroke-width: 1.5; }
+.jsIcon .jsOff { stroke-width: 4; }
+.jsFlash { fill: #cffafe; opacity: 0; }
+.jsPad { fill: #0b0f14; stroke: #3b82f666; stroke-width: 2; opacity: 0; }
+.jsGlow { position: absolute; width: min(90vmin, 900px); aspect-ratio: 1; border-radius: 50%; background: radial-gradient(circle, #22d3ee2e 0%, #3b82f61c 35%, transparent 70%); opacity: 0; pointer-events: none; }
+.jsPulse { fill: #e0f2fe; filter: drop-shadow(0 0 6px #22d3ee); opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .jsSplash { transition: opacity .2s; } .jsSplash.out { transform: none; } }

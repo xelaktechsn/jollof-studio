@@ -13,5 +13,9 @@ import '@fontsource/jetbrains-mono/500.css';
 import '@fontsource/jetbrains-mono/600.css';
 import './styles.css';
 import { loadLanguage } from './i18n/index.js';
+import { showSplash } from './ui/splash.js';
 
-loadLanguage().catch(e => console.error(e)).then(() => import('./main.js'));
+try { performance.mark('jollof:boot'); } catch (e) { /* navigateur ancien */ }
+// Écran d'ouverture : affiché tout de suite, pendant que l'application se charge en parallèle.
+try { showSplash(); } catch (e) { console.error(e); }
+loadLanguage().catch(e => console.error(e)).then(() => { try { performance.mark('jollof:lang'); } catch (e) { /* rien */ } return import('./main.js'); });
