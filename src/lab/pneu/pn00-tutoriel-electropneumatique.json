@@ -1,0 +1,734 @@
+{
+ "id": "pn00-tutoriel-electropneumatique",
+ "series": "tuto",
+ "tutorial": true,
+ "workspace": "elec",
+ "level": "college",
+ "minutes": 25,
+ "title": {
+  "fr": "Tutoriel : mon premier projet électropneumatique",
+  "en": "Tutorial: my first electropneumatic project"
+ },
+ "summary": {
+  "fr": "Pas à pas, de zéro : un vérin pneumatique commandé par une carte Arduino. Vous posez le circuit pneumatique, le montage électronique, vous les reliez par leurs repères, vous écrivez le GRAFCET, la carte reçoit son programme, et vous regardez tout fonctionner ensemble dans la vue partagée. Chaque étape se valide toute seule.",
+  "en": "Step by step, from scratch: a pneumatic cylinder driven by an Arduino board. You lay out the pneumatic circuit and the electronic circuit, link them by their tags, write the GRAFCET, give the board its program, and watch everything work together in the split view. Each step checks itself."
+ },
+ "objectives": [
+  {
+   "fr": "Relier la partie commande (carte) et la partie opérative (air comprimé) par des repères : Y1, B1, B2",
+   "en": "Link the control part (board) and the power part (compressed air) by tags: Y1, B1, B2"
+  },
+  {
+   "fr": "Commander une électrovanne 24 V et lire des capteurs de vérin",
+   "en": "Drive a 24 V solenoid valve and read cylinder sensors"
+  },
+  {
+   "fr": "Écrire un GRAFCET et en tirer le programme de la carte",
+   "en": "Write a GRAFCET and turn it into the board program"
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Tutoriel électropneumatique",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "epneu"
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "Vérin électropneumatique (tutoriel)",
+   "comps": [
+    {
+     "id": "uno_fiwkj4",
+     "type": "uno",
+     "name": "UNO",
+     "x": 0,
+     "z": 34,
+     "r": 0
+    },
+    {
+     "id": "button_y3hcts",
+     "type": "button",
+     "name": "BTN1",
+     "x": -22,
+     "z": -4,
+     "r": 0
+    },
+    {
+     "id": "coil24_32luck",
+     "type": "coil24",
+     "name": "Y1",
+     "x": 55,
+     "z": 35,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_rhvsro",
+     "type": "cylsensor",
+     "name": "B1",
+     "x": 45,
+     "z": 73,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_8p35kn",
+     "type": "cylsensor",
+     "name": "B2",
+     "x": 9,
+     "z": 97,
+     "r": 0
+    },
+    {
+     "id": "breadboard_zo6wih",
+     "type": "breadboard",
+     "name": "BB1",
+     "x": 5,
+     "z": 146,
+     "r": 0
+    },
+    {
+     "id": "psu24_35wsyp",
+     "type": "psu24",
+     "name": "PS1",
+     "x": 84,
+     "z": 37,
+     "r": 0
+    },
+    {
+     "id": "pn2222_mwqxxl",
+     "type": "pn2222",
+     "name": "Q1",
+     "x": 15,
+     "z": -4,
+     "r": 0
+    },
+    {
+     "id": "res-1k_stnpge",
+     "type": "res-1k",
+     "name": "R1",
+     "x": 72,
+     "z": 69,
+     "r": 0
+    },
+    {
+     "id": "diode_ykalbf",
+     "type": "diode",
+     "name": "D1",
+     "x": 10,
+     "z": -17,
+     "r": 0
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "button_y3hcts",
+      "2"
+     ],
+     "b": [
+      "uno_fiwkj4",
+      "GND"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w2",
+     "a": [
+      "button_y3hcts",
+      "1"
+     ],
+     "b": [
+      "uno_fiwkj4",
+      "D7"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w3",
+     "a": [
+      "uno_fiwkj4",
+      "GND (2)"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "T-11"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse vers la breadboard"
+    },
+    {
+     "id": "w4",
+     "a": [
+      "psu24_35wsyp",
+      "-"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "T-25"
+     ],
+     "color": "#3a3f45",
+     "role": "0 V de l’alimentation 24 V à la masse commune"
+    },
+    {
+     "id": "w5",
+     "a": [
+      "psu24_35wsyp",
+      "+"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "A30"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V vers la breadboard"
+    },
+    {
+     "id": "w6",
+     "a": [
+      "coil24_32luck",
+      "+"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "B30"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V"
+    },
+    {
+     "id": "w7",
+     "a": [
+      "diode_ykalbf",
+      "K"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "C30"
+     ],
+     "color": "#e5484d",
+     "role": "Cathode de la diode de roue libre au +"
+    },
+    {
+     "id": "w8",
+     "a": [
+      "coil24_32luck",
+      "-"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "A29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w9",
+     "a": [
+      "pn2222_mwqxxl",
+      "C"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "B29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w10",
+     "a": [
+      "diode_ykalbf",
+      "A"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "C29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w11",
+     "a": [
+      "pn2222_mwqxxl",
+      "E"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "T-24"
+     ],
+     "color": "#3a3f45",
+     "role": "Émetteur à la masse"
+    },
+    {
+     "id": "w12",
+     "a": [
+      "pn2222_mwqxxl",
+      "B"
+     ],
+     "b": [
+      "res-1k_stnpge",
+      "2"
+     ],
+     "color": "#f08a3c",
+     "role": "Résistance de base"
+    },
+    {
+     "id": "w13",
+     "a": [
+      "res-1k_stnpge",
+      "1"
+     ],
+     "b": [
+      "uno_fiwkj4",
+      "D2"
+     ],
+     "color": "#f2c94c",
+     "role": "Commande du transistor"
+    },
+    {
+     "id": "w14",
+     "a": [
+      "cylsensor_rhvsro",
+      "2"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "T-23"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w15",
+     "a": [
+      "cylsensor_rhvsro",
+      "1"
+     ],
+     "b": [
+      "uno_fiwkj4",
+      "D3"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w16",
+     "a": [
+      "cylsensor_8p35kn",
+      "2"
+     ],
+     "b": [
+      "breadboard_zo6wih",
+      "T-15"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w17",
+     "a": [
+      "cylsensor_8p35kn",
+      "1"
+     ],
+     "b": [
+      "uno_fiwkj4",
+      "D8"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    }
+   ],
+   "settings": {
+    "dur": 1.2,
+    "env": {},
+    "prog": {
+     "rules": [],
+     "boards": {
+      "uno_fiwkj4": {
+       "code": "// Programme de UNO, écrit par Jollof Studio à partir du GRAFCET du plan pneumatique.\n// Une évolution par tour de loop() ; vous pouvez le modifier librement.\n\nconst int BTN1 = 7;\nconst int B1 = 3;\nconst int B2 = 8;\n// GRAFCET : une variable par étape, vraie quand l’étape est active.\nbool X0 = true;\nbool X1 = false;\nconst int Q1 = 2;\n\nunsigned long dernierAffichage = 0;\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(BTN1, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW\n  pinMode(B1, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(B2, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(Q1, OUTPUT); // base de Q1 : HIGH, le transistor conduit et Y1 est excitée\n}\n\nvoid loop() {\n  // Mesures\n  bool btn1_appuye = digitalRead(BTN1) == LOW;\n  bool b1_piston = digitalRead(B1) == LOW;\n  bool b2_piston = digitalRead(B2) == LOW;\n\n  // 1. Transitions franchissables : toutes calculées avant d’évoluer (franchissement simultané).\n  bool t0_1 = X0 && (btn1_appuye && b1_piston); // X0 → X1 : BTN1 . B1\n  bool t1_0 = X1 && b2_piston; // X1 → X0 : B2\n\n  // 2. Évolution : on désactive les étapes amont, puis on active les étapes aval.\n  if (t0_1) { X0 = false; }\n  if (t1_0) { X1 = false; }\n  if (t0_1) { X1 = true; }\n  if (t1_0) { X0 = true; }\n\n  // Sorties : chacune est commandée tant qu’une étape qui la porte est active.\n  if (X1) {\n    digitalWrite(Q1, HIGH);\n  } else {\n    digitalWrite(Q1, LOW);\n  }\n\n  // Mesures sur le moniteur série, une fois par seconde\n  if (millis() - dernierAffichage >= 1000) {\n    dernierAffichage = millis();\n    Serial.print(F(\"BTN1 est appuyé : \"));\n    Serial.print(btn1_appuye ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"B1 détecte le piston : \"));\n    Serial.print(b1_piston ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"B2 détecte le piston : \"));\n    Serial.println(b2_piston ? \"oui\" : \"non\");\n  }\n  delay(10); // une centaine de tours par seconde : assez pour réagir, sans calcul inutile\n}\n",
+       "auto": false
+      }
+     },
+     "states": {},
+     "mem": {},
+     "net": null
+    },
+    "modules": {
+     "pneu": {
+      "circuit": {
+       "elements": [
+        {
+         "id": "e1",
+         "type": "supply",
+         "x": 11,
+         "y": 24,
+         "p": {}
+        },
+        {
+         "id": "e2",
+         "type": "v52",
+         "x": 0,
+         "y": 14,
+         "p": {
+          "left": "sol",
+          "right": "spring",
+          "coilL": "Y1"
+         }
+        },
+        {
+         "id": "e3",
+         "type": "cyl2",
+         "x": 0,
+         "y": 0,
+         "p": {
+          "s0": "B1",
+          "s1": "B2",
+          "label": "1A"
+         }
+        }
+       ],
+       "tubes": [
+        {
+         "id": "t1",
+         "a": [
+          "e1",
+          "1"
+         ],
+         "b": [
+          "e2",
+          "1"
+         ]
+        },
+        {
+         "id": "t2",
+         "a": [
+          "e2",
+          "4"
+         ],
+         "b": [
+          "e3",
+          "1"
+         ]
+        },
+        {
+         "id": "t3",
+         "a": [
+          "e2",
+          "2"
+         ],
+         "b": [
+          "e3",
+          "2"
+         ]
+        }
+       ],
+       "grafcet": {
+        "name": "G1",
+        "inputs": [],
+        "drive": false,
+        "steps": [
+         {
+          "n": 0,
+          "init": true,
+          "act": "",
+          "r": "BTN1 . B1"
+         },
+         {
+          "n": 1,
+          "act": "Y1",
+          "r": "B2"
+         }
+        ]
+       }
+      }
+     }
+    },
+    "kind": "epneu"
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Ce que vous allez construire",
+    "en": "What you will build"
+   },
+   "text": {
+    "fr": "Un projet **électropneumatique** réunit deux parties qui travaillent ensemble :\n- la **partie opérative**, dans le plan **Pneumatique** : l’air comprimé, un distributeur 5/2 et un vérin double effet ;\n- la **partie commande**, dans le plan **Électronique** : une carte Arduino, un bouton, l’électrovanne 24 V du distributeur et deux capteurs de fin de course.\nUn **repère** relie les deux plans : la bobine **Y1** du montage fait basculer le distributeur marqué Y1 ; les capteurs **B1** et **B2** du montage se ferment quand le piston du vérin arrive devant eux.\nCe tutoriel se vérifie tout seul : faites ce qui est demandé, l’étape se valide d’elle-même. Le bouton **Montrer** entoure ce sur quoi cliquer.",
+    "en": "An **electropneumatic** project joins two parts that work together:\n- the **power part**, in the **Pneumatic** workspace: compressed air, a 5/2 valve and a double-acting cylinder;\n- the **control part**, in the **Electronics** workspace: an Arduino board, a button, the valve’s 24 V solenoid and two end-of-stroke sensors.\nA **tag** links the two workspaces: coil **Y1** on the bench switches the valve marked Y1; sensors **B1** and **B2** on the bench close when the cylinder’s piston reaches them.\nThis tutorial checks itself: do what is asked and the step validates on its own. The **Show me** button circles what to click."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit pneumatique",
+    "en": "The pneumatic circuit"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique** (sélecteur en haut à gauche). Depuis la bibliothèque, posez :\n- une **source d’air comprimé** ;\n- un **distributeur 5/2 monostable, électroaimant** : sa bobine porte déjà le repère **Y1** ;\n- un **vérin double effet** : ses capteurs sont déjà **B1** (tige rentrée) et **B2** (tige sortie).\nCliquez ensuite sur le vérin et donnez-lui le repère **1A** dans l’onglet Pneumatique de l’inspecteur.",
+    "en": "Switch to the **Pneumatic** workspace (switch at the top left). From the library, place:\n- a **compressed air supply**;\n- a **5/2 monostable valve, solenoid**: its coil is already tagged **Y1**;\n- a **double-acting cylinder**: its sensors are already **B1** (rod retracted) and **B2** (rod extended).\nThen click the cylinder and give it the tag **1A** in the Pneumatic tab of the inspector."
+   },
+   "hint": {
+    "fr": "Le bon distributeur est « 5/2 monostable, électroaimant » (un ressort de l’autre côté). Le repère du vérin se tape dans le champ « Repère ».",
+    "en": "The right valve is “5/2 monostable, solenoid” (a spring on the other side). The cylinder tag goes in the “Tag” field."
+   },
+   "spot": [
+    ".wsSwitch [data-ws=\"pneu\"][aria-pressed=\"false\"]",
+    ".pnLib .pnItem[data-t=\"supply\"]",
+    ".pnLib .pnItem[data-t=\"v52\"][data-p*=\"coilL\"][data-p*=\"spring\"]",
+    ".pnLib .pnItem[data-t=\"cyl2\"]",
+    ".pnRailItem[data-t=\"supply\"]",
+    ".pnRailItem[data-t=\"v52\"][data-p*=\"coilL\"][data-p*=\"spring\"]",
+    ".pnRailItem[data-t=\"cyl2\"]",
+    ".pnPane [data-k=\"label\"]"
+   ],
+   "check": {
+    "type": "pneu-parts",
+    "require": [
+     {
+      "type": "supply"
+     },
+     {
+      "type": "v52",
+      "p": {
+       "left": "sol",
+       "right": "spring",
+       "coilL": "Y1"
+      }
+     },
+     {
+      "type": "cyl2",
+      "p": {
+       "s0": "B1",
+       "s1": "B2",
+       "label": "1A"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Tirez un tuyau d’un orifice (petit rond) à un autre :\n- orifice **1** de la source → orifice **1** du distributeur : l’air arrive ;\n- orifice **4** du distributeur → orifice **1** du vérin, côté fond : la tige sort quand Y1 est excitée ;\n- orifice **2** du distributeur → orifice **2** du vérin, côté tige : au repos, le ressort ramène le tiroir et la tige rentre.\nLes orifices **3** et **5** du distributeur sont des échappements : laissez-les libres.",
+    "en": "Draw a tube from one port (small circle) to another:\n- port **1** of the supply → port **1** of the valve: air comes in;\n- port **4** of the valve → port **1** of the cylinder, cap end: the rod extends when Y1 is energised;\n- port **2** of the valve → port **2** of the cylinder, rod end: at rest the spring returns the spool and the rod retracts.\nPorts **3** and **5** of the valve are exhausts: leave them free."
+   },
+   "hint": {
+    "fr": "Un tuyau mal posé se retire : cliquez dessus, puis Suppr. Le numéro d’un orifice s’affiche quand le pointeur le survole.",
+    "en": "A wrong tube can be removed: click it, then Delete. A port’s number shows when the pointer hovers it."
+   },
+   "spot": [
+    ".wsSwitch [data-ws=\"pneu\"][aria-pressed=\"false\"]"
+   ],
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "~supply:1",
+      "~v52:1"
+     ],
+     [
+      "~v52:4",
+      "~cyl2:1"
+     ],
+     [
+      "~v52:2",
+      "~cyl2:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La partie commande",
+    "en": "The control part"
+   },
+   "text": {
+    "fr": "Revenez au plan **Électronique**. Depuis la bibliothèque (cherchez-les par leur nom), ajoutez :\n- une carte **Arduino Uno** ;\n- un **bouton poussoir** (BTN1) : le départ du cycle ;\n- une **électrovanne 24 V** : elle prend le repère **Y1**, celui du distributeur ;\n- deux **capteurs de position de vérin** : **B1** et **B2**.\nLes repères se donnent tout seuls dans l’ordre (Y1, B1, B2) ; s’il le faut, renommez un composant dans l’inspecteur.",
+    "en": "Go back to the **Electronics** workspace. From the library (search them by name), add:\n- an **Arduino Uno** board;\n- a **push button** (BTN1): the cycle start;\n- a **24 V solenoid valve**: it gets the tag **Y1**, the valve’s tag;\n- two **cylinder position sensors**: **B1** and **B2**.\nTags are given in order (Y1, B1, B2); if needed, rename a part in the inspector."
+   },
+   "hint": {
+    "fr": "Tapez « électrovanne » ou « vérin » dans la recherche de la bibliothèque. Dans le plan pneumatique, la section « Liaisons avec le montage » passe au vert quand Y1, B1 et B2 sont trouvés.",
+    "en": "Type “solenoid” or “cylinder” in the library search. In the pneumatic workspace, the “Links with the bench” section turns green when Y1, B1 and B2 are found."
+   },
+   "spot": [
+    ".wsSwitch [data-ws=\"elec\"][aria-pressed=\"false\"]",
+    "#libSearch",
+    ".libItem[data-t=\"uno\"]",
+    ".libItem[data-t=\"button\"]",
+    ".libItem[data-t=\"coil24\"]",
+    ".libItem[data-t=\"cylsensor\"]"
+   ],
+   "check": {
+    "type": "parts",
+    "require": [
+     {
+      "board": true
+     },
+     {
+      "type": "button"
+     },
+     {
+      "type": "coil24",
+      "name": "Y1"
+     },
+     {
+      "type": "cylsensor",
+      "name": "B1"
+     },
+     {
+      "type": "cylsensor",
+      "name": "B2"
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câblage",
+    "en": "The wiring"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Câblage**, cliquez sur **Câbler tout le circuit**. Le câblage automatique ajoute ce qu’il faut à l’électrovanne : une **alimentation 24 V** (une broche de la carte ne donne que 5 V et 20 mA), un **transistor** commandé par une broche, et une **diode de roue libre** qui protège le transistor. Les capteurs se branchent entre une broche, lue en INPUT_PULLUP, et la masse.",
+    "en": "In the **Wiring** tab, click **Wire the whole circuit**. Auto-wiring adds what the solenoid needs: a **24 V power supply** (a board pin only gives 5 V and 20 mA), a **transistor** driven by a pin, and a **flyback diode** that protects the transistor. The sensors go between a pin, read with INPUT_PULLUP, and ground."
+   },
+   "hint": {
+    "fr": "Le contrôle demande que chaque composant soit câblé, sans erreur de câblage (onglet Câblage, liste des composants).",
+    "en": "The check needs every part wired, with no wiring error (Wiring tab, list of parts)."
+   },
+   "spot": [
+    ".wsSwitch [data-ws=\"elec\"][aria-pressed=\"false\"]",
+    "#tab-wiring[aria-selected=\"false\"]",
+    "#autoAll"
+   ],
+   "check": {
+    "type": "wired"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le GRAFCET",
+    "en": "The GRAFCET"
+   },
+   "text": {
+    "fr": "Le GRAFCET décrit ce que fait la machine, étape par étape. Retournez au plan **Pneumatique** et ouvrez le panneau **GRAFCET**. Écrivez :\n- étape **0** (initiale), sans action, réceptivité `BTN1 . B1` : bouton appuyé ET tige rentrée ;\n- étape **1**, action `Y1` (la bobine est excitée, la tige sort), réceptivité `B2` : la tige est sortie ;\n- après l’étape 1, on revient à l’étape 0 : Y1 est coupée, le ressort ramène le distributeur, la tige rentre.\nLe point « . » se lit ET ; les noms sont ceux du montage (BTN1) et des capteurs (B1, B2).",
+    "en": "The GRAFCET describes what the machine does, step by step. Go back to the **Pneumatic** workspace and open the **GRAFCET** panel. Write:\n- step **0** (initial), no action, receptivity `BTN1 . B1`: button pressed AND rod retracted;\n- step **1**, action `Y1` (the coil is energised, the rod extends), receptivity `B2`: the rod is out;\n- after step 1, back to step 0: Y1 is off, the spring returns the valve, the rod retracts.\nThe dot “.” reads AND; names are those of the bench (BTN1) and of the sensors (B1, B2)."
+   },
+   "hint": {
+    "fr": "« Ajouter une étape » crée l’étape 1 ; la dernière étape revient d’elle-même à la première. Une erreur s’affiche en rouge sous l’étape fautive.",
+    "en": "“Add a step” creates step 1; the last step goes back to the first one by itself. An error shows in red under the faulty step."
+   },
+   "spot": [
+    ".wsSwitch [data-ws=\"pneu\"][aria-pressed=\"false\"]",
+    ".pnGfBtn[aria-pressed=\"false\"]",
+    ".gfPanel [data-gf=\"add\"]"
+   ],
+   "check": {
+    "type": "grafcet",
+    "outputs": [
+     "Y1"
+    ],
+    "reads": [
+     "BTN1",
+     "B1",
+     "B2"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme de la carte",
+    "en": "The board program"
+   },
+   "text": {
+    "fr": "Dans l’en-tête du panneau GRAFCET, cliquez sur **Programme Arduino** (icône de code) : Jollof Studio écrit le programme de la carte à partir du GRAFCET, avec une variable par étape (X0, X1), et le place dans l’onglet **Code**. Désormais, c’est la carte qui commande l’électrovanne Y1 ; le GRAFCET du plan ne fait plus qu’observer.",
+    "en": "In the GRAFCET panel header, click **Arduino program** (code icon): Jollof Studio writes the board program from the GRAFCET, with one variable per step (X0, X1), and puts it in the **Code** tab. From now on the board drives solenoid Y1; the GRAFCET of the workspace only observes."
+   },
+   "hint": {
+    "fr": "Le programme est un programme Arduino ordinaire : ouvrez l’onglet Code pour le lire, il est commenté. Il se lit sur le câblage : écrivez-le une fois le montage câblé (sinon la carte ne sait pas quelle broche commande Y1), et réécrivez-le si vous changez le câblage ou le GRAFCET.",
+    "en": "It is a plain Arduino program: open the Code tab to read it, it is commented. It follows the wiring: write it once the bench is wired (otherwise the board does not know which pin drives Y1), and write it again if you change the wiring or the GRAFCET."
+   },
+   "spot": [
+    ".pnGfBtn[aria-pressed=\"false\"]",
+    ".gfPanel [data-gf=\"code\"]"
+   ],
+   "check": {
+    "type": "code",
+    "must": [
+     "\\bX1\\b",
+     "digitalWrite"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Tout voir pendant la simulation",
+    "en": "See everything while simulating"
+   },
+   "text": {
+    "fr": "Cliquez sur **Simuler**. Le montage et le circuit pneumatique s’affichent côte à côte : c’est la **vue partagée**. À gauche, la carte et ses fils ; à droite, le circuit ; en haut du circuit, la **chaîne de commande** : chaque repère (Y1, B1, B2) avec la broche de la carte et son état en direct.\nLe bouton **Vue partagée**, à côté du sélecteur, l’ouvre ou la ferme à tout moment.",
+    "en": "Click **Simulate**. The bench and the pneumatic circuit show side by side: this is the **split view**. On the left, the board and its wires; on the right, the circuit; above the circuit, the **control chain**: each tag (Y1, B1, B2) with the board pin and its live state.\nThe **Split view** button, next to the switch, opens or closes it at any time."
+   },
+   "spot": [
+    "#simBtn:not(.running)",
+    ".pnSplitBtn[aria-pressed=\"false\"]"
+   ],
+   "check": {
+    "type": "ui",
+    "need": [
+     "sim",
+     "split"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Un cycle",
+    "en": "One cycle"
+   },
+   "text": {
+    "fr": "Appuyez sur **BTN1** : clic maintenu sur le bouton du montage, ou « Appuyer sur le bouton » dans l’onglet Simulation. Y1 s’excite, le distributeur bascule, la tige sort jusqu’à **B2**, puis rentre. Suivez la chaîne de commande : la broche de la carte, le transistor, la bobine Y1, le distributeur, le vérin 1A, puis le capteur B2 qui renvoie l’information à la carte.",
+    "en": "Press **BTN1**: hold the click on the bench button, or “Press the button” in the Simulation tab. Y1 is energised, the valve switches, the rod extends up to **B2**, then retracts. Follow the control chain: the board pin, the transistor, coil Y1, the valve, cylinder 1A, then sensor B2 which sends the information back to the board."
+   },
+   "hint": {
+    "fr": "Rien ne bouge ? Vérifiez dans la chaîne de commande que Y1 passe à « excitée » quand vous appuyez, et que B1 est « fermé » au départ (tige rentrée).",
+    "en": "Nothing moves? Check in the control chain that Y1 turns “energised” when you press, and that B1 is “closed” at the start (rod retracted)."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": [
+     "1A+",
+     "1A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Pour aller plus loin",
+    "en": "Going further"
+   },
+   "text": {
+    "fr": "Bravo, votre premier projet électropneumatique fonctionne ! Pour aller plus loin :\n- la **vue 3D** (bouton 3D du plan pneumatique) anime la machine : choisissez la scène **Porte de TER** ;\n- un **réducteur de débit** entre l’orifice 2 du distributeur et le vérin règle la vitesse de sortie ;\n- les TP **Porte automatique électropneumatique** et **Porte de TER pilotée par un GRAFCET** reprennent ce montage ;\n- un assistant IA connecté sait construire ce type de projet : il pose le circuit pneumatique, ajoute au montage les bobines et capteurs de ses repères, câble, écrit le GRAFCET puis le programme.",
+    "en": "Well done, your first electropneumatic project works! To go further:\n- the **3D view** (3D button of the pneumatic workspace) animates the machine: pick the **TER door** scene;\n- a **flow control valve** between port 2 of the valve and the cylinder sets the extension speed;\n- the labs **Electropneumatic automatic door** and **TER door driven by a GRAFCET** build on this circuit;\n- a connected AI assistant can build this kind of project: it lays out the pneumatic circuit, adds the coils and sensors of its tags to the bench, wires them, writes the GRAFCET and then the program."
+   },
+   "spot": [
+    "[data-m3open]"
+   ]
+  }
+ ]
+}

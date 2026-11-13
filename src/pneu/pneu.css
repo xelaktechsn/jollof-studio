@@ -1,0 +1,341 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Pneumatique : plan de travail, symboles, bibliothèque, onglet de l'inspecteur, vignette sur le banc. */
+:root { --pnLine: #c9d3da; --pnP: #3b82f6; --pnE: #6b7680; --pnC: #3a434b; --pnOn: #4ade80; --pnLeak: #f05252; }
+.wsSwitch .segBtn[data-ws="pneu"][aria-pressed="true"] .ic { color: var(--pnP); }
+
+/* ---------- Disposition en mode Pneumatique ---------- */
+.pnLib, .pnTab { display: none !important; }
+.app.pneuMode .pnLib { display: flex !important; }
+.app.pneuMode .pnTab { display: inline-flex !important; }
+.app.pneuMode #libPanel, .app.pneuMode .tlDock { display: none !important; }
+.app.pneuMode .panel.right .tabs .tab:not(.pnTab):not(.sessTab) { display: none; }
+.app.pneuMode #importBtn, .app.pneuMode .abImportSep, .app.pneuMode #schBtn { display: none; }
+.app.pneuMode .stage > :not(.pnHost):not(.alert) { visibility: hidden; }
+.app.pneuMode .stage { isolation: isolate; }
+
+/* ---------- Plan de travail ---------- */
+.pnHost { position: absolute; inset: 0; background: #0f1418; }
+.pnSvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: default; user-select: none; -webkit-user-select: none; touch-action: none; }
+.pnDot { fill: #ffffff1c; }
+.pnGridBg { pointer-events: all; }
+.pnBox, .pnStroke, .pnSvg line, .pnMiniSvg line { fill: none; stroke: var(--pnLine); stroke-width: 1.3; vector-effect: non-scaling-stroke; }
+.pnBox.on, .pnStroke.on { stroke: var(--pnOn); }
+.pnDashBox, .pnDash { stroke-dasharray: 4 3; }
+.pnFill { fill: var(--pnLine); stroke: none; }
+.pnExh { stroke: var(--pnE); }
+.pnTxt, .pnSub, .pnTag { fill: var(--pnLine); font: 600 8px var(--sans); }
+.pnSub { fill: #8b97a1; font-weight: 500; }
+.pnTag { fill: #f2c94c; font: 700 8px var(--mono); }
+.pnTag.on { fill: var(--pnOn); }
+.pnTag.pnId { fill: var(--pnLine); opacity: .85; }
+.pnPiston { fill: #8b97a1; }
+.pnRod { fill: #aab4bc; }
+.pnRodEnd { fill: #c9d3da; }
+.pnNeedle { stroke: #f2c94c !important; stroke-width: 1.6 !important; }
+.pnSensor { fill: #2a3138; stroke: #f2c94c; stroke-width: 0.8; }
+.pnSensor.on { fill: var(--pnOn); stroke: var(--pnOn); }
+.pnSpring { stroke: #8b97a1; }
+.pnHit { fill: transparent; stroke: none; cursor: grab; }
+.pnEl.sel .pnHit { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
+.pnEl.leak .pnHit { stroke: var(--pnLeak); stroke-width: 1.5; stroke-dasharray: none; }
+.pnShift { transition: transform .12s ease-out; }
+.pnTube { fill: none; stroke: #7d8891; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.pnTube.pnP { stroke: var(--pnP); stroke-width: 2.6; }
+.pnTube.pnE { stroke: var(--pnE); stroke-dasharray: 5 4; }
+.pnTube.pnC { stroke: var(--pnC); }
+.pnTube.pnM { stroke: #93c5fd; stroke-width: 2.2; } /* modèle physique : pression intermédiaire */
+.pnPort.pnM { fill: #93c5fd; stroke: #93c5fd; }
+.pnTubeHit { fill: none; stroke: transparent; stroke-width: 10; vector-effect: non-scaling-stroke; cursor: pointer; }
+.pnTubeG.sel .pnTube { stroke: var(--accent); }
+.pnPort { fill: #0f1418; stroke: #9aa6af; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: crosshair; }
+.pnPort:hover { fill: var(--accent); stroke: var(--accent); }
+.pnPort.pnP { fill: var(--pnP); stroke: var(--pnP); }
+.pnRubber { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pnGhost { opacity: .55; pointer-events: none; }
+.pnBar { position: absolute; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
+.pnBar > * { pointer-events: auto; }
+.pnBar.top { top: 12px; } .pnBar.bottom { bottom: 12px; }
+.pnLegend { display: flex; gap: 12px; padding: 6px 10px; border-radius: 10px; font-size: 11.5px; color: var(--fg-2); }
+.pnLegend span { display: inline-flex; align-items: center; gap: 6px; }
+.pnLegend i { width: 18px; height: 0; border-top: 2.6px solid var(--pnP); }
+.pnLegend i.pnE { border-top: 2px dashed var(--pnE); } .pnLegend i.pnC { border-top: 2px solid var(--pnC); } .pnLegend i.pnM { border-top: 2.2px solid #93c5fd; }
+.pnLegend .pnLegM { display: none; } .pnHost.phys .pnLegend .pnLegM { display: inline-flex; }
+.pnHost.running .pnRunHint { display: none; }
+.pnRunHint { padding: 6px 10px; border-radius: 10px; font-size: 11.5px; color: var(--muted); }
+.pnEmpty { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
+.pnEmpty[hidden] { display: none; }
+.pnEmptyCard { pointer-events: auto; max-width: 440px; text-align: center; padding: 22px 24px; border-radius: 16px; background: #141a20e6; border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pnEmptyCard > .ic { width: 30px; height: 30px; color: var(--pnP); }
+.pnEmptyCard p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-2); }
+
+/* ---------- Bibliothèque ---------- */
+.pnLib { position: relative; flex-direction: column; min-height: 0; }
+/* Bibliothèque repliée : rail des éléments (vignettes), à glisser ou cliquer comme dans la bibliothèque. */
+.pnRail { display: none; }
+.app.libClosed .pnLib > :not(.pnRail) { display: none; }
+.app.libClosed .pnLib .pnRail { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0; flex: 1 1 auto; min-height: 0; animation: fadeIn .2s ease-out; }
+.pnRail .tb { width: 34px; height: 34px; min-width: 0; padding: 0; flex: 0 0 auto; }
+.pnRail [data-tip]:hover::after, .pnRail [data-tip]:focus-visible::after { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); animation-name: fadeIn; }
+.pnRailList { display: flex; flex-direction: column; align-items: center; gap: 3px; min-height: 0; overflow: auto; scrollbar-width: none; padding-bottom: 6px; }
+.pnRailList::-webkit-scrollbar { display: none; }
+.pnRailList .rsep { margin: 4px 0; }
+.pnRailItem { all: unset; box-sizing: border-box; flex: 0 0 auto; width: 42px; height: 32px; padding: 3px 2px; border-radius: 7px; cursor: grab; display: grid; place-items: center; touch-action: none; }
+.pnRailItem:hover { background: var(--raise); }
+.pnRailItem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.pnLib .pnRailItem svg.pnThumb { width: 100% !important; height: 100% !important; }
+.pnLibList { padding: 4px 10px 10px; overflow: auto; flex: 1; }
+.pnLibList h3 { margin: 12px 2px 6px; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pnGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.pnItem { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px; border-radius: 10px; background: var(--raise); border: 1px solid var(--line); cursor: grab; font-size: 10.5px; line-height: 1.25; text-align: center; color: var(--fg-2); }
+.pnItem:hover { border-color: var(--accent); color: var(--fg); }
+.pnThumb { width: 100%; height: 48px; }
+.pnLibNote { margin: 0; padding: 8px 12px 12px; font-size: 11px; color: var(--muted); }
+
+/* ---------- Onglet de l'inspecteur ---------- */
+.pnPane { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; overflow: auto; }
+.pnSec { display: flex; flex-direction: column; gap: 8px; }
+.pnSec h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
+.pnSec h3 .ic { width: 14px; height: 14px; color: var(--pnP); }
+.pnSec .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-2); }
+.pnSec .inp, .pnSec .sel { height: 28px; font: inherit; font-size: 12.5px; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 8px; }
+.pnSec input[type=range] { accent-color: var(--accent); }
+.pnSec .note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--fg-2); }
+.pnSec .note.ok { color: var(--ok); }
+.pnPorts { margin: 0; font-size: 11px; color: var(--muted); }
+.pnLinks, .pnIssues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.pnLinks li { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; background: var(--raise); font-size: 12px; }
+.pnLinks li b { font-family: var(--mono); }
+.pnLinks li .ic { width: 14px; height: 14px; color: var(--ok); }
+.pnLinks li.bad small { color: var(--danger); }
+.pnLinks li.pnPhys { flex-direction: column; align-items: flex-start; gap: 2px; }
+.pnLinks li.pnPhys span { font-size: 11.5px; color: var(--fg-2); font-family: var(--mono); }
+.pnLive { font-style: normal; font-size: 11px; color: var(--muted); }
+.pnLive.on { color: var(--pnOn); font-weight: 600; }
+.pnIssues li { font-size: 12px; line-height: 1.45; padding: 6px 8px; border-radius: 8px; }
+.pnIssues li.error { background: #e5484d14; color: #ffb3b5; }
+.pnIssues li.warning { background: #f2c94c0f; color: #f2dc8c; }
+
+/* ---------- Vignette pendant la simulation ---------- */
+.pnMini { position: absolute; right: 14px; bottom: 60px; width: 330px; z-index: 4; border-radius: 12px; overflow: hidden; }
+.pnMini[hidden] { display: none; }
+.pnMini header { display: flex; align-items: center; gap: 6px; padding: 6px 8px 4px 10px; font-size: 12px; }
+.pnMini header .ic { width: 14px; height: 14px; color: var(--pnP); }
+.pnMini .tb { width: 24px; height: 24px; }
+.pnMini svg.pnMiniSvg { display: block; width: 100% !important; height: 190px !important; background: #0f1418cc; } /* pas la taille d'une icône */
+.pnLib svg.pnThumb { width: 100% !important; height: 48px !important; }
+
+/* ---------- TP de pneumatique (src/lab/pneu) ---------- */
+.tpCard.pneu .tpLevel, .kind.lab.pneu { color: #60a5fa; }
+.tpCard.pneu:hover { border-color: #60a5faaa; }
+.labPanel.pneuLab .spHead { background: linear-gradient(180deg, #3b82f60f, transparent); }
+/* Étape « watch » : message, puis les boutons de distributeur à maintenir (commande bimanuelle…). */
+.watchState:has(.wsMsg) { flex-direction: column; align-items: stretch; }
+.watchState .wsMsg { display: flex; align-items: center; gap: 8px; }
+.watchPush { display: flex; flex-wrap: wrap; gap: 6px; }
+.watchPush .btn .ic { width: 13px; height: 13px; }
+.seqSeen { font-size: 12px; color: var(--fg-2); }
+.seqSeen:empty { display: none; }
+.seqSeen b { font-family: var(--mono); color: var(--fg); }
+/* Pied de la bibliothèque : exemples et TP de pneumatique. */
+.pnLib .pfoot .row { display: flex; gap: 6px; }
+.pnLib .pfoot .btn { flex: 1; min-width: 0; }
+.pnLib .pfoot .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Cycles : cames des galets, cycle observé, diagramme des phases ---------- */
+.pnCam { fill: none; stroke: var(--pnLine); stroke-width: 1.1; }
+.pnCam.on { fill: var(--pnOn); stroke: var(--pnOn); }
+.pnSeq { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
+.pnSeq h4 { margin: 0; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.pnMoves { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
+.pnMoves b { font: 600 11.5px var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--raise); color: var(--fg); }
+.pnMoves b:last-child { background: #3b82f626; color: #93c5fd; }
+.sqSvg { max-width: 100%; height: auto; background: #0f1418; border-radius: 8px; border: 1px solid var(--line); }
+.sqGrid { stroke: #2a333b; stroke-width: 1; stroke-dasharray: 2 3; }
+.sqLine { fill: none; stroke: #60a5fa; stroke-width: 2; stroke-linejoin: round; }
+.sqName { fill: var(--fg); font: 700 11px var(--mono); }
+.sqLv, .sqNum { fill: #8b97a1; font: 500 8.5px var(--mono); }
+
+/* ---------- GRAFCET ---------- */
+.pnGfBtn[aria-pressed="true"] { color: #fff; }
+/* Panneau GRAFCET ouvert : le plan occupe la place à sa droite (cadrage, pointeur). */
+.pnHost.gfOpen .pnSvg { left: 368px; width: calc(100% - 368px); }
+@media (max-width: 1180px) { .pnHost.gfOpen .pnSvg { left: 324px; width: calc(100% - 324px); } }
+.pnViaG { font: 700 10px var(--mono); color: var(--pnP); }
+.gfPanel { position: absolute; left: 12px; top: 52px; bottom: 52px; width: 344px; z-index: 3; display: flex; flex-direction: column; min-height: 0; border-radius: 12px; overflow: hidden; --gfLine: #c9d3da; }
+.gfPanel[hidden] { display: none; }
+.gfHead { display: flex; align-items: center; gap: 6px; padding: 8px 8px 6px 12px; border-bottom: 1px solid var(--line); }
+.gfHead b { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--sans); letter-spacing: .06em; }
+.gfHead b .ic { width: 14px; height: 14px; color: var(--pnP); }
+.gfMode { font-size: 11px; color: var(--muted); }
+.gfPanel.running .gfMode { color: var(--pnOn); }
+.gfHead .tb { width: 26px; height: 26px; }
+.gfPupitre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.gfLbl { font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.gfInput { display: inline-flex; align-items: center; gap: 1px; }
+.gfInput .tb { width: 20px; height: 22px; min-width: 0; padding: 0; }
+.gfInput .tb .ic { width: 12px; height: 12px; }
+.gfPress { all: unset; box-sizing: border-box; min-width: 40px; height: 24px; padding: 0 9px; border-radius: 12px; font: 700 11.5px var(--mono); text-align: center; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); cursor: pointer; -webkit-user-select: none; user-select: none; touch-action: none; }
+.gfPress.sw { border-radius: 6px; }
+.gfPress:disabled { cursor: default; opacity: .75; }
+.gfPress:not(:disabled):hover { border-color: var(--accent); }
+.gfPress[aria-pressed="true"] { background: var(--pnOn); border-color: var(--pnOn); color: #062b14; }
+.gfNewIn { width: 74px; height: 24px; padding: 0 8px; border-radius: 12px; border: 1px dashed var(--line-2); background: transparent; color: var(--fg); font: 500 11.5px var(--mono); }
+.gfNewIn.err { border-color: var(--danger); }
+.gfVars { display: inline-flex; flex-wrap: wrap; gap: 4px; margin-left: auto; }
+.gfVars i { font: 600 10.5px var(--mono); font-style: normal; padding: 1px 6px; border-radius: 5px; color: var(--muted); border: 1px solid var(--line); }
+.gfVars i.on { color: #062b14; background: var(--pnOn); border-color: var(--pnOn); }
+.gfScroll { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding: 10px 8px 6px 0; }
+.gfChart { position: relative; display: flex; flex-direction: column; }
+.gfLanes { position: absolute; left: 0; top: 10px; pointer-events: none; overflow: visible; }
+.gfLane { fill: none; stroke: var(--gfLine); stroke-width: 1.5; }
+.gfArrow { fill: none; stroke: var(--gfLine); stroke-width: 1.5; stroke-linejoin: round; }
+.gfRow { display: flex; align-items: center; gap: 6px; min-height: 30px; }
+.gfCol { position: relative; flex: 0 0 64px; align-self: stretch; display: flex; align-items: center; justify-content: center; }
+.gfCol::before { content: ''; position: absolute; left: 50%; top: 0; bottom: 0; border-left: 1.5px solid var(--gfLine); transform: translateX(-50%); }
+.gfStepRow.noTop .gfCol::before { top: 50%; }
+.gfTrRow.jump .gfCol::before { bottom: 0; }
+.gfTrRow.jump + .gfAltRow .gfCol::before, .gfAltRow .gfCol::before { display: none; }
+.gfStep { position: relative; z-index: 1; width: 34px; height: 34px; display: grid; place-items: center; background: #11171c; border: 1.5px solid var(--gfLine); }
+.gfStep.init { box-shadow: 0 0 0 3px #11171c, 0 0 0 4.5px var(--gfLine); }
+.gfStep.on { border-color: var(--pnOn); }
+.gfStep.on.init { box-shadow: 0 0 0 3px #11171c, 0 0 0 4.5px var(--pnOn); }
+.gfStep.on::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--pnOn); } /* jeton */
+.gfNum { all: unset; width: 30px; text-align: center; font: 700 13px var(--mono); color: var(--fg); }
+.gfHook { flex: 0 0 10px; height: 1.5px; margin-left: -12px; background: var(--gfLine); }
+.gfIn { flex: 1 1 auto; min-width: 0; height: 28px; padding: 0 8px; font: 500 12px var(--mono); color: var(--fg); background: transparent; border: 1.5px solid var(--gfLine); border-radius: 0; }
+.gfIn:focus { outline: none; border-color: var(--accent); background: #0b1014; }
+.gfIn.err { border-color: var(--danger); color: #ffb3b5; }
+.gfAct.on { background: #4ade8022; border-color: var(--pnOn); color: #bbf7d0; }
+.gfAct:placeholder-shown { border-style: dashed; border-color: #3a434b; }
+.gfR { border: 0; border-bottom: 1px dashed #3a434b; height: 24px; padding-left: 4px; }
+.gfTrRow.true .gfR, .gfAltRow.true .gfR { color: #bbf7d0; }
+.gfTrRow.ready .gfBar, .gfAltRow.ready .gfOr { background: var(--pnOn); }
+.gfBar { position: relative; z-index: 1; width: 20px; height: 3px; background: var(--gfLine); }
+.gfOr { position: relative; z-index: 1; font: 600 10px var(--sans); color: var(--muted); padding: 1px 4px; border-radius: 4px; }
+.gfTo { flex: 0 0 auto; height: 24px; max-width: 74px; font: 500 11px var(--mono); color: var(--fg-2); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; }
+.gfStepRow { position: relative; }
+.gfMore { flex: 0 0 22px; width: 22px; height: 22px; min-width: 0; padding: 0; opacity: .35; }
+.gfMore .ic { width: 14px; height: 14px; }
+.gfRow:hover > .gfMore, .gfMore:focus-visible { opacity: 1; }
+/* Branches parallèles : côte à côte entre deux traits doubles (placés d'une branche à l'autre après la mise en page). */
+.gfPar { position: relative; display: flex; flex-direction: column; }
+.gfPar > .gfDbl { position: relative; z-index: 1; height: 5px; border-top: 1.5px solid var(--gfLine); border-bottom: 1.5px solid var(--gfLine); }
+.gfBranches { display: flex; align-items: stretch; gap: 6px; }
+.gfBranch { position: relative; flex: 1 0 158px; min-width: 158px; display: flex; flex-direction: column; }
+.gfFill { flex: 1 1 auto; min-height: 22px; align-items: flex-start; }
+.gfParFoot { min-height: 22px; }
+.gfAddIn { width: 20px; height: 20px; min-width: 0; padding: 0; opacity: .45; }
+.gfAddIn .ic { width: 12px; height: 12px; }
+.gfBranch:hover .gfAddIn, .gfExp:hover .gfAddIn { opacity: 1; }
+/* Macro-étape : carré barré d'un trait en haut et en bas ; repères E et S de son expansion. */
+.gfStep.gfMacro { display: flex; align-items: center; justify-content: center; gap: 0; background: linear-gradient(var(--gfLine), var(--gfLine)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, #11171c; }
+.gfStep.gfMacro.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, #11171c; }
+.gfM { font: 700 12px var(--mono); font-style: normal; color: var(--fg); }
+.gfMacro .gfNum { width: 16px; text-align: left; }
+.gfBadge { position: absolute; right: -15px; bottom: -3px; font: 700 10px var(--mono); font-style: normal; color: var(--pnP); }
+.gfMacroNote { flex: 1; font-size: 11.5px; font-style: italic; color: var(--muted); }
+.gfExp { margin-top: 16px; padding-top: 8px; border-top: 1px dashed var(--line-2); }
+.gfExp h4 { margin: 0 0 8px 12px; font: 600 11px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.gfAltRow .tb { width: 22px; height: 22px; min-width: 0; padding: 0; }
+.gfAdd { padding: 10px 0 4px 18px; }
+.gfFoot { display: flex; flex-direction: column; gap: 4px; padding: 7px 12px 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--fg-2); }
+.gfDrive { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.gfHelp { display: flex; align-items: center; gap: 4px; color: var(--muted); font: 500 10.5px var(--mono); }
+.gfHelp span { flex: 1; }
+.gfHelp .tb { width: 22px; height: 20px; min-width: 0; padding: 0; font: 700 12px var(--mono); }
+@media (max-width: 1180px) { .gfPanel { width: 300px; } }
+
+/* Étape encapsulante (traits verticaux dans le carré), GRAFCET partiels, forçage, compteurs. */
+.gfStep.gfEncl { background: linear-gradient(var(--gfLine), var(--gfLine)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, #11171c; }
+.gfStep.gfEncl.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, #11171c; }
+.gfEnclNote { min-height: 18px; font-size: 11px; font-style: italic; color: var(--muted); }
+.gfExp h4 small { margin-left: 6px; font: 500 10px var(--mono); text-transform: none; letter-spacing: 0; color: var(--muted); }
+.gfPart { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line-2); }
+.gfPartHead { display: flex; align-items: center; gap: 6px; margin: 0 4px 8px 12px; font: 600 11px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.gfPName { width: 70px; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font: 700 12px var(--mono); text-transform: none; }
+.gfForced { font: 700 10px var(--sans); font-style: normal; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; color: #1a1205; background: #f2c94c; }
+.gfPartHead.forced .gfPName { border-color: #f2c94c; }
+.gfVars i.gfCnt { color: #93c5fd; border-color: #3b82f655; }
+.gfAddPart { padding-top: 14px; }
+
+/* ---------- Machine 3D (src/pneu/machine.js, chargée à la demande) ---------- */
+.pn3dBtn[aria-pressed="true"] { color: #fff; background: var(--accent); }
+.pn3d { position: absolute; right: 12px; bottom: 52px; z-index: 3; width: 480px; height: 330px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
+.pn3d[hidden] { display: none; }
+.pn3d.big { width: min(900px, calc(100% - 400px)); height: calc(100% - 116px); min-width: 480px; }
+.pn3dHead { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 64px 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
+.pn3dHead > * { flex-shrink: 0; }
+.pn3dHead .sel { flex-shrink: 1; min-width: 70px; }
+/* Agrandir et fermer restent en haut à droite ; les commandes de la scène passent sur une deuxième ligne si la place
+   manque (fenêtre étroite, trois boutons), puis se serrent. Vérins des rôles : à plat dans l'en-tête. */
+.pn3dHead [data-m3="big"] { position: absolute; top: 6px; right: 34px; }
+.pn3dHead [data-m3="close"] { position: absolute; top: 6px; right: 6px; }
+.pn3dCyls { display: contents; }
+.pn3dHead .pn3dCyls .sel { max-width: 76px; min-width: 52px; }
+.pn3dHead > .pn3dCtl { display: flex; gap: 5px; flex: 0 1 auto; min-width: 0; max-width: 100%; }
+.pn3dCtl:empty { display: none; }
+.pn3dCtl .btn { flex: 0 1 auto; min-width: 30px; overflow: hidden; }
+.pn3dCtl .btn .ic { flex: none; }
+.pn3dCtl .btn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pn3dHead [data-m3toggle][aria-pressed="true"] { background: #16a34a; border-color: #16a34a; color: #fff; }
+.pn3dHead [data-m3toggle].warn[aria-pressed="true"] { background: #ef4444; border-color: #ef4444; color: #fff; }
+.pn3dHead [data-m3press][aria-pressed="true"] { filter: brightness(0.82); }
+.pn3dHead b { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--sans); }
+.pn3dHead b .ic { width: 14px; height: 14px; color: var(--pnP); }
+.pn3dHead .sel { height: 26px; max-width: 124px; font-size: 12px; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 6px; }
+.pn3dHead .sel[hidden], .pn3dHead .btn[hidden] { display: none; }
+.pn3dHead .btn { height: 26px; padding: 0 8px; font-size: 12px; -webkit-user-select: none; user-select: none; touch-action: none; }
+.pn3dHead .btn .ic { width: 13px; height: 13px; }
+.pn3dHead .tb { width: 26px; height: 26px; }
+.pn3dView { position: relative; flex: 1 1 auto; min-height: 0; background: #0f1418; }
+.pn3dCanvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; cursor: grab; }
+.pn3dCanvas:active { cursor: grabbing; }
+.pn3dHint { position: absolute; left: 10px; bottom: 8px; z-index: 1; margin: 0; padding: 4px 9px; border-radius: 8px; font-size: 11.5px; color: #e4e7e8; background: #0f1418cc; pointer-events: none; }
+.pn3dHint[hidden] { display: none; }
+@media (max-width: 1180px) { .pn3d { width: 400px; height: 280px; } }
+/* Avec le panneau GRAFCET ouvert (à gauche), la vue 3D prend la place à sa droite. */
+.pnHost.gfOpen .pn3d { left: 368px; width: auto; max-width: 560px; }
+.pnHost.gfOpen .pn3d.big { top: 52px; height: auto; max-width: none; min-width: 0; }
+@media (max-width: 1180px) { .pnHost.gfOpen .pn3d { left: 324px; } }
+
+/* ---------- Vue partagée : le montage (à gauche) et le circuit pneumatique (à droite) ---------- */
+.pnSplitBtn[hidden], .pnSplit { display: none; }
+.pnSplitBtn[aria-pressed="true"] { color: #93c5fd; background: #3b82f61f; border-color: #3b82f655; }
+.pnSplitBtn[aria-pressed="true"] .ic { color: var(--pnP); }
+.app.pnSplitOn { grid-template-columns: var(--libW) minmax(0, var(--pnBenchFr, 1fr)) minmax(0, var(--pnSplitFr, 1fr)) var(--insW); }
+.app.pnSplitOn.pnDragging { transition: none; }
+.app.pnSplitOn .pnSplit { display: block; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #0f1418; border-left: 1px solid var(--line-2); }
+.app.pnSplitOn.tlOpen > .pnSplit { grid-row: 2 / 4; }
+.app.pnSplitOn .pnTab { display: inline-flex !important; }
+.pnSplit > .pnHost { inset: 40px 0 0 0; container: pnhost / size; }
+.pnSplitGrip { position: absolute; left: -3px; top: 0; bottom: 0; width: 7px; z-index: 6; cursor: col-resize; touch-action: none; }
+.pnSplitGrip:hover, .pnSplitGrip:focus-visible, .app.pnDragging .pnSplitGrip { background: linear-gradient(90deg, transparent 2px, var(--accent) 2px, var(--accent) 5px, transparent 5px); outline: none; }
+.pnSplitHead { position: absolute; left: 0; right: 0; top: 0; height: 40px; display: flex; align-items: center; gap: 8px; padding: 0 6px 0 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-size: 12px; }
+.pnSplitHead > .ic { flex: 0 0 auto; width: 15px; height: 15px; color: var(--pnP); }
+.pnSplitHead > b { flex: 0 0 auto; }
+.pnSplitHead .tb { flex: 0 0 auto; width: 28px; height: 28px; }
+/* Chaîne de commande : une pastille par repère, de la broche de la carte à l'élément du plan. */
+.pnChain { flex: 1 1 auto; min-width: 0; display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; padding: 0 2px; }
+.pnChain::-webkit-scrollbar { display: none; }
+.pnChip { all: unset; box-sizing: border-box; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 9px 0 7px; border-radius: 12px; background: var(--raise); border: 1px solid var(--line-2); font: 700 11.5px var(--mono); color: var(--fg); cursor: pointer; white-space: nowrap; }
+.pnChip[hidden] { display: none; }
+.pnChip:hover, .pnChip:focus-visible { border-color: var(--accent); }
+.pnChip small { font: 500 10.5px var(--mono); color: var(--muted); }
+.pnChip .pnLed { width: 7px; height: 7px; border-radius: 50%; background: #3a434b; transition: background .12s, box-shadow .12s; }
+.pnChip.on .pnLed { background: var(--pnOn); box-shadow: 0 0 6px var(--pnOn); }
+.pnChip.coil.on { border-color: #4ade8066; }
+.pnChip.sensor.on .pnLed { background: #f2c94c; box-shadow: 0 0 6px #f2c94c; }
+.pnChip.bad { border-style: dashed; color: #ffa3a5; }
+.pnChip.info { cursor: default; padding: 0 9px; }
+.pnChip.info b { font-size: 10.5px; letter-spacing: .04em; color: var(--muted); }
+.pnChip.info small { color: #93c5fd; }
+/* Circuit étroit (vue partagée) : le GRAFCET passe sous le plan, la vue 3D se fait plus petite. */
+@container pnhost (max-width: 760px) {
+  .gfPanel { left: 8px; right: 8px; width: auto; top: auto; bottom: 8px; height: 46%; }
+  .pnHost.gfOpen .pnSvg { left: 0; width: 100%; height: 54%; }
+  .pn3d, .pnHost.gfOpen .pn3d { left: auto; right: 8px; top: 52px; bottom: auto; width: min(380px, calc(100% - 16px)); height: 240px; max-width: none; min-width: 0; }
+  .pn3d.big, .pnHost.gfOpen .pn3d.big { left: 8px; width: auto; height: calc(100% - 60px); }
+  .pnLegend { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .pnChip .pnLed { transition: none; } }

@@ -1,0 +1,549 @@
+{
+ "id": "pn09-grafcet-parallele",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "GRAFCET : branches parallèles, actions mémorisées, macro-étapes",
+  "en": "GRAFCET: parallel branches, stored actions, macro-steps"
+ },
+ "summary": {
+  "fr": "Un poste serre une pièce (vérin A), puis la perce (B) et la marque (C) en même temps. Le GRAFCET utilise une divergence et une convergence en ET, une action mémorisée pour garder la pièce serrée, et peut ranger une tâche dans une macro-étape.",
+  "en": "A station clamps a part (cylinder A), then drills it (B) and marks it (C) at the same time. The GRAFCET uses an AND divergence and convergence, a stored action to keep the part clamped, and can put a task in a macro-step."
+ },
+ "objectives": [
+  {
+   "fr": "Écrire une divergence et une convergence en ET",
+   "en": "Write an AND divergence and convergence"
+  },
+  {
+   "fr": "Choisir entre action continue et action mémorisée",
+   "en": "Choose between a continuous and a stored action"
+  },
+  {
+   "fr": "Structurer un GRAFCET avec une macro-étape",
+   "en": "Structure a GRAFCET with a macro-step"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Divergence en ET : plusieurs séquences démarrent en même temps ; convergence en ET : la suite attend la dernière étape de chaque branche.",
+   "en": "AND divergence: several sequences start at the same time; AND convergence: what follows waits for the last step of every branch."
+  },
+  {
+   "fr": "Des tâches indépendantes faites en parallèle raccourcissent le cycle.",
+   "en": "Independent tasks done in parallel shorten the cycle."
+  },
+  {
+   "fr": "Action mémorisée (`Y:=1`, `Y:=0`) : elle tient après l’étape. Action continue : seulement pendant l’étape.",
+   "en": "Stored action (`Y:=1`, `Y:=0`): it holds after the step. Continuous action: only during the step."
+  },
+  {
+   "fr": "Macro-étape : une partie du GRAFCET décrite à part, de son étape d’entrée E à son étape de sortie S.",
+   "en": "Macro-step: part of the GRAFCET described apart, from its entry step E to its exit step S."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – GRAFCET parallèle",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "s0": "A0",
+         "s1": "A1",
+         "label": "A"
+        }
+       },
+       {
+        "id": "B",
+        "type": "cyl2",
+        "x": 36,
+        "y": 0,
+        "p": {
+         "s0": "B0",
+         "s1": "B1",
+         "label": "B"
+        }
+       },
+       {
+        "id": "C",
+        "type": "cyl2",
+        "x": 72,
+        "y": 0,
+        "p": {
+         "time": 1.5,
+         "s0": "C0",
+         "s1": "C1",
+         "label": "C"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "1Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "v2",
+        "type": "v52",
+        "x": 28,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "sol",
+         "coilL": "2Y1",
+         "coilR": "2Y2",
+         "label": "2V1"
+        }
+       },
+       {
+        "id": "v3",
+        "type": "v52",
+        "x": 64,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "sol",
+         "coilL": "3Y1",
+         "coilR": "3Y2",
+         "label": "3V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 34,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "tubes": [
+       {
+        "id": "t1",
+        "a": [
+         "v1",
+         "4"
+        ],
+        "b": [
+         "A",
+         "1"
+        ]
+       },
+       {
+        "id": "t2",
+        "a": [
+         "v1",
+         "2"
+        ],
+        "b": [
+         "A",
+         "2"
+        ]
+       },
+       {
+        "id": "t3",
+        "a": [
+         "v2",
+         "4"
+        ],
+        "b": [
+         "B",
+         "1"
+        ]
+       },
+       {
+        "id": "t4",
+        "a": [
+         "v2",
+         "2"
+        ],
+        "b": [
+         "B",
+         "2"
+        ]
+       },
+       {
+        "id": "t5",
+        "a": [
+         "v3",
+         "4"
+        ],
+        "b": [
+         "C",
+         "1"
+        ]
+       },
+       {
+        "id": "t6",
+        "a": [
+         "v3",
+         "2"
+        ],
+        "b": [
+         "C",
+         "2"
+        ]
+       },
+       {
+        "id": "t7",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v1",
+         "1"
+        ]
+       },
+       {
+        "id": "t8",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v2",
+         "1"
+        ]
+       },
+       {
+        "id": "t9",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v3",
+         "1"
+        ]
+       }
+      ],
+      "grafcet": {
+       "name": "G1",
+       "drive": true,
+       "inputs": [
+        {
+         "name": "dcy",
+         "kind": "push"
+        }
+       ],
+       "steps": [
+        {
+         "n": 0,
+         "init": true,
+         "act": "",
+         "r": "",
+         "to": null,
+         "alt": []
+        }
+       ],
+       "parts": []
+      },
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "grafcet": {
+    "drive": true,
+    "inputs": [
+     {
+      "name": "dcy",
+      "kind": "push"
+     }
+    ],
+    "steps": [
+     {
+      "n": 0,
+      "init": true,
+      "act": "",
+      "r": "dcy . a0 . b0 . c0",
+      "to": null,
+      "alt": []
+     },
+     {
+      "n": 1,
+      "init": false,
+      "act": "1Y1:=1",
+      "r": "a1",
+      "to": null,
+      "alt": []
+     },
+     {
+      "par": [
+       [
+        {
+         "n": 2,
+         "init": false,
+         "act": "2Y1",
+         "r": "b1",
+         "to": null,
+         "alt": []
+        },
+        {
+         "n": 3,
+         "init": false,
+         "act": "2Y2",
+         "r": "b0",
+         "to": null,
+         "alt": []
+        },
+        {
+         "n": 4,
+         "init": false,
+         "act": "",
+         "r": "",
+         "to": null,
+         "alt": []
+        }
+       ],
+       [
+        {
+         "n": 5,
+         "init": false,
+         "act": "3Y1",
+         "r": "c1",
+         "to": null,
+         "alt": []
+        },
+        {
+         "n": 6,
+         "init": false,
+         "act": "3Y2",
+         "r": "c0",
+         "to": null,
+         "alt": []
+        },
+        {
+         "n": 7,
+         "init": false,
+         "act": "",
+         "r": "",
+         "to": null,
+         "alt": []
+        }
+       ]
+      ],
+      "r": "=1",
+      "to": null
+     },
+     {
+      "n": 8,
+      "init": false,
+      "act": "1Y1:=0",
+      "r": "a0",
+      "to": null,
+      "alt": []
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le poste",
+    "en": "The station"
+   },
+   "text": {
+    "fr": "Trois vérins : **A** serre la pièce (distributeur **monostable** 1V1, électroaimant **1Y1**), **B** perce (bistable : **2Y1** B+, **2Y2** B−), **C** marque (bistable : **3Y1** C+, **3Y2** C−). Capteurs a0, a1, b0, b1, c0, c1 ; bouton **dcy** au pupitre.\nPerçage et marquage sont indépendants : on gagne du temps en les faisant **en même temps**. Le panneau GRAFCET s’ouvre avec le bouton « GRAFCET », en haut à gauche du plan. Cliquez dans une case pour écrire ; « Ajouter une étape » en bas ; la dernière transition revient d’elle-même à l’étape initiale (↺).\nLa vue **3D** (bouton « 3D » en haut du plan) montre les vérins en vraie grandeur : leurs tiges bougent avec la simulation.",
+    "en": "Three cylinders: **A** clamps the part (**monostable** valve 1V1, solenoid **1Y1**), **B** drills (bistable: **2Y1** B+, **2Y2** B−), **C** marks (bistable: **3Y1** C+, **3Y2** C−). Sensors a0, a1, b0, b1, c0, c1; **dcy** button on the panel.\nDrilling and marking are independent: time is saved by doing them **at the same time**. The GRAFCET panel opens with the “GRAFCET” button, top left of the workspace. Click a box to type; “Add a step” at the bottom; the last transition goes back to the initial step by itself (↺).\nThe **3D** view (“3D” button at the top of the workspace) shows the cylinders life-size: their rods move with the simulation."
+   }
+  },
+  {
+   "title": {
+    "fr": "Divergence et convergence en ET",
+    "en": "AND divergence and convergence"
+   },
+   "text": {
+    "fr": "Sous l’étape X1 (A serré), la transition a1 mène à deux branches entre deux traits doubles. Que se passe-t-il quand elle est franchie, et quand la transition sous le second trait double est-elle franchie ?",
+    "en": "Under step X1 (A clamped), transition a1 leads to two branches between double lines. What happens when it is cleared, and when is the transition under the second double line cleared?"
+   },
+   "hint": {
+    "fr": "Divergence en ET : la transition active la première étape de chaque branche. Convergence en ET : ses étapes amont (les dernières de chaque branche, souvent des étapes d’attente sans action) doivent toutes être actives. Une réceptivité « =1 » suffit alors.",
+    "en": "AND divergence: the transition activates the first step of every branch. AND convergence: its upstream steps (the last of each branch, often waiting steps with no action) must all be active. A “=1” receptivity is then enough."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une seule branche est choisie ; la convergence attend la branche choisie",
+      "en": "Only one branch is chosen; the convergence waits for the chosen branch"
+     },
+     {
+      "fr": "Les deux branches démarrent ensemble ; la convergence attend la dernière étape de chaque branche",
+      "en": "Both branches start together; the convergence waits for the last step of every branch"
+     },
+     {
+      "fr": "Les branches se suivent",
+      "en": "The branches run one after the other"
+     },
+     {
+      "fr": "La convergence est franchie dès qu’une branche a fini",
+      "en": "The convergence clears as soon as one branch is done"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Garder A serré",
+    "en": "Keeping A clamped"
+   },
+   "text": {
+    "fr": "1V1 est monostable : sans 1Y1, A desserre. Plutôt que d’écrire 1Y1 dans toutes les étapes, on écrit **1Y1:=1** en X1 et **1Y1:=0** à la fin. Comment s’appelle cette action ?",
+    "en": "1V1 is monostable: without 1Y1, A unclamps. Rather than writing 1Y1 in every step, we write **1Y1:=1** in X1 and **1Y1:=0** at the end. What is this action called?"
+   },
+   "hint": {
+    "fr": "Une action mémorisée garde sa valeur après la désactivation de l’étape, jusqu’à une autre affectation. Une action continue n’est émise que tant que son étape est active.",
+    "en": "A stored action keeps its value after the step is deactivated, until another assignment. A continuous action is emitted only while its step is active."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une action continue",
+      "en": "A continuous action"
+     },
+     {
+      "fr": "Une action mémorisée (à l’activation de l’étape)",
+      "en": "A stored action (on step activation)"
+     },
+     {
+      "fr": "Une réceptivité",
+      "en": "A receptivity"
+     },
+     {
+      "fr": "Une temporisation",
+      "en": "A time delay"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Écrire le GRAFCET",
+    "en": "Writing the GRAFCET"
+   },
+   "text": {
+    "fr": "Écrivez :\n- **X0** : réceptivité `dcy . a0 . b0 . c0` ;\n- **X1** : `1Y1:=1`, réceptivité `a1` ;\n- sur X1, survolez l’étape et cliquez sur « Insérer des branches parallèles dessous » ;\n- branche 1 : **X2** `2Y1` / `b1`, **X3** `2Y2` / `b0`, **X4** (attente, sans action) ;\n- branche 2 : **X5** `3Y1` / `c1`, **X6** `3Y2` / `c0`, **X7** (attente) ;\n- réceptivité de la convergence : `=1` ;\n- **X8** : `1Y1:=0`, réceptivité `a0` (retour à X0).",
+    "en": "Write:\n- **X0**: receptivity `dcy . a0 . b0 . c0`;\n- **X1**: `1Y1:=1`, receptivity `a1`;\n- on X1, hover the step and click “Insert parallel branches below”;\n- branch 1: **X2** `2Y1` / `b1`, **X3** `2Y2` / `b0`, **X4** (waiting, no action);\n- branch 2: **X5** `3Y1` / `c1`, **X6** `3Y2` / `c0`, **X7** (waiting);\n- convergence receptivity: `=1`;\n- **X8**: `1Y1:=0`, receptivity `a0` (back to X0)."
+   },
+   "keep": {
+    "fr": "**Divergence en ET** (double trait) : toutes les branches démarrent ensemble. **Convergence en ET** : on attend que toutes soient finies.",
+    "en": "**AND divergence** (double line): all branches start together. **AND convergence**: wait until all are finished."
+   },
+   "hint": {
+    "fr": "Les numéros des étapes se changent en cliquant dans leur carré. Le « + » au bas d’une branche y ajoute une étape ; « Branche » (au survol du bloc) ajoute une branche.",
+    "en": "Step numbers change by clicking in their box. The “+” at the bottom of a branch adds a step to it; “Branch” (when hovering the block) adds a branch."
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai",
+    "en": "Test"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et appuyez sur **dcy**. C est plus lent que B : le cycle observé doit être **A+ B+ C+ B− C− A−**, et le diagramme des phases montre B et C qui bougent ensemble.",
+    "en": "Click “Observe” and press **dcy**. C is slower than B: the observed cycle must be **A+ B+ C+ B− C− A−**, and the displacement-step diagram shows B and C moving together."
+   },
+   "keep": {
+    "fr": "**Action continue** (`1Y1`) : émise seulement pendant l’étape. **Action mémorisée** (`1Y1:=1`) : elle tient jusqu’à l’ordre contraire (`1Y1:=0`).",
+    "en": "**Continuous action** (`1Y1`): emitted only during the step. **Stored action** (`1Y1:=1`): it holds until the opposite order (`1Y1:=0`)."
+   },
+   "hint": {
+    "fr": "A desserre trop tôt ? 1Y1:=0 ne doit être qu’en X8. A ne desserre jamais ? Vérifiez la convergence : les deux branches doivent finir par une étape d’attente.",
+    "en": "A unclamps too early? 1Y1:=0 must only be in X8. A never unclamps? Check the convergence: both branches must end with a waiting step."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pressed"
+    },
+    "expect": [
+     "A+",
+     "B+",
+     "C+",
+     "B-",
+     "C-",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La macro-étape",
+    "en": "The macro-step"
+   },
+   "text": {
+    "fr": "On range le perçage (B+ B−) dans une macro-étape **M2** (survolez une étape, « En faire une macro-étape »). Son expansion commence par une étape d’entrée **E** et finit par une étape de sortie **S**. Quand la transition qui suit M2 peut-elle être franchie ?",
+    "en": "Drilling (B+ B−) goes into a macro-step **M2** (hover a step, “Make it a macro-step”). Its expansion starts with an entry step **E** and ends with an exit step **S**. When can the transition after M2 be cleared?"
+   },
+   "keep": {
+    "fr": "Une **macro-étape** range une tâche complète (de E à S) hors du GRAFCET principal, qui reste court et lisible.",
+    "en": "A **macro-step** puts a whole task (from E to S) outside the main GRAFCET, which stays short and readable."
+   },
+   "hint": {
+    "fr": "La transition qui mène à M2 active E ; celle qui en sort attend S et la désactive. L’exemple « GRAFCET avec macro-étape » le montre en simulation.",
+    "en": "The transition into M2 activates E; the one leaving it waits for S and deactivates it. The example “GRAFCET with a macro-step” shows it running."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Dès que M2 est activée",
+      "en": "As soon as M2 is activated"
+     },
+     {
+      "fr": "Quand l’étape de sortie S de l’expansion est active et que sa réceptivité est vraie",
+      "en": "When the exit step S of the expansion is active and its receptivity is true"
+     },
+     {
+      "fr": "Quand l’étape d’entrée E est active",
+      "en": "When the entry step E is active"
+     },
+     {
+      "fr": "Jamais : une macro-étape est finale",
+      "en": "Never: a macro-step is final"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À retenir",
+    "en": "Key points"
+   },
+   "text": {
+    "fr": "- **Divergence en ET** : plusieurs séquences démarrent ensemble ; **convergence en ET** : on attend la fin de toutes.\n- **Action mémorisée** (`Y:=1`, `Y:=0`) : elle tient après l’étape ; **action continue** : seulement pendant l’étape.\n- **Macro-étape** : une partie du GRAFCET rangée à part, de E à S, pour garder le GRAFCET principal lisible.\n- Le bouton « Programme Arduino » sait écrire tout cela pour une carte.",
+    "en": "- **AND divergence**: several sequences start together; **AND convergence**: wait for all to finish.\n- **Stored action** (`Y:=1`, `Y:=0`): it holds after the step; **continuous action**: only during the step.\n- **Macro-step**: part of the GRAFCET kept apart, from E to S, to keep the main GRAFCET readable.\n- The “Arduino program” button writes all of this for a board."
+   }
+  }
+ ]
+}

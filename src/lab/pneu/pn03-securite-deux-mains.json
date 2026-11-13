@@ -1,0 +1,394 @@
+{
+ "id": "pn03-securite-deux-mains",
+ "level": "lycee",
+ "minutes": 35,
+ "title": {
+  "fr": "Sécurité deux mains : la fonction ET",
+  "en": "Two-hand safety: the AND function"
+ },
+ "summary": {
+  "fr": "Sur une presse, le vérin ne doit descendre que si l’opérateur appuie avec ses deux mains : elles sont alors loin de l’outil. Un clapet à deux pressions réalise la fonction ET avec de l’air.",
+  "en": "On a press, the cylinder must only move when the operator presses with both hands: they are then away from the tool. A two-pressure valve performs the AND function with air."
+ },
+ "objectives": [
+  {
+   "fr": "Réaliser une fonction logique ET en pneumatique",
+   "en": "Build a logical AND function in pneumatics"
+  },
+  {
+   "fr": "Vérifier qu’un seul bouton ne suffit pas",
+   "en": "Check that one button alone is not enough"
+  },
+  {
+   "fr": "Relier sécurité des machines et logique",
+   "en": "Link machine safety and logic"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Commande bimanuelle : les deux mains sur deux boutons éloignés ; une main relâchée, le vérin remonte.",
+   "en": "Two-hand control: both hands on two buttons set apart; one hand released, the cylinder goes back up."
+  },
+  {
+   "fr": "En pneumatique, le clapet à deux pressions fait le **ET** (S = a . b) et le sélecteur de circuit le **OU** (S = a + b).",
+   "en": "In pneumatics the two-pressure valve performs **AND** (S = a . b) and the shuttle valve **OR** (S = a + b)."
+  },
+  {
+   "fr": "Un ET seul se contourne (bouton bloqué). La norme EN ISO 13851 demande en plus des appuis à moins de **0,5 s** l’un de l’autre et le relâchement des deux boutons entre deux cycles.",
+   "en": "An AND alone can be defeated (a button held down). Standard EN ISO 13851 also requires presses less than **0.5 s** apart and both buttons released between two cycles."
+  },
+  {
+   "fr": "Une fonction de sécurité se confie à un composant prévu pour cela (module bimanuel de sécurité), pas à un montage improvisé.",
+   "en": "A safety function is entrusted to a component made for it (two-hand safety module), not to an improvised circuit."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Sécurité deux mains",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 10,
+        "p": {
+         "left": "pilot",
+         "right": "spring",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "and",
+        "type": "twopress",
+        "x": -22,
+        "y": 9,
+        "p": {
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "a",
+        "type": "v32",
+        "x": -36,
+        "y": 17,
+        "p": {
+         "act": "push",
+         "normal": "nc",
+         "label": "1S1"
+        }
+       },
+       {
+        "id": "b",
+        "type": "v32",
+        "x": -20,
+        "y": 17,
+        "p": {
+         "act": "push",
+         "normal": "nc",
+         "label": "1S2"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": -2,
+        "y": 25,
+        "p": {}
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "press",
+       "cyl": "1A",
+       "left": "a",
+       "right": "b"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "a",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "b",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "a",
+      "2"
+     ],
+     "b": [
+      "and",
+      "1"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "b",
+      "2"
+     ],
+     "b": [
+      "and",
+      "3"
+     ]
+    },
+    {
+     "id": "t6",
+     "a": [
+      "and",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "14"
+     ]
+    },
+    {
+     "id": "t7",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t8",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La commande bimanuelle",
+    "en": "Two-hand control"
+   },
+   "text": {
+    "fr": "Sur une presse ou une poinçonneuse, un accident de la main est vite arrivé. La **commande bimanuelle** oblige l’opérateur à appuyer sur deux boutons éloignés l’un de l’autre : tant qu’il appuie, ses deux mains sont hors de la zone dangereuse.\nIci, les boutons **1S1** et **1S2** envoient chacun un signal d’air au **clapet à deux pressions 1V2** (cellule ET) : il ne laisse passer l’air vers le pilotage 14 du distributeur 1V1 que si ses deux entrées sont sous pression.\nLa vue **3D** (bouton « 3D » en haut du plan) montre la presse et son pupitre : un clic sur un bouton du pupitre le garde appuyé, un autre clic le relâche.",
+    "en": "On a press or a punching machine, a hand injury happens fast. **Two-hand control** forces the operator to press two buttons set apart: while pressing, both hands are out of the danger zone.\nHere, buttons **1S1** and **1S2** each send an air signal to the **two-pressure valve 1V2** (AND cell): it only lets air through to pilot 14 of valve 1V1 when both its inputs are pressurised.\nThe **3D** view (“3D” button at the top of the workspace) shows the press and its console: one click on a console button keeps it pressed, another click releases it."
+   },
+   "keep": {
+    "fr": "**Commande bimanuelle** : tant que les deux mains sont sur les boutons, elles ne sont pas sous l’outil. Relâcher une main arrête le mouvement dangereux.",
+    "en": "**Two-hand control**: while both hands are on the buttons, they are not under the tool. Releasing one hand stops the dangerous movement."
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez :\n- la source à l’orifice **1** de 1V1, de 1S1 et de 1S2 ;\n- l’orifice **2** de 1S1 à l’entrée **1** de 1V2, l’orifice **2** de 1S2 à son entrée **3** ;\n- la sortie **2** de 1V2 au pilotage **14** de 1V1 ;\n- l’orifice **4** de 1V1 à l’orifice **1** du vérin, l’orifice **2** de 1V1 à l’orifice **2** du vérin.",
+    "en": "Connect:\n- the supply to port **1** of 1V1, 1S1 and 1S2;\n- port **2** of 1S1 to input **1** of 1V2, port **2** of 1S2 to its input **3**;\n- output **2** of 1V2 to pilot **14** of 1V1;\n- port **4** of 1V1 to cylinder port **1**, port **2** of 1V1 to cylinder port **2**."
+   },
+   "hint": {
+    "fr": "Tirez un tuyau en partant d’un orifice (petit rond) et en relâchant sur un autre. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. Click a tube to select it, Delete removes it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "src:1",
+      "a:1"
+     ],
+     [
+      "src:1",
+      "b:1"
+     ],
+     [
+      "a:2",
+      "and:1"
+     ],
+     [
+      "b:2",
+      "and:3"
+     ],
+     [
+      "and:2",
+      "v1:14"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Une seule main",
+    "en": "One hand"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Appuyez sur **1S1** seul et maintenez-le une seconde : le vérin ne doit pas bouger. Pour garder un bouton appuyé, utilisez les boutons « Appuyer » qui apparaissent ci-dessous (ou dans l’onglet Pneumatique).",
+    "en": "Click “Observe”. Press **1S1** alone and hold it for a second: the cylinder must not move. To keep a button pressed, use the “Press” buttons shown below (or in the Pneumatics tab)."
+   },
+   "hint": {
+    "fr": "La tige sort avec un seul bouton ? Le signal ne passe sans doute pas par le clapet ET : chaque bouton doit arriver sur une entrée de 1V2 (1 ou 3), et seule sa sortie 2 va au pilotage 14.",
+    "en": "The rod extends with one button? The signal probably bypasses the AND valve: each button must reach an input of 1V2 (1 or 3), and only its output 2 goes to pilot 14."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "a": "pressed",
+     "b": "released"
+    },
+    "expect": {
+     "c1": "in"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Les deux mains",
+    "en": "Both hands"
+   },
+   "text": {
+    "fr": "Appuyez maintenant sur **1S1** et sur **1S2** en même temps : la tige sort. Relâchez l’un des deux : elle rentre.",
+    "en": "Now press **1S1** and **1S2** together: the rod extends. Release either one: it retracts."
+   },
+   "keep": {
+    "fr": "Le clapet à deux pressions ne donne de l’air en sortie que si ses **deux** entrées en reçoivent : une fonction logique réalisée avec de l’air, sans électricité.",
+    "en": "The two-pressure valve only gives air at its output when **both** its inputs receive some: a logic function built with air, without electricity."
+   },
+   "hint": {
+    "fr": "Cliquez sur « Appuyer » pour 1S1, puis pour 1S2 : les deux restent appuyés jusqu’à « Relâcher ».",
+    "en": "Click “Press” for 1S1, then for 1S2: both stay pressed until “Release”."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "a": "pressed",
+     "b": "pressed"
+    },
+    "expect": {
+     "c1": "out"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation",
+    "en": "The equation"
+   },
+   "text": {
+    "fr": "En notant a et b les boutons 1S1 et 1S2 (1 = appuyé) et S la sortie de la tige, quelle est l’équation du circuit ?",
+    "en": "Writing a and b for buttons 1S1 and 1S2 (1 = pressed) and S for the rod extending, what is the circuit’s equation?"
+   },
+   "hint": {
+    "fr": "Le clapet à deux pressions est un ET : S vaut 1 seulement si a ET b valent 1. Le sélecteur de circuit (clapet navette) serait un OU : S = a + b.",
+    "en": "The two-pressure valve is an AND: S is 1 only if a AND b are 1. A shuttle valve would be an OR: S = a + b."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "S = a + b",
+      "en": "S = a + b"
+     },
+     {
+      "fr": "S = a . b",
+      "en": "S = a . b"
+     },
+     {
+      "fr": "S = /a . b",
+      "en": "S = /a . b"
+     },
+     {
+      "fr": "S = a ⊕ b",
+      "en": "S = a ⊕ b"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Une vraie commande bimanuelle",
+    "en": "A real two-hand control"
+   },
+   "text": {
+    "fr": "Ce circuit a un défaut : un opérateur pressé peut bloquer le bouton 1S1 avec du scotch et n’utiliser que 1S2. Les vraies commandes bimanuelles (norme EN ISO 13851) exigent en plus que les deux appuis commencent **à moins de 0,5 s d’intervalle**, et qu’on relâche les deux avant un nouveau cycle. On les réalise avec un module de sécurité dédié.",
+    "en": "This circuit has a flaw: a hurried operator can tape button 1S1 down and use only 1S2. Real two-hand controls (standard EN ISO 13851) also require both presses to start **less than 0.5 s apart**, and both buttons to be released before a new cycle. They are built with a dedicated safety module."
+   },
+   "keep": {
+    "fr": "Un simple ET ne suffit pas à protéger : une vraie commande bimanuelle exige des appuis **presque simultanés** (0,5 s au plus) et le **relâchement des deux boutons** avant chaque nouveau cycle.",
+    "en": "A plain AND is not enough to protect: a real two-hand control requires **almost simultaneous** presses (0.5 s at most) and **both buttons released** before each new cycle."
+   }
+  }
+ ]
+}

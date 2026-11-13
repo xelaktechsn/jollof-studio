@@ -1,0 +1,1098 @@
+{
+ "id": "lg12-feu-tricolore",
+ "domain": "logic",
+ "level": "pro",
+ "minutes": 45,
+ "title": {
+  "fr": "Le feu tricolore",
+  "en": "The traffic light"
+ },
+ "summary": {
+  "fr": "Réaliser en logique câblée la commande d’un feu tricolore : un compteur de 3 bits numérote les huit étapes du cycle, des portes allument le rouge, le jaune et le vert. Établir la table et l’équation du vert, puis ajouter le feu de la voie qui croise.",
+  "en": "Build the control of a traffic light in hard-wired logic: a 3-bit counter numbers the eight steps of the cycle, and gates turn on red, yellow and green. Work out the table and the green light’s equation, then add the light for the crossing road."
+ },
+ "objectives": [
+  {
+   "fr": "Découper un cycle en états numérotés par un compteur",
+   "en": "Break a cycle into states numbered by a counter"
+  },
+  {
+   "fr": "Établir la table et l’équation d’une sortie à partir des états",
+   "en": "Work out the table and equation of an output from the states"
+  },
+  {
+   "fr": "Câbler un séquenceur et le vérifier sur un cycle complet",
+   "en": "Wire a sequencer and check it over a full cycle"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Cycle de 8 tops : vert 3, jaune 1, rouge 4"
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 1
+     }
+    },
+    {
+     "id": "pQ2",
+     "type": "probe",
+     "x": 26,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q2"
+     }
+    },
+    {
+     "id": "pQ1",
+     "type": "probe",
+     "x": 32,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q1"
+     }
+    },
+    {
+     "id": "pQ0",
+     "type": "probe",
+     "x": 38,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q0"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 52,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "text": "Voie 1"
+     }
+    },
+    {
+     "id": "lR1",
+     "type": "led",
+     "x": 52,
+     "y": 5,
+     "r": 0,
+     "p": {
+      "label": "R1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lJ1",
+     "type": "led",
+     "x": 52,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "J1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lV1",
+     "type": "led",
+     "x": 52,
+     "y": 17,
+     "r": 0,
+     "p": {
+      "label": "V1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 52,
+     "y": 22,
+     "r": 0,
+     "p": {
+      "text": "Voie 2"
+     }
+    },
+    {
+     "id": "lR2",
+     "type": "led",
+     "x": 52,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "R2",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lJ2",
+     "type": "led",
+     "x": 52,
+     "y": 31,
+     "r": 0,
+     "p": {
+      "label": "J2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lV2",
+     "type": "led",
+     "x": 52,
+     "y": 37,
+     "r": 0,
+     "p": {
+      "label": "V2",
+      "color": "green"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Cycle de 8 tops : vert 3, jaune 1, rouge 4"
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 1
+     }
+    },
+    {
+     "id": "pQ2",
+     "type": "probe",
+     "x": 26,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q2"
+     }
+    },
+    {
+     "id": "pQ1",
+     "type": "probe",
+     "x": 32,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q1"
+     }
+    },
+    {
+     "id": "pQ0",
+     "type": "probe",
+     "x": 38,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q0"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 52,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "text": "Voie 1"
+     }
+    },
+    {
+     "id": "lR1",
+     "type": "led",
+     "x": 52,
+     "y": 5,
+     "r": 0,
+     "p": {
+      "label": "R1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lJ1",
+     "type": "led",
+     "x": 52,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "J1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lV1",
+     "type": "led",
+     "x": 52,
+     "y": 17,
+     "r": 0,
+     "p": {
+      "label": "V1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 52,
+     "y": 22,
+     "r": 0,
+     "p": {
+      "text": "Voie 2"
+     }
+    },
+    {
+     "id": "lR2",
+     "type": "led",
+     "x": 52,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "R2",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lJ2",
+     "type": "led",
+     "x": 52,
+     "y": 31,
+     "r": 0,
+     "p": {
+      "label": "J2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lV2",
+     "type": "led",
+     "x": 52,
+     "y": 37,
+     "r": 0,
+     "p": {
+      "label": "V2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "cnt",
+     "type": "counter",
+     "x": 14,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "bits": 3
+     }
+    },
+    {
+     "id": "gN",
+     "type": "nand",
+     "x": 30,
+     "y": 12,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "gI",
+     "type": "not",
+     "x": 30,
+     "y": 20,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "aJ1",
+     "type": "and",
+     "x": 42,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "n": 3
+     }
+    },
+    {
+     "id": "aV1",
+     "type": "and",
+     "x": 42,
+     "y": 16,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "aJ2",
+     "type": "and",
+     "x": 42,
+     "y": 28,
+     "r": 0,
+     "p": {
+      "n": 3
+     }
+    },
+    {
+     "id": "aV2",
+     "type": "and",
+     "x": 42,
+     "y": 35,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "cnt",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "cnt",
+      "Q0"
+     ],
+     "b": [
+      "pQ0",
+      "A"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "cnt",
+      "Q1"
+     ],
+     "b": [
+      "pQ1",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "pQ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "cnt",
+      "Q1"
+     ],
+     "b": [
+      "gN",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "cnt",
+      "Q0"
+     ],
+     "b": [
+      "gN",
+      "B"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "gI",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "lR1",
+      "A"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "gI",
+      "Y"
+     ],
+     "b": [
+      "aJ1",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "cnt",
+      "Q1"
+     ],
+     "b": [
+      "aJ1",
+      "B"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "cnt",
+      "Q0"
+     ],
+     "b": [
+      "aJ1",
+      "C"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "aJ1",
+      "Y"
+     ],
+     "b": [
+      "lJ1",
+      "A"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "gI",
+      "Y"
+     ],
+     "b": [
+      "aV1",
+      "A"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "gN",
+      "Y"
+     ],
+     "b": [
+      "aV1",
+      "B"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "aV1",
+      "Y"
+     ],
+     "b": [
+      "lV1",
+      "A"
+     ]
+    },
+    {
+     "id": "w16",
+     "a": [
+      "gI",
+      "Y"
+     ],
+     "b": [
+      "lR2",
+      "A"
+     ]
+    },
+    {
+     "id": "w17",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "aJ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w18",
+     "a": [
+      "cnt",
+      "Q1"
+     ],
+     "b": [
+      "aJ2",
+      "B"
+     ]
+    },
+    {
+     "id": "w19",
+     "a": [
+      "cnt",
+      "Q0"
+     ],
+     "b": [
+      "aJ2",
+      "C"
+     ]
+    },
+    {
+     "id": "w20",
+     "a": [
+      "aJ2",
+      "Y"
+     ],
+     "b": [
+      "lJ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w21",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "aV2",
+      "A"
+     ]
+    },
+    {
+     "id": "w22",
+     "a": [
+      "gN",
+      "Y"
+     ],
+     "b": [
+      "aV2",
+      "B"
+     ]
+    },
+    {
+     "id": "w23",
+     "a": [
+      "aV2",
+      "Y"
+     ],
+     "b": [
+      "lV2",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le cahier des charges",
+    "en": "The specification"
+   },
+   "text": {
+    "fr": "Le feu de la voie 1 suit un cycle de **8 tops** d’horloge, numérotés de 0 à 7 par un compteur :\n- vert (**V1**) pendant 3 tops : états 0, 1 et 2 ;\n- jaune (**J1**, qu’on appelle souvent « orange ») pendant 1 top : état 3 ;\n- rouge (**R1**) pendant 4 tops : états 4 à 7.\nPourquoi 4 tops de rouge ? Pendant ce temps, la voie 2, qui croise la voie 1, doit avoir son vert (3 tops) puis son jaune (1 top).\nSur le plan de travail : l’horloge **H**, trois sondes **Q2**, **Q1**, **Q0** pour lire l’état du compteur, et les LED des deux feux.",
+    "en": "The light for road 1 follows a cycle of **8 clock ticks**, numbered 0 to 7 by a counter:\n- green (**V1**, French “vert”) for 3 ticks: states 0, 1 and 2;\n- yellow (**J1**, French “jaune”, often called amber) for 1 tick: state 3;\n- red (**R1**) for 4 ticks: states 4 to 7.\nWhy 4 ticks of red? During that time, road 2, which crosses road 1, needs its green (3 ticks) then its yellow (1 tick).\nOn the workspace: clock **H**, three probes **Q2**, **Q1**, **Q0** to read the counter state, and the LEDs of both lights."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le compteur d’états",
+    "en": "The state counter"
+   },
+   "text": {
+    "fr": "Posez un **Compteur** (catégorie Séquentiel) et réglez son **Nombre de bits** sur **3** : il compte de 0 à 7, puis recommence (laissez le Modulo à 0). Reliez son entrée d’horloge à **H** et ses sorties Q0, Q1, Q2 aux sondes de même nom.\nAvancez avec **Pas** : les sondes Q2 Q1 Q0 affichent l’état en binaire.",
+    "en": "Place a **Counter** (Sequential category) and set its **Number of bits** to **3**: it counts from 0 to 7, then starts again (leave Modulo at 0). Connect its clock input to **H** and its outputs Q0, Q1, Q2 to the probes with the same names.\nAdvance with **Step**: probes Q2 Q1 Q0 show the state in binary."
+   },
+   "hint": {
+    "fr": "Q0 est le bit de poids faible : l’état 3 s’écrit Q2 Q1 Q0 = 0 1 1.",
+    "en": "Q0 is the least significant bit: state 3 is written Q2 Q1 Q0 = 0 1 1."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 1,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 1,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 1,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 1,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La table des feux",
+    "en": "The light table"
+   },
+   "text": {
+    "fr": "Chaque ligne de la table est un état du compteur, de Q2 Q1 Q0 = 000 (état 0) à 111 (état 7). D’après le cahier des charges, mettez 1 quand la lampe doit être allumée, 0 sinon.",
+    "en": "Each row of the table is a counter state, from Q2 Q1 Q0 = 000 (state 0) to 111 (state 7). Following the specification, put 1 when the lamp must be on, 0 otherwise."
+   },
+   "hint": {
+    "fr": "Une seule couleur à la fois : chaque ligne contient exactement un 1.",
+    "en": "Only one colour at a time: each row holds exactly one 1."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "Q2",
+     "Q1",
+     "Q0"
+    ],
+    "outputs": {
+     "R1": "00001111",
+     "J1": "00010000",
+     "V1": "11100000"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation du vert",
+    "en": "The green light’s equation"
+   },
+   "text": {
+    "fr": "Dans la table, R1 est tout simplement égal à **Q2** : un fil suffira. J1 ne vaut 1 que pour l’état 3 : J1 = /Q2.Q1.Q0.\nÀ vous : écrivez l’équation de **V1** en fonction de Q2, Q1 et Q0, aussi simple que possible. Notation : `.` pour ET, `+` pour OU, `/` pour NON, parenthèses permises.",
+    "en": "In the table, R1 is simply equal to **Q2**: a wire will do. J1 is 1 only in state 3: J1 = /Q2.Q1.Q0.\nYour turn: write the equation of **V1** in terms of Q2, Q1 and Q0, as simple as possible. Notation: `.` for AND, `+` for OR, `/` for NOT, brackets allowed."
+   },
+   "hint": {
+    "fr": "Regardez les lignes où Q2 = 0 : V1 y vaut 1 partout, sauf sur une ligne. Laquelle ?",
+    "en": "Look at the rows where Q2 = 0: V1 is 1 on all of them except one. Which one?"
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "Q2",
+     "Q1",
+     "Q0"
+    ],
+    "answer": "/Q2./(Q1.Q0)"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le feu de la voie 1",
+    "en": "Wiring the light for road 1"
+   },
+   "text": {
+    "fr": "Câblez les trois LED de la voie 1 à partir des sorties du compteur :\n- **R1** : un fil depuis Q2 ;\n- **J1** : une porte ET à 3 entrées (propriété Nombre d’entrées) et une porte NON pour obtenir /Q2 ;\n- **V1** : selon votre équation, par exemple une porte NON-ET sur Q1 et Q0, puis une porte ET avec /Q2.\nAvancez avec **Pas** sur un cycle complet : une seule LED allumée à la fois.",
+    "en": "Wire the three LEDs of road 1 from the counter outputs:\n- **R1**: a wire from Q2;\n- **J1**: a 3-input AND gate (Number of inputs property) and a NOT gate to get /Q2;\n- **V1**: following your equation, for example a NAND gate on Q1 and Q0, then an AND gate with /Q2.\nAdvance with **Step** through a full cycle: only one LED on at a time."
+   },
+   "hint": {
+    "fr": "Autre méthode : un **Décodeur** (catégorie Combinatoire) réglé sur 3 → 8 donne une sortie par état ; V1 est alors le OU de ses sorties Y0, Y1 et Y2.",
+    "en": "Another method: a **Decoder** (Combinational category) set to 3 → 8 gives one output per state; V1 is then the OR of its outputs Y0, Y1 and Y2."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 1,
+       "V1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Faire tourner le feu",
+    "en": "Running the light"
+   },
+   "text": {
+    "fr": "Lancez l’horloge avec **▶** et ouvrez l’onglet **Chronogramme**. Comptez les périodes d’horloge pendant lesquelles chaque LED reste allumée : 3 pour V1, 1 pour J1, 4 pour R1. Vérifiez qu’à aucun moment deux couleurs ne sont allumées ensemble.",
+    "en": "Start the clock with **▶** and open the **Timing** tab. Count the clock periods during which each LED stays on: 3 for V1, 1 for J1, 4 for R1. Check that two colours are never on at the same time."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Régler les durées",
+    "en": "Setting the durations"
+   },
+   "text": {
+    "fr": "Sur un vrai carrefour, le vert doit durer 30 s. Avec ce cycle (vert = 3 tops), quelle fréquence d’horloge faut-il choisir ?",
+    "en": "At a real junction, green must last 30 s. With this cycle (green = 3 ticks), which clock frequency should be chosen?"
+   },
+   "hint": {
+    "fr": "Durée d’un top = 30 s ÷ 3. La fréquence est l’inverse de cette durée.",
+    "en": "Length of one tick = 30 s ÷ 3. The frequency is the inverse of that length."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "0,1 Hz : un top toutes les 10 s",
+      "en": "0.1 Hz: one tick every 10 s"
+     },
+     {
+      "fr": "1 Hz",
+      "en": "1 Hz"
+     },
+     {
+      "fr": "3 Hz",
+      "en": "3 Hz"
+     },
+     {
+      "fr": "30 Hz",
+      "en": "30 Hz"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Le feu de la voie 2",
+    "en": "The light for road 2"
+   },
+   "text": {
+    "fr": "La voie 2 suit le même cycle, décalé de 4 tops : elle est au vert et au jaune pendant que la voie 1 est au rouge. Il suffit d’échanger Q2 et /Q2 dans les équations :\n- **R2** = /Q2 ;\n- **J2** = Q2.Q1.Q0 ;\n- **V2** = Q2./(Q1.Q0).\nCâblez R2, J2 et V2, en réutilisant les portes déjà posées quand c’est possible.",
+    "en": "Road 2 follows the same cycle, shifted by 4 ticks: it is green then yellow while road 1 is red. Just swap Q2 and /Q2 in the equations:\n- **R2** = /Q2;\n- **J2** = Q2.Q1.Q0;\n- **V2** = Q2./(Q1.Q0).\nWire R2, J2 and V2, reusing the gates already placed where you can."
+   },
+   "hint": {
+    "fr": "La sortie de la porte NON (/Q2) et celle de la porte NON-ET (/(Q1.Q0)) peuvent servir aux deux feux.",
+    "en": "The output of the NOT gate (/Q2) and that of the NAND gate (/(Q1.Q0)) can serve both lights."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 1,
+       "V1": 0,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0,
+       "R2": 0,
+       "J2": 0,
+       "V2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0,
+       "R2": 0,
+       "J2": 0,
+       "V2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0,
+       "R2": 0,
+       "J2": 0,
+       "V2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 1,
+       "J1": 0,
+       "V1": 0,
+       "R2": 0,
+       "J2": 1,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "R1": 0,
+       "J1": 0,
+       "V1": 1,
+       "R2": 1,
+       "J2": 0,
+       "V2": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La sécurité du carrefour",
+    "en": "Junction safety"
+   },
+   "text": {
+    "fr": "Sur un vrai carrefour, on ajoute un court état où les deux feux sont rouges en même temps. À quoi sert-il ?",
+    "en": "At a real junction, a short state is added where both lights are red at the same time. What is it for?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "À laisser les véhicules déjà engagés dégager le carrefour avant que l’autre voie passe au vert",
+      "en": "To let vehicles already in the junction clear it before the other road turns green"
+     },
+     {
+      "fr": "À économiser l’électricité des lampes",
+      "en": "To save electricity in the lamps"
+     },
+     {
+      "fr": "À remettre le compteur à zéro",
+      "en": "To reset the counter"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

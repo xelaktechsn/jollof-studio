@@ -1,0 +1,276 @@
+{
+ "id": "pn01-verin-simple-effet",
+ "level": "college",
+ "minutes": 25,
+ "title": {
+  "fr": "Le vérin simple effet",
+  "en": "The single-acting cylinder"
+ },
+ "summary": {
+  "fr": "Premier circuit pneumatique : une source d’air, un distributeur 3/2 à bouton poussoir et un vérin simple effet. On appuie, la tige sort ; on relâche, un ressort la rentre.",
+  "en": "A first pneumatic circuit: an air supply, a push-button 3/2 valve and a single-acting cylinder. Press, the rod extends; release, a spring pulls it back."
+ },
+ "objectives": [
+  {
+   "fr": "Reconnaître une source d’air, un distributeur et un vérin sur un schéma",
+   "en": "Recognise an air supply, a valve and a cylinder on a diagram"
+  },
+  {
+   "fr": "Lire le nom d’un distributeur : orifices et positions",
+   "en": "Read a valve’s name: ports and positions"
+  },
+  {
+   "fr": "Raccorder un circuit et le faire fonctionner",
+   "en": "Connect a circuit and make it work"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un distributeur se nomme « orifices/positions » : un **3/2** a 3 orifices (1 alimentation, 2 utilisation, 3 échappement) et 2 positions.",
+   "en": "A valve is named “ports/positions”: a **3/2** has 3 ports (1 supply, 2 outlet, 3 exhaust) and 2 positions."
+  },
+  {
+   "fr": "Vérin **simple effet** : l’air ne pousse que dans un sens ; le ressort ramène la tige dès que la chambre est à l’échappement.",
+   "en": "**Single-acting** cylinder: air pushes one way only; the spring returns the rod as soon as the chamber is exhausted."
+  },
+  {
+   "fr": "**Normalement fermé** : au repos, l’alimentation est bloquée et le vérin est relié à l’échappement. Sans action sur le bouton, la tige reste rentrée.",
+   "en": "**Normally closed**: at rest the supply is blocked and the cylinder is connected to exhaust. With no action on the button, the rod stays in."
+  },
+  {
+   "fr": "L’air comprimé d’un atelier est en général à **6 bar** environ.",
+   "en": "Shop compressed air is usually at about **6 bar**."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Vérin simple effet",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl1",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v32",
+        "x": -7,
+        "y": 10,
+        "p": {
+         "act": "push",
+         "normal": "nc",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": -2,
+        "y": 20,
+        "p": {}
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le plan de travail pneumatique",
+    "en": "The pneumatic workspace"
+   },
+   "text": {
+    "fr": "Ce TP se fait dans le plan de travail **Pneumatique** (sélecteur en haut à gauche). Trois éléments sont posés :\n- **la source d’air comprimé**, en bas : un compresseur et son réservoir, à 6 bar ;\n- **le distributeur 3/2 1V1** au milieu : un robinet qui envoie l’air vers le vérin ou le laisse s’échapper ;\n- **le vérin simple effet 1A**, en haut : l’air pousse le piston et la tige sort ; un ressort la rentre.\nDans les machines, l’air comprimé fait serrer des pinces, pousser des pièces, ouvrir des portes de bus.\nLa vue **3D** (bouton « 3D » en haut du plan) montre le vérin en vraie grandeur : sa tige bouge avec la simulation.",
+    "en": "This lab takes place in the **Pneumatics** workspace (switch at the top left). Three elements are placed:\n- **the compressed-air supply**, at the bottom: a compressor and its tank, at 6 bar;\n- **the 3/2 valve 1V1** in the middle: a tap that sends air to the cylinder or lets it escape;\n- **the single-acting cylinder 1A**, at the top: air pushes the piston and the rod extends; a spring pulls it back.\nIn machines, compressed air closes grippers, pushes parts, opens bus doors.\nThe **3D** view (“3D” button at the top of the workspace) shows the cylinder life-size: its rod moves with the simulation."
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire le nom du distributeur",
+    "en": "Reading the valve’s name"
+   },
+   "text": {
+    "fr": "Un distributeur se nomme par deux nombres : « 3/2 ». Que signifient-ils ?",
+    "en": "A valve is named by two numbers: “3/2”. What do they mean?"
+   },
+   "hint": {
+    "fr": "Le premier nombre compte les orifices (1 : arrivée d’air, 2 : utilisation, 3 : échappement), le second les positions du tiroir (chaque case du symbole).",
+    "en": "The first number counts the ports (1: air in, 2: outlet, 3: exhaust), the second the spool positions (each square of the symbol)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "3 bar et 2 secondes",
+      "en": "3 bar and 2 seconds"
+     },
+     {
+      "fr": "3 orifices et 2 positions",
+      "en": "3 ports and 2 positions"
+     },
+     {
+      "fr": "3 vérins et 2 boutons",
+      "en": "3 cylinders and 2 buttons"
+     },
+     {
+      "fr": "3 positions et 2 orifices",
+      "en": "3 positions and 2 ports"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez :\n- la source d’air à l’orifice **1** de 1V1 ;\n- l’orifice **2** de 1V1 à l’orifice **1** du vérin 1A.\nL’orifice **3** reste libre : c’est l’échappement, l’air y retourne à l’atmosphère.",
+    "en": "Connect:\n- the air supply to port **1** of 1V1;\n- port **2** of 1V1 to port **1** of cylinder 1A.\nPort **3** stays free: it is the exhaust, where air returns to the atmosphere."
+   },
+   "keep": {
+    "fr": "**3/2** se lit « 3 orifices, 2 positions ». Les numéros des orifices sont toujours les mêmes : **1** alimentation, **2** utilisation, **3** échappement.",
+    "en": "**3/2** reads “3 ports, 2 positions”. Port numbers are always the same: **1** supply, **2** outlet, **3** exhaust."
+   },
+   "hint": {
+    "fr": "Tirez un tuyau en partant d’un orifice (petit rond) et en relâchant sur un autre. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. Click a tube to select it, Delete removes it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:2",
+      "c1:1"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai",
+    "en": "Test"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » (la simulation se lance), puis maintenez le clic sur le **bouton** de 1V1 (à gauche du symbole) : l’air passe de 1 vers 2 et la tige sort. Les tuyaux sous pression sont colorés.",
+    "en": "Click “Observe” (the simulation starts), then hold the mouse button on the **push button** of 1V1 (left of the symbol): air flows from 1 to 2 and the rod extends. Pressurised tubes are coloured."
+   },
+   "hint": {
+    "fr": "Rien ne bouge ? Vérifiez que la source arrive sur l’orifice 1 et que l’orifice 2 va au vérin. Vous pouvez aussi utiliser « Appuyer » dans l’onglet Pneumatique.",
+    "en": "Nothing moves? Check that the supply reaches port 1 and that port 2 goes to the cylinder. You can also use “Press” in the Pneumatics tab."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "v1": "pressed"
+    },
+    "expect": {
+     "c1": "out"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Le retour",
+    "en": "The return stroke"
+   },
+   "text": {
+    "fr": "Relâchez le bouton : la tige rentre. Pourquoi ?",
+    "en": "Release the button: the rod retracts. Why?"
+   },
+   "hint": {
+    "fr": "Au repos, le ressort du distributeur le remet en position 2 → 3 : la chambre du vérin se vide dans l’atmosphère, et le ressort du vérin ramène le piston.",
+    "en": "At rest the valve’s spring returns it to position 2 → 3: the cylinder chamber empties into the atmosphere and the cylinder’s spring brings the piston back."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le distributeur aspire l’air du vérin",
+      "en": "The valve sucks the air out of the cylinder"
+     },
+     {
+      "fr": "Le ressort du distributeur repousse la tige",
+      "en": "The valve’s spring pushes the rod"
+     },
+     {
+      "fr": "Le distributeur relie le vérin à l’échappement 3 et le ressort du vérin repousse le piston",
+      "en": "The valve connects the cylinder to exhaust 3 and the cylinder’s spring pushes the piston back"
+     },
+     {
+      "fr": "La source d’air s’arrête",
+      "en": "The air supply stops"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "À retenir",
+    "en": "Key points"
+   },
+   "text": {
+    "fr": "- Un vérin **simple effet** ne pousse que dans un sens ; un ressort le ramène.\n- Le distributeur **3/2 normalement fermé** bloque l’air au repos et l’envoie quand on appuie.\n- L’air utilisé repart par l’échappement : rien n’est aspiré.\nTP suivant : le vérin double effet, poussé dans les deux sens.",
+    "en": "- A **single-acting** cylinder pushes in one direction only; a spring brings it back.\n- The **normally closed 3/2** valve blocks air at rest and lets it through when pressed.\n- Used air leaves through the exhaust: nothing is sucked back.\nNext lab: the double-acting cylinder, pushed both ways."
+   },
+   "keep": {
+    "fr": "L’air comprimé ne « tire » pas : pour qu’une tige revienne, on met sa chambre **à l’échappement** et une autre force (ici un ressort) la ramène.",
+    "en": "Compressed air does not “pull”: for a rod to come back, its chamber is **exhausted** and another force (here a spring) returns it."
+   }
+  }
+ ]
+}

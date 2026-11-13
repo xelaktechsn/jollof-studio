@@ -1,0 +1,425 @@
+{
+ "id": "lg01-portes-de-base",
+ "domain": "logic",
+ "level": "college",
+ "minutes": 25,
+ "title": {
+  "fr": "Les portes ET, OU, NON",
+  "en": "AND, OR and NOT gates"
+ },
+ "summary": {
+  "fr": "Découvrir les trois portes de base : les câbler entre deux interrupteurs et des LED, observer leur comportement et écrire leur table de vérité.",
+  "en": "Discover the three basic gates: wire them between two switches and LEDs, watch how they behave and write their truth tables."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler une porte logique",
+   "en": "Wire a logic gate"
+  },
+  {
+   "fr": "Lire et remplir une table de vérité",
+   "en": "Read and fill in a truth table"
+  },
+  {
+   "fr": "Choisir la porte qui répond à un besoin",
+   "en": "Pick the gate that meets a need"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "A et B : cliquez pour basculer"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 38,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 38,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "l3",
+     "type": "led",
+     "x": 38,
+     "y": 20,
+     "r": 0,
+     "p": {
+      "label": "S3",
+      "color": "red"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "A et B : cliquez pour basculer"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 38,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 38,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "l3",
+     "type": "led",
+     "x": 38,
+     "y": 20,
+     "r": 0,
+     "p": {
+      "label": "S3",
+      "color": "red"
+     }
+    },
+    {
+     "id": "g1",
+     "type": "and",
+     "x": 20,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g2",
+     "type": "or",
+     "x": 20,
+     "y": 11,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g3",
+     "type": "not",
+     "x": 20,
+     "y": 20,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "B"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g3",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "l1",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "l2",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "g3",
+      "Y"
+     ],
+     "b": [
+      "l3",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le plan de travail logique",
+    "en": "The logic workspace"
+   },
+   "text": {
+    "fr": "Sur le plan de travail : deux **interrupteurs** A et B (les entrées) et trois **LED** S1, S2, S3 (les sorties).\n- Cliquez sur un interrupteur pour le faire passer de **0** à **1**.\n- Un fil à **1** est vert vif, un fil à **0** vert sombre ; une LED allumée vaut 1.\n- Les portes sont dans la bibliothèque, à gauche : glissez-en une sur le plan de travail.\n- Pour câbler, tirez un fil d’une broche à une autre.",
+    "en": "On the workspace: two **switches** A and B (the inputs) and three **LEDs** S1, S2, S3 (the outputs).\n- Click a switch to change it from **0** to **1**.\n- A wire at **1** is bright green, a wire at **0** dark green; a lit LED means 1.\n- Gates are in the library on the left: drag one onto the workspace.\n- To wire, drag from one pin to another."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La porte ET",
+    "en": "The AND gate"
+   },
+   "text": {
+    "fr": "Posez une porte **ET** entre les interrupteurs et la LED S1. Reliez A à une entrée de la porte, B à l’autre, et la sortie de la porte à **S1**.",
+    "en": "Place an **AND** gate between the switches and LED S1. Connect A to one input of the gate, B to the other, and the gate output to **S1**."
+   },
+   "hint": {
+    "fr": "Une même sortie (ici celle d’un interrupteur) peut alimenter plusieurs entrées : tirez simplement un deuxième fil depuis sa broche.",
+    "en": "One output (here a switch’s) can feed several inputs: just drag a second wire from its pin."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S1": "A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "La table de la porte ET",
+    "en": "The AND truth table"
+   },
+   "text": {
+    "fr": "Essayez les quatre positions des interrupteurs et notez à chaque fois l’état de S1. Cliquez sur les cases de la colonne S1 pour y mettre 0 ou 1.",
+    "en": "Try the four switch positions and note the state of S1 each time. Click the cells of the S1 column to set 0 or 1."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S1": "A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "La porte OU",
+    "en": "The OR gate"
+   },
+   "text": {
+    "fr": "Même travail avec une porte **OU** : entrées A et B, sortie vers **S2**.",
+    "en": "Same job with an **OR** gate: inputs A and B, output to **S2**."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S2": "A+B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "La porte NON",
+    "en": "The NOT gate"
+   },
+   "text": {
+    "fr": "Une porte **NON** (inverseur) n’a qu’une entrée. Reliez-la à A, et sa sortie à **S3**. Que fait S3 quand A change ?",
+    "en": "A **NOT** gate (inverter) has a single input. Connect it to A, and its output to **S3**. What does S3 do when A changes?"
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A"
+    ],
+    "outputs": {
+     "S3": "/A"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation de S2",
+    "en": "The equation of S2"
+   },
+   "text": {
+    "fr": "Écrivez l’équation de S2 en fonction de A et B. Notation : `.` pour ET, `+` pour OU, `/` devant une lettre pour NON (par exemple `/A.B`).",
+    "en": "Write the equation of S2 in terms of A and B. Notation: `.` for AND, `+` for OR, `/` before a letter for NOT (for example `/A.B`)."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "B"
+    ],
+    "answer": "A+B"
+   }
+  },
+  {
+   "title": {
+    "fr": "Choisir la bonne porte",
+    "en": "Pick the right gate"
+   },
+   "text": {
+    "fr": "Une alarme doit sonner si la porte **ou** la fenêtre est ouverte (A = 1 : porte ouverte, B = 1 : fenêtre ouverte). Quelle porte faut-il ?",
+    "en": "An alarm must ring if the door **or** the window is open (A = 1: door open, B = 1: window open). Which gate is needed?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une porte ET",
+      "en": "An AND gate"
+     },
+     {
+      "fr": "Une porte OU",
+      "en": "An OR gate"
+     },
+     {
+      "fr": "Une porte NON",
+      "en": "A NOT gate"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

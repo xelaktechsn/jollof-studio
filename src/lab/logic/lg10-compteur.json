@@ -1,0 +1,854 @@
+{
+ "id": "lg10-compteur",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 35,
+ "title": {
+  "fr": "Le compteur binaire",
+  "en": "The binary counter"
+ },
+ "summary": {
+  "fr": "Construire un compteur asynchrone de 3 bits avec des bascules T, vérifier qu’il compte de 0 à 7, observer la division de fréquence sur le chronogramme, puis utiliser un bloc compteur modulo 10 relié à un afficheur.",
+  "en": "Build a 3-bit ripple counter from T flip-flops, check that it counts from 0 to 7, watch the frequency division on the timing diagram, then use a modulo-10 counter block driving a display."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un compteur asynchrone avec des bascules T",
+   "en": "Wire a ripple counter from T flip-flops"
+  },
+  {
+   "fr": "Relier comptage binaire et division de fréquence",
+   "en": "Link binary counting and frequency division"
+  },
+  {
+   "fr": "Régler un compteur modulo 10 et lire sa valeur sur un afficheur",
+   "en": "Set up a modulo-10 counter and read its value on a display"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Compteur asynchrone"
+     }
+    },
+    {
+     "id": "k1",
+     "type": "const",
+     "x": 4,
+     "y": 6,
+     "r": 0,
+     "p": {
+      "value": 1
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 1
+     }
+    },
+    {
+     "id": "lQ0",
+     "type": "led",
+     "x": 21,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q0",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lQ1",
+     "type": "led",
+     "x": 33,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 45,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "red"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 17,
+     "r": 0,
+     "p": {
+      "text": "Compteur modulo 10"
+     }
+    },
+    {
+     "id": "sRAZ",
+     "type": "switch",
+     "x": 4,
+     "y": 22,
+     "r": 0,
+     "p": {
+      "label": "RAZ"
+     }
+    },
+    {
+     "id": "hN",
+     "type": "hex",
+     "x": 30,
+     "y": 20,
+     "r": 0,
+     "p": {
+      "label": "N"
+     }
+    },
+    {
+     "id": "lTC",
+     "type": "led",
+     "x": 30,
+     "y": 27,
+     "r": 0,
+     "p": {
+      "label": "TC",
+      "color": "yellow"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Compteur asynchrone"
+     }
+    },
+    {
+     "id": "k1",
+     "type": "const",
+     "x": 4,
+     "y": 6,
+     "r": 0,
+     "p": {
+      "value": 1
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 1
+     }
+    },
+    {
+     "id": "lQ0",
+     "type": "led",
+     "x": 21,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q0",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lQ1",
+     "type": "led",
+     "x": 33,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 45,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "red"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 17,
+     "r": 0,
+     "p": {
+      "text": "Compteur modulo 10"
+     }
+    },
+    {
+     "id": "sRAZ",
+     "type": "switch",
+     "x": 4,
+     "y": 22,
+     "r": 0,
+     "p": {
+      "label": "RAZ"
+     }
+    },
+    {
+     "id": "hN",
+     "type": "hex",
+     "x": 30,
+     "y": 20,
+     "r": 0,
+     "p": {
+      "label": "N"
+     }
+    },
+    {
+     "id": "lTC",
+     "type": "led",
+     "x": 30,
+     "y": 27,
+     "r": 0,
+     "p": {
+      "label": "TC",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "f1",
+     "type": "tff",
+     "x": 14,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "f2",
+     "type": "tff",
+     "x": 26,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "edge": "fall"
+     }
+    },
+    {
+     "id": "f3",
+     "type": "tff",
+     "x": 38,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "edge": "fall"
+     }
+    },
+    {
+     "id": "cnt",
+     "type": "counter",
+     "x": 16,
+     "y": 20,
+     "r": 0,
+     "p": {
+      "bits": 4,
+      "mod": 10
+     }
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "k1",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "T"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "k1",
+      "Q"
+     ],
+     "b": [
+      "f2",
+      "T"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "k1",
+      "Q"
+     ],
+     "b": [
+      "f3",
+      "T"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "f1",
+      "Q"
+     ],
+     "b": [
+      "f2",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "f2",
+      "Q"
+     ],
+     "b": [
+      "f3",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "f1",
+      "Q"
+     ],
+     "b": [
+      "lQ0",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "f2",
+      "Q"
+     ],
+     "b": [
+      "lQ1",
+      "A"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "f3",
+      "Q"
+     ],
+     "b": [
+      "lQ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "cnt",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "sRAZ",
+      "Q"
+     ],
+     "b": [
+      "cnt",
+      "R"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "cnt",
+      "Q0"
+     ],
+     "b": [
+      "hN",
+      "D0"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "cnt",
+      "Q1"
+     ],
+     "b": [
+      "hN",
+      "D1"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "cnt",
+      "Q2"
+     ],
+     "b": [
+      "hN",
+      "D2"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "cnt",
+      "Q3"
+     ],
+     "b": [
+      "hN",
+      "D3"
+     ]
+    },
+    {
+     "id": "w16",
+     "a": [
+      "cnt",
+      "TC"
+     ],
+     "b": [
+      "lTC",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le montage",
+    "en": "The setup"
+   },
+   "text": {
+    "fr": "Sur le plan de travail :\n- l’horloge **H**. Sous le plan de travail, **▶** la lance et **Pas** avance d’un front à la fois (deux appuis font une période : un front montant, puis un front descendant) ;\n- un **niveau constant 1** ;\n- trois LED **Q0**, **Q1**, **Q2** : les bits du nombre compté, Q0 étant le bit de poids faible ;\n- en bas, l’afficheur **N**, la LED **TC** et l’interrupteur **RAZ**, pour la deuxième partie.\nUne **bascule T** dont l’entrée T vaut 1 change d’état à chaque front actif de son horloge.",
+    "en": "On the workspace:\n- clock **H**. Under the workspace, **▶** starts it and **Step** advances one edge at a time (two presses make one period: a rising edge, then a falling edge);\n- a **constant level 1**;\n- three LEDs **Q0**, **Q1**, **Q2**: the bits of the counted number, Q0 being the least significant bit;\n- at the bottom, display **N**, LED **TC** and switch **RAZ** (French for “reset”), for the second part.\nA **T flip-flop** whose T input is 1 changes state on every active edge of its clock."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Premier étage : diviser par deux",
+    "en": "First stage: divide by two"
+   },
+   "text": {
+    "fr": "Posez une **Bascule T** (catégorie Bascules). Reliez son entrée T au niveau **1**, son entrée d’horloge à **H** et sa sortie Q à la LED **Q0**.\nAvancez avec **Pas** : Q0 change à chaque front montant de H, c’est-à-dire une fois par période.",
+    "en": "Place a **T flip-flop** (Flip-flops category). Connect its T input to the **1** level, its clock input to **H** and its Q output to LED **Q0**.\nAdvance with **Step**: Q0 changes on every rising edge of H, that is once per period."
+   },
+   "hint": {
+    "fr": "Une entrée T laissée libre vaut « inconnu » (X) : la bascule ne sait pas si elle doit basculer.",
+    "en": "A T input left unconnected is “unknown” (X): the flip-flop cannot tell whether to toggle."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "Q0": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Deuxième étage",
+    "en": "Second stage"
+   },
+   "text": {
+    "fr": "Posez une deuxième bascule T, avec T = 1. Dans ses propriétés, réglez **Front actif** sur **Descendant ↓**, puis reliez son entrée d’horloge à la sortie **Q** de la première bascule. Sa sortie Q va à la LED **Q1**.\nAvancez : Q1 Q0 doit afficher 00, 01, 10, 11, puis revenir à 00.",
+    "en": "Place a second T flip-flop, with T = 1. In its properties, set **Active edge** to **Falling ↓**, then connect its clock input to the **Q** output of the first flip-flop. Its Q output goes to LED **Q1**.\nAdvance: Q1 Q0 must show 00, 01, 10, 11, then go back to 00."
+   },
+   "hint": {
+    "fr": "Q1 doit basculer quand Q0 retombe de 1 à 0, comme une retenue : de 01 à 10, Q0 retombe et Q1 monte. Un passage de 1 à 0, c’est un front descendant.",
+    "en": "Q1 must toggle when Q0 drops from 1 to 0, like a carry: from 01 to 10, Q0 drops and Q1 rises. Going from 1 to 0 is a falling edge."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "Q0": 0,
+       "Q1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Troisième étage",
+    "en": "Third stage"
+   },
+   "text": {
+    "fr": "Ajoutez une troisième bascule T, réglée comme la deuxième et cadencée par la sortie Q de la deuxième. Sa sortie va à la LED **Q2**.\nVotre compteur compte maintenant en binaire de 0 à 7, puis recommence à 0.",
+    "en": "Add a third T flip-flop, set up like the second one and clocked by the second one’s Q output. Its output goes to LED **Q2**.\nYour counter now counts in binary from 0 to 7, then starts again at 0."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 1,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 1,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 1,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 1,
+       "Q2": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 0,
+       "Q1": 0,
+       "Q2": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q0": 1,
+       "Q1": 0,
+       "Q2": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Un diviseur de fréquence",
+    "en": "A frequency divider"
+   },
+   "text": {
+    "fr": "Lancez l’horloge avec **▶** et ouvrez l’onglet **Chronogramme**. Comparez H, Q0, Q1 et Q2 : chaque signal a une période deux fois plus longue que le précédent. Un compteur est aussi un **diviseur de fréquence**.\nCe compteur est dit **asynchrone** : chaque bascule attend que la précédente ait changé, au lieu de recevoir toutes la même horloge.",
+    "en": "Start the clock with **▶** and open the **Timing** tab. Compare H, Q0, Q1 and Q2: each signal has a period twice as long as the previous one. A counter is also a **frequency divider**.\nThis counter is called **asynchronous** (ripple): each flip-flop waits for the previous one to change, instead of all receiving the same clock."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Combien de hertz ?",
+    "en": "How many hertz?"
+   },
+   "text": {
+    "fr": "L’horloge H est réglée sur 8 Hz. Quelle est la fréquence du signal Q2 ?",
+    "en": "Clock H is set to 8 Hz. What is the frequency of signal Q2?"
+   },
+   "hint": {
+    "fr": "Chaque étage divise la fréquence par deux.",
+    "en": "Each stage divides the frequency by two."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "24 Hz",
+      "en": "24 Hz"
+     },
+     {
+      "fr": "4 Hz",
+      "en": "4 Hz"
+     },
+     {
+      "fr": "2 Hz",
+      "en": "2 Hz"
+     },
+     {
+      "fr": "1 Hz",
+      "en": "1 Hz"
+     }
+    ],
+    "answer": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Le compteur intégré, modulo 10",
+    "en": "The built-in counter, modulo 10"
+   },
+   "text": {
+    "fr": "Pour compter de 0 à 9, prenez un bloc **Compteur** (catégorie Séquentiel) et réglez sa propriété **Modulo** sur **10**. Reliez :\n- son entrée d’horloge à **H** et son entrée **R** à l’interrupteur **RAZ** ;\n- ses sorties Q0 à Q3 aux entrées D0 à D3 de l’afficheur **N** ;\n- sa sortie **TC** à la LED **TC**.\nAvancez : l’afficheur compte de 0 à 9 puis revient à 0. RAZ = 1 le remet à 0 tout de suite.",
+    "en": "To count from 0 to 9, take a **Counter** block (Sequential category) and set its **Modulo** property to **10**. Connect:\n- its clock input to **H** and its **R** input to switch **RAZ**;\n- its outputs Q0 to Q3 to inputs D0 to D3 of display **N**;\n- its **TC** output to LED **TC**.\nAdvance: the display counts from 0 to 9, then goes back to 0. RAZ = 1 resets it to 0 at once."
+   },
+   "hint": {
+    "fr": "Q0 (poids faible) va sur D0, Q3 (poids fort) sur D3. Si l’afficheur montre A, B, C… le modulo est resté à 0 : le compteur va alors jusqu’à 15.",
+    "en": "Q0 (least significant) goes to D0, Q3 (most significant) to D3. If the display shows A, B, C… the modulo was left at 0: the counter then goes up to 15."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "pulse": "H",
+      "expect": {
+       "N0": 1,
+       "N1": 0,
+       "N2": 0,
+       "N3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "times": 4,
+      "expect": {
+       "N0": 1,
+       "N1": 0,
+       "N2": 1,
+       "N3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "times": 4,
+      "expect": {
+       "N0": 1,
+       "N1": 0,
+       "N2": 0,
+       "N3": 1,
+       "TC": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "N0": 0,
+       "N1": 0,
+       "N2": 0,
+       "N3": 0,
+       "TC": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "times": 3,
+      "expect": {
+       "N0": 1,
+       "N1": 1,
+       "N2": 0,
+       "N3": 0
+      }
+     },
+     {
+      "set": {
+       "RAZ": 1
+      },
+      "expect": {
+       "N0": 0,
+       "N1": 0,
+       "N2": 0,
+       "N3": 0
+      }
+     },
+     {
+      "set": {
+       "RAZ": 0
+      },
+      "pulse": "H",
+      "expect": {
+       "N0": 1,
+       "N1": 0,
+       "N2": 0,
+       "N3": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La retenue TC",
+    "en": "The TC carry"
+   },
+   "text": {
+    "fr": "TC vaut 1 seulement quand le compteur est à 9, juste avant de revenir à 0. Avec une horloge H à 10 Hz, combien de fois TC s’allume-t-elle ? (C’est ainsi qu’une horloge numérique passe des secondes aux dizaines de secondes.)",
+    "en": "TC is 1 only when the counter is at 9, just before going back to 0. With clock H at 10 Hz, how often does TC light up? (This is how a digital clock goes from seconds to tens of seconds.)"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "10 fois par seconde",
+      "en": "10 times per second"
+     },
+     {
+      "fr": "1 fois par seconde",
+      "en": "Once per second"
+     },
+     {
+      "fr": "1 fois toutes les 10 secondes",
+      "en": "Once every 10 seconds"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

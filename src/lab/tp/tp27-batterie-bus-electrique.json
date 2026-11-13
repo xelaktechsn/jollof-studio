@@ -1,0 +1,758 @@
+{
+ "id": "tp27-batterie-bus-electrique",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 75,
+ "title": {
+  "fr": "Surveiller la batterie d’un bus électrique",
+  "en": "Monitoring an electric bus battery"
+ },
+ "summary": {
+  "fr": "Inspiré des bus 100 % électriques du BRT de Dakar : une pile 9 V joue la batterie du bus. Un pont diviseur ramène sa tension dans la plage de l’entrée analogique ; le programme calcule la tension, affiche l’état de charge avec trois LED et déclenche une alarme sonore quand la batterie est faible.",
+  "en": "Inspired by the 100% electric buses of Dakar’s BRT: a 9 V battery plays the bus battery. A voltage divider brings its voltage into the analog input’s range; the program works out the voltage, shows the state of charge with three LEDs and sounds an alarm when the battery is low."
+ },
+ "objectives": [
+  {
+   "fr": "Utiliser un pont diviseur pour mesurer une tension supérieure à 5 V",
+   "en": "Use a voltage divider to measure a voltage above 5 V"
+  },
+  {
+   "fr": "Convertir une valeur d’analogRead() en volts",
+   "en": "Convert an analogRead() value into volts"
+  },
+  {
+   "fr": "Commander un buzzer par un transistor et organiser des seuils d’alarme",
+   "en": "Drive a buzzer through a transistor and organise alarm thresholds"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Pont diviseur : U(A0) = U(batterie) × R2 ÷ (R1 + R2). Il ramène une tension trop haute dans la plage 0 à 5 V de l’entrée.",
+   "en": "Voltage divider: V(A0) = V(battery) × R2 ÷ (R1 + R2). It brings too high a voltage into the input’s 0 to 5 V range."
+  },
+  {
+   "fr": "Conversion : U = analogRead × 5,0 ÷ 1023, avec des nombres à virgule.",
+   "en": "Conversion: V = analogRead × 5.0 ÷ 1023, with floating-point numbers."
+  },
+  {
+   "fr": "Des seuils rangés du plus grave au moins grave : rouge, puis jaune, puis vert.",
+   "en": "Thresholds ordered from most to least serious: red, then yellow, then green."
+  },
+  {
+   "fr": "On teste une alarme sans attendre la panne, puis on remet le réglage normal.",
+   "en": "Test an alarm without waiting for the failure, then restore the normal setting."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Batterie du bus électrique",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "bat9v_1",
+    "type": "bat9v",
+    "name": "BAT1",
+    "x": -82,
+    "z": -4,
+    "r": 1.5708
+   },
+   {
+    "id": "res-10k_1",
+    "type": "res-10k",
+    "name": "R1",
+    "x": -74,
+    "z": 44,
+    "r": 0
+   },
+   {
+    "id": "res-10k_2",
+    "type": "res-10k",
+    "name": "R2",
+    "x": -74,
+    "z": 62,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R3",
+    "x": -38,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED1",
+    "x": -21,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R4",
+    "x": -4,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-yellow_1",
+    "type": "led-yellow",
+    "name": "LED2",
+    "x": 13,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_3",
+    "type": "res-220",
+    "name": "R5",
+    "x": 30,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED3",
+    "x": 47,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 62,
+    "z": -14,
+    "r": 0
+   },
+   {
+    "id": "npn_1",
+    "type": "npn",
+    "name": "Q1",
+    "x": 62,
+    "z": 10,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R6",
+    "x": 62,
+    "z": 30,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "bat9v_1",
+     "+"
+    ],
+    "b": [
+     "res-10k_1",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Batterie (+) vers le haut du pont"
+   },
+   {
+    "a": [
+     "res-10k_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "A5"
+    ],
+    "color": "#f08a3c",
+    "role": "Point milieu du pont"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "1"
+    ],
+    "b": [
+     "breadboard_1",
+     "B5"
+    ],
+    "color": "#f08a3c",
+    "role": "Point milieu du pont"
+   },
+   {
+    "a": [
+     "uno_1",
+     "A0"
+    ],
+    "b": [
+     "breadboard_1",
+     "C5"
+    ],
+    "color": "#3fb27f",
+    "role": "Point milieu vers l’entrée analogique"
+   },
+   {
+    "a": [
+     "res-10k_2",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-6"
+    ],
+    "color": "#3a3f45",
+    "role": "Bas du pont vers la masse"
+   },
+   {
+    "a": [
+     "bat9v_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Batterie (−) vers la masse commune"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse commune avec la carte"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D2"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-5"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D3"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-yellow_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-yellow_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D4"
+    ],
+    "b": [
+     "res-220_3",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_3",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-19"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "+"
+    ],
+    "b": [
+     "uno_1",
+     "5V"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du buzzer"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "npn_1",
+     "C"
+    ],
+    "color": "#9b7be0",
+    "role": "Vers le collecteur"
+   },
+   {
+    "a": [
+     "npn_1",
+     "E"
+    ],
+    "b": [
+     "uno_1",
+     "GND (3)"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "res-1k_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande de l’alarme"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "npn_1",
+     "B"
+    ],
+    "color": "#f08a3c",
+    "role": "Base"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : surveillance de la batterie d’un bus électrique (maquette : pile 9 V).\n// Pont diviseur R1 = R2 = 10 kΩ : A0 reçoit la moitié de la tension de la batterie.\nconst int MESURE = A0;          // point milieu du pont diviseur\nconst int LED_VERTE = 2;        // batterie bien chargée\nconst int LED_JAUNE = 3;        // charge moyenne\nconst int LED_ROUGE = 4;        // batterie faible\nconst int ALARME = 8;           // base du transistor Q1 (à travers R6), qui commande le buzzer\n\nconst float SEUIL_VERT = 8.0;   // au-dessus : bien chargée\nconst float SEUIL_ROUGE = 7.0;  // en dessous : faible, alarme\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(LED_VERTE, OUTPUT);\n  pinMode(LED_JAUNE, OUTPUT);\n  pinMode(LED_ROUGE, OUTPUT);\n  pinMode(ALARME, OUTPUT);\n}\n\nvoid loop() {\n  int brut = analogRead(MESURE);            // 0 à 1023\n  float vA0 = brut * 5.0 / 1023.0;          // tension sur A0, en volts\n  float vBatterie = vA0 * 2;                // le pont divise par 2\n\n  Serial.print(\"A0 : \");\n  Serial.print(vA0);\n  Serial.print(\" V   batterie : \");\n  Serial.print(vBatterie);\n  Serial.println(\" V\");\n\n  // On teste d’abord le cas le plus grave.\n  if (vBatterie < SEUIL_ROUGE) {\n    // Batterie faible : voyant rouge et bips d’alarme.\n    digitalWrite(LED_VERTE, LOW);\n    digitalWrite(LED_JAUNE, LOW);\n    digitalWrite(LED_ROUGE, HIGH);\n    digitalWrite(ALARME, HIGH);\n    delay(500);\n    digitalWrite(ALARME, LOW);\n    delay(500);\n  } else if (vBatterie < SEUIL_VERT) {\n    // Charge moyenne : voyant jaune.\n    digitalWrite(LED_VERTE, LOW);\n    digitalWrite(LED_JAUNE, HIGH);\n    digitalWrite(LED_ROUGE, LOW);\n    delay(1000);\n  } else {\n    // Bien chargée : voyant vert.\n    digitalWrite(LED_VERTE, HIGH);\n    digitalWrite(LED_JAUNE, LOW);\n    digitalWrite(LED_ROUGE, LOW);\n    delay(1000);\n  }\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La batterie du bus",
+    "en": "The bus battery"
+   },
+   "text": {
+    "fr": "Les bus du **BRT** de Dakar sont **100 % électriques** : ils roulent grâce à une grande batterie, et il faut savoir à tout moment s’il reste assez d’énergie. Vous allez construire la maquette d’un voyant de charge.\nUne **pile 9 V** (BAT1) joue le rôle de la batterie. Problème : l’entrée analogique **A0** de l’Uno ne mesure que de **0 à 5 V**. Le **pont diviseur** formé de R1 et R2 (deux résistances de **10 kΩ** : marron, noir, orange) partage la tension en deux : A0 ne reçoit que la **moitié** de la tension de la pile.\nMatériel : **UNO**, **BAT1**, **R1** et **R2**, les LED **LED1** verte, **LED2** jaune et **LED3** rouge avec **R3**, **R4**, **R5** (220 Ω), le buzzer **BZ1**, le transistor **Q1** et sa résistance de base **R6** (1 kΩ), la breadboard **BB1**.",
+    "en": "The buses of Dakar’s **BRT** are **100% electric**: they run on a large battery, and you need to know at all times whether enough energy is left. You will build a model of a charge indicator.\nA **9 V battery** (BAT1) plays the bus battery. Problem: the Uno’s analog input **A0** only measures **0 to 5 V**. The **voltage divider** made of R1 and R2 (two **10 kΩ** resistors: brown, black, orange) splits the voltage in two: A0 only gets **half** of the battery voltage.\nParts: **UNO**, **BAT1**, **R1** and **R2**, the LEDs **LED1** green, **LED2** yellow and **LED3** red with **R3**, **R4**, **R5** (220 Ω), the buzzer **BZ1**, the transistor **Q1** and its base resistor **R6** (1 kΩ), the **BB1** breadboard."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le pont diviseur",
+    "en": "The voltage divider"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage » :\n- le **+** de BAT1 → une patte de **R1** ;\n- l’autre patte de R1 → une patte de **R2** et l’entrée **A0** : c’est le **point milieu** du pont (une colonne de la breadboard les réunit facilement) ;\n- l’autre patte de R2 → le **-** de BAT1 ;\n- le **-** de BAT1 → une broche **GND** de l’UNO : sans **masse commune**, A0 n’aurait pas de référence pour mesurer.",
+    "en": "In the “Wiring” tab:\n- the **+** of BAT1 → one leg of **R1**;\n- the other leg of R1 → one leg of **R2** and the **A0** input: this is the divider’s **midpoint** (a breadboard column joins them easily);\n- the other leg of R2 → the **-** of BAT1;\n- the **-** of BAT1 → a **GND** pin of the UNO: without a **common ground**, A0 would have no reference to measure from."
+   },
+   "keep": {
+    "fr": "Sans **masse commune**, pas de mesure : le − de la pile rejoint un GND de la carte. Et jamais plus de 5 V sur une entrée de l’Uno.",
+    "en": "Without a **common ground**, no measurement: the battery − joins a board GND. And never more than 5 V on an Uno input."
+   },
+   "hint": {
+    "fr": "Ne reliez jamais le + de la pile directement à A0 : 9 V sur une entrée prévue pour 5 V au plus l’abîmerait. Les cinq trous d’une même colonne (a à e) de la breadboard sont reliés entre eux.",
+    "en": "Never connect the battery + directly to A0: 9 V on an input rated for 5 V at most would damage it. The five holes of one breadboard column (a to e) are connected together."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BAT1.+",
+      "R1.1|R1.2"
+     ],
+     [
+      "R1.1|R1.2",
+      "R2.1|R2.2",
+      "UNO.A0"
+     ],
+     [
+      "R2.1|R2.2",
+      "BAT1.-"
+     ],
+     [
+      "BAT1.-",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : le point milieu",
+    "en": "Measurement: the midpoint"
+   },
+   "text": {
+    "fr": "Lancez la simulation, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **UNO · A0** (le point milieu), pointe noire sur **UNO · GND**. Notez la tension.",
+    "en": "Start the simulation, open “Instruments” → **Multimeter**, **V** mode: red probe on **UNO · A0** (the midpoint), black probe on **UNO · GND**. Enter the voltage."
+   },
+   "keep": {
+    "fr": "**Pont diviseur** : U(milieu) = U × R2 ÷ (R1 + R2).",
+    "en": "**Voltage divider**: V(mid) = V × R2 ÷ (R1 + R2)."
+   },
+   "hint": {
+    "fr": "Formule du pont diviseur : U(A0) = U(pile) × R2 ÷ (R1 + R2) = 9 V × 10 kΩ ÷ 20 kΩ = 4,5 V. C’est moins que 5 V : A0 ne risque rien.",
+    "en": "Divider formula: U(A0) = U(battery) × R2 ÷ (R1 + R2) = 9 V × 10 kΩ ÷ 20 kΩ = 4.5 V. That is under 5 V: A0 is safe."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "UNO.A0",
+     "UNO.GND"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "De la valeur lue à la tension",
+    "en": "From the reading to the voltage"
+   },
+   "text": {
+    "fr": "L’ADC de l’Uno convertit 0 à 5 V en un nombre de 0 à 1023. Avec 4,5 V sur A0, que rend `analogRead(A0)`, et quelle tension de batterie le programme doit-il en déduire ?",
+    "en": "The Uno’s ADC converts 0 to 5 V into a number from 0 to 1023. With 4.5 V on A0, what does `analogRead(A0)` return, and what battery voltage should the program work out?"
+   },
+   "keep": {
+    "fr": "L’ADC de l’Uno traduit 0 à 5 V en 0 à 1023 : **U = valeur × 5 ÷ 1023**. On remonte ensuite à la tension réelle en multipliant par le rapport du pont.",
+    "en": "The Uno’s ADC maps 0 to 5 V onto 0 to 1023: **V = value × 5 ÷ 1023**. The real voltage is then recovered by multiplying by the divider ratio."
+   },
+   "hint": {
+    "fr": "valeur = 4,5 ÷ 5 × 1023 ≈ 921. Dans l’autre sens : U(A0) = valeur × 5,0 ÷ 1023, puis U(batterie) = U(A0) × 2, puisque le pont divise par 2.",
+    "en": "value = 4.5 ÷ 5 × 1023 ≈ 921. The other way round: U(A0) = value × 5.0 ÷ 1023, then U(battery) = U(A0) × 2, since the divider halves it."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 450, donc une batterie de 4,5 V",
+      "en": "About 450, so a 4.5 V battery"
+     },
+     {
+      "fr": "Environ 921 : 921 × 5 ÷ 1023 ≈ 4,5 V sur A0, et 4,5 × 2 = 9 V pour la batterie",
+      "en": "About 921: 921 × 5 ÷ 1023 ≈ 4.5 V on A0, and 4.5 × 2 = 9 V for the battery"
+     },
+     {
+      "fr": "1023, car la pile dépasse 5 V",
+      "en": "1023, because the battery is above 5 V"
+     },
+     {
+      "fr": "Environ 921 : 921 ÷ 100 ≈ 9,2 V pour la batterie",
+      "en": "About 921: 921 ÷ 100 ≈ 9.2 V for the battery"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire la tension de la batterie",
+    "en": "Reading the battery voltage"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez un programme qui affiche la tension au moniteur série :\n- dans setup() : `Serial.begin(9600);` ;\n- dans loop() : `int brut = analogRead(A0);`, puis `float vA0 = brut * 5.0 / 1023.0;` et `float vBatterie = vA0 * 2;` ;\n- affichez `vBatterie` avec `Serial.print()` et `Serial.println()`, puis `delay(1000);`.\nCliquez sur « Téléverser » et ouvrez le moniteur série : environ **9 V** s’affichent.",
+    "en": "In the “Code” tab, write a program that prints the voltage to the serial monitor:\n- in setup(): `Serial.begin(9600);`;\n- in loop(): `int brut = analogRead(A0);`, then `float vA0 = brut * 5.0 / 1023.0;` and `float vBatterie = vA0 * 2;`;\n- print `vBatterie` with `Serial.print()` and `Serial.println()`, then `delay(1000);`.\nClick “Upload” and open the serial monitor: about **9 V** shows up."
+   },
+   "hint": {
+    "fr": "Écrivez 5.0 et 1023.0, avec un point : entre deux entiers, brut * 5 / 1023 donnerait un résultat sans virgule (4 au lieu de 4,5).",
+    "en": "Write 5.0 and 1023.0, with a decimal point: between two integers, brut * 5 / 1023 would give a whole-number result (4 instead of 4.5)."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "Serial\\.begin\\s*\\(",
+     "analogRead\\s*\\(",
+     "\\bfloat\\b",
+     "\\b102[34](\\.0*)?\\b",
+     "\\*\\s*2(\\.0*)?\\b|\\b2(\\.0*)?\\s*\\*",
+     "Serial\\.print(ln)?\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Les voyants",
+    "en": "The indicator lights"
+   },
+   "text": {
+    "fr": "Câblez les trois voyants, chacun avec sa résistance de 220 Ω. Les cathodes vont sur le rail **-** de la breadboard, relié à un **GND** de l’UNO :\n- **D2** → R3 → **LED1** (verte) : batterie bien chargée ;\n- **D3** → R4 → **LED2** (jaune) : charge moyenne ;\n- **D4** → R5 → **LED3** (rouge) : batterie faible.",
+    "en": "Wire the three indicator lights, each with its 220 Ω resistor. The cathodes go on the breadboard **-** rail, joined to a **GND** pin of the UNO:\n- **D2** → R3 → **LED1** (green): battery well charged;\n- **D3** → R4 → **LED2** (yellow): medium charge;\n- **D4** → R5 → **LED3** (red): low battery."
+   },
+   "hint": {
+    "fr": "Anode A côté résistance, cathode K côté masse. Les rails - du haut et du bas ne sont pas reliés : si la carte va sur l’un et les cathodes sur l’autre, posez un fil entre les deux.",
+    "en": "Anode A on the resistor side, cathode K on the ground side. The top and bottom - rails are not connected: if the board goes to one and the cathodes to the other, add a wire between them."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D2",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED1.A",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D3",
+      "R4.1|R4.2"
+     ],
+     [
+      "LED2.A",
+      "R4.1|R4.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D4",
+      "R5.1|R5.2"
+     ],
+     [
+      "LED3.A",
+      "R5.1|R5.2"
+     ],
+     [
+      "LED3.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "L’alarme",
+    "en": "The alarm"
+   },
+   "text": {
+    "fr": "Le buzzer consomme environ 25 mA, plus que les 20 mA conseillés pour une broche : c’est le transistor **Q1** qui le commande.\n- **+** de BZ1 → **5V** de l’UNO ;\n- **-** de BZ1 → **collecteur C** de Q1 ;\n- **émetteur E** de Q1 → une masse ;\n- **D8** → R6 (1 kΩ) → **base B** de Q1.",
+    "en": "The buzzer draws about 25 mA, more than the 20 mA advised for one pin: transistor **Q1** drives it.\n- **+** of BZ1 → the UNO’s **5V**;\n- **-** of BZ1 → **collector C** of Q1;\n- **emitter E** of Q1 → a ground;\n- **D8** → R6 (1 kΩ) → **base B** of Q1."
+   },
+   "keep": {
+    "fr": "Le buzzer demande plus que les 20 mA d’une broche : la broche commande un **transistor**, et le courant du buzzer vient du 5 V.",
+    "en": "The buzzer needs more than a pin’s 20 mA: the pin drives a **transistor**, and the buzzer current comes from the 5 V rail."
+   },
+   "hint": {
+    "fr": "D8 ne fournit que le petit courant de base, environ 4 mA : le courant du buzzer vient du 5V et traverse le transistor, qui se comporte comme un interrupteur fermé quand D8 est à HIGH.",
+    "en": "D8 only supplies the small base current, about 4 mA: the buzzer current comes from 5V and flows through the transistor, which acts like a closed switch when D8 is HIGH."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BZ1.+",
+      "UNO.5V"
+     ],
+     [
+      "BZ1.-",
+      "Q1.C"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D8",
+      "R6.1|R6.2"
+     ],
+     [
+      "Q1.B",
+      "R6.1|R6.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Voyants et alarme",
+    "en": "Lights and alarm"
+   },
+   "text": {
+    "fr": "Complétez le programme. Ajoutez deux constantes, `const float SEUIL_VERT = 8.0;` et `const float SEUIL_ROUGE = 7.0;`, mettez **D2, D3, D4 et D8 en sortie**, puis dans loop(), après le calcul de `vBatterie` :\n- si `vBatterie < SEUIL_ROUGE` : LED3 seule allumée et un bip d’alarme (D8 à HIGH pendant 500 ms, puis à LOW pendant 500 ms) ;\n- sinon, si `vBatterie < SEUIL_VERT` : LED2 seule, puis `delay(1000);` ;\n- sinon : LED1 seule, puis `delay(1000);`.\nOn teste d’abord le cas le plus grave. Cliquez sur « Téléverser ».",
+    "en": "Complete the program. Add two constants, `const float SEUIL_VERT = 8.0;` and `const float SEUIL_ROUGE = 7.0;`, set **D2, D3, D4 and D8 as outputs**, then in loop(), after computing `vBatterie`:\n- if `vBatterie < SEUIL_ROUGE`: only LED3 on and an alarm beep (D8 HIGH for 500 ms, then LOW for 500 ms);\n- else, if `vBatterie < SEUIL_VERT`: only LED2, then `delay(1000);`;\n- else: only LED1, then `delay(1000);`.\nThe most serious case is tested first. Click “Upload”."
+   },
+   "hint": {
+    "fr": "Dans chaque cas, éteignez explicitement les deux autres LED : sinon, une LED allumée au tour précédent resterait allumée.",
+    "en": "In each case, explicitly turn off the other two LEDs: otherwise an LED lit in the previous turn would stay on."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\(",
+     "\\bif\\s*\\(",
+     "\\belse\\b",
+     "\\b7(\\.0*)?\\b",
+     "\\b8\\.0*\\b",
+     "\\b500\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : batterie chargée",
+    "en": "Test: charged battery"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». La pile neuve donne environ 9 V : seule **LED1** (verte) doit être allumée, et le buzzer reste silencieux.",
+    "en": "Click “Observe”. The new battery gives about 9 V: only **LED1** (green) must be on, and the buzzer stays silent."
+   },
+   "hint": {
+    "fr": "Une autre LED s’allume ? Lisez la tension au moniteur série et comparez-la à vos seuils. Vérifiez aussi l’ordre des tests : le plus grave d’abord.",
+    "en": "Another LED lights up? Read the voltage in the serial monitor and compare it with your thresholds. Also check the order of the tests: the most serious first."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on",
+     "LED2": "off",
+     "LED3": "off",
+     "BZ1": "off"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai de l’alarme",
+    "en": "Testing the alarm"
+   },
+   "text": {
+    "fr": "Une alarme se teste sans attendre que la batterie se vide. Mettez provisoirement `SEUIL_ROUGE` à **9.5** et téléversez : les 9 V de la pile passent sous le seuil. Cliquez sur « Observer » : **LED3** (rouge) s’allume et le buzzer bipe chaque seconde. Remettez ensuite `SEUIL_ROUGE` à **7.0**.",
+    "en": "An alarm is tested without waiting for the battery to run down. Temporarily set `SEUIL_ROUGE` to **9.5** and upload: the battery’s 9 V falls below the threshold. Click “Observe”: **LED3** (red) lights up and the buzzer beeps every second. Then set `SEUIL_ROUGE` back to **7.0**."
+   },
+   "keep": {
+    "fr": "Une alarme se **teste** : on provoque la condition (ici en déplaçant le seuil) au lieu d’attendre la vraie panne.",
+    "en": "An alarm must be **tested**: trigger the condition (here by moving the threshold) instead of waiting for the real failure."
+   },
+   "hint": {
+    "fr": "Le buzzer reste muet ? Vérifiez le transistor : collecteur C côté buzzer, émetteur E à la masse, base B reliée à D8 par R6. Sur un vrai véhicule électrique, le seuil d’alerte laisse une marge pour rejoindre un point de recharge.",
+    "en": "The buzzer stays silent? Check the transistor: collector C on the buzzer side, emitter E to ground, base B joined to D8 through R6. On a real electric vehicle, the warning threshold leaves a margin to reach a charging point."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED3": "on",
+     "LED1": "off",
+     "BZ1": "on"
+    },
+    "hold": 250
+   }
+  }
+ ]
+}

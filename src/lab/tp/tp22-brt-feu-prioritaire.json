@@ -1,0 +1,515 @@
+{
+ "id": "tp22-brt-feu-prioritaire",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 55,
+ "title": {
+  "fr": "BRT : priorité au bus au carrefour",
+  "en": "BRT: bus priority at the crossroads"
+ },
+ "summary": {
+  "fr": "Inspiré du BRT de Dakar : un feu tricolore règle les voitures d’une rue qui croise la voie réservée du bus. Un capteur infrarouge détecte le bus ; le programme, écrit avec millis(), lui ouvre vite le passage, après un jaune de sécurité pour les voitures.",
+  "en": "Inspired by Dakar’s BRT: a traffic light controls the cars of a street that crosses the bus lane. An infrared sensor detects the bus; the program, written with millis(), quickly lets it through, after a safety yellow for the cars."
+ },
+ "objectives": [
+  {
+   "fr": "Lire un capteur infrarouge actif à l’état bas",
+   "en": "Read an active-low infrared sensor"
+  },
+  {
+   "fr": "Organiser un programme en phases et mesurer le temps avec millis(), sans delay()",
+   "en": "Organise a program into phases and measure time with millis(), without delay()"
+  },
+  {
+   "fr": "Donner la priorité au bus sans sacrifier la sécurité (jaune, vert minimum)",
+   "en": "Give the bus priority without sacrificing safety (yellow, minimum green)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un capteur actif à l’état bas donne LOW quand il détecte : on teste `digitalRead(…) == LOW`.",
+   "en": "An active-low sensor gives LOW when it detects: test `digitalRead(…) == LOW`."
+  },
+  {
+   "fr": "Un automatisme qui doit rester attentif n’utilise pas `delay()` : il mesure le temps avec `millis()` et passe d’une phase à l’autre.",
+   "en": "A controller that must stay attentive does not use `delay()`: it measures time with `millis()` and moves from phase to phase."
+  },
+  {
+   "fr": "Donner la priorité, c’est raccourcir une attente, jamais sauter le vert minimum ni le jaune.",
+   "en": "Giving priority means shortening a wait, never skipping the minimum green or the yellow."
+  },
+  {
+   "fr": "Courant d’une LED : I = (U − U seuil) ÷ R, à garder sous 20 mA.",
+   "en": "LED current: I = (V − V threshold) ÷ R, to be kept under 20 mA."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – BRT, feu prioritaire",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "irobst_1",
+    "type": "irobst",
+    "name": "OBS1",
+    "x": -48,
+    "z": -62,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -14,
+    "z": -56,
+    "r": 0
+   },
+   {
+    "id": "led-white_1",
+    "type": "led-white",
+    "name": "LED1",
+    "x": 6,
+    "z": -56,
+    "r": 0
+   },
+   {
+    "id": "traffic_1",
+    "type": "traffic",
+    "name": "FEU1",
+    "x": 40,
+    "z": -66,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "dist": 100
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "traffic_1",
+     "G"
+    ],
+    "b": [
+     "uno_1",
+     "D2"
+    ],
+    "color": "#3fb27f",
+    "role": "Feu vert des voitures"
+   },
+   {
+    "a": [
+     "traffic_1",
+     "Y"
+    ],
+    "b": [
+     "uno_1",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Feu jaune des voitures"
+   },
+   {
+    "a": [
+     "traffic_1",
+     "R"
+    ],
+    "b": [
+     "uno_1",
+     "D4"
+    ],
+    "color": "#e5484d",
+    "role": "Feu rouge des voitures"
+   },
+   {
+    "a": [
+     "traffic_1",
+     "GND"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du feu"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du signal du bus"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-white_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-white_1",
+     "K"
+    ],
+    "b": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "VCC"
+    ],
+    "b": [
+     "uno_1",
+     "5V"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du capteur"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "GND"
+    ],
+    "b": [
+     "uno_1",
+     "GND (3)"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "OUT"
+    ],
+    "b": [
+     "uno_1",
+     "D8"
+    ],
+    "color": "#3b82f6",
+    "role": "Sortie du capteur (LOW : bus détecté)"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : priorité au bus du BRT à un carrefour.\n// FEU1 règle les voitures de la rue qui croise la voie réservée du bus.\nconst int VERT = 2;        // FEU1 · G\nconst int JAUNE = 3;       // FEU1 · Y\nconst int ROUGE = 4;       // FEU1 · R\nconst int SIGNAL_BUS = 7;  // LED1 : allumée, le bus peut traverser\nconst int CAPTEUR = 8;     // OBS1 · OUT : LOW quand le bus est détecté\n\n// Les phases du carrefour\nconst int PHASE_VERT = 0;   // voitures au vert\nconst int PHASE_JAUNE = 1;  // voitures au jaune\nconst int PHASE_ROUGE = 2;  // voitures au rouge\nconst int PHASE_BUS = 3;    // voitures au rouge, le bus traverse\n\nint phase = PHASE_VERT;\nunsigned long debut = 0;    // heure du début de la phase en cours (ms)\n\nvoid changerPhase(int nouvelle) {\n  phase = nouvelle;\n  debut = millis();\n}\n\nvoid feu(int v, int j, int r) {\n  digitalWrite(VERT, v);\n  digitalWrite(JAUNE, j);\n  digitalWrite(ROUGE, r);\n}\n\nvoid setup() {\n  pinMode(VERT, OUTPUT);\n  pinMode(JAUNE, OUTPUT);\n  pinMode(ROUGE, OUTPUT);\n  pinMode(SIGNAL_BUS, OUTPUT);\n  pinMode(CAPTEUR, INPUT);\n  changerPhase(PHASE_VERT);\n}\n\nvoid loop() {\n  bool bus = digitalRead(CAPTEUR) == LOW;  // capteur actif à l’état bas\n  unsigned long duree = millis() - debut;  // temps passé dans la phase\n\n  if (phase == PHASE_VERT) {\n    feu(HIGH, LOW, LOW);\n    digitalWrite(SIGNAL_BUS, LOW);\n    // 8 s de vert ; un bus l’écourte, mais les voitures gardent au moins 3 s.\n    if (duree >= 8000 || (bus && duree >= 3000)) changerPhase(PHASE_JAUNE);\n  } else if (phase == PHASE_JAUNE) {\n    feu(LOW, HIGH, LOW);\n    // Jaune de sécurité : toujours 1 s entière, même pour un bus.\n    if (duree >= 1000) changerPhase(PHASE_ROUGE);\n  } else if (phase == PHASE_ROUGE) {\n    feu(LOW, LOW, HIGH);\n    if (bus) changerPhase(PHASE_BUS);                  // un bus attend : il passe tout de suite\n    else if (duree >= 5000) changerPhase(PHASE_VERT);\n  } else {\n    // PHASE_BUS : les voitures restent arrêtées, le bus traverse.\n    feu(LOW, LOW, HIGH);\n    if (bus) {\n      digitalWrite(SIGNAL_BUS, HIGH);\n      debut = millis();               // bus encore devant le capteur : on repart de zéro\n    } else {\n      digitalWrite(SIGNAL_BUS, LOW);  // le bus a passé le capteur\n      if (duree >= 2000) changerPhase(PHASE_VERT);  // 2 s pour dégager le carrefour\n    }\n  }\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le carrefour du BRT",
+    "en": "The BRT crossroads"
+   },
+   "text": {
+    "fr": "À Dakar, les bus 100 % électriques du **BRT** (Bus Rapid Transit) roulent sur une **voie réservée** entre Guédiawaye et Petersen. Pour qu’ils ne perdent pas de temps aux carrefours, on peut leur donner la **priorité au feu**. C’est ce que vous allez programmer, sur la maquette d’un carrefour imaginaire inspiré du BRT.\nSur le plan de travail :\n- le module **FEU1** : le feu tricolore des voitures de la rue qui croise la voie du bus ;\n- le capteur infrarouge **OBS1**, posé sur la voie du bus juste avant le carrefour : sa sortie **OUT** passe à **LOW** quand un obstacle, ici le bus, est à moins de 20 cm ;\n- la LED blanche **LED1** et sa résistance **R1** (220 Ω) : le **signal du bus**, allumé quand le bus peut traverser ;\n- la carte **UNO**.",
+    "en": "In Dakar, the 100% electric buses of the **BRT** (Bus Rapid Transit) run on a **dedicated lane** between Guédiawaye and Petersen. So that they do not lose time at crossroads, they can be given **priority at the traffic light**. That is what you will program, on the scale model of an imaginary crossroads inspired by the BRT.\nOn the workspace:\n- the **FEU1** module: the traffic light for the cars of the street that crosses the bus lane;\n- the **OBS1** infrared sensor, placed on the bus lane just before the crossroads: its **OUT** output goes **LOW** when an obstacle, here the bus, is closer than 20 cm;\n- the white LED **LED1** and its resistor **R1** (220 Ω): the **bus signal**, on when the bus may cross;\n- the **UNO** board."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le feu et le signal du bus",
+    "en": "The traffic light and the bus signal"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez le feu FEU1 (ses résistances sont déjà sur le module) :\n- **G** (vert) à **D2**, **Y** (jaune) à **D3**, **R** (rouge) à **D4** ;\n- **GND** à une broche **GND** de la carte.\nPuis le signal du bus : **D7** → **R1** → **anode A** de LED1, et la **cathode K** de LED1 à une autre broche **GND**.",
+    "en": "In the “Wiring” tab, connect the FEU1 light (its resistors are already on the module):\n- **G** (green) to **D2**, **Y** (yellow) to **D3**, **R** (red) to **D4**;\n- **GND** to a **GND** pin of the board.\nThen the bus signal: **D7** → **R1** → **anode A** of LED1, and the **cathode K** of LED1 to another **GND** pin."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil, et l’Uno a trois broches GND : une pour FEU1, une pour LED1, la dernière servira au capteur.",
+    "en": "A pin takes only one wire, and the Uno has three GND pins: one for FEU1, one for LED1, the last one will be used by the sensor."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "FEU1.G",
+      "UNO.D2"
+     ],
+     [
+      "FEU1.Y",
+      "UNO.D3"
+     ],
+     [
+      "FEU1.R",
+      "UNO.D4"
+     ],
+     [
+      "FEU1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D7",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le capteur du bus",
+    "en": "The bus sensor"
+   },
+   "text": {
+    "fr": "Reliez le capteur OBS1 : **VCC** au **5V** de la carte, **GND** à la dernière broche **GND** libre, et **OUT** à **D8**.",
+    "en": "Connect the OBS1 sensor: **VCC** to the board’s **5V**, **GND** to the last free **GND** pin, and **OUT** to **D8**."
+   },
+   "hint": {
+    "fr": "Alimenté en 5 V, le capteur donne sur OUT un niveau que l’Uno lit sans risque : 5 V sans obstacle, 0 V avec un obstacle.",
+    "en": "Powered from 5 V, the sensor gives on OUT a level the Uno reads safely: 5 V with no obstacle, 0 V with an obstacle."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "OBS1.VCC",
+      "UNO.5V"
+     ],
+     [
+      "OBS1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "OBS1.OUT",
+      "UNO.D8"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Actif à l’état bas",
+    "en": "Active low"
+   },
+   "text": {
+    "fr": "Le capteur OBS1 est **actif à l’état bas**. Le bus arrive devant lui : que renvoie `digitalRead(8)` ?",
+    "en": "The OBS1 sensor is **active low**. The bus arrives in front of it: what does `digitalRead(8)` return?"
+   },
+   "hint": {
+    "fr": "Le module compare la lumière infrarouge renvoyée à un seuil, réglé par son potentiomètre : il ne mesure pas la distance, il répond seulement « obstacle » (LOW) ou « rien » (HIGH). Dans le programme, « bus détecté » s’écrit donc `digitalRead(8) == LOW`.",
+    "en": "The module compares the reflected infrared light with a threshold, set by its potentiometer: it does not measure the distance, it only answers “obstacle” (LOW) or “nothing” (HIGH). In the program, “bus detected” is therefore written `digitalRead(8) == LOW`."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "HIGH : un capteur qui détecte quelque chose envoie toujours 5 V",
+      "en": "HIGH: a sensor that detects something always sends 5 V"
+     },
+     {
+      "fr": "LOW : sa sortie passe à 0 V quand il voit un obstacle",
+      "en": "LOW: its output goes to 0 V when it sees an obstacle"
+     },
+     {
+      "fr": "La distance du bus, en centimètres",
+      "en": "The distance of the bus, in centimetres"
+     },
+     {
+      "fr": "Une valeur entre 0 et 1023",
+      "en": "A value between 0 and 1023"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme d’essai",
+    "en": "Test program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez un premier programme pour tester le montage :\n- dans setup() : **D2, D3, D4 et D7 en sortie**, **D8 en entrée** (`pinMode(8, INPUT)`) ;\n- dans loop() : allumez le feu **vert** des voitures (D2 à HIGH) ; si `digitalRead(8) == LOW`, allumez LED1 (D7 à HIGH), sinon éteignez-la.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, write a first program to test the circuit:\n- in setup(): **D2, D3, D4 and D7 as outputs**, **D8 as an input** (`pinMode(8, INPUT)`);\n- in loop(): turn on the cars’ **green** light (D2 HIGH); if `digitalRead(8) == LOW`, turn LED1 on (D7 HIGH), otherwise turn it off.\nClick “Upload”."
+   },
+   "keep": {
+    "fr": "**Actif à l’état bas** : le capteur met sa sortie à 0 V (LOW) quand il détecte. On teste donc `== LOW` pour « présent ».",
+    "en": "**Active low**: the sensor pulls its output to 0 V (LOW) when it detects. So `== LOW` is the test for “present”."
+   },
+   "hint": {
+    "fr": "Le module a déjà sa résistance de tirage : `INPUT` suffit. Squelette : `if (digitalRead(8) == LOW) { digitalWrite(7, HIGH); } else { digitalWrite(7, LOW); }`.",
+    "en": "The module already has its pull-up resistor: `INPUT` is enough. Skeleton: `if (digitalRead(8) == LOW) { digitalWrite(7, HIGH); } else { digitalWrite(7, LOW); }`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "pinMode\\s*\\([^)]*INPUT",
+     "digitalRead\\s*\\(",
+     "==\\s*LOW|LOW\\s*==",
+     "digitalWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : le bus arrive",
+    "en": "Test: the bus arrives"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Dans l’onglet « Simulation », section **Environnement**, réglez la **Distance de l’obstacle** à **10 cm** : le bus est devant le capteur, LED1 doit s’allumer.",
+    "en": "Click “Observe”. In the “Simulation” tab, **Environment** section, set the **Obstacle distance** to **10 cm**: the bus is in front of the sensor, LED1 must light up."
+   },
+   "hint": {
+    "fr": "LED1 reste éteinte ? Regardez d’abord la ligne OBS1 de la section Mesures : si elle indique « Obstacle détecté », le capteur fonctionne ; vérifiez alors la condition `== LOW`, le sens de la LED et sa masse.",
+    "en": "LED1 stays off? First look at the OBS1 line in the Readings section: if it says “Obstacle detected”, the sensor works; then check the `== LOW` condition, the LED’s direction and its ground."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : le courant du signal",
+    "en": "Measurement: the signal current"
+   },
+   "text": {
+    "fr": "Bus détecté, LED1 allumée : ouvrez « Instruments » → **Multimètre**, mode **mA**, et choisissez **LED1** comme composant traversé. Notez le courant.",
+    "en": "Bus detected, LED1 on: open “Instruments” → **Multimeter**, **mA** mode, and pick **LED1** as the component. Enter the current."
+   },
+   "hint": {
+    "fr": "Une LED blanche a une tension de seuil d’environ 3 V, contre 2 V pour une rouge : I ≈ (5 V − 3 V) ÷ 220 Ω ≈ 9 mA ; un peu moins en réalité, car la broche de la carte et la LED ont aussi une petite résistance. Avec la même résistance, une LED blanche consomme donc moins qu’une rouge.",
+    "en": "A white LED has a threshold voltage of about 3 V, against 2 V for a red one: I ≈ (5 V − 3 V) ÷ 220 Ω ≈ 9 mA; a little less in practice, because the board pin and the LED also have a small resistance. With the same resistor, a white LED therefore draws less than a red one."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "LED1",
+    "tolerance": 0.15,
+    "state": {
+     "UNO.D7": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme du carrefour",
+    "en": "The crossroads program"
+   },
+   "text": {
+    "fr": "Remplacez le programme d’essai. Avec `delay()`, la carte serait « sourde » pendant chaque attente : un bus arrivé au début d’un `delay(8000)` attendrait jusqu’au bout. On mesure donc le temps avec **`millis()`** (les millisecondes écoulées depuis le démarrage), et le programme passe d’une **phase** à l’autre (durées raccourcies pour la maquette) :\n- **vert** des voitures : 8 s ; un bus détecté l’écourte, mais pas avant **3 s** de vert ;\n- **jaune** : toujours **1 s** ;\n- **rouge** : 5 s ; si un bus est détecté, on passe à la phase **bus** ;\n- phase **bus** : voitures au rouge, LED1 allumée tant que le capteur voit le bus ; quand il est passé, LED1 s’éteint et le rouge dure encore **2 s**, puis retour au vert.\nNotez l’heure du début de chaque phase (`unsigned long debut = millis();`) et comparez `millis() - debut` aux durées. Aucun `delay()` dans loop(). Téléversez.",
+    "en": "Replace the test program. With `delay()`, the board would be “deaf” during each wait: a bus arriving at the start of a `delay(8000)` would wait until the end. So time is measured with **`millis()`** (the milliseconds elapsed since start-up), and the program goes from one **phase** to the next (durations shortened for the model):\n- cars’ **green**: 8 s; a detected bus cuts it short, but not before **3 s** of green;\n- **yellow**: always **1 s**;\n- **red**: 5 s; if a bus is detected, go to the **bus** phase;\n- **bus** phase: cars on red, LED1 on as long as the sensor sees the bus; once it has passed, LED1 goes off and the red lasts **2 s** more, then back to green.\nStore the start time of each phase (`unsigned long debut = millis();`) and compare `millis() - debut` with the durations. No `delay()` in loop(). Upload."
+   },
+   "keep": {
+    "fr": "`delay()` rend le programme sourd. Avec **`millis()`**, on note l’instant du début d’une phase et on compare à chaque tour : le programme continue de lire ses capteurs.",
+    "en": "`delay()` makes the program deaf. With **`millis()`** you note when a phase began and compare on every loop: the program keeps reading its sensors."
+   },
+   "hint": {
+    "fr": "Une variable `int phase` (0 vert, 1 jaune, 2 rouge, 3 bus) et une suite de `if (phase == …)` dans loop(). Une petite fonction `changerPhase(n)` qui fait `phase = n; debut = millis();` évite les oublis. Dans la phase bus, remettre `debut = millis()` tant que le bus est vu fait partir les 2 s du moment où il s’en va.",
+    "en": "An `int phase` variable (0 green, 1 yellow, 2 red, 3 bus) and a series of `if (phase == …)` in loop(). A small `changerPhase(n)` function that does `phase = n; debut = millis();` avoids mistakes. In the bus phase, resetting `debut = millis()` while the bus is seen makes the 2 s start from the moment it leaves."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "millis\\s*\\(\\s*\\)",
+     "unsigned\\s+long",
+     "digitalRead\\s*\\(",
+     "\\b1000(?!\\d)",
+     "\\b3000(?!\\d)"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : priorité au bus",
+    "en": "Test: bus priority"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et laissez tourner le feu, bus éloigné (100 cm). Pendant le **vert** des voitures, approchez le bus à **10 cm** : le feu passe au jaune, puis au rouge, et LED1 s’allume. Gardez le bus devant le capteur 2 secondes, puis éloignez-le : LED1 s’éteint et, 2 s plus tard, les voitures repartent.",
+    "en": "Click “Observe” and let the light run, with the bus far away (100 cm). During the cars’ **green**, bring the bus to **10 cm**: the light goes yellow, then red, and LED1 lights up. Keep the bus in front of the sensor for 2 seconds, then move it away: LED1 goes off and, 2 s later, the cars start again."
+   },
+   "keep": {
+    "fr": "La priorité ne supprime jamais les temps de sécurité : un **vert minimum** et un **jaune** complets, même quand le bus attend.",
+    "en": "Priority never removes the safety times: a full **minimum green** and a full **yellow**, even when the bus is waiting."
+   },
+   "hint": {
+    "fr": "LED1 s’allume en retard, ou seulement de temps en temps ? Vérifiez que loop() ne contient plus de delay() : à chaque tour, le programme doit relire le capteur.",
+    "en": "LED1 lights up late, or only from time to time? Check that loop() no longer contains any delay(): on every pass, the program must read the sensor again."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 1500
+   }
+  },
+  {
+   "title": {
+    "fr": "Combien de temps attend le bus ?",
+    "en": "How long does the bus wait?"
+   },
+   "text": {
+    "fr": "Un bus arrive devant le capteur **1 s** après le passage au vert des voitures. Au bout de combien de temps, au plus tôt, LED1 s’allume-t-elle ?",
+    "en": "A bus arrives in front of the sensor **1 s** after the cars’ light turned green. After how long, at the earliest, does LED1 light up?"
+   },
+   "hint": {
+    "fr": "Le vert minimum (3 s) évite un vert « éclair » qui surprendrait les automobilistes, et le jaune (1 s) leur laisse le temps de s’arrêter : 2 s + 1 s = 3 s. La priorité au bus ne doit jamais rendre le carrefour dangereux.",
+    "en": "The minimum green (3 s) avoids a “flash” green that would surprise drivers, and the yellow (1 s) gives them time to stop: 2 s + 1 s = 3 s. Bus priority must never make the crossroads dangerous."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Tout de suite : le bus est prioritaire",
+      "en": "Straight away: the bus has priority"
+     },
+     {
+      "fr": "Au bout de 1 s : le temps du jaune",
+      "en": "After 1 s: the time of the yellow"
+     },
+     {
+      "fr": "Au bout de 3 s : 2 s pour finir le vert minimum, puis 1 s de jaune",
+      "en": "After 3 s: 2 s to finish the minimum green, then 1 s of yellow"
+     },
+     {
+      "fr": "Au bout de 13 s : il attend la fin du cycle normal",
+      "en": "After 13 s: it waits for the end of the normal cycle"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

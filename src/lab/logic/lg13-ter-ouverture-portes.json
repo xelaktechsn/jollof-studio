@@ -1,0 +1,674 @@
+{
+ "id": "lg13-ter-ouverture-portes",
+ "domain": "logic",
+ "level": "college",
+ "series": "dakar",
+ "minutes": 35,
+ "title": {
+  "fr": "TER : la sécurité des portes",
+  "en": "TER: door safety"
+ },
+ "summary": {
+  "fr": "Inspiré du TER de Dakar : concevoir la logique de sécurité des portes d’un train. Les portes ne sont libérées que si le train est à l’arrêt, à quai, et que le conducteur l’autorise ; le bouton du voyageur n’ouvre qu’une porte libérée ; une alarme signale une porte mal fermée quand le train n’est pas à l’arrêt.",
+  "en": "Inspired by Dakar’s TER: design the safety logic of a train’s doors. The doors are released only if the train is stopped, at the platform, and the driver allows it; the passenger’s button opens only a released door; an alarm reports a badly closed door when the train is not stopped."
+ },
+ "objectives": [
+  {
+   "fr": "Traduire des règles de sécurité en table de vérité",
+   "en": "Turn safety rules into a truth table"
+  },
+  {
+   "fr": "Écrire et câbler une équation avec des portes ET et NON",
+   "en": "Write and wire an equation with AND and NOT gates"
+  },
+  {
+   "fr": "Comprendre pourquoi une panne doit mener à l’état sûr",
+   "en": "Understand why a failure must lead to the safe state"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "A : à l’arrêt · Q : à quai · C : accord du conducteur"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sQ",
+     "type": "switch",
+     "x": 4,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "label": "Q"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 16,
+     "r": 0,
+     "p": {
+      "text": "B : bouton du voyageur (1 tant qu’il est appuyé)"
+     }
+    },
+    {
+     "id": "bB",
+     "type": "button",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 24,
+     "r": 0,
+     "p": {
+      "text": "P : capteur, 1 = porte mal fermée"
+     }
+    },
+    {
+     "id": "sP",
+     "type": "switch",
+     "x": 4,
+     "y": 28,
+     "r": 0,
+     "p": {
+      "label": "P"
+     }
+    },
+    {
+     "id": "lL",
+     "type": "led",
+     "x": 40,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "label": "L",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lM",
+     "type": "led",
+     "x": 40,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "M",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lAL",
+     "type": "led",
+     "x": 40,
+     "y": 27,
+     "r": 0,
+     "p": {
+      "label": "AL",
+      "color": "red"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "A : à l’arrêt · Q : à quai · C : accord du conducteur"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sQ",
+     "type": "switch",
+     "x": 4,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "label": "Q"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 16,
+     "r": 0,
+     "p": {
+      "text": "B : bouton du voyageur (1 tant qu’il est appuyé)"
+     }
+    },
+    {
+     "id": "bB",
+     "type": "button",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 24,
+     "r": 0,
+     "p": {
+      "text": "P : capteur, 1 = porte mal fermée"
+     }
+    },
+    {
+     "id": "sP",
+     "type": "switch",
+     "x": 4,
+     "y": 28,
+     "r": 0,
+     "p": {
+      "label": "P"
+     }
+    },
+    {
+     "id": "lL",
+     "type": "led",
+     "x": 40,
+     "y": 7,
+     "r": 0,
+     "p": {
+      "label": "L",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lM",
+     "type": "led",
+     "x": 40,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "M",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lAL",
+     "type": "led",
+     "x": 40,
+     "y": 27,
+     "r": 0,
+     "p": {
+      "label": "AL",
+      "color": "red"
+     }
+    },
+    {
+     "id": "gL",
+     "type": "and",
+     "x": 18,
+     "y": 6,
+     "r": 0,
+     "p": {
+      "n": 3
+     }
+    },
+    {
+     "id": "gM",
+     "type": "and",
+     "x": 30,
+     "y": 17,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "nA",
+     "type": "not",
+     "x": 18,
+     "y": 26,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "gAL",
+     "type": "and",
+     "x": 30,
+     "y": 26,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "gL",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sQ",
+      "Q"
+     ],
+     "b": [
+      "gL",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "gL",
+      "C"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "gL",
+      "Y"
+     ],
+     "b": [
+      "lL",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "gL",
+      "Y"
+     ],
+     "b": [
+      "gM",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "bB",
+      "Q"
+     ],
+     "b": [
+      "gM",
+      "B"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "gM",
+      "Y"
+     ],
+     "b": [
+      "lM",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "nA",
+      "A"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "nA",
+      "Y"
+     ],
+     "b": [
+      "gAL",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "sP",
+      "Q"
+     ],
+     "b": [
+      "gAL",
+      "B"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "gAL",
+      "Y"
+     ],
+     "b": [
+      "lAL",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Les portes du TER",
+    "en": "The TER doors"
+   },
+   "text": {
+    "fr": "Le **TER** (Train Express Régional) de Dakar est un train électrique qui relie Dakar à Diamniadio, avec un prolongement vers l’aéroport AIBD. À chaque gare, beaucoup de voyageurs montent et descendent : les portes doivent s’ouvrir au bon moment, et **jamais** pendant que le train roule.\nDans ce TP inspiré du TER, vous concevez la logique de sécurité des portes, comme on la trouve dans beaucoup de trains. Les entrées (1 = oui) :\n- **A** : le train est à l’arrêt ;\n- **Q** : le train est le long du quai ;\n- **C** : le conducteur autorise l’ouverture.\nLa LED **L** s’allume quand les portes sont **libérées** : le voyageur peut alors les ouvrir. Les autres éléments du plan de travail serviront plus loin.",
+    "en": "Dakar’s **TER** (Train Express Régional, regional express train) is an electric train linking Dakar to Diamniadio, with an extension toward AIBD airport. At every station, many passengers get on and off: the doors must open at the right moment, and **never** while the train is moving.\nIn this lab inspired by the TER, you design the safety logic of the doors, as found in many trains. The inputs (1 = yes):\n- **A** (arrêt): the train is stopped;\n- **Q** (quai): the train is alongside the platform;\n- **C** (conducteur): the driver allows the doors to open.\nLED **L** lights when the doors are **released**: passengers can then open them. The other items on the workspace will be used later."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La table de vérité",
+    "en": "The truth table"
+   },
+   "text": {
+    "fr": "La règle : les portes ne sont libérées que si le train est à l’arrêt **et** à quai **et** que le conducteur l’autorise. Une seule condition manquante suffit à garder les portes verrouillées.\nRemplissez la colonne **L** de la table.",
+    "en": "The rule: the doors are released only if the train is stopped **and** at the platform **and** the driver allows it. A single missing condition is enough to keep the doors locked.\nFill in column **L** of the table."
+   },
+   "hint": {
+    "fr": "Une seule ligne sur huit donne L = 1.",
+    "en": "Only one row out of eight gives L = 1."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "Q",
+     "C"
+    ],
+    "outputs": {
+     "L": "A.Q.C"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Le train roule encore",
+    "en": "The train is still moving"
+   },
+   "text": {
+    "fr": "Le train arrive en gare : il longe déjà le quai (Q = 1), mais il roule encore (A = 0). Le conducteur a déjà donné son accord (C = 1). Que vaut L ?",
+    "en": "The train is pulling into the station: it is already alongside the platform (Q = 1), but it is still moving (A = 0). The driver has already given the go-ahead (C = 1). What is L?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "L = 1 : deux conditions sur trois suffisent",
+      "en": "L = 1: two conditions out of three are enough"
+     },
+     {
+      "fr": "L = 0 : tant que le train n’est pas arrêté, les portes restent verrouillées",
+      "en": "L = 0: as long as the train is not stopped, the doors stay locked"
+     },
+     {
+      "fr": "L = 1 : l’accord du conducteur passe avant tout",
+      "en": "L = 1: the driver’s go-ahead overrides everything"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation de L",
+    "en": "The equation of L"
+   },
+   "text": {
+    "fr": "Écrivez l’équation de L en fonction de A, Q et C. Notation : `.` pour ET, `+` pour OU, `/` devant une lettre pour NON.",
+    "en": "Write the equation of L in terms of A, Q and C. Notation: `.` for AND, `+` for OR, `/` before a letter for NOT."
+   },
+   "hint": {
+    "fr": "Les trois conditions doivent être vraies en même temps : c’est un ET.",
+    "en": "All three conditions must be true at the same time: that is an AND."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "Q",
+     "C"
+    ],
+    "answer": "A.Q.C",
+    "form": "product",
+    "output": "L"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler la libération des portes",
+    "en": "Wiring the door release"
+   },
+   "text": {
+    "fr": "Posez une porte **ET** (bibliothèque, **Portes logiques**). Sélectionnez-la et réglez son **nombre d’entrées** sur 3 dans ses propriétés. Reliez A, Q et C à ses entrées, et sa sortie à la LED **L**.\nEssayez ensuite plusieurs positions des interrupteurs : L ne s’allume que si les trois sont à 1.",
+    "en": "Place an **AND** gate (library, **Logic gates**). Select it and set its **number of inputs** to 3 in its properties. Connect A, Q and C to its inputs, and its output to LED **L**.\nThen try several switch positions: L lights only when all three are at 1."
+   },
+   "hint": {
+    "fr": "Deux portes ET à deux entrées, l’une après l’autre, conviennent aussi : (A.Q).C.",
+    "en": "Two two-input AND gates, one after the other, work too: (A.Q).C."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "Q",
+     "C"
+    ],
+    "outputs": {
+     "L": "A.Q.C"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton du voyageur",
+    "en": "The passenger’s button"
+   },
+   "text": {
+    "fr": "Quand les portes sont libérées, le voyageur appuie sur le bouton **B** de sa porte : le moteur **M** ouvre alors la porte. Si les portes ne sont pas libérées, le bouton ne doit rien faire : M = L.B.\nInutile de refaire la porte à trois entrées : tirez un second fil depuis la sortie de la porte ET de L vers une nouvelle porte **ET**, qui reçoit aussi B. Sa sortie va à la LED **M**.",
+    "en": "When the doors are released, the passenger presses the **B** button on their door: motor **M** then opens the door. If the doors are not released, the button must do nothing: M = L.B.\nNo need to rebuild the three-input gate: drag a second wire from the output of L’s AND gate to a new **AND** gate, which also receives B. Its output goes to LED **M**."
+   },
+   "hint": {
+    "fr": "B est un bouton-poussoir : il vaut 1 tant que vous maintenez le clic dessus. Pour l’essayer, mettez d’abord A, Q et C à 1.",
+    "en": "B is a push-button: it is 1 while you hold the click on it. To try it, first set A, Q and C to 1."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "Q",
+     "C",
+     "B"
+    ],
+    "outputs": {
+     "L": "A.Q.C",
+     "M": "A.Q.C.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’alarme de porte",
+    "en": "The door alarm"
+   },
+   "text": {
+    "fr": "Chaque porte a un capteur **P** : P = 1 quand la porte est mal fermée. Si une porte est mal fermée alors que le train **n’est pas à l’arrêt**, l’alarme **AL** doit se déclencher pour prévenir le conducteur. À l’arrêt en gare, une porte ouverte est normale : pas d’alarme.\nRemplissez la colonne **AL**.",
+    "en": "Each door has a sensor **P**: P = 1 when the door is not properly closed. If a door is not properly closed while the train is **not stopped**, alarm **AL** must go off to warn the driver. When stopped at a station, an open door is normal: no alarm.\nFill in column **AL**."
+   },
+   "hint": {
+    "fr": "« Pas à l’arrêt » se traduit par A = 0.",
+    "en": "“Not stopped” means A = 0."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "P"
+    ],
+    "outputs": {
+     "AL": "/A.P"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation de l’alarme",
+    "en": "The alarm equation"
+   },
+   "text": {
+    "fr": "Écrivez l’équation de AL en fonction de A et P. `/A` se lit « non A » : il vaut 1 quand le train n’est pas à l’arrêt.",
+    "en": "Write the equation of AL in terms of A and P. `/A` reads “not A”: it is 1 when the train is not stopped."
+   },
+   "hint": {
+    "fr": "Un seul terme : un produit de deux lettres, dont une barrée.",
+    "en": "A single term: a product of two letters, one of them barred."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "P"
+    ],
+    "answer": "/A.P",
+    "form": "product",
+    "output": "AL"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler l’alarme",
+    "en": "Wiring the alarm"
+   },
+   "text": {
+    "fr": "Câblez votre équation : une porte **NON** dont l’entrée est reliée à A, puis une porte **ET** qui reçoit la sortie de la porte NON et le capteur P. Sa sortie va à la LED **AL**.\nVérifiez : à l’arrêt (A = 1), l’alarme reste éteinte, même porte ouverte.",
+    "en": "Wire your equation: a **NOT** gate whose input is connected to A, then an **AND** gate that receives the NOT gate’s output and sensor P. Its output goes to LED **AL**.\nCheck: when stopped (A = 1), the alarm stays off, even with the door open."
+   },
+   "hint": {
+    "fr": "L’interrupteur A alimente déjà la porte ET de L : tirez simplement un fil de plus depuis sa broche.",
+    "en": "Switch A already feeds L’s AND gate: just drag one more wire from its pin."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "P"
+    ],
+    "outputs": {
+     "AL": "/A.P"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Et si un fil se coupe ?",
+    "en": "What if a wire breaks?"
+   },
+   "text": {
+    "fr": "Dans un vrai système, un fil coupé ne transmet plus de signal : le circuit lit **0**. Imaginez que le fil du capteur A se coupe : le circuit lit A = 0 en permanence, même quand le train est arrêté. Que se passe-t-il pour les portes ?",
+    "en": "In a real system, a broken wire no longer carries a signal: the circuit reads **0**. Imagine the wire from sensor A breaks: the circuit reads A = 0 all the time, even when the train is stopped. What happens to the doors?"
+   },
+   "hint": {
+    "fr": "Regardez votre table : que vaut L quand A = 0 ?",
+    "en": "Look at your table: what is L when A = 0?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elles restent verrouillées : la panne mène à l’état sûr. C’est pour cela qu’on a choisi A = 1 pour « à l’arrêt »",
+      "en": "They stay locked: the failure leads to the safe state. That is why A = 1 was chosen to mean “stopped”"
+     },
+     {
+      "fr": "Elles s’ouvrent toutes seules, même quand le train roule",
+      "en": "They open by themselves, even while the train is moving"
+     },
+     {
+      "fr": "Rien ne change : le capteur A ne sert à rien",
+      "en": "Nothing changes: sensor A is useless"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

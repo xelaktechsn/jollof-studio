@@ -1,0 +1,824 @@
+{
+ "id": "pn13-tri-colis",
+ "level": "lycee",
+ "minutes": 50,
+ "title": {
+  "fr": "Tri de colis : le poussoir du convoyeur",
+  "en": "Parcel sorting: the conveyor pusher"
+ },
+ "summary": {
+  "fr": "Dans un centre de tri, un vérin pousse hors du tapis les colis destinés à une goulotte. Une cellule photoélectrique détecte le colis ; la carte déclenche une seule poussée par colis grâce au front montant, fait rentrer la tige en fin de course et compte les colis sur le moniteur série.",
+  "en": "In a sorting centre, a cylinder pushes the parcels bound for a chute off the belt. A photoelectric cell detects the parcel; the board triggers a single push per parcel thanks to the rising edge, retracts the rod at the end of the stroke and counts parcels on the serial monitor."
+ },
+ "objectives": [
+  {
+   "fr": "Déclencher un aller-retour de vérin à partir d’un capteur",
+   "en": "Trigger a cylinder’s out-and-back stroke from a sensor"
+  },
+  {
+   "fr": "Réagir au front montant d’un signal pour n’agir qu’une fois par colis",
+   "en": "React to the rising edge of a signal to act only once per parcel"
+  },
+  {
+   "fr": "Compter sur le moniteur série et estimer une cadence",
+   "en": "Count on the serial monitor and estimate a throughput"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un **niveau** dure, un **front** est un instant : pour agir une fois par objet, on teste `vu && !vuAvant`.",
+   "en": "A **level** lasts, an **edge** is a moment: to act once per object, test `vu && !vuAvant`."
+  },
+  {
+   "fr": "Le cycle : la cellule lance Y1, la tige sort ; le capteur de fin de course B2 coupe Y1, le ressort du distributeur fait rentrer la tige ; B1 confirme qu’elle est prête.",
+   "en": "The cycle: the cell starts Y1, the rod extends; end-of-stroke sensor B2 switches Y1 off, the valve spring retracts the rod; B1 confirms it is ready."
+  },
+  {
+   "fr": "Distributeur monostable : si le courant est coupé, la tige rentre et libère le tapis.",
+   "en": "Monostable valve: if the power is cut, the rod retracts and clears the belt."
+  },
+  {
+   "fr": "Cadence maximale = 60 s ÷ temps de cycle : ici 60 ÷ 1,6 ≈ 37 colis par minute.",
+   "en": "Maximum throughput = 60 s ÷ cycle time: here 60 ÷ 1.6 ≈ 37 parcels per minute."
+  },
+  {
+   "fr": "Compter ce qui entre et ce qui est traité permet de repérer un colis manqué.",
+   "en": "Counting what comes in and what is processed reveals a missed parcel."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Tri de colis",
+  "comps": [
+   {
+    "id": "uno_u1m3s8",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_jrku0r",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "button_tgmuzy",
+    "type": "button",
+    "name": "B3",
+    "x": 8,
+    "z": -13,
+    "r": 0
+   },
+   {
+    "id": "coil24_zq5e0u",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_5pcqxp",
+    "type": "cylsensor",
+    "name": "B1",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_583kr9",
+    "type": "cylsensor",
+    "name": "B2",
+    "x": 9,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "breadboard_7430ow",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 5,
+    "z": 146,
+    "r": 0
+   },
+   {
+    "id": "psu24_z48gfi",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_85l4a0",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "res-1k_jxdpni",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 50,
+    "z": -23,
+    "r": 0
+   },
+   {
+    "id": "diode_7rde9w",
+    "type": "diode",
+    "name": "D1",
+    "x": 42,
+    "z": 99,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A",
+         "time": 0.8,
+         "s0": "B1",
+         "s1": "B2",
+         "bore": 32,
+         "rod": 12,
+         "stroke": 250
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "sorter",
+       "cyl": "1A",
+       "detect": "B3",
+       "send": "BTN1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "id": "w1",
+    "a": [
+     "button_jrku0r",
+     "2"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w2",
+    "a": [
+     "button_jrku0r",
+     "1"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w3",
+    "a": [
+     "button_tgmuzy",
+     "2"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "GND (3)"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w4",
+    "a": [
+     "button_tgmuzy",
+     "1"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w5",
+    "a": [
+     "uno_u1m3s8",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "T-11"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "id": "w6",
+    "a": [
+     "psu24_z48gfi",
+     "-"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "0 V de l’alimentation 24 V à la masse commune"
+   },
+   {
+    "id": "w7",
+    "a": [
+     "psu24_z48gfi",
+     "+"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "A30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V vers la breadboard"
+   },
+   {
+    "id": "w8",
+    "a": [
+     "coil24_zq5e0u",
+     "+"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "B30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V"
+   },
+   {
+    "id": "w9",
+    "a": [
+     "diode_7rde9w",
+     "K"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "C30"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode de roue libre au +"
+   },
+   {
+    "id": "w10",
+    "a": [
+     "coil24_zq5e0u",
+     "-"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "A29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w11",
+    "a": [
+     "pn2222_85l4a0",
+     "C"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "B29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w12",
+    "a": [
+     "diode_7rde9w",
+     "A"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "C29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w13",
+    "a": [
+     "pn2222_85l4a0",
+     "E"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "id": "w14",
+    "a": [
+     "pn2222_85l4a0",
+     "B"
+    ],
+    "b": [
+     "res-1k_jxdpni",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "id": "w15",
+    "a": [
+     "res-1k_jxdpni",
+     "1"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "id": "w16",
+    "a": [
+     "cylsensor_5pcqxp",
+     "2"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w17",
+    "a": [
+     "cylsensor_5pcqxp",
+     "1"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w18",
+    "a": [
+     "cylsensor_583kr9",
+     "2"
+    ],
+    "b": [
+     "breadboard_7430ow",
+     "T-15"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w19",
+    "a": [
+     "cylsensor_583kr9",
+     "1"
+    ],
+    "b": [
+     "uno_u1m3s8",
+     "D6"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : tri de colis, poussoir de convoyeur.\n// Un colis coupe la cellule B3 : le vérin 1A le pousse hors du tapis, puis rentre.\n// On réagit au front montant de B3 : un colis, une seule poussée.\nconst int DEPOSE = 7;        // BTN1 : un colis est déposé sur le tapis\nconst int CELLULE = 8;       // B3 : cellule photoélectrique, LOW quand un colis coupe le faisceau\nconst int CAPTEUR_B1 = 3;    // B1 : fermé quand la tige est rentrée\nconst int CAPTEUR_B2 = 6;    // B2 : fermé quand la tige est sortie\nconst int BOBINE = 2;        // base du transistor Q1 (par R1) qui commande la bobine Y1\n\nbool vuAvant = false;        // état de la cellule au tour précédent\nbool deposeAvant = false;    // état de BTN1 au tour précédent\nbool pousser = false;        // poussée en cours\nint deposes = 0;             // colis déposés sur le tapis\nint pousses = 0;             // colis poussés par le vérin\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(DEPOSE, INPUT_PULLUP);\n  pinMode(CELLULE, INPUT_PULLUP);\n  pinMode(CAPTEUR_B1, INPUT_PULLUP);\n  pinMode(CAPTEUR_B2, INPUT_PULLUP);\n  pinMode(BOBINE, OUTPUT);\n}\n\nvoid loop() {\n  bool depose = digitalRead(DEPOSE) == LOW;\n  bool vu = digitalRead(CELLULE) == LOW;\n  bool rentre = digitalRead(CAPTEUR_B1) == LOW;\n  bool sorti = digitalRead(CAPTEUR_B2) == LOW;\n  if (depose && !deposeAvant) {\n    deposes = deposes + 1;\n  }\n  // Front montant de la cellule, tige rentrée : un nouveau colis arrive devant le poussoir.\n  if (vu && !vuAvant && rentre) {\n    pousser = true;\n    pousses = pousses + 1;\n    Serial.print(\"Colis deposes : \");\n    Serial.print(deposes);\n    Serial.print(\"  pousses : \");\n    Serial.println(pousses);\n  }\n  if (sorti) {\n    pousser = false;         // fin de course : le ressort du distributeur fait rentrer la tige\n  }\n  digitalWrite(BOBINE, pousser ? HIGH : LOW);\n  vuAvant = vu;\n  deposeAvant = depose;\n  delay(5);\n}"
+  },
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le poste de tri",
+    "en": "The sorting station"
+   },
+   "text": {
+    "fr": "Dans un centre de tri (colis, bagages d’aéroport, cartons en sortie d’usine), des **poussoirs** pneumatiques dévient les colis du tapis vers la bonne goulotte.\n- **BTN1** : le poste de dépose ; chaque appui dépose un colis sur le tapis ;\n- **B3** : la **cellule photoélectrique** placée devant le poussoir. Sur le montage, c’est un simple contact, fermé tant qu’un colis coupe le faisceau ;\n- **Y1** : l’électrovanne 24 V du distributeur 5/2 monostable **1V1**, alimentée par **PS1** et commandée par le transistor **Q1** ;\n- **1A** : le vérin poussoir, avec ses capteurs **B1** (tige rentrée) et **B2** (tige sortie).\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre le convoyeur : BTN1 y dépose un colis et, quand ce colis coupe le faisceau, la vue ferme elle-même le contact B3.",
+    "en": "In a sorting centre (parcels, airport luggage, boxes leaving a factory), pneumatic **pushers** divert parcels from the belt to the right chute.\n- **BTN1**: the loading point; each press drops a parcel on the belt;\n- **B3**: the **photoelectric cell** placed in front of the pusher. On the bench it is a plain contact, closed while a parcel cuts the beam;\n- **Y1**: the 24 V solenoid of monostable 5/2 valve **1V1**, powered by **PS1** and driven by transistor **Q1**;\n- **1A**: the pusher cylinder, with its sensors **B1** (rod in) and **B2** (rod out).\nThe **3D** view (“3D” button of the pneumatic workspace) shows the conveyor: BTN1 drops a parcel on it and, when that parcel cuts the beam, the view closes contact B3 by itself."
+   }
+  },
+  {
+   "title": {
+    "fr": "Monostable ou bistable ?",
+    "en": "Monostable or bistable?"
+   },
+   "text": {
+    "fr": "Le distributeur 1V1 est **monostable** : un électroaimant d’un côté, un ressort de l’autre. Pourquoi ce choix pour un poussoir ?",
+    "en": "Valve 1V1 is **monostable**: a solenoid on one side, a spring on the other. Why this choice for a pusher?"
+   },
+   "hint": {
+    "fr": "Une tige restée sortie barrerait le tapis et les colis suivants viendraient buter dessus. Avec un distributeur bistable, la tige garderait sa dernière position pendant la coupure.",
+    "en": "A rod left out would block the belt and the following parcels would run into it. With a bistable valve the rod would keep its last position during the power cut."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Si le courant est coupé, le ressort ramène le distributeur : la tige rentre et ne reste pas en travers du tapis",
+      "en": "If the power is cut, the spring returns the valve: the rod retracts and does not stay across the belt"
+     },
+     {
+      "fr": "Il pousse plus fort qu’un bistable",
+      "en": "It pushes harder than a bistable one"
+     },
+     {
+      "fr": "Il garde la tige sortie pendant une coupure de courant",
+      "en": "It keeps the rod out during a power cut"
+     },
+     {
+      "fr": "Il n’a pas besoin de capteurs",
+      "en": "It needs no sensors"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "L’étage de commande de Y1",
+    "en": "The Y1 driver stage"
+   },
+   "text": {
+    "fr": "La bobine **Y1** (24 V) est commandée par le transistor **Q1**, avec sa diode de roue libre **D1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
+    "en": "Coil **Y1** (24 V) is driven by transistor **Q1**, with its flyback diode **D1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",
+    "en": "A pin takes only one wire: to join three pins (Y1 +, PS1 +, D1 K), go through a breadboard row. Diode D1 protects Q1 from the voltage spike the coil sends back when switched off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "Y1.+",
+      "PS1.+",
+      "D1.K"
+     ],
+     [
+      "Y1.-",
+      "Q1.C",
+      "D1.A"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "PS1.-",
+      "UNO.GND*"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D2",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La cellule, les capteurs et le bouton",
+    "en": "The cell, the sensors and the button"
+   },
+   "text": {
+    "fr": "Reliez les quatre contacts, chacun entre une broche et la masse : **BTN1** sur **D7**, la cellule **B3** sur **D8**, le capteur **B1** sur **D3** et le capteur **B2** sur **D6**.",
+    "en": "Connect the four contacts, each between a pin and ground: **BTN1** on **D7**, cell **B3** on **D8**, sensor **B1** on **D3** and sensor **B2** on **D6**."
+   },
+   "hint": {
+    "fr": "Aucune résistance pour les contacts : le programme activera la résistance de tirage interne (`INPUT_PULLUP`). Contact ouvert, la broche lit HIGH ; contact fermé, elle lit LOW.",
+    "en": "No resistor for the contacts: the program will enable the internal pull-up (`INPUT_PULLUP`). Contact open, the pin reads HIGH; contact closed, it reads LOW."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.D7"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ],
+     [
+      "B3.1|B3.2",
+      "UNO.D8"
+     ],
+     [
+      "B3.1|B3.2",
+      "UNO.GND*"
+     ],
+     [
+      "B1.1|B1.2",
+      "UNO.D3"
+     ],
+     [
+      "B1.1|B1.2",
+      "UNO.GND*"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.D6"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique** et tirez les tuyaux :\n- source d’air → orifice **1** du distributeur **1V1** ;\n- orifice **4** de 1V1 → chambre arrière du vérin (orifice **1**) : la tige sort quand Y1 est excitée ;\n- orifice **2** de 1V1 → chambre avant du vérin (orifice **2**) : au repos, la tige rentre.\nLes orifices **3** et **5** restent libres : ce sont les échappements.",
+    "en": "Switch to the **Pneumatics** workspace and draw the tubes:\n- air supply → port **1** of valve **1V1**;\n- port **4** of 1V1 → cylinder rear chamber (port **1**): the rod extends when Y1 is energised;\n- port **2** of 1V1 → cylinder front chamber (port **2**): at rest the rod retracts.\nPorts **3** and **5** stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un orifice (petit rond) et en relâchant sur un autre. Un orifice peut recevoir plusieurs tuyaux. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. A port can take several tubes. Click a tube to select it, Delete removes it."
+   },
+   "keep": {
+    "fr": "On choisit un distributeur en se demandant : **que doit faire le vérin si le courant est coupé ?** Monostable : il revient au repos. Bistable : il reste où il est.",
+    "en": "A valve is chosen by asking: **what must the cylinder do if the power is cut?** Monostable: it returns to rest. Bistable: it stays where it is."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Une poussée par colis",
+    "en": "One push per parcel"
+   },
+   "text": {
+    "fr": "Le programme doit pousser et compter **une seule fois** par colis. S’il disait simplement « si B3 est fermé et la tige rentrée : pousser et compter », que se passerait-il avec un colis qui reste un moment devant la cellule ?",
+    "en": "The program must push and count **only once** per parcel. If it simply said “if B3 is closed and the rod is in: push and count”, what would happen with a parcel that stays a while in front of the cell?"
+   },
+   "hint": {
+    "fr": "loop() tourne des centaines de fois par seconde. On réagit donc au **front montant** : l’instant où B3 passe d’ouvert à fermé. Il n’y en a qu’un par colis, quelle que soit sa longueur. C’est aussi pourquoi un vrai convoyeur espace les colis : chacun doit donner son propre front.",
+    "en": "loop() runs hundreds of times per second. So react to the **rising edge**: the moment B3 goes from open to closed. There is only one per parcel, whatever its length. This is also why a real conveyor spaces parcels out: each must give its own edge."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien de gênant : le colis est poussé une fois",
+      "en": "Nothing wrong: the parcel is pushed once"
+     },
+     {
+      "fr": "La condition reste vraie pendant de nombreux tours de loop() : le même colis est compté plusieurs fois, et repoussé s’il est encore devant la cellule quand la tige rentre",
+      "en": "The condition stays true for many loops: the same parcel is counted several times, and pushed again if it is still in front of the cell when the rod is back in"
+     },
+     {
+      "fr": "Le poussoir ne partirait jamais",
+      "en": "The pusher would never fire"
+     },
+     {
+      "fr": "Le compteur resterait à zéro",
+      "en": "The counter would stay at zero"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code » :\n- setup() : `Serial.begin(9600);` ; D7 (BTN1), D8 (B3), D3 (B1) et D6 (B2) en `INPUT_PULLUP` ; D2 (bobine) en sortie ;\n- variables globales : `bool vuAvant = false;`, `bool deposeAvant = false;`, `bool pousser = false;`, `int deposes = 0;`, `int pousses = 0;` ;\n- au front montant de BTN1 : `deposes = deposes + 1;` ;\n- au front montant de B3, **si la tige est rentrée** (B1 fermé) : `pousser = true;`, `pousses = pousses + 1;`, puis affichez les deux compteurs avec `Serial.print()` et `Serial.println()` ;\n- si B2 est fermé (fin de course) : `pousser = false;` ;\n- `digitalWrite(2, pousser ? HIGH : LOW);`, puis mémorisez `vuAvant` et `deposeAvant` pour le tour suivant.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab:\n- setup(): `Serial.begin(9600);`; D7 (BTN1), D8 (B3), D3 (B1) and D6 (B2) as `INPUT_PULLUP`; D2 (coil) as output;\n- global variables: `bool vuAvant = false;`, `bool deposeAvant = false;`, `bool pousser = false;`, `int deposes = 0;`, `int pousses = 0;`;\n- on the rising edge of BTN1: `deposes = deposes + 1;`;\n- on the rising edge of B3, **if the rod is in** (B1 closed): `pousser = true;`, `pousses = pousses + 1;`, then print both counters with `Serial.print()` and `Serial.println()`;\n- if B2 is closed (end of stroke): `pousser = false;`;\n- `digitalWrite(2, pousser ? HIGH : LOW);`, then store `vuAvant` and `deposeAvant` for the next loop.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "`bool vu = digitalRead(8) == LOW;` puis `if (vu && !vuAvant && rentre) { … }` et, à la fin de loop(), `vuAvant = vu;`.",
+    "en": "`bool vu = digitalRead(8) == LOW;` then `if (vu && !vuAvant && rentre) { … }` and, at the end of loop(), `vuAvant = vu;`."
+   },
+   "keep": {
+    "fr": "Un **niveau** dure, un **front** est un instant. Pour compter ou déclencher une fois par objet, on utilise le front : `vu && !vuAvant`.",
+    "en": "A **level** lasts, an **edge** is a moment. To count or trigger once per object, use the edge: `vu && !vuAvant`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "Serial\\.print(ln)?\\s*\\(",
+     "digitalWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : un colis",
+    "en": "Test: one parcel"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis fermez **B3** et gardez-le fermé : dans l’onglet Simulation, Maj + clic sur son bouton le verrouille ; dans la vue 3D, déposez un colis avec BTN1. Y1 est excitée et la tige sort.",
+    "en": "Click “Observe”, then close **B3** and keep it closed: in the Simulation tab, Shift + click on its button latches it; in the 3D view, drop a parcel with BTN1. Y1 is energised and the rod extends."
+   },
+   "hint": {
+    "fr": "Rien ne bouge ? La poussée ne part que tige rentrée : B1 (D3) doit être fermé au repos. Vérifiez aussi que B3 est bien sur D8.",
+    "en": "Nothing moves? The push only starts with the rod in: B1 (D3) must be closed at rest. Also check that B3 is on D8."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "B3": "pressed"
+    },
+    "expect": {
+     "Y1": "on",
+     "c1": "moving"
+    },
+    "hold": 200
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : une seule poussée",
+    "en": "Test: a single push"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et gardez **B3** fermé : en fin de course, B2 coupe Y1, la tige rentre… et ne repart pas, bien que B3 soit toujours fermé, comme si un colis était resté coincé devant la cellule. Ouvrez le moniteur série (onglet Code) : une seule ligne pour ce colis.",
+    "en": "Click “Observe” and keep **B3** closed: at the end of the stroke, B2 switches Y1 off, the rod retracts… and does not fire again, although B3 is still closed, as if a parcel were stuck in front of the cell. Open the serial monitor (Code tab): a single line for this parcel."
+   },
+   "hint": {
+    "fr": "La tige fait des allers-retours sans fin ? Le programme réagit au niveau de B3, pas à son front : il manque `!vuAvant`. La tige reste sortie ? Vérifiez B2 (D6) et `pousser = false`.",
+    "en": "The rod goes out and back endlessly? The program reacts to the level of B3, not to its edge: `!vuAvant` is missing. The rod stays out? Check B2 (D6) and `pousser = false`."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "B3": "pressed",
+     "B1": "pressed"
+    },
+    "expect": {
+     "Y1": "off",
+     "c1": "in"
+    },
+    "hold": 1500
+   }
+  },
+  {
+   "title": {
+    "fr": "La cadence",
+    "en": "The throughput"
+   },
+   "text": {
+    "fr": "La tige met **0,8 s** pour sortir et autant pour rentrer. Combien de colis ce poussoir peut-il dévier par minute, au maximum ?",
+    "en": "The rod takes **0.8 s** to extend and as long to retract. How many parcels can this pusher divert per minute, at most?"
+   },
+   "hint": {
+    "fr": "C’est le **temps de cycle** du vérin qui limite, pas la carte : les colis doivent être espacés d’au moins 1,6 s sur le tapis. Un colis qui arrive pendant que la tige n’est pas rentrée est manqué : comparez les deux compteurs du moniteur série.",
+    "en": "The cylinder’s **cycle time** is the limit, not the board: parcels must be at least 1.6 s apart on the belt. A parcel arriving while the rod is not back in is missed: compare the two counters on the serial monitor."
+   },
+   "keep": {
+    "fr": "La cadence d’une machine est fixée par son **temps de cycle** : cadence par minute = 60 s ÷ temps de cycle.",
+    "en": "A machine’s throughput is set by its **cycle time**: throughput per minute = 60 s ÷ cycle time."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "75",
+      "en": "75"
+     },
+     {
+      "fr": "60",
+      "en": "60"
+     },
+     {
+      "fr": "Autant qu’on veut : la carte est très rapide",
+      "en": "As many as you like: the board is very fast"
+     },
+     {
+      "fr": "Environ 37 : un aller-retour dure 1,6 s, et 60 ÷ 1,6 = 37,5",
+      "en": "About 37: an out-and-back stroke takes 1.6 s, and 60 ÷ 1.6 = 37.5"
+     }
+    ],
+    "answer": 3
+   }
+  }
+ ],
+ "workspace": "elec"
+}

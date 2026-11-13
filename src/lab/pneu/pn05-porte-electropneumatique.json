@@ -1,0 +1,820 @@
+{
+ "id": "pn05-porte-electropneumatique",
+ "level": "lycee",
+ "minutes": 60,
+ "title": {
+  "fr": "Porte automatique électropneumatique",
+  "en": "Electropneumatic automatic door"
+ },
+ "summary": {
+  "fr": "Beaucoup de portes de bus et de trains s’ouvrent avec de l’air comprimé. Une carte Arduino commande une électrovanne 24 V par un transistor ; dans le plan de travail Pneumatique, le distributeur bascule et un vérin ouvre la porte ; un capteur de vérin dit à la carte que la porte est ouverte.",
+  "en": "Many bus and train doors open with compressed air. An Arduino board drives a 24 V solenoid valve through a transistor; in the Pneumatic workspace the valve switches and a cylinder opens the door; a cylinder sensor tells the board that the door is open."
+ },
+ "objectives": [
+  {
+   "fr": "Commander une bobine 24 V par un transistor, avec sa diode de roue libre",
+   "en": "Drive a 24 V coil through a transistor, with its flyback diode"
+  },
+  {
+   "fr": "Raccorder un distributeur 5/2, un réducteur de débit et un vérin double effet",
+   "en": "Connect a 5/2 valve, a flow control valve and a double-acting cylinder"
+  },
+  {
+   "fr": "Lire un capteur de fin de course et relier force, pression et section",
+   "en": "Read an end-of-stroke sensor and relate force, pressure and area"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Chaîne de commande : broche de la carte → transistor → bobine 24 V → distributeur → vérin ; le capteur de fin de course renvoie l’information à la carte.",
+   "en": "Control chain: board pin → transistor → 24 V coil → valve → cylinder; the end-of-stroke sensor sends the information back to the board."
+  },
+  {
+   "fr": "Une broche ne fournit que 5 V et 20 mA : une bobine 24 V se commande par un transistor, avec une diode de roue libre à ses bornes.",
+   "en": "A pin only supplies 5 V and 20 mA: a 24 V coil is driven through a transistor, with a flyback diode across it."
+  },
+  {
+   "fr": "Distributeur 5/2 **monostable** : bobine excitée, la tige sort ; sans courant, le ressort le ramène et la tige rentre.",
+   "en": "**Monostable** 5/2 valve: coil energised, the rod extends; without current the spring returns it and the rod retracts."
+  },
+  {
+   "fr": "La vitesse se règle avec un réducteur de débit placé sur l’air qui s’échappe.",
+   "en": "Speed is set with a flow control valve placed on the escaping air."
+  },
+  {
+   "fr": "F = p × S : 6 bar sur un piston de 25 mm donnent environ 294 N.",
+   "en": "F = p × A: 6 bar on a 25 mm piston give about 294 N."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Porte électropneumatique",
+  "comps": [
+   {
+    "id": "uno_d6nlu9",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_qmh1qd",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "coil24_g5bp8n",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_wa2n34",
+    "type": "cylsensor",
+    "name": "B2",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "led-green_a4gmeq",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 8,
+    "z": -13,
+    "r": 0
+   },
+   {
+    "id": "breadboard_19yir9",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 7,
+    "z": 115,
+    "r": 0
+   },
+   {
+    "id": "psu24_g82jje",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_273669",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "res-1k_scxh00",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 7,
+    "z": 79,
+    "r": 0
+   },
+   {
+    "id": "diode_c9j3ik",
+    "type": "diode",
+    "name": "D1",
+    "x": 50,
+    "z": -23,
+    "r": 0
+   },
+   {
+    "id": "res-220_kw81wd",
+    "type": "res-220",
+    "name": "R2",
+    "x": -9,
+    "z": -23,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 11,
+        "y": 24,
+        "p": {
+         "bar": 6
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": 0,
+        "y": 14,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": 20,
+        "y": 5,
+        "p": {
+         "open": 50,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "time": 1,
+         "s0": "",
+         "s1": "B2",
+         "label": "1A",
+         "bore": 25,
+         "rod": 10,
+         "stroke": 100,
+         "mass": 1,
+         "load": 0
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "door",
+       "cyl": "1A",
+       "open": "BTN1",
+       "coil": "Y1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "id": "w1",
+    "a": [
+     "button_qmh1qd",
+     "2"
+    ],
+    "b": [
+     "uno_d6nlu9",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w2",
+    "a": [
+     "button_qmh1qd",
+     "1"
+    ],
+    "b": [
+     "uno_d6nlu9",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w3",
+    "a": [
+     "uno_d6nlu9",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "T-11"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "id": "w4",
+    "a": [
+     "psu24_g82jje",
+     "-"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "0 V de l’alimentation 24 V à la masse commune"
+   },
+   {
+    "id": "w5",
+    "a": [
+     "psu24_g82jje",
+     "+"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "A30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V vers la breadboard"
+   },
+   {
+    "id": "w6",
+    "a": [
+     "coil24_g5bp8n",
+     "+"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "B30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V"
+   },
+   {
+    "id": "w7",
+    "a": [
+     "diode_c9j3ik",
+     "K"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "C30"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode de roue libre au +"
+   },
+   {
+    "id": "w8",
+    "a": [
+     "coil24_g5bp8n",
+     "-"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "A29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w9",
+    "a": [
+     "pn2222_273669",
+     "C"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "B29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w10",
+    "a": [
+     "diode_c9j3ik",
+     "A"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "C29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w11",
+    "a": [
+     "pn2222_273669",
+     "E"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "id": "w12",
+    "a": [
+     "pn2222_273669",
+     "B"
+    ],
+    "b": [
+     "res-1k_scxh00",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "id": "w13",
+    "a": [
+     "res-1k_scxh00",
+     "1"
+    ],
+    "b": [
+     "uno_d6nlu9",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "id": "w14",
+    "a": [
+     "cylsensor_wa2n34",
+     "2"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w15",
+    "a": [
+     "cylsensor_wa2n34",
+     "1"
+    ],
+    "b": [
+     "uno_d6nlu9",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w16",
+    "a": [
+     "led-green_a4gmeq",
+     "K"
+    ],
+    "b": [
+     "breadboard_19yir9",
+     "T-14"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w17",
+    "a": [
+     "led-green_a4gmeq",
+     "A"
+    ],
+    "b": [
+     "res-220_kw81wd",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w18",
+    "a": [
+     "res-220_kw81wd",
+     "1"
+    ],
+    "b": [
+     "uno_d6nlu9",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : porte automatique électropneumatique.\n// BTN1 appuyé : la bobine Y1 est excitée, le distributeur 5/2 bascule et le vérin 1A ouvre la porte.\n// Relâché : le ressort ramène le distributeur, l'air passe dans la chambre avant et la porte se ferme.\n// B2 (tige sortie) : la porte est complètement ouverte, le voyant vert LED1 s'allume.\nconst int BOUTON = 7;     // BTN1, lu avec INPUT_PULLUP\nconst int CAPTEUR_B2 = 3; // capteur de vérin B2, tige sortie\nconst int BOBINE = 2;     // base du transistor Q1 (par R1) qui commande la bobine Y1\nconst int VOYANT = 8;     // LED1 (par R2)\n\nvoid setup() {\n  pinMode(BOUTON, INPUT_PULLUP);\n  pinMode(CAPTEUR_B2, INPUT_PULLUP);\n  pinMode(BOBINE, OUTPUT);\n  pinMode(VOYANT, OUTPUT);\n}\n\nvoid loop() {\n  bool appui = digitalRead(BOUTON) == LOW;        // LOW : bouton appuyé\n  bool ouverte = digitalRead(CAPTEUR_B2) == LOW;  // LOW : piston devant B2\n  digitalWrite(BOBINE, appui ? HIGH : LOW);       // HIGH : Q1 conduit, Y1 est excitée\n  digitalWrite(VOYANT, ouverte ? HIGH : LOW);\n  delay(10);\n}"
+  },
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "fc",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "fc",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La porte à air comprimé",
+    "en": "The compressed-air door"
+   },
+   "text": {
+    "fr": "Beaucoup de portes de bus et de trains sont poussées par un **vérin pneumatique** : de l’air comprimé pousse un piston, la tige sort et ouvre la porte.\nDans ce TP, le montage électronique (onglet Câblage) et le circuit pneumatique (sélecteur **Pneumatique**, en haut à gauche) fonctionnent ensemble, dans la même simulation :\n- **BTN1** : le bouton d’ouverture ;\n- **Y1** : l’électrovanne 24 V, alimentée par **PS1** et commandée par le transistor **Q1** ;\n- dans le plan pneumatique, le distributeur 5/2 qui porte le repère **Y1**, le réducteur de débit et le vérin **1A** ;\n- **B2** : le capteur placé au bout du vérin, fermé quand la porte est ouverte ; **LED1** l’affiche.\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre la porte animée par la simulation : le vérin 1A dans le caisson, la courroie qui entraîne le second vantail, le capteur B2 ; le bouton vert du vantail est BTN1.",
+    "en": "Many bus and train doors are pushed by a **pneumatic cylinder**: compressed air pushes a piston, the rod extends and opens the door.\nIn this lab, the electronic circuit (Wiring tab) and the pneumatic circuit (**Pneumatics** switch, top left) work together, in the same simulation:\n- **BTN1**: the open button;\n- **Y1**: the 24 V solenoid valve, powered by **PS1** and driven by transistor **Q1**;\n- in the pneumatic workspace, the 5/2 valve tagged **Y1**, the flow control valve and cylinder **1A**;\n- **B2**: the sensor at the end of the cylinder, closed when the door is open; **LED1** shows it.\nThe **3D** view (“3D” button of the pneumatic workspace) shows the door driven by the simulation: cylinder 1A in the box, the belt driving the second leaf, sensor B2; the green button on the leaf is BTN1."
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi un transistor ?",
+    "en": "Why a transistor?"
+   },
+   "text": {
+    "fr": "La bobine **Y1** demande 24 V et environ 125 mA. Une broche de l’Arduino donne 5 V et 20 mA au plus. Comment la carte peut-elle la commander ?",
+    "en": "Coil **Y1** needs 24 V and about 125 mA. An Arduino pin gives 5 V and 20 mA at most. How can the board drive it?"
+   },
+   "hint": {
+    "fr": "La broche ne fournit que le petit courant de base de Q1 (≈ 4 mA par R1) ; le transistor laisse alors passer le courant de la bobine, fourni par PS1. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",
+    "en": "The pin only supplies Q1’s small base current (≈ 4 mA through R1); the transistor then lets the coil current through, supplied by PS1. Diode D1 protects Q1 from the voltage spike the coil sends back when switched off."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "En reliant la bobine directement à une broche",
+      "en": "By connecting the coil straight to a pin"
+     },
+     {
+      "fr": "Par un transistor : la broche commande sa base, le courant de la bobine vient de l’alimentation 24 V",
+      "en": "Through a transistor: the pin drives its base, the coil current comes from the 24 V supply"
+     },
+     {
+      "fr": "En mettant une résistance de 220 Ω en série avec la bobine",
+      "en": "By putting a 220 Ω resistor in series with the coil"
+     },
+     {
+      "fr": "Impossible avec une Arduino",
+      "en": "Impossible with an Arduino"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "L’étage de commande de Y1",
+    "en": "The Y1 driver stage"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\nAstuce : « Câbler tout le circuit » sait le faire, mais essayez d’abord à la main.",
+    "en": "In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\nTip: “Wire the whole circuit” can do it, but try by hand first."
+   },
+   "keep": {
+    "fr": "Une broche **commande**, elle n’**alimente** pas : 5 V et 20 mA au plus. La bobine prend son courant sur le 24 V, à travers le transistor ; la **diode de roue libre** est obligatoire sur toute bobine.",
+    "en": "A pin **controls**, it does not **power**: 5 V and 20 mA at most. The coil takes its current from the 24 V supply, through the transistor; the **flyback diode** is mandatory on any coil."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard.",
+    "en": "A pin takes only one wire: to join three pins (Y1 +, PS1 +, D1 K), go through a breadboard row."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "Y1.+",
+      "PS1.+",
+      "D1.K"
+     ],
+     [
+      "Y1.-",
+      "Q1.C",
+      "D1.A"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "PS1.-",
+      "UNO.GND*"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D2",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton, le capteur et le voyant",
+    "en": "The button, the sensor and the lamp"
+   },
+   "text": {
+    "fr": "Reliez **BTN1** entre **D7** et la masse, le capteur **B2** entre **D3** (patte 1) et la masse (patte 2), et le voyant : **D8** → **R2** (220 Ω) → anode **A** de **LED1**, cathode **K** à la masse.",
+    "en": "Connect **BTN1** between **D7** and ground, sensor **B2** between **D3** (leg 1) and ground (leg 2), and the lamp: **D8** → **R2** (220 Ω) → anode **A** of **LED1**, cathode **K** to ground."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.D7"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ],
+     [
+      "B2.1",
+      "UNO.D3"
+     ],
+     [
+      "B2.2",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D8",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique**. Tirez les tuyaux d’orifice en orifice (petits ronds) :\n- source d’air → orifice **1** du distributeur ;\n- orifice **4** → chambre arrière du vérin (orifice **1**, à gauche) ;\n- orifice **2** → orifice **1** du réducteur de débit ;\n- orifice **2** du réducteur → chambre avant du vérin (orifice **2**).\nLes orifices **3** et **5** restent libres : ce sont les échappements.",
+    "en": "Switch to the **Pneumatics** workspace. Draw the tubes from port to port (small circles):\n- air supply → valve port **1**;\n- port **4** → cylinder rear chamber (port **1**, on the left);\n- port **2** → port **1** of the flow control valve;\n- flow control port **2** → cylinder front chamber (port **2**).\nPorts **3** and **5** stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un petit rond et en relâchant sur un autre. Suppr retire le tuyau choisi.",
+    "en": "Draw a tube by starting on a small circle and releasing on another. Delete removes the selected tube."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "fc:1"
+     ],
+     [
+      "fc:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le réducteur de débit",
+    "en": "The flow control valve"
+   },
+   "text": {
+    "fr": "Le réducteur laisse passer l’air librement de 1 vers 2, et le freine de 2 vers 1. Il est placé côté tige, son orifice 2 vers le vérin. Que règle-t-il ?",
+    "en": "The flow control valve lets air through freely from 1 to 2, and throttles it from 2 to 1. It sits on the rod side, port 2 towards the cylinder. What does it set?"
+   },
+   "hint": {
+    "fr": "Quand la tige sort, l’air de la chambre avant s’échappe en traversant le réducteur de 2 vers 1 : c’est ce passage qu’il freine. On dit qu’il règle la vitesse « à l’échappement », ce qui donne un mouvement régulier.",
+    "en": "When the rod extends, the air of the front chamber escapes through the flow control from 2 to 1: that is the passage it throttles. It sets the speed “on the exhaust”, which gives a smooth motion."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La pression du réseau",
+      "en": "The supply pressure"
+     },
+     {
+      "fr": "La vitesse de sortie de la tige : il freine l’air qui s’échappe de la chambre avant",
+      "en": "The extension speed: it throttles the air escaping from the front chamber"
+     },
+     {
+      "fr": "La vitesse de rentrée seulement",
+      "en": "Only the retraction speed"
+     },
+     {
+      "fr": "La force du vérin",
+      "en": "The cylinder force"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code » :\n- dans setup() : `pinMode(7, INPUT_PULLUP);` et `pinMode(3, INPUT_PULLUP);` pour BTN1 et B2, `pinMode(2, OUTPUT);` et `pinMode(8, OUTPUT);` ;\n- dans loop() : si `digitalRead(7) == LOW`, `digitalWrite(2, HIGH);` (Y1 excitée), sinon `digitalWrite(2, LOW);` ; si `digitalRead(3) == LOW`, LED1 allumée, sinon éteinte.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab:\n- in setup(): `pinMode(7, INPUT_PULLUP);` and `pinMode(3, INPUT_PULLUP);` for BTN1 and B2, `pinMode(2, OUTPUT);` and `pinMode(8, OUTPUT);`;\n- in loop(): if `digitalRead(7) == LOW`, `digitalWrite(2, HIGH);` (Y1 energised), otherwise `digitalWrite(2, LOW);`; if `digitalRead(3) == LOW`, LED1 on, otherwise off.\nClick “Upload”."
+   },
+   "keep": {
+    "fr": "Avec `INPUT_PULLUP`, un contact fermé vers la masse se lit **LOW**. Bouton, capteur de vérin, pressostat : pour la carte, ce sont tous des contacts.",
+    "en": "With `INPUT_PULLUP`, a contact closed to ground reads **LOW**. Button, cylinder sensor, pressure switch: to the board they are all contacts."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "digitalRead\\s*\\(",
+     "digitalWrite\\s*\\(",
+     "pinMode\\s*\\([^)]*OUTPUT"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la porte s’ouvre",
+    "en": "Test: the door opens"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur **BTN1** et maintenez-le : Y1 est excitée, la tige du vérin 1A sort ; au bout de sa course, **B2** se ferme et **LED1** s’allume. Relâchez : la porte se referme.",
+    "en": "Click “Observe”, then press **BTN1** and hold it: Y1 is energised, the rod of cylinder 1A extends; at the end of its stroke, **B2** closes and **LED1** lights up. Release: the door closes."
+   },
+   "keep": {
+    "fr": "La vitesse d’un vérin double effet se règle **à l’échappement** : le réducteur freine l’air qui sort de la chambre qui se vide, et le mouvement reste régulier.",
+    "en": "The speed of a double-acting cylinder is set **on the exhaust**: the flow control throttles the air leaving the emptying chamber, and the motion stays smooth."
+   },
+   "hint": {
+    "fr": "La tige ne bouge pas ? Dans le plan Pneumatique, le distributeur doit porter le repère Y1 et le tuyau de la source arriver sur son orifice 1. LED1 reste éteinte ? Le capteur de fin de course du vérin doit porter le repère B2.",
+    "en": "The rod does not move? In the Pneumatics workspace, the valve must carry tag Y1 and the supply tube must reach its port 1. LED1 stays off? The cylinder’s end sensor must carry tag B2."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": {
+     "Y1": "on",
+     "c1": "out",
+     "LED1": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Force et pression",
+    "en": "Force and pressure"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Pneumatique**, choisissez le **modèle de simulation « Physique »** : la pression de chaque chambre et la force du piston sont calculées. Le vérin a un alésage de **25 mm** et le réseau donne **6 bar** (6 × 10⁵ Pa). Quelle force pousse la porte (F = p × S) ?",
+    "en": "In the **Pneumatics** tab, choose the **“Physical” simulation model**: the pressure in each chamber and the piston force are computed. The cylinder has a **25 mm** bore and the network gives **6 bar** (6 × 10⁵ Pa). What force pushes the door (F = p × A)?"
+   },
+   "keep": {
+    "fr": "**F = p × S** : p en pascals (1 bar = 10⁵ Pa), S = π × d² ÷ 4 en m², F en newtons.",
+    "en": "**F = p × A**: p in pascals (1 bar = 10⁵ Pa), A = π × d² ÷ 4 in m², F in newtons."
+   },
+   "hint": {
+    "fr": "Section du piston : S = π × 0,0125² ≈ 4,9 × 10⁻⁴ m². F = 6 × 10⁵ × 4,9 × 10⁻⁴ ≈ 294 N, soit le poids d’environ 30 kg. Mettez une charge de 330 N sur le vérin : il ne sort plus. Avec 250 N, il sort, plus lentement.",
+    "en": "Piston area: A = π × 0.0125² ≈ 4.9 × 10⁻⁴ m². F = 6 × 10⁵ × 4.9 × 10⁻⁴ ≈ 294 N, the weight of about 30 kg. Put a 330 N load on the cylinder: it no longer extends. With 250 N, it extends, more slowly."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 29 N",
+      "en": "About 29 N"
+     },
+     {
+      "fr": "Environ 294 N",
+      "en": "About 294 N"
+     },
+     {
+      "fr": "Environ 2 945 N",
+      "en": "About 2,945 N"
+     },
+     {
+      "fr": "6 N, comme la pression",
+      "en": "6 N, like the pressure"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Et la sécurité ?",
+    "en": "What about safety?"
+   },
+   "text": {
+    "fr": "Une vraie porte ne doit jamais coincer un voyageur. Les constructeurs limitent la force de fermeture (pression réduite, réducteur de débit), ajoutent des capteurs d’obstacle ou un pressostat qui détecte un effort anormal, et prévoient une ouverture d’urgence qui vide le vérin. Vous pouvez ajouter un pressostat (repère S1) sur la chambre avant pour le tester.",
+    "en": "A real door must never trap a passenger. Manufacturers limit the closing force (reduced pressure, flow control), add obstacle sensors or a pressure switch that detects an abnormal effort, and provide an emergency opening that empties the cylinder. You can add a pressure switch (tag S1) on the front chamber to try it."
+   },
+   "keep": {
+    "fr": "Une porte automatique limite sa force de fermeture, détecte les obstacles et garde une **ouverture de secours** qui fonctionne sans électricité.",
+    "en": "An automatic door limits its closing force, detects obstacles and keeps an **emergency opening** that works without electricity."
+   }
+  }
+ ],
+ "workspace": "elec"
+}

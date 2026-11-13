@@ -1,0 +1,704 @@
+{
+ "id": "tp25-portillon-validation",
+ "level": "pro",
+ "series": "dakar",
+ "minutes": 90,
+ "title": {
+  "fr": "Portillon de validation RFID",
+  "en": "RFID ticket gate"
+ },
+ "summary": {
+  "fr": "Inspiré des portillons d’accès du TER et du BRT de Dakar : un lecteur RFID RC522 lit l’identifiant (UID) d’une carte sans contact. Une carte autorisée ouvre le portillon (servomoteur), allume la LED verte et donne un bip court ; une carte inconnue allume la LED rouge avec un bip long. Programmé sur ESP32.",
+  "en": "Inspired by the access gates of Dakar’s TER and BRT: an RC522 RFID reader reads the identifier (UID) of a contactless card. An authorised card opens the gate (servo), lights the green LED and gives a short beep; an unknown card lights the red LED with a long beep. Programmed on an ESP32."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un module SPI en 3,3 V sur un ESP32",
+   "en": "Wire a 3.3 V SPI module to an ESP32"
+  },
+  {
+   "fr": "Lire l’UID d’une carte avec la bibliothèque MFRC522",
+   "en": "Read a card’s UID with the MFRC522 library"
+  },
+  {
+   "fr": "Comparer un identifiant octet par octet et commander un servomoteur",
+   "en": "Compare an identifier byte by byte and drive a servo"
+  },
+  {
+   "fr": "Comprendre les limites d’un contrôle par UID",
+   "en": "Understand the limits of a UID check"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Bus SPI : SCK, MOSI, MISO partagés, plus une broche de sélection par module ; le RC522 s’alimente en 3,3 V.",
+   "en": "SPI bus: shared SCK, MOSI, MISO, plus one select pin per module; the RC522 is powered from 3.3 V."
+  },
+  {
+   "fr": "L’UID d’une carte se compare octet par octet avec une boucle `for`.",
+   "en": "A card’s UID is compared byte by byte with a `for` loop."
+  },
+  {
+   "fr": "Retour au voyageur : vert et bip court pour « passez », rouge et bip long pour « refusé ».",
+   "en": "Feedback to the passenger: green and a short beep for “go”, red and a long beep for “refused”."
+  },
+  {
+   "fr": "Un UID identifie une carte mais ne prouve pas qu’elle est authentique : un vrai réseau vérifie des données protégées.",
+   "en": "A UID identifies a card but does not prove it is genuine: a real network checks protected data."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Portillon de validation",
+  "comps": [
+   {
+    "id": "esp32_1",
+    "type": "esp32",
+    "name": "ESP32",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "rc522_1",
+    "type": "rc522",
+    "name": "RFID1",
+    "x": -78,
+    "z": -6,
+    "r": 0
+   },
+   {
+    "id": "servo_1",
+    "type": "servo",
+    "name": "SERVO1",
+    "x": 66,
+    "z": -22,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 62,
+    "z": 18,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -30,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED1",
+    "x": -12,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": 12,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED2",
+    "x": 30,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "rc522_1",
+     "3.3V"
+    ],
+    "b": [
+     "esp32_1",
+     "3V3"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 3,3 V"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "GND"
+    ],
+    "b": [
+     "esp32_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "SCK"
+    ],
+    "b": [
+     "esp32_1",
+     "D18"
+    ],
+    "color": "#9b7be0",
+    "role": "Horloge SPI"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "MOSI"
+    ],
+    "b": [
+     "esp32_1",
+     "D23"
+    ],
+    "color": "#3fb27f",
+    "role": "Données SPI vers le lecteur"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "MISO"
+    ],
+    "b": [
+     "esp32_1",
+     "D19"
+    ],
+    "color": "#3d7be0",
+    "role": "Données SPI vers l’ESP32"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "SDA"
+    ],
+    "b": [
+     "esp32_1",
+     "D5"
+    ],
+    "color": "#f2c94c",
+    "role": "Sélection du lecteur (SS)"
+   },
+   {
+    "a": [
+     "rc522_1",
+     "RST"
+    ],
+    "b": [
+     "esp32_1",
+     "D27"
+    ],
+    "color": "#f08a3c",
+    "role": "Remise à zéro"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "servo_1",
+     "VCC"
+    ],
+    "b": [
+     "esp32_1",
+     "VIN"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du servo"
+   },
+   {
+    "a": [
+     "servo_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-20"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "servo_1",
+     "SIG"
+    ],
+    "b": [
+     "esp32_1",
+     "D13"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du servo"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "D25"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "esp32_1",
+     "D26"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-16"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "+"
+    ],
+    "b": [
+     "esp32_1",
+     "D14"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du buzzer"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-22"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   }
+  ],
+  "code": {
+   "ESP32": "// TP : portillon de validation, inspiré des portillons d’accès du TER et du BRT.\n// Carte autorisée : le portillon s’ouvre, LED verte et bip court. Carte inconnue : LED rouge et bip long.\n#include <SPI.h>\n#include <MFRC522.h>\n#include <ESP32Servo.h>\n\nconst int SS_PIN = 5;       // SDA du lecteur (sélection sur le bus SPI)\nconst int RST_PIN = 27;     // remise à zéro du lecteur\nconst int SERVO_PIN = 13;   // bras du portillon\nconst int LED_VERTE = 25;\nconst int LED_ROUGE = 26;\nconst int BUZZER = 14;\n\nMFRC522 rfid(SS_PIN, RST_PIN);\nServo portillon;\n\n// UID de la seule carte autorisée : le « Badge bleu » du simulateur.\nbyte autorise[4] = {0xDE, 0xAD, 0xBE, 0xEF};\n\n// Vrai si la carte lue a exactement l’UID autorisé, octet par octet.\nbool carteAutorisee() {\n  if (rfid.uid.size != 4) return false;\n  for (byte i = 0; i < 4; i++) {\n    if (rfid.uid.uidByte[i] != autorise[i]) return false;\n  }\n  return true;\n}\n\n// Bip du buzzer actif pendant « duree » millisecondes.\nvoid bip(int duree) {\n  digitalWrite(BUZZER, HIGH);\n  delay(duree);\n  digitalWrite(BUZZER, LOW);\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  SPI.begin();\n  rfid.PCD_Init();\n  pinMode(LED_VERTE, OUTPUT);\n  pinMode(LED_ROUGE, OUTPUT);\n  pinMode(BUZZER, OUTPUT);\n  portillon.attach(SERVO_PIN);\n  portillon.write(0);           // portillon fermé\n  Serial.println(\"Presentez votre carte\");\n}\n\nvoid loop() {\n  // Rien à faire tant qu’aucune nouvelle carte n’est posée sur le lecteur.\n  if (!rfid.PICC_IsNewCardPresent() || !rfid.PICC_ReadCardSerial()) return;\n\n  // UID de la carte au moniteur série, en hexadécimal (DE AD BE EF).\n  Serial.print(\"UID :\");\n  for (byte i = 0; i < rfid.uid.size; i++) {\n    if (rfid.uid.uidByte[i] < 0x10) Serial.print(\" 0\");\n    else Serial.print(\" \");\n    Serial.print(rfid.uid.uidByte[i], HEX);\n  }\n  Serial.println();\n\n  if (carteAutorisee()) {\n    Serial.println(\"Titre valide : bon voyage !\");\n    digitalWrite(LED_VERTE, HIGH);\n    bip(100);                   // bip court\n    portillon.write(90);        // le bras s’ouvre\n    delay(3000);                // le temps de passer\n    portillon.write(0);         // puis se referme\n    digitalWrite(LED_VERTE, LOW);\n  } else {\n    Serial.println(\"Titre refuse\");\n    digitalWrite(LED_ROUGE, HIGH);\n    bip(1000);                  // bip long\n    digitalWrite(LED_ROUGE, LOW);\n  }\n  rfid.PICC_HaltA();            // fin du dialogue avec cette carte\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le portillon",
+    "en": "The gate"
+   },
+   "text": {
+    "fr": "Pour accéder au quai, comme aux portillons du TER ou du BRT, le voyageur présente sa **carte sans contact** au lecteur : si le titre est reconnu, le portillon s’ouvre. Vous allez construire une maquette de ce portillon :\n- **RFID1** : un lecteur **RC522** (13,56 MHz) qui lit l’identifiant unique de chaque carte, son **UID** ;\n- **SERVO1** : un servomoteur qui joue le bras du portillon (0° fermé, 90° ouvert) ;\n- **LED1** verte et **LED2** rouge avec leurs résistances **R1** et **R2** (220 Ω), le buzzer **BZ1** et la breadboard **BB1**.\nLe RC522 est une puce **3,3 V** : ses broches ne sont pas prévues pour les signaux 5 V d’une Arduino Uno. On le relie donc à un **ESP32**, qui travaille en 3,3 V.",
+    "en": "To reach the platform, as at the TER or BRT gates, passengers hold their **contactless card** to the reader: if the ticket is recognised, the gate opens. You will build a model of this gate:\n- **RFID1**: an **RC522** reader (13.56 MHz) that reads each card’s unique identifier, its **UID**;\n- **SERVO1**: a servo that plays the gate arm (0° closed, 90° open);\n- the green **LED1** and red **LED2** with their resistors **R1** and **R2** (220 Ω), the buzzer **BZ1** and the **BB1** breadboard.\nThe RC522 is a **3.3 V** chip: its pins are not designed for the 5 V signals of an Arduino Uno. So it is connected to an **ESP32**, which works at 3.3 V."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le lecteur RFID",
+    "en": "The RFID reader"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez RFID1 à l’ESP32 :\n- **3.3V** → **3V3** (jamais VIN : la puce n’accepte pas 5 V) et **GND** → **GND** ;\n- le bus **SPI** : **SCK** → **D18**, **MOSI** → **D23**, **MISO** → **D19** ;\n- **SDA**, la sélection du module (appelée SS sur d’autres modules) → **D5** ;\n- **RST** → **D27**.\nLa broche **IRQ** reste libre : la bibliothèque ne s’en sert pas.",
+    "en": "In the “Wiring” tab, connect RFID1 to the ESP32:\n- **3.3V** → **3V3** (never VIN: the chip does not accept 5 V) and **GND** → **GND**;\n- the **SPI** bus: **SCK** → **D18**, **MOSI** → **D23**, **MISO** → **D19**;\n- **SDA**, the module select (called SS on other modules) → **D5**;\n- **RST** → **D27**.\nThe **IRQ** pin stays free: the library does not use it."
+   },
+   "keep": {
+    "fr": "Avant de câbler un module, on vérifie sa **tension** : le RC522 fonctionne en 3,3 V, jamais en 5 V.",
+    "en": "Before wiring a module, check its **voltage**: the RC522 runs on 3.3 V, never 5 V."
+   },
+   "hint": {
+    "fr": "D18, D19 et D23 sont les broches du bus SPI matériel de l’ESP32. MOSI : de la carte vers le module ; MISO : du module vers la carte.",
+    "en": "D18, D19 and D23 are the pins of the ESP32’s hardware SPI bus. MOSI: from the board to the module; MISO: from the module to the board."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "RFID1.3.3V",
+      "ESP32.3V3"
+     ],
+     [
+      "RFID1.GND",
+      "ESP32.GND*"
+     ],
+     [
+      "RFID1.SCK",
+      "ESP32.D18"
+     ],
+     [
+      "RFID1.MOSI",
+      "ESP32.D23"
+     ],
+     [
+      "RFID1.MISO",
+      "ESP32.D19"
+     ],
+     [
+      "RFID1.SDA",
+      "ESP32.D5"
+     ],
+     [
+      "RFID1.RST",
+      "ESP32.D27"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Contrôle : 3,3 V pour le lecteur",
+    "en": "Check: 3.3 V for the reader"
+   },
+   "text": {
+    "fr": "Lancez la simulation, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **RFID1 · 3.3V**, pointe noire sur **RFID1 · GND**. Notez la tension d’alimentation du lecteur.",
+    "en": "Start the simulation, open “Instruments” → **Multimeter**, **V** mode: red probe on **RFID1 · 3.3V**, black probe on **RFID1 · GND**. Enter the reader’s supply voltage."
+   },
+   "hint": {
+    "fr": "On attend 3,3 V, la tension de la broche 3V3 de l’ESP32. Le RC522 accepte de 3,0 à 3,6 V : sur 5 V, il serait abîmé.",
+    "en": "You should get 3.3 V, the voltage of the ESP32’s 3V3 pin. The RC522 accepts 3.0 to 3.6 V: on 5 V it would be damaged."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "RFID1.3.3V",
+     "RFID1.GND"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bras, les voyants et le buzzer",
+    "en": "The arm, the lights and the buzzer"
+   },
+   "text": {
+    "fr": "Câblez le reste du portillon. Les masses vont sur le rail **-** de la breadboard, relié à un **GND** de l’ESP32 :\n- **SERVO1** : **VCC** → **VIN** (le 5 V de l’USB : un servo demande 4,8 à 6 V), **GND** → masse, **SIG** → **D13** ;\n- **D25** → R1 → anode **A** de **LED1** (verte), cathode **K** → masse ;\n- **D26** → R2 → anode **A** de **LED2** (rouge), cathode **K** → masse ;\n- **BZ1** : **+** → **D14**, **-** → masse.",
+    "en": "Wire the rest of the gate. Grounds go on the breadboard **-** rail, joined to a **GND** pin of the ESP32:\n- **SERVO1**: **VCC** → **VIN** (the USB 5 V: a servo needs 4.8 to 6 V), **GND** → ground, **SIG** → **D13**;\n- **D25** → R1 → anode **A** of **LED1** (green), cathode **K** → ground;\n- **D26** → R2 → anode **A** of **LED2** (red), cathode **K** → ground;\n- **BZ1**: **+** → **D14**, **-** → ground."
+   },
+   "hint": {
+    "fr": "Seule l’alimentation du moteur du servo est en 5 V : son signal SIG reste en 3,3 V, l’ESP32 le commande sans problème. Les rails - du haut et du bas ne sont pas reliés : posez un fil entre les deux si vous utilisez les deux.",
+    "en": "Only the servo motor supply is 5 V: its SIG signal stays at 3.3 V, the ESP32 drives it without trouble. The top and bottom - rails are not connected: add a wire between them if you use both."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "SERVO1.VCC",
+      "ESP32.VIN"
+     ],
+     [
+      "SERVO1.GND",
+      "ESP32.GND*"
+     ],
+     [
+      "SERVO1.SIG",
+      "ESP32.D13"
+     ],
+     [
+      "ESP32.D25",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "ESP32.GND*"
+     ],
+     [
+      "ESP32.D26",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.K",
+      "ESP32.GND*"
+     ],
+     [
+      "BZ1.+",
+      "ESP32.D14"
+     ],
+     [
+      "BZ1.-",
+      "ESP32.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire l’UID d’une carte",
+    "en": "Reading a card’s UID"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », commencez par lire les cartes :\n- en haut : `#include <SPI.h>`, `#include <MFRC522.h>` et `MFRC522 rfid(5, 27);` (broche SDA, broche RST) ;\n- dans setup() : `Serial.begin(115200);`, `SPI.begin();` puis `rfid.PCD_Init();` ;\n- dans loop() : si `rfid.PICC_IsNewCardPresent()` et `rfid.PICC_ReadCardSerial()` sont vrais, affichez les `rfid.uid.size` octets `rfid.uid.uidByte[i]` en hexadécimal (`Serial.print(…, HEX)`), puis appelez `rfid.PICC_HaltA();`.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, start by reading cards:\n- at the top: `#include <SPI.h>`, `#include <MFRC522.h>` and `MFRC522 rfid(5, 27);` (SDA pin, RST pin);\n- in setup(): `Serial.begin(115200);`, `SPI.begin();` then `rfid.PCD_Init();`;\n- in loop(): if `rfid.PICC_IsNewCardPresent()` and `rfid.PICC_ReadCardSerial()` are true, print the `rfid.uid.size` bytes `rfid.uid.uidByte[i]` in hexadecimal (`Serial.print(…, HEX)`), then call `rfid.PICC_HaltA();`.\nClick “Upload”."
+   },
+   "keep": {
+    "fr": "Chaque carte sans contact porte un identifiant, l’**UID**. Le lecteur le donne octet par octet, qu’on affiche en hexadécimal.",
+    "en": "Each contactless card carries an identifier, the **UID**. The reader gives it byte by byte, shown in hexadecimal."
+   },
+   "hint": {
+    "fr": "Sur l’ESP32, une broche s’écrit avec son numéro de GPIO : D5 → 5, D27 → 27. PICC_IsNewCardPresent() ne répond « oui » qu’une fois par présentation : pour relire une carte, retirez-la puis reposez-la.",
+    "en": "On the ESP32, a pin is written with its GPIO number: D5 → 5, D27 → 27. PICC_IsNewCardPresent() only says “yes” once per presentation: to read a card again, remove it and put it back."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<MFRC522\\.h>",
+     "MFRC522\\s+\\w+\\s*\\(",
+     "SPI\\.begin\\s*\\(",
+     "PCD_Init\\s*\\(",
+     "PICC_IsNewCardPresent\\s*\\(",
+     "PICC_ReadCardSerial\\s*\\(",
+     "uidByte",
+     "\\bHEX\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Chaque carte a son UID",
+    "en": "Each card has its UID"
+   },
+   "text": {
+    "fr": "Lancez la simulation. Dans l’onglet « Simulation », section **Périphériques**, posez le **Badge bleu** sur le lecteur, retirez-le, puis posez la **Carte blanche**. Quel UID le moniteur série affiche-t-il pour le badge bleu ?",
+    "en": "Start the simulation. In the “Simulation” tab, **Peripherals** section, place the **Blue tag** on the reader, remove it, then place the **White card**. Which UID does the serial monitor show for the blue tag?"
+   },
+   "hint": {
+    "fr": "Chaque carte reçoit son UID à la fabrication (4 octets ici) : badge bleu DE AD BE EF, carte blanche 12 34 56 78. C’est cet UID que le portillon va comparer.",
+    "en": "Each card gets its UID at manufacture (4 bytes here): blue tag DE AD BE EF, white card 12 34 56 78. This UID is what the gate will compare."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "DE AD BE EF",
+      "en": "DE AD BE EF"
+     },
+     {
+      "fr": "12 34 56 78",
+      "en": "12 34 56 78"
+     },
+     {
+      "fr": "A1 B2 C3 D4",
+      "en": "A1 B2 C3 D4"
+     },
+     {
+      "fr": "Le même pour toutes les cartes : c’est le numéro du lecteur",
+      "en": "The same for every card: it is the reader’s number"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme du portillon",
+    "en": "The gate program"
+   },
+   "text": {
+    "fr": "Complétez le programme. Seul le **badge bleu** est autorisé :\n- en haut : `#include <ESP32Servo.h>`, `Servo portillon;` et `byte autorise[4] = {0xDE, 0xAD, 0xBE, 0xEF};` ;\n- dans setup() : `portillon.attach(13);` puis `portillon.write(0);` (fermé), et D25, D26, D14 en sortie ;\n- après la lecture d’une carte, comparez ses 4 octets à `autorise` avec une boucle `for` ;\n- carte autorisée : LED verte, **bip court** (100 ms), `portillon.write(90);`, attente de **3 s** (`delay(3000);`), puis fermeture et LED éteinte ;\n- carte inconnue : LED rouge et **bip long** (1 s), puis LED éteinte.\nCliquez sur « Téléverser ».",
+    "en": "Complete the program. Only the **blue tag** is authorised:\n- at the top: `#include <ESP32Servo.h>`, `Servo portillon;` and `byte autorise[4] = {0xDE, 0xAD, 0xBE, 0xEF};`;\n- in setup(): `portillon.attach(13);` then `portillon.write(0);` (closed), and D25, D26, D14 as outputs;\n- after reading a card, compare its 4 bytes with `autorise` using a `for` loop;\n- authorised card: green LED, **short beep** (100 ms), `portillon.write(90);`, a **3 s** wait (`delay(3000);`), then close and turn the LED off;\n- unknown card: red LED and **long beep** (1 s), then LED off.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "La bibliothèque Servo d’Arduino ne fonctionne pas sur l’ESP32 : ESP32Servo la remplace, avec les mêmes fonctions. Une fonction `bool carteAutorisee()` qui renvoie `false` dès qu’un octet diffère rend le programme plus lisible.",
+    "en": "The Arduino Servo library does not work on the ESP32: ESP32Servo replaces it, with the same functions. A `bool carteAutorisee()` function that returns `false` as soon as one byte differs makes the program easier to read."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<ESP32Servo\\.h>",
+     "\\.attach\\s*\\(",
+     "\\.write\\s*\\(",
+     "\\b90\\b",
+     "0x[Dd][Ee]",
+     "\\bfor\\s*\\(",
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\(",
+     "\\b3000\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : carte autorisée",
+    "en": "Test: authorised card"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis posez le **Badge bleu** sur le lecteur (section Périphériques) : **LED1** verte s’allume, un bip court retentit et le bras du servo se lève pendant 3 s.",
+    "en": "Click “Observe”, then place the **Blue tag** on the reader (Peripherals section): green **LED1** lights up, a short beep sounds and the servo arm rises for 3 s."
+   },
+   "hint": {
+    "fr": "Le badge était déjà posé ? Retirez-le et reposez-le : chaque pose est une nouvelle présentation. Rien ne se passe ? Lisez l’UID au moniteur série et comparez-le, octet par octet, à votre tableau autorise.",
+    "en": "Was the tag already in place? Remove it and put it back: each placement is a new presentation. Nothing happens? Read the UID in the serial monitor and compare it, byte by byte, with your autorise array."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on",
+     "LED2": "off"
+    },
+    "hold": 1500
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : carte inconnue",
+    "en": "Test: unknown card"
+   },
+   "text": {
+    "fr": "Retirez le badge bleu, puis posez la **Carte blanche** : le portillon reste fermé, **LED2** rouge s’allume et le buzzer sonne **1 s**.",
+    "en": "Remove the blue tag, then place the **White card**: the gate stays closed, red **LED2** lights up and the buzzer sounds for **1 s**."
+   },
+   "hint": {
+    "fr": "L’observation vérifie que LED2 et le buzzer restent actifs ensemble plus d’une demi-seconde : un bip court ne suffit pas.",
+    "en": "The check makes sure LED2 and the buzzer stay on together for more than half a second: a short beep is not enough."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED2": "on",
+     "BZ1": "on",
+     "LED1": "off"
+    },
+    "hold": 600
+   }
+  },
+  {
+   "title": {
+    "fr": "Un UID suffit-il ?",
+    "en": "Is a UID enough?"
+   },
+   "text": {
+    "fr": "Notre portillon reconnaît une carte à son seul UID. Est-ce suffisant pour un vrai réseau de transport ?",
+    "en": "Our gate recognises a card by its UID alone. Is that enough for a real transport network?"
+   },
+   "hint": {
+    "fr": "L’UID sert à repérer la carte, pas à prouver qu’elle est authentique. Une carte de transport garde son titre dans une mémoire protégée par des clés secrètes, et le système central peut bloquer une carte perdue ou volée.",
+    "en": "The UID identifies the card, it does not prove that the card is genuine. A transport card keeps its ticket in memory protected by secret keys, and the central system can block a lost or stolen card."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Oui : deux cartes ne peuvent jamais avoir le même UID",
+      "en": "Yes: two cards can never have the same UID"
+     },
+     {
+      "fr": "Non : l’UID se lit sans aucune clé et peut être recopié sur une carte « clone » ; un vrai système vérifie aussi des données protégées par une clé, et la validité du titre (date, solde) sur un serveur",
+      "en": "No: the UID can be read without any key and copied onto a “clone” card; a real system also checks key-protected data, and the ticket’s validity (date, balance) on a server"
+     },
+     {
+      "fr": "Oui, à condition d’utiliser un ESP32 plutôt qu’une Uno",
+      "en": "Yes, provided you use an ESP32 rather than an Uno"
+     },
+     {
+      "fr": "Non, car le RC522 ne lit qu’une partie de l’UID",
+      "en": "No, because the RC522 only reads part of the UID"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

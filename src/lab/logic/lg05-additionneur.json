@@ -1,0 +1,931 @@
+{
+ "id": "lg05-additionneur",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 40,
+ "title": {
+  "fr": "L’additionneur binaire",
+  "en": "The binary adder"
+ },
+ "summary": {
+  "fr": "Additionner en binaire avec des portes : le demi-additionneur, l’additionneur complet, puis le bloc additionneur 4 bits avec un afficheur.",
+  "en": "Add in binary with gates: the half adder, the full adder, then the 4-bit adder block with a display."
+ },
+ "objectives": [
+  {
+   "fr": "Poser une addition en binaire",
+   "en": "Work out a binary addition"
+  },
+  {
+   "fr": "Construire un demi-additionneur et un additionneur complet",
+   "en": "Build a half adder and a full adder"
+  },
+  {
+   "fr": "Utiliser un additionneur 4 bits",
+   "en": "Use a 4-bit adder"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Additionneur 1 bit"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "Ci"
+     }
+    },
+    {
+     "id": "lS1",
+     "type": "led",
+     "x": 52,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lC1",
+     "type": "led",
+     "x": 52,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "C1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lS2",
+     "type": "led",
+     "x": 52,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lC2",
+     "type": "led",
+     "x": 52,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "C2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 31,
+     "r": 0,
+     "p": {
+      "text": "Additionneur 4 bits"
+     }
+    },
+    {
+     "id": "dX",
+     "type": "dip",
+     "x": 4,
+     "y": 36,
+     "r": 0,
+     "p": {
+      "label": "X",
+      "bits": 4
+     }
+    },
+    {
+     "id": "dY",
+     "type": "dip",
+     "x": 4,
+     "y": 44,
+     "r": 0,
+     "p": {
+      "label": "Y",
+      "bits": 4
+     }
+    },
+    {
+     "id": "hR",
+     "type": "hex",
+     "x": 34,
+     "y": 36,
+     "r": 0,
+     "p": {
+      "label": "R"
+     }
+    },
+    {
+     "id": "lR4",
+     "type": "led",
+     "x": 34,
+     "y": 43,
+     "r": 0,
+     "p": {
+      "label": "R4",
+      "color": "red"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Additionneur 1 bit"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "Ci"
+     }
+    },
+    {
+     "id": "lS1",
+     "type": "led",
+     "x": 52,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lC1",
+     "type": "led",
+     "x": 52,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "C1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lS2",
+     "type": "led",
+     "x": 52,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lC2",
+     "type": "led",
+     "x": 52,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "C2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 31,
+     "r": 0,
+     "p": {
+      "text": "Additionneur 4 bits"
+     }
+    },
+    {
+     "id": "dX",
+     "type": "dip",
+     "x": 4,
+     "y": 36,
+     "r": 0,
+     "p": {
+      "label": "X",
+      "bits": 4
+     }
+    },
+    {
+     "id": "dY",
+     "type": "dip",
+     "x": 4,
+     "y": 44,
+     "r": 0,
+     "p": {
+      "label": "Y",
+      "bits": 4
+     }
+    },
+    {
+     "id": "hR",
+     "type": "hex",
+     "x": 34,
+     "y": 36,
+     "r": 0,
+     "p": {
+      "label": "R"
+     }
+    },
+    {
+     "id": "lR4",
+     "type": "led",
+     "x": 34,
+     "y": 43,
+     "r": 0,
+     "p": {
+      "label": "R4",
+      "color": "red"
+     }
+    },
+    {
+     "id": "g1",
+     "type": "xor",
+     "x": 18,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g2",
+     "type": "and",
+     "x": 18,
+     "y": 10,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g3",
+     "type": "xor",
+     "x": 32,
+     "y": 17,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g4",
+     "type": "and",
+     "x": 32,
+     "y": 24,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g5",
+     "type": "or",
+     "x": 42,
+     "y": 24,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "add",
+     "type": "adder",
+     "x": 18,
+     "y": 36,
+     "r": 0,
+     "p": {
+      "bits": 4
+     }
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "lS1",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "B"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "lC1",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "g3",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "g3",
+      "B"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "g3",
+      "Y"
+     ],
+     "b": [
+      "lS2",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "g4",
+      "A"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "g4",
+      "B"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "g5",
+      "A"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "g4",
+      "Y"
+     ],
+     "b": [
+      "g5",
+      "B"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "g5",
+      "Y"
+     ],
+     "b": [
+      "lC2",
+      "A"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "dX",
+      "0"
+     ],
+     "b": [
+      "add",
+      "A0"
+     ]
+    },
+    {
+     "id": "w16",
+     "a": [
+      "dX",
+      "1"
+     ],
+     "b": [
+      "add",
+      "A1"
+     ]
+    },
+    {
+     "id": "w17",
+     "a": [
+      "dX",
+      "2"
+     ],
+     "b": [
+      "add",
+      "A2"
+     ]
+    },
+    {
+     "id": "w18",
+     "a": [
+      "dX",
+      "3"
+     ],
+     "b": [
+      "add",
+      "A3"
+     ]
+    },
+    {
+     "id": "w19",
+     "a": [
+      "dY",
+      "0"
+     ],
+     "b": [
+      "add",
+      "B0"
+     ]
+    },
+    {
+     "id": "w20",
+     "a": [
+      "dY",
+      "1"
+     ],
+     "b": [
+      "add",
+      "B1"
+     ]
+    },
+    {
+     "id": "w21",
+     "a": [
+      "dY",
+      "2"
+     ],
+     "b": [
+      "add",
+      "B2"
+     ]
+    },
+    {
+     "id": "w22",
+     "a": [
+      "dY",
+      "3"
+     ],
+     "b": [
+      "add",
+      "B3"
+     ]
+    },
+    {
+     "id": "w23",
+     "a": [
+      "add",
+      "S0"
+     ],
+     "b": [
+      "hR",
+      "D0"
+     ]
+    },
+    {
+     "id": "w24",
+     "a": [
+      "add",
+      "S1"
+     ],
+     "b": [
+      "hR",
+      "D1"
+     ]
+    },
+    {
+     "id": "w25",
+     "a": [
+      "add",
+      "S2"
+     ],
+     "b": [
+      "hR",
+      "D2"
+     ]
+    },
+    {
+     "id": "w26",
+     "a": [
+      "add",
+      "S3"
+     ],
+     "b": [
+      "hR",
+      "D3"
+     ]
+    },
+    {
+     "id": "w27",
+     "a": [
+      "add",
+      "Co"
+     ],
+     "b": [
+      "lR4",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Additionner en binaire",
+    "en": "Adding in binary"
+   },
+   "text": {
+    "fr": "En binaire, il n’y a que deux chiffres, 0 et 1. On additionne comme en décimal, colonne par colonne :\n- 0 + 0 = 0 ; 0 + 1 = 1 ;\n- 1 + 1 = 2, qui s’écrit **10** en binaire : on pose **0** et on **retient 1** pour la colonne suivante.\nPour additionner deux bits A et B, il faut donc deux sorties : la **somme** S et la **retenue** C (C pour carry, « retenue » en anglais).",
+    "en": "In binary there are only two digits, 0 and 1. You add as in decimal, column by column:\n- 0 + 0 = 0; 0 + 1 = 1;\n- 1 + 1 = 2, written **10** in binary: write down **0** and **carry 1** to the next column.\nSo adding two bits A and B needs two outputs: the **sum** S and the **carry** C."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La table du demi-additionneur",
+    "en": "The half adder truth table"
+   },
+   "text": {
+    "fr": "Remplissez les colonnes **S** (somme) et **C** (retenue) pour les quatre additions A + B.",
+    "en": "Fill in columns **S** (sum) and **C** (carry) for the four additions A + B."
+   },
+   "hint": {
+    "fr": "Seule l’addition 1 + 1 produit une retenue.",
+    "en": "Only the addition 1 + 1 produces a carry."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S": "A^B",
+     "C": "A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Le demi-additionneur",
+    "en": "The half adder"
+   },
+   "text": {
+    "fr": "Reconnaissez-vous les colonnes S et C ? Ce sont les tables de deux portes que vous connaissez. Câblez-les : la somme sur **S1**, la retenue sur **C1**. C’est un **demi-additionneur**.",
+    "en": "Do you recognize columns S and C? They are the truth tables of two gates you know. Wire them: the sum to **S1**, the carry to **C1**. This is a **half adder**."
+   },
+   "hint": {
+    "fr": "S vaut 1 quand A et B sont différents ; C vaut 1 quand A et B valent 1 tous les deux.",
+    "en": "S is 1 when A and B are different; C is 1 when A and B are both 1."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S1": "A^B",
+     "C1": "A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’additionneur complet",
+    "en": "The full adder"
+   },
+   "text": {
+    "fr": "Dans une addition de plusieurs bits, chaque colonne reçoit aussi la retenue de la colonne précédente, **Ci**. L’**additionneur complet** additionne donc trois bits : A + B + Ci.\nConstruisez-le à partir de votre demi-additionneur :\n- un second demi-additionneur (une porte OU exclusif et une porte ET) additionne S1 et Ci : sa somme va sur **S2** ;\n- une porte **OU** réunit les deux retenues : sa sortie va sur **C2**.",
+    "en": "In a multi-bit addition, each column also receives the carry from the previous column, **Ci**. The **full adder** therefore adds three bits: A + B + Ci.\nBuild it from your half adder:\n- a second half adder (an XOR gate and an AND gate) adds S1 and Ci: its sum goes to **S2**;\n- an **OR** gate joins the two carries: its output goes to **C2**."
+   },
+   "hint": {
+    "fr": "La sortie de la première porte OU exclusif alimente à la fois S1 et le second demi-additionneur. Les deux retenues ne valent jamais 1 en même temps : un OU suffit à les réunir.",
+    "en": "The output of the first XOR gate feeds both S1 and the second half adder. The two carries are never 1 at the same time: an OR is enough to join them."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B",
+     "Ci"
+    ],
+    "outputs": {
+     "S2": "A^B^Ci",
+     "C2": "A.B + A.Ci + B.Ci"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "1 + 1 + 1",
+    "en": "1 + 1 + 1"
+   },
+   "text": {
+    "fr": "Mettez A, B et Ci à 1. Que valent S2 et C2 ?",
+    "en": "Set A, B and Ci to 1. What are S2 and C2?"
+   },
+   "hint": {
+    "fr": "Comptez en décimal, puis écrivez le résultat en binaire avec deux chiffres : C2 est le chiffre de gauche.",
+    "en": "Count in decimal, then write the result in binary with two digits: C2 is the left digit."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "S2 = 0 et C2 = 1",
+      "en": "S2 = 0 and C2 = 1"
+     },
+     {
+      "fr": "S2 = 1 et C2 = 1",
+      "en": "S2 = 1 and C2 = 1"
+     },
+     {
+      "fr": "S2 = 1 et C2 = 0",
+      "en": "S2 = 1 and C2 = 0"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "L’additionneur 4 bits",
+    "en": "The 4-bit adder"
+   },
+   "text": {
+    "fr": "En bas du plan de travail : deux blocs d’interrupteurs **X** et **Y** (deux nombres de 4 bits, le bit 0 en haut), un afficheur hexadécimal **R** et une LED **R4**.\nDans la bibliothèque (**Combinatoire**), prenez l’**additionneur n bits** (4 bits par défaut) : il enchaîne quatre additionneurs complets. Reliez :\n- les bits 0 à 3 de X aux entrées A0 à A3 ;\n- les bits 0 à 3 de Y aux entrées B0 à B3 ;\n- les sorties S0 à S3 aux entrées D0 à D3 de l’afficheur ;\n- la retenue finale Co à la LED **R4**.",
+    "en": "At the bottom of the workspace: two switch blocks **X** and **Y** (two 4-bit numbers, bit 0 at the top), a hexadecimal display **R** and an LED **R4**.\nIn the library (**Combinational**), take the **n-bit adder** (4 bits by default): it chains four full adders. Connect:\n- bits 0 to 3 of X to inputs A0 to A3;\n- bits 0 to 3 of Y to inputs B0 to B3;\n- outputs S0 to S3 to inputs D0 to D3 of the display;\n- the final carry Co to LED **R4**."
+   },
+   "hint": {
+    "fr": "Le contrôle essaie 5 + 3, 9 + 8 et 15 + 1. L’entrée Ci de l’additionneur peut rester libre : elle vaut alors 0.",
+    "en": "The check tries 5 + 3, 9 + 8 and 15 + 1. The adder’s Ci input can stay unconnected: it is then 0."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "X0": 1,
+       "X1": 0,
+       "X2": 1,
+       "X3": 0,
+       "Y0": 1,
+       "Y1": 1,
+       "Y2": 0,
+       "Y3": 0
+      },
+      "expect": {
+       "R0": 0,
+       "R1": 0,
+       "R2": 0,
+       "R3": 1,
+       "R4": 0
+      }
+     },
+     {
+      "set": {
+       "X0": 1,
+       "X1": 0,
+       "X2": 0,
+       "X3": 1,
+       "Y0": 0,
+       "Y1": 0,
+       "Y2": 0,
+       "Y3": 1
+      },
+      "expect": {
+       "R0": 1,
+       "R1": 0,
+       "R2": 0,
+       "R3": 0,
+       "R4": 1
+      }
+     },
+     {
+      "set": {
+       "X0": 1,
+       "X1": 1,
+       "X2": 1,
+       "X3": 1,
+       "Y0": 1,
+       "Y1": 0,
+       "Y2": 0,
+       "Y3": 0
+      },
+      "expect": {
+       "R0": 0,
+       "R1": 0,
+       "R2": 0,
+       "R3": 0,
+       "R4": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire l’afficheur",
+    "en": "Reading the display"
+   },
+   "text": {
+    "fr": "Réglez X = 0110 (six) et Y = 0111 (sept). Un nombre s’écrit du bit 3, à gauche, au bit 0, à droite : sur le bloc, le bit 0 est en haut. Qu’indiquent l’afficheur R et la LED R4 ?",
+    "en": "Set X = 0110 (six) and Y = 0111 (seven). A number is written from bit 3, on the left, to bit 0, on the right: on the block, bit 0 is at the top. What do display R and LED R4 show?"
+   },
+   "hint": {
+    "fr": "6 + 7 = 13. En hexadécimal, les chiffres continuent après 9 : A = 10, b = 11, C = 12…",
+    "en": "6 + 7 = 13. In hexadecimal, digits go on after 9: A = 10, b = 11, C = 12…"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "« d » (treize), R4 éteinte",
+      "en": "“d” (thirteen), R4 off"
+     },
+     {
+      "fr": "« 13 », R4 éteinte",
+      "en": "“13”, R4 off"
+     },
+     {
+      "fr": "« 3 », R4 allumée",
+      "en": "“3”, R4 on"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "La plus grande somme",
+    "en": "The largest sum"
+   },
+   "text": {
+    "fr": "Avec deux nombres de 4 bits (et Ci = 0), quelle est la plus grande somme possible ? Essayez-la : la LED R4 compte pour 16.",
+    "en": "With two 4-bit numbers (and Ci = 0), what is the largest possible sum? Try it: LED R4 counts for 16."
+   },
+   "hint": {
+    "fr": "Le plus grand nombre de 4 bits est 1111.",
+    "en": "The largest 4-bit number is 1111."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "15",
+      "en": "15"
+     },
+     {
+      "fr": "16",
+      "en": "16"
+     },
+     {
+      "fr": "30",
+      "en": "30"
+     },
+     {
+      "fr": "31",
+      "en": "31"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

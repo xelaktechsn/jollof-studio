@@ -1,0 +1,659 @@
+{
+ "id": "lg09-bascule-d",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 30,
+ "title": {
+  "fr": "La bascule D : mémoriser au front d’horloge",
+  "en": "The D flip-flop: storing on the clock edge"
+ },
+ "summary": {
+  "fr": "Câbler une bascule D commandée par un bouton-poussoir, voir qu’elle ne recopie D qu’au front montant de l’horloge, la comparer au verrou D transparent et lire le chronogramme ; finir par un diviseur de fréquence par deux.",
+  "en": "Wire a D flip-flop driven by a push-button, see that it copies D only on the clock’s rising edge, compare it with the transparent D latch and read the timing diagram; finish with a divide-by-two frequency divider."
+ },
+ "objectives": [
+  {
+   "fr": "Repérer un front montant sur un chronogramme",
+   "en": "Spot a rising edge on a timing diagram"
+  },
+  {
+   "fr": "Distinguer une bascule sur front d’un verrou transparent",
+   "en": "Tell an edge-triggered flip-flop from a transparent latch"
+  },
+  {
+   "fr": "Réaliser un diviseur de fréquence par deux",
+   "en": "Build a divide-by-two frequency divider"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "H : bouton, 1 tant qu’il est appuyé"
+     }
+    },
+    {
+     "id": "sD",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "D"
+     }
+    },
+    {
+     "id": "bH",
+     "type": "button",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "H"
+     }
+    },
+    {
+     "id": "lQ",
+     "type": "led",
+     "x": 34,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 14,
+     "r": 0,
+     "p": {
+      "text": "Verrou D"
+     }
+    },
+    {
+     "id": "sEN",
+     "type": "switch",
+     "x": 4,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "EN"
+     }
+    },
+    {
+     "id": "lQL",
+     "type": "led",
+     "x": 34,
+     "y": 16,
+     "r": 0,
+     "p": {
+      "label": "QL",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "text": "Diviseur par 2"
+     }
+    },
+    {
+     "id": "lF",
+     "type": "led",
+     "x": 34,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "F",
+      "color": "blue"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "H : bouton, 1 tant qu’il est appuyé"
+     }
+    },
+    {
+     "id": "sD",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "D"
+     }
+    },
+    {
+     "id": "bH",
+     "type": "button",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "H"
+     }
+    },
+    {
+     "id": "lQ",
+     "type": "led",
+     "x": 34,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 14,
+     "r": 0,
+     "p": {
+      "text": "Verrou D"
+     }
+    },
+    {
+     "id": "sEN",
+     "type": "switch",
+     "x": 4,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "EN"
+     }
+    },
+    {
+     "id": "lQL",
+     "type": "led",
+     "x": 34,
+     "y": 16,
+     "r": 0,
+     "p": {
+      "label": "QL",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "text": "Diviseur par 2"
+     }
+    },
+    {
+     "id": "lF",
+     "type": "led",
+     "x": 34,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "label": "F",
+      "color": "blue"
+     }
+    },
+    {
+     "id": "f1",
+     "type": "dff",
+     "x": 18,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "l1",
+     "type": "dlatch",
+     "x": 18,
+     "y": 16,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "f2",
+     "type": "dff",
+     "x": 18,
+     "y": 24,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sD",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "D"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "bH",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "f1",
+      "Q"
+     ],
+     "b": [
+      "lQ",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sD",
+      "Q"
+     ],
+     "b": [
+      "l1",
+      "D"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sEN",
+      "Q"
+     ],
+     "b": [
+      "l1",
+      "EN"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "l1",
+      "Q"
+     ],
+     "b": [
+      "lQL",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "f2",
+      "QN"
+     ],
+     "b": [
+      "f2",
+      "D"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "bH",
+      "Q"
+     ],
+     "b": [
+      "f2",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "f2",
+      "Q"
+     ],
+     "b": [
+      "lF",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le montage",
+    "en": "The setup"
+   },
+   "text": {
+    "fr": "Sur le plan de travail :\n- l’interrupteur **D** : la donnée à mémoriser ;\n- le bouton-poussoir **H** : une horloge manuelle. Il vaut 1 tant que vous maintenez le clic, 0 dès que vous relâchez ;\n- l’interrupteur **EN** et les LED **Q**, **QL** et **F**, pour trois montages.\nL’instant où H passe de 0 à 1 s’appelle le **front montant**. C’est lui qui commande la bascule D.",
+    "en": "On the workspace:\n- switch **D**: the data to store;\n- push-button **H**: a manual clock. It is 1 while you hold the click, 0 as soon as you release it;\n- switch **EN** and LEDs **Q**, **QL** and **F**, for three circuits.\nThe moment H goes from 0 to 1 is called the **rising edge**. That is what drives the D flip-flop."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La bascule D",
+    "en": "The D flip-flop"
+   },
+   "text": {
+    "fr": "Posez une **Bascule D** (catégorie Bascules). Reliez l’interrupteur D à son entrée **D**, le bouton H à son entrée d’horloge et sa sortie **Q** à la LED **Q**.\nEssayez : changez D sans toucher à H, puis appuyez sur H. À quel moment Q change-t-il ?",
+    "en": "Place a **D flip-flop** (Flip-flops category). Connect switch D to its **D** input, button H to its clock input and its **Q** output to LED **Q**.\nTry it: change D without touching H, then press H. When does Q change?"
+   },
+   "hint": {
+    "fr": "L’entrée d’horloge est repérée par un petit triangle sur le bord gauche de la bascule. Les entrées PR et CLR, en haut et en bas, peuvent rester libres.",
+    "en": "The clock input is marked by a small triangle on the left edge of the flip-flop. The PR and CLR inputs, at the top and bottom, can stay unconnected."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "D": 1
+      },
+      "expect": {
+       "Q": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q": 1
+      }
+     },
+     {
+      "set": {
+       "D": 0
+      },
+      "expect": {
+       "Q": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q": 0
+      }
+     },
+     {
+      "set": {
+       "D": 1
+      },
+      "rise": "H",
+      "expect": {
+       "Q": 1
+      }
+     },
+     {
+      "set": {
+       "D": 0
+      },
+      "expect": {
+       "Q": 1
+      }
+     },
+     {
+      "fall": "H",
+      "expect": {
+       "Q": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire le chronogramme",
+    "en": "Reading the timing diagram"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Chronogramme**, à droite, puis jouez :\n- basculez D plusieurs fois sans toucher à H ;\n- mettez D à 1 et donnez un appui sur H ;\n- mettez D à 0, attendez, puis donnez un nouvel appui.\nSur le relevé, repérez chaque front montant de H : Q ne change qu’à ces instants-là, et prend la valeur que D avait à ce moment précis.",
+    "en": "Open the **Timing** tab on the right, then play:\n- toggle D several times without touching H;\n- set D to 1 and press H once;\n- set D to 0, wait, then press H again.\nOn the recording, find each rising edge of H: Q changes only at those instants, and takes the value D had at that very moment."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Pendant que H reste à 1",
+    "en": "While H stays at 1"
+   },
+   "text": {
+    "fr": "D vaut 1 au moment du front montant de H. Ensuite, H est maintenu à 1 et D passe à 0. Que vaut Q ?",
+    "en": "D is 1 at the moment of H’s rising edge. Then H is held at 1 and D goes to 0. What is Q?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Q passe aussitôt à 0",
+      "en": "Q goes to 0 at once"
+     },
+     {
+      "fr": "Q reste à 1 jusqu’au prochain front montant de H",
+      "en": "Q stays at 1 until the next rising edge of H"
+     },
+     {
+      "fr": "Q passe à 0 quand on relâche H",
+      "en": "Q goes to 0 when H is released"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le verrou D",
+    "en": "The D latch"
+   },
+   "text": {
+    "fr": "Posez un **Verrou D** (catégorie Bascules). Reliez son entrée D à l’interrupteur **D**, son entrée EN à l’interrupteur **EN** et sa sortie Q à la LED **QL**.\nMettez EN à 1 et basculez D plusieurs fois, puis remettez EN à 0 et recommencez. Que fait QL dans chaque cas ?",
+    "en": "Place a **D latch** (Flip-flops category). Connect its D input to switch **D**, its EN input to switch **EN** and its Q output to LED **QL**.\nSet EN to 1 and toggle D several times, then set EN back to 0 and do it again. What does QL do in each case?"
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "D": 1
+      },
+      "expect": {
+       "QL": 0
+      }
+     },
+     {
+      "set": {
+       "EN": 1
+      },
+      "expect": {
+       "QL": 1
+      }
+     },
+     {
+      "set": {
+       "D": 0
+      },
+      "expect": {
+       "QL": 0
+      }
+     },
+     {
+      "set": {
+       "D": 1
+      },
+      "expect": {
+       "QL": 1
+      }
+     },
+     {
+      "set": {
+       "EN": 0
+      },
+      "expect": {
+       "QL": 1
+      }
+     },
+     {
+      "set": {
+       "D": 0
+      },
+      "expect": {
+       "QL": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Verrou ou bascule ?",
+    "en": "Latch or flip-flop?"
+   },
+   "text": {
+    "fr": "Quelle phrase décrit la différence entre le verrou D et la bascule D ?",
+    "en": "Which sentence describes the difference between the D latch and the D flip-flop?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le verrou recopie D tant que EN = 1 (il est « transparent ») ; la bascule ne lit D qu’au front montant de son horloge",
+      "en": "The latch copies D as long as EN = 1 (it is “transparent”); the flip-flop reads D only on the rising edge of its clock"
+     },
+     {
+      "fr": "La bascule recopie D tant que son horloge vaut 1 ; le verrou ne lit D qu’au front montant de EN",
+      "en": "The flip-flop copies D as long as its clock is 1; the latch reads D only on the rising edge of EN"
+     },
+     {
+      "fr": "Il n’y a aucune différence",
+      "en": "There is no difference"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Un diviseur par deux",
+    "en": "A divide-by-two circuit"
+   },
+   "text": {
+    "fr": "Posez une seconde bascule D. Reliez sa sortie **Q̄** (QN) à sa propre entrée **D**, son horloge au bouton **H** et sa sortie Q à la LED **F**.\nAppuyez plusieurs fois sur H : F change d’état à chaque appui.",
+    "en": "Place a second D flip-flop. Connect its **Q̄** (QN) output to its own **D** input, its clock to button **H** and its Q output to LED **F**.\nPress H several times: F changes state on every press."
+   },
+   "hint": {
+    "fr": "D reçoit toujours l’inverse de ce que la bascule contient : à chaque front, elle prend donc l’état opposé.",
+    "en": "D always receives the inverse of what the flip-flop holds: on each edge it therefore takes the opposite state."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "expect": {
+       "F": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "F": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "F": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "F": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "F": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La fréquence de F",
+    "en": "The frequency of F"
+   },
+   "text": {
+    "fr": "On remplace le bouton H par une horloge qui donne 10 fronts montants par seconde (10 Hz). Quelle est la fréquence du signal F ?",
+    "en": "Button H is replaced by a clock giving 10 rising edges per second (10 Hz). What is the frequency of signal F?"
+   },
+   "hint": {
+    "fr": "Il faut deux fronts montants de H pour que F fasse une période complète (un passage à 1 puis un retour à 0).",
+    "en": "It takes two rising edges of H for F to complete one full period (going to 1, then back to 0)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "20 Hz",
+      "en": "20 Hz"
+     },
+     {
+      "fr": "10 Hz",
+      "en": "10 Hz"
+     },
+     {
+      "fr": "5 Hz",
+      "en": "5 Hz"
+     },
+     {
+      "fr": "1 Hz",
+      "en": "1 Hz"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

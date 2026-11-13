@@ -1,0 +1,332 @@
+{
+ "id": "pn02-commande-indirecte",
+ "level": "college",
+ "minutes": 30,
+ "title": {
+  "fr": "Commande indirecte d’un vérin double effet",
+  "en": "Indirect control of a double-acting cylinder"
+ },
+ "summary": {
+  "fr": "Un petit distributeur à bouton envoie un signal d’air qui pilote un gros distributeur 5/2 ; c’est lui qui alimente le vérin double effet, poussé à l’aller comme au retour.",
+  "en": "A small push-button valve sends an air signal that pilots a large 5/2 valve; that one feeds the double-acting cylinder, pushed both out and back."
+ },
+ "objectives": [
+  {
+   "fr": "Distinguer la partie commande (signal) de la partie puissance",
+   "en": "Tell the control part (signal) from the power part"
+  },
+  {
+   "fr": "Raccorder un distributeur 5/2 à pilotage pneumatique",
+   "en": "Connect a pneumatically piloted 5/2 valve"
+  },
+  {
+   "fr": "Comprendre le vérin double effet",
+   "en": "Understand the double-acting cylinder"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Vérin **double effet** : l’air pousse à l’aller et au retour. Il avance si une chambre est sous pression **et** si l’autre est à l’échappement.",
+   "en": "**Double-acting** cylinder: air pushes out and back. It moves if one chamber is pressurised **and** the other is exhausted."
+  },
+  {
+   "fr": "Distributeur **5/2** : orifices 1 (alimentation), 4 et 2 (utilisations), 5 et 3 (échappements). Pilotage **14** : 1 vers 4 ; pilotage **12** : 1 vers 2.",
+   "en": "**5/2** valve: ports 1 (supply), 4 and 2 (outlets), 5 and 3 (exhausts). Pilot **14**: 1 to 4; pilot **12**: 1 to 2."
+  },
+  {
+   "fr": "**Commande indirecte** : un petit signal pilote le distributeur de puissance placé près du vérin. En électropneumatique, ce signal est une bobine.",
+   "en": "**Indirect control**: a small signal pilots the power valve placed near the cylinder. In electropneumatics that signal is a coil."
+  },
+  {
+   "fr": "Distributeur **monostable** : sans signal, son ressort le ramène et la tige rentre. La position de repos se choisit pour être la position sûre.",
+   "en": "**Monostable** valve: with no signal its spring returns it and the rod retracts. The rest position is chosen to be the safe position."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Commande indirecte",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 10,
+        "p": {
+         "left": "pilot",
+         "right": "spring",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "s1",
+        "type": "v32",
+        "x": -24,
+        "y": 16,
+        "p": {
+         "act": "push",
+         "normal": "nc",
+         "label": "1S1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": -2,
+        "y": 24,
+        "p": {}
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "s1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "s1",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "14"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Deux distributeurs",
+    "en": "Two valves"
+   },
+   "text": {
+    "fr": "Le vérin **1A** est un **double effet** : l’air le pousse à l’aller (orifice 1) et au retour (orifice 2). Il est commandé par le distributeur **5/2 1V1** : 5 orifices, 2 positions.\nCe gros distributeur n’a pas de bouton : il est **piloté** par l’air qui arrive sur son orifice **14**. Ce signal vient du petit distributeur à bouton **1S1**, que l’opérateur a sous la main, parfois loin de la machine.\nLa vue **3D** (bouton « 3D » en haut du plan) montre le vérin en vraie grandeur : sa tige bouge avec la simulation.",
+    "en": "Cylinder **1A** is **double-acting**: air pushes it out (port 1) and back (port 2). It is controlled by the **5/2 valve 1V1**: 5 ports, 2 positions.\nThis large valve has no button: it is **piloted** by the air reaching its port **14**. That signal comes from the small push-button valve **1S1**, at the operator’s hand, sometimes far from the machine.\nThe **3D** view (“3D” button at the top of the workspace) shows the cylinder life-size: its rod moves with the simulation."
+   },
+   "keep": {
+    "fr": "**5/2** : 5 orifices (**1** alimentation, **4** et **2** utilisations, **5** et **3** échappements), 2 positions. Le pilotage **14** relie 1 à 4 ; le pilotage **12** relie 1 à 2.",
+    "en": "**5/2**: 5 ports (**1** supply, **4** and **2** outlets, **5** and **3** exhausts), 2 positions. Pilot **14** connects 1 to 4; pilot **12** connects 1 to 2."
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez :\n- la source à l’orifice **1** de 1V1 et à l’orifice **1** de 1S1 ;\n- l’orifice **2** de 1S1 au pilotage **14** de 1V1 ;\n- l’orifice **4** de 1V1 à l’orifice **1** du vérin (chambre arrière) ;\n- l’orifice **2** de 1V1 à l’orifice **2** du vérin (chambre avant).\nUn orifice peut recevoir plusieurs tuyaux : tirez-en deux depuis la source.",
+    "en": "Connect:\n- the supply to port **1** of 1V1 and to port **1** of 1S1;\n- port **2** of 1S1 to pilot **14** of 1V1;\n- port **4** of 1V1 to cylinder port **1** (rear chamber);\n- port **2** of 1V1 to cylinder port **2** (front chamber).\nA port can take several tubes: draw two from the supply."
+   },
+   "hint": {
+    "fr": "Tirez un tuyau en partant d’un orifice (petit rond) et en relâchant sur un autre. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. Click a tube to select it, Delete removes it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "src:1",
+      "s1:1"
+     ],
+     [
+      "s1:2",
+      "v1:14"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai",
+    "en": "Test"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis maintenez le clic sur le bouton de **1S1** : le signal d’air bascule 1V1, la chambre arrière se remplit et la tige sort. Relâchez : le ressort de 1V1 le ramène, la chambre avant se remplit et la tige rentre.",
+    "en": "Click “Observe”, then hold the mouse button on **1S1**’s button: the air signal switches 1V1, the rear chamber fills and the rod extends. Release: 1V1’s spring returns it, the front chamber fills and the rod retracts."
+   },
+   "hint": {
+    "fr": "La tige ne sort pas ? Le tuyau de 1S1 doit arriver sur le pilotage 14 (à gauche de 1V1), et la source sur l’orifice 1 de chaque distributeur.",
+    "en": "The rod does not extend? 1S1’s tube must reach pilot 14 (left of 1V1), and the supply port 1 of each valve."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "s1": "pressed"
+    },
+    "expect": {
+     "c1": "out"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi deux distributeurs ?",
+    "en": "Why two valves?"
+   },
+   "text": {
+    "fr": "On aurait pu alimenter le vérin directement avec un distributeur à bouton. Pourquoi passer par un 5/2 piloté ?",
+    "en": "The cylinder could have been fed straight from a push-button valve. Why go through a piloted 5/2?"
+   },
+   "hint": {
+    "fr": "C’est la séparation entre la **partie commande** (petits débits, pupitre de l’opérateur) et la **partie puissance** (gros débits, près des vérins). En électropneumatique, le signal d’air est remplacé par une bobine commandée par un automate ou une carte.",
+    "en": "This is the split between the **control part** (small flows, operator panel) and the **power part** (large flows, near the cylinders). In electropneumatics, the air signal is replaced by a coil driven by a PLC or a board."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Pour que le vérin aille plus loin",
+      "en": "So the cylinder travels further"
+     },
+     {
+      "fr": "Le petit distributeur ne fait passer qu’un signal ; le gros, près du vérin, fait passer le débit qui le déplace",
+      "en": "The small valve only passes a signal; the large one, near the cylinder, passes the flow that moves it"
+     },
+     {
+      "fr": "Pour économiser l’air",
+      "en": "To save air"
+     },
+     {
+      "fr": "C’est obligatoire avec un vérin double effet",
+      "en": "It is mandatory with a double-acting cylinder"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les deux chambres",
+    "en": "The two chambers"
+   },
+   "text": {
+    "fr": "Quand la tige sort, que devient l’air de la chambre avant (orifice 2 du vérin) ?",
+    "en": "When the rod extends, what happens to the air in the front chamber (cylinder port 2)?"
+   },
+   "hint": {
+    "fr": "En position de travail, le 5/2 relie 1 → 4 (alimentation de la chambre arrière) et 2 → 3 (échappement de la chambre avant). Au repos, c’est l’inverse : 1 → 2 et 4 → 5.",
+    "en": "In the working position the 5/2 connects 1 → 4 (feeding the rear chamber) and 2 → 3 (exhausting the front chamber). At rest it is the other way: 1 → 2 and 4 → 5."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il reste enfermé et freine le piston jusqu’à l’arrêt",
+      "en": "It stays trapped and slows the piston to a stop"
+     },
+     {
+      "fr": "Il traverse le 5/2 de 2 vers 3 et s’échappe",
+      "en": "It flows through the 5/2 from 2 to 3 and escapes"
+     },
+     {
+      "fr": "Il retourne à la source",
+      "en": "It goes back to the supply"
+     },
+     {
+      "fr": "Il passe dans la chambre arrière",
+      "en": "It moves into the rear chamber"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À retenir",
+    "en": "Key points"
+   },
+   "text": {
+    "fr": "- Un vérin **double effet** est poussé par l’air dans les deux sens, sans ressort. Au retour, la force est un peu plus faible qu’à l’aller : la tige occupe une partie de la surface du piston.\n- Un distributeur **5/2** a deux sorties (4 et 2) et deux échappements (5 et 3).\n- **Commande indirecte** : un signal (ici de l’air, ailleurs une bobine) pilote le distributeur de puissance.",
+    "en": "- A **double-acting** cylinder is pushed by air both ways, with no spring. On the return the force is slightly lower than on the way out: the rod takes up part of the piston area.\n- A **5/2** valve has two outlets (4 and 2) and two exhausts (5 and 3).\n- **Indirect control**: a signal (here air, elsewhere a coil) pilots the power valve."
+   },
+   "keep": {
+    "fr": "**Partie commande** : des signaux, de petits débits. **Partie puissance** : de gros débits, des efforts. On les sépare, et le signal peut être de l’air ou une bobine électrique.",
+    "en": "**Control part**: signals, small flows. **Power part**: large flows, forces. They are kept apart, and the signal can be air or an electric coil."
+   }
+  }
+ ]
+}

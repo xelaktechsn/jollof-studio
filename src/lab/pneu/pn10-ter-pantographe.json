@@ -1,0 +1,974 @@
+{
+ "id": "pn10-ter-pantographe",
+ "level": "lycee",
+ "minutes": 60,
+ "series": "dakar",
+ "title": {
+  "fr": "TER : lever le pantographe",
+  "en": "TER: raising the pantograph"
+ },
+ "summary": {
+  "fr": "Un train électrique capte son courant sur la caténaire avec un pantographe. De l’air comprimé le lève, des ressorts le rabaissent : si l’air manque, il redescend tout seul. Une carte commande l’électrovanne, un pressostat n’autorise la montée que si la réserve d’air est suffisante, et un réducteur de débit rend la montée lente.",
+  "en": "An electric train collects its current from the overhead line with a pantograph. Compressed air raises it, springs lower it: if air is lost, it comes down by itself. A board drives the solenoid valve, a pressure switch only allows raising when the air reserve is sufficient, and a flow control valve makes the rise slow."
+ },
+ "objectives": [
+  {
+   "fr": "Expliquer la sécurité positive : sans énergie, la machine revient d’elle-même à la position sûre",
+   "en": "Explain fail-safe design: without energy, the machine returns to the safe position by itself"
+  },
+  {
+   "fr": "Raccorder un vérin simple effet, un distributeur 3/2 à électroaimant et un réducteur de débit",
+   "en": "Connect a single-acting cylinder, a 3/2 solenoid valve and a flow control valve"
+  },
+  {
+   "fr": "Programmer une autorisation : commande ET pression suffisante",
+   "en": "Program an authorisation: command AND sufficient pressure"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "**Sécurité positive** : le pantographe monte avec l’air et redescend par ses ressorts. Dans ce montage, sans air ou sans courant, il revient seul à la position sûre.",
+   "en": "**Fail-safe**: the pantograph rises with air and comes down by its springs. In this circuit, without air or without current, it returns to the safe position by itself."
+  },
+  {
+   "fr": "Vérin simple effet et distributeur 3/2 normalement fermé : au repos, la chambre est à l’échappement et le ressort tient la tige rentrée.",
+   "en": "Single-acting cylinder and normally closed 3/2 valve: at rest the chamber is exhausted and the spring holds the rod in."
+  },
+  {
+   "fr": "Un réducteur de débit unidirectionnel ne freine qu’un sens. Sur un simple effet, on freine l’air qui entre pour ralentir la sortie.",
+   "en": "A one-way flow control valve throttles one direction only. On a single-acting cylinder, the incoming air is throttled to slow the extension."
+  },
+  {
+   "fr": "Une autorisation est un ET : bobine = commande ET pression suffisante (`lever && airOk`).",
+   "en": "An authorisation is an AND: coil = command AND sufficient pressure (`lever && airOk`)."
+  },
+  {
+   "fr": "Une bobine 24 V se commande par un transistor. Elle consomme tant qu’elle est excitée : I = U ÷ R et P = U × I, ici 24 V × 0,124 A ≈ 3 W.",
+   "en": "A 24 V coil is driven through a transistor. It draws power as long as it is energised: I = V ÷ R and P = V × I, here 24 V × 0.124 A ≈ 3 W."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Pantographe du TER",
+  "comps": [
+   {
+    "id": "uno_nplye7",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_m811mf",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "coil24_e6jd54",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "pressostat_xmcnm2",
+    "type": "pressostat",
+    "name": "S1",
+    "x": 8,
+    "z": -13,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_pfr57m",
+    "type": "cylsensor",
+    "name": "B2",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "led-green_z27se7",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 9,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "led-red_tyy9ga",
+    "type": "led-red",
+    "name": "LED2",
+    "x": -36,
+    "z": 92,
+    "r": 0
+   },
+   {
+    "id": "breadboard_b4ulgp",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 4,
+    "z": 133,
+    "r": 0
+   },
+   {
+    "id": "psu24_x4nqu4",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_35g2w1",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "res-1k_82o3jd",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 7,
+    "z": 79,
+    "r": 0
+   },
+   {
+    "id": "diode_70w8b4",
+    "type": "diode",
+    "name": "D1",
+    "x": 50,
+    "z": -23,
+    "r": 0
+   },
+   {
+    "id": "res-220_k5ij3m",
+    "type": "res-220",
+    "name": "R2",
+    "x": -8,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "res-220_rzeqnz",
+    "type": "res-220",
+    "name": "R3",
+    "x": -23,
+    "z": 72,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl1",
+        "x": 8,
+        "y": 8,
+        "p": {
+         "label": "1A",
+         "time": 1.5,
+         "s1": "B2",
+         "bore": 50,
+         "rod": 20,
+         "stroke": 100
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": 0,
+        "y": 6,
+        "p": {
+         "open": 30,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v32",
+        "x": -16,
+        "y": 6,
+        "p": {
+         "act": "sol",
+         "normal": "nc",
+         "coil": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "s1",
+        "type": "pswitch",
+        "x": -32,
+        "y": 8,
+        "p": {
+         "sensor": "S1",
+         "bar": 5
+        }
+       },
+       {
+        "id": "iso",
+        "type": "v32",
+        "x": -17,
+        "y": 18,
+        "p": {
+         "act": "push",
+         "normal": "no",
+         "label": "0V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": -12,
+        "y": 28,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "pantograph",
+       "cyl": "1A",
+       "up": "BTN1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "id": "w1",
+    "a": [
+     "button_m811mf",
+     "2"
+    ],
+    "b": [
+     "uno_nplye7",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w2",
+    "a": [
+     "button_m811mf",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w3",
+    "a": [
+     "uno_nplye7",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "id": "w4",
+    "a": [
+     "psu24_x4nqu4",
+     "-"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "0 V de l’alimentation 24 V à la masse commune"
+   },
+   {
+    "id": "w5",
+    "a": [
+     "psu24_x4nqu4",
+     "+"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "A30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V vers la breadboard"
+   },
+   {
+    "id": "w6",
+    "a": [
+     "coil24_e6jd54",
+     "+"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "B30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V"
+   },
+   {
+    "id": "w7",
+    "a": [
+     "diode_70w8b4",
+     "K"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "C30"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode de roue libre au +"
+   },
+   {
+    "id": "w8",
+    "a": [
+     "coil24_e6jd54",
+     "-"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "A29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w9",
+    "a": [
+     "pn2222_35g2w1",
+     "C"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "B29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w10",
+    "a": [
+     "diode_70w8b4",
+     "A"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "C29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w11",
+    "a": [
+     "pn2222_35g2w1",
+     "E"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "id": "w12",
+    "a": [
+     "pn2222_35g2w1",
+     "B"
+    ],
+    "b": [
+     "res-1k_82o3jd",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "id": "w13",
+    "a": [
+     "res-1k_82o3jd",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "id": "w14",
+    "a": [
+     "pressostat_xmcnm2",
+     "2"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-15"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w15",
+    "a": [
+     "pressostat_xmcnm2",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w16",
+    "a": [
+     "cylsensor_pfr57m",
+     "2"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w17",
+    "a": [
+     "cylsensor_pfr57m",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w18",
+    "a": [
+     "led-green_z27se7",
+     "K"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-14"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w19",
+    "a": [
+     "led-green_z27se7",
+     "A"
+    ],
+    "b": [
+     "res-220_k5ij3m",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w20",
+    "a": [
+     "res-220_k5ij3m",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D6"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "id": "w21",
+    "a": [
+     "led-red_tyy9ga",
+     "K"
+    ],
+    "b": [
+     "breadboard_b4ulgp",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w22",
+    "a": [
+     "led-red_tyy9ga",
+     "A"
+    ],
+    "b": [
+     "res-220_rzeqnz",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w23",
+    "a": [
+     "res-220_rzeqnz",
+     "1"
+    ],
+    "b": [
+     "uno_nplye7",
+     "D9"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : pantographe du TER.\n// Le pantographe monte quand l'électrovanne Y1 envoie l'air au vérin 1A.\n// Sans air ou sans courant, les ressorts le font redescendre : c'est la position sûre.\nconst int COMMANDE = 7;     // BTN1 : commande « lever » de la cabine, lue avec INPUT_PULLUP\nconst int PRESSOSTAT = 8;   // S1 : fermé quand la réserve d'air est sous pression\nconst int CAPTEUR_B2 = 3;   // B2 : fermé quand le pantographe est en position haute\nconst int BOBINE = 2;       // base du transistor Q1 (par R1) qui commande la bobine Y1\nconst int VOYANT_LEVE = 6;  // LED1 verte : pantographe levé\nconst int VOYANT_AIR = 9;   // LED2 rouge : pression d'air insuffisante\n\nvoid setup() {\n  pinMode(COMMANDE, INPUT_PULLUP);\n  pinMode(PRESSOSTAT, INPUT_PULLUP);\n  pinMode(CAPTEUR_B2, INPUT_PULLUP);\n  pinMode(BOBINE, OUTPUT);\n  pinMode(VOYANT_LEVE, OUTPUT);\n  pinMode(VOYANT_AIR, OUTPUT);\n}\n\nvoid loop() {\n  bool lever = digitalRead(COMMANDE) == LOW;      // LOW : commande appuyée\n  bool airOk = digitalRead(PRESSOSTAT) == LOW;    // LOW : pression suffisante\n  bool leve = digitalRead(CAPTEUR_B2) == LOW;     // LOW : pantographe en haut\n  // Autorisation : on ne lève que si la commande est donnée ET que l'air est là.\n  digitalWrite(BOBINE, (lever && airOk) ? HIGH : LOW);\n  digitalWrite(VOYANT_LEVE, leve ? HIGH : LOW);\n  digitalWrite(VOYANT_AIR, airOk ? LOW : HIGH);\n  delay(10);\n}"
+  },
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "iso",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "iso",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "iso",
+      "2"
+     ],
+     "b": [
+      "s1",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "fc",
+      "2"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "fc",
+      "1"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le pantographe",
+    "en": "The pantograph"
+   },
+   "text": {
+    "fr": "Sur le toit d’un train électrique comme ceux du **TER**, le **pantographe** est le bras articulé qui appuie une bande de carbone contre le fil de contact de la **caténaire** : c’est par lui que le train reçoit son courant.\nSur cette maquette, un vérin pneumatique le lève et des ressorts le rabaissent :\n- **BTN1** : la commande « lever le pantographe » de la cabine (appuyé : lever ; relâché : baisser) ;\n- **Y1** : l’électrovanne 24 V du distributeur 3/2 **1V1**, alimentée par **PS1** et commandée par le transistor **Q1** ;\n- **1A** : le vérin **simple effet** qui lève le bras ; son ressort joue le rôle des ressorts d’abaissement ;\n- **1V2** : le réducteur de débit, qui ralentit la montée ;\n- **0V1** : la vanne d’isolement, pour couper l’air ; **S1** : le pressostat, fermé quand la réserve d’air est sous pression ;\n- **B2** : le capteur « pantographe en haut » ; **LED1** (verte) l’affiche ; **LED2** (rouge) signale le manque d’air.\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre le toit du train : le pantographe suit le vérin 1A, et un clic sur la commande la garde enclenchée.",
+    "en": "On the roof of an electric train like those of the **TER**, the **pantograph** is the articulated arm that presses a carbon strip against the contact wire of the **overhead line**: this is how the train gets its current.\nOn this model, a pneumatic cylinder raises it and springs lower it:\n- **BTN1**: the cab’s “raise pantograph” command (pressed: raise; released: lower);\n- **Y1**: the 24 V solenoid of 3/2 valve **1V1**, powered by **PS1** and driven by transistor **Q1**;\n- **1A**: the **single-acting** cylinder that raises the arm; its spring plays the part of the lowering springs;\n- **1V2**: the flow control valve, which slows the rise;\n- **0V1**: the isolating valve, to cut the air; **S1**: the pressure switch, closed when the air reserve is pressurised;\n- **B2**: the “pantograph up” sensor; **LED1** (green) shows it; **LED2** (red) signals a lack of air.\nThe **3D** view (“3D” button of the pneumatic workspace) shows the train roof: the pantograph follows cylinder 1A, and one click on the command keeps it engaged."
+   }
+  },
+  {
+   "title": {
+    "fr": "Et si l’air manque ?",
+    "en": "What if air is lost?"
+   },
+   "text": {
+    "fr": "Une fuite vide la réserve d’air alors que le train roule, pantographe levé. Que fait le pantographe ?",
+    "en": "A leak empties the air reserve while the train is running, pantograph raised. What does the pantograph do?"
+   },
+   "hint": {
+    "fr": "Un pantographe resté levé sans pouvoir être commandé pourrait accrocher la caténaire. On choisit donc l’air pour monter et les ressorts pour descendre. Sur beaucoup de pantographes, la bande de carbone contient même un petit conduit d’air : si elle casse, l’air s’échappe et le bras s’abaisse.",
+    "en": "A pantograph left raised with no way to command it could snag the overhead line. So air is chosen to go up and springs to come down. On many pantographs the carbon strip even holds a small air duct: if it breaks, the air escapes and the arm lowers."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il reste levé : un vérin garde sa position sans air",
+      "en": "It stays up: a cylinder keeps its position without air"
+     },
+     {
+      "fr": "Il monte plus haut, car plus rien ne le retient",
+      "en": "It goes higher, since nothing holds it back"
+     },
+     {
+      "fr": "Il redescend tout seul, ramené par ses ressorts : sans énergie, il prend la position sûre",
+      "en": "It comes down by itself, returned by its springs: without energy it takes the safe position"
+     },
+     {
+      "fr": "Il se bloque à mi-hauteur",
+      "en": "It jams halfway"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "L’étage de commande de Y1",
+    "en": "The Y1 driver stage"
+   },
+   "text": {
+    "fr": "La bobine **Y1** demande 24 V et plus de 100 mA : une broche de la carte (5 V, 20 mA) ne peut que la **commander**, à travers le transistor **Q1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
+    "en": "Coil **Y1** needs 24 V and more than 100 mA: a board pin (5 V, 20 mA) can only **control** it, through transistor **Q1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",
+    "en": "A pin takes only one wire: to join three pins (Y1 +, PS1 +, D1 K), go through a breadboard row. Diode D1 protects Q1 from the voltage spike the coil sends back when switched off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "Y1.+",
+      "PS1.+",
+      "D1.K"
+     ],
+     [
+      "Y1.-",
+      "Q1.C",
+      "D1.A"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "PS1.-",
+      "UNO.GND*"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D2",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La commande, les capteurs et les voyants",
+    "en": "The command, the sensors and the lamps"
+   },
+   "text": {
+    "fr": "Reliez les trois contacts, chacun entre une broche et la masse : **BTN1** sur **D7**, le pressostat **S1** sur **D8**, le capteur **B2** sur **D3**.\nPuis les voyants, chacun avec sa résistance de 220 Ω : **D6** → **R2** → anode **A** de **LED1** (verte) ; **D9** → **R3** → anode **A** de **LED2** (rouge) ; les cathodes **K** à la masse.",
+    "en": "Connect the three contacts, each between a pin and ground: **BTN1** on **D7**, pressure switch **S1** on **D8**, sensor **B2** on **D3**.\nThen the lamps, each with its 220 Ω resistor: **D6** → **R2** → anode **A** of **LED1** (green); **D9** → **R3** → anode **A** of **LED2** (red); cathodes **K** to ground."
+   },
+   "hint": {
+    "fr": "Aucune résistance pour les contacts : le programme activera la résistance de tirage interne (`INPUT_PULLUP`). Contact ouvert, la broche lit HIGH ; contact fermé, elle lit LOW.",
+    "en": "No resistor for the contacts: the program will enable the internal pull-up (`INPUT_PULLUP`). Contact open, the pin reads HIGH; contact closed, it reads LOW."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.D7"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ],
+     [
+      "S1.1|S1.2",
+      "UNO.D8"
+     ],
+     [
+      "S1.1|S1.2",
+      "UNO.GND*"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.D3"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D6",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D9",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.A",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique** et tirez les tuyaux d’orifice en orifice :\n- source d’air → orifice **1** de la vanne d’isolement **0V1** ;\n- orifice **2** de 0V1 → orifice **1** du distributeur **1V1**, et aussi → le pressostat **S1** ;\n- orifice **2** de 1V1 → orifice **2** du réducteur **1V2** (en haut) ;\n- orifice **1** du réducteur (en bas) → orifice **1** du vérin **1A**.\nLes orifices **3** de 0V1 et de 1V1 restent libres : ce sont les échappements.",
+    "en": "Switch to the **Pneumatics** workspace and draw the tubes from port to port:\n- air supply → port **1** of isolating valve **0V1**;\n- port **2** of 0V1 → port **1** of valve **1V1**, and also → pressure switch **S1**;\n- port **2** of 1V1 → port **2** of flow control **1V2** (at the top);\n- port **1** of the flow control (at the bottom) → port **1** of cylinder **1A**.\nPorts **3** of 0V1 and 1V1 stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un orifice (petit rond) et en relâchant sur un autre. Un orifice peut recevoir plusieurs tuyaux. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. A port can take several tubes. Click a tube to select it, Delete removes it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "iso:1"
+     ],
+     [
+      "iso:2",
+      "v1:1"
+     ],
+     [
+      "iso:2",
+      "s1:1"
+     ],
+     [
+      "v1:2",
+      "fc:2"
+     ],
+     [
+      "fc:1",
+      "c1:1"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Une montée lente",
+    "en": "A slow rise"
+   },
+   "text": {
+    "fr": "Le réducteur **1V2** laisse passer l’air librement de 1 vers 2 et le freine de 2 vers 1. Vous l’avez raccordé avec son orifice 2 côté distributeur. Quel mouvement ralentit-il ?",
+    "en": "Flow control **1V2** lets air through freely from 1 to 2 and throttles it from 2 to 1. You connected it with its port 2 on the valve side. Which movement does it slow down?"
+   },
+   "hint": {
+    "fr": "Le pantographe doit monter doucement, pour ne pas heurter le fil de contact, et redescendre sans retard quand on le commande. Un vérin simple effet n’a pas de seconde chambre dont on pourrait freiner l’échappement : on règle donc sa sortie sur l’air qui **entre**. Changez l’ouverture de 1V2 (clic sur le réducteur, onglet Pneumatique) et comparez.",
+    "en": "The pantograph must rise gently, so as not to hit the contact wire, and come down without delay when commanded. A single-acting cylinder has no second chamber whose exhaust could be throttled: so its extension is set on the **incoming** air. Change the opening of 1V2 (click the flow control, Pneumatics tab) and compare."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La montée : l’air qui remplit le vérin traverse le réducteur de 2 vers 1 ; à la descente, il repart librement",
+      "en": "The rise: the air filling the cylinder goes through the flow control from 2 to 1; on the way down it leaves freely"
+     },
+     {
+      "fr": "La descente : c’est l’air qui s’échappe qui est freiné",
+      "en": "The descent: the escaping air is throttled"
+     },
+     {
+      "fr": "Les deux mouvements, autant l’un que l’autre",
+      "en": "Both movements, one as much as the other"
+     },
+     {
+      "fr": "Aucun : il règle la pression du vérin",
+      "en": "Neither: it sets the cylinder pressure"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code » :\n- dans setup() : `pinMode(…, INPUT_PULLUP);` pour D7 (BTN1), D8 (S1) et D3 (B2) ; `pinMode(…, OUTPUT);` pour D2 (bobine), D6 (LED1) et D9 (LED2) ;\n- dans loop() : lisez les trois contacts (`== LOW` : contact fermé) ;\n- la bobine : `digitalWrite(2, HIGH);` seulement si BTN1 est appuyé **ET** si S1 est fermé (`&&`), sinon `LOW` ;\n- LED1 allumée quand B2 est fermé ; LED2 allumée quand S1 est **ouvert** (pas assez d’air).\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab:\n- in setup(): `pinMode(…, INPUT_PULLUP);` for D7 (BTN1), D8 (S1) and D3 (B2); `pinMode(…, OUTPUT);` for D2 (coil), D6 (LED1) and D9 (LED2);\n- in loop(): read the three contacts (`== LOW`: contact closed);\n- the coil: `digitalWrite(2, HIGH);` only if BTN1 is pressed **AND** S1 is closed (`&&`), otherwise `LOW`;\n- LED1 on when B2 is closed; LED2 on when S1 is **open** (not enough air).\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "`bool lever = digitalRead(7) == LOW;` puis `bool airOk = digitalRead(8) == LOW;` et `digitalWrite(2, (lever && airOk) ? HIGH : LOW);`.",
+    "en": "`bool lever = digitalRead(7) == LOW;` then `bool airOk = digitalRead(8) == LOW;` and `digitalWrite(2, (lever && airOk) ? HIGH : LOW);`."
+   },
+   "keep": {
+    "fr": "Une **autorisation** est un ET : l’ordre de l’opérateur n’est exécuté que si la condition de sécurité est vraie (`lever && airOk`).",
+    "en": "An **authorisation** is an AND: the operator’s order is only carried out if the safety condition is true (`lever && airOk`)."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "digitalRead\\s*\\(",
+     "digitalWrite\\s*\\(",
+     "&&"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : le pantographe monte",
+    "en": "Test: the pantograph rises"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur **BTN1** et gardez-le appuyé : dans l’onglet Simulation, Maj + clic sur « Appuyer sur le bouton » le verrouille ; dans la vue 3D, un clic sur la commande suffit. Y1 est excitée, le pantographe monte lentement ; arrivé en haut, **B2** se ferme et **LED1** s’allume.",
+    "en": "Click “Observe”, then press **BTN1** and keep it pressed: in the Simulation tab, Shift + click on “Press the button” latches it; in the 3D view, one click on the command is enough. Y1 is energised, the pantograph rises slowly; at the top, **B2** closes and **LED1** lights up."
+   },
+   "hint": {
+    "fr": "Rien ne bouge et LED2 est allumée ? S1 est ouvert : vérifiez le tuyau entre 0V1 et le pressostat. LED2 est éteinte ? Dans le plan, le distributeur doit porter le repère Y1 et recevoir l’air sur son orifice 1.",
+    "en": "Nothing moves and LED2 is on? S1 is open: check the tube between 0V1 and the pressure switch. LED2 is off? In the plan, the valve must carry tag Y1 and receive air on its port 1."
+   },
+   "keep": {
+    "fr": "Un réducteur de débit **unidirectionnel** ne freine que dans un sens. Ici il freine l’air qui **entre** dans le vérin : la montée est lente, la descente reste libre.",
+    "en": "A **one-way** flow control valve only throttles in one direction. Here it throttles the air **entering** the cylinder: the rise is slow, the descent stays free."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": {
+     "Y1": "on",
+     "c1": "out",
+     "LED1": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : la tension de la bobine",
+    "en": "Measurement: the coil voltage"
+   },
+   "text": {
+    "fr": "Pantographe levé, la bobine Y1 reste excitée en permanence. Ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **Y1 · +**, pointe noire sur **Y1 · -**. Notez la tension aux bornes de la bobine.",
+    "en": "With the pantograph up, coil Y1 stays energised all the time. Open “Instruments” → **Multimeter**, **V** mode: red probe on **Y1 · +**, black probe on **Y1 · -**. Write down the voltage across the coil."
+   },
+   "hint": {
+    "fr": "On lit presque 24 V : le transistor qui conduit ne garde que quelques dixièmes de volt. La bobine a une résistance d’environ 192 Ω : I = U ÷ R ≈ 23,7 ÷ 192 ≈ 0,124 A, six fois ce que peut fournir une broche. Puissance de maintien : P = U × I ≈ 3 W, dépensés tant que le pantographe est levé.",
+    "en": "It reads almost 24 V: the conducting transistor only keeps a few tenths of a volt. The coil has a resistance of about 192 Ω: I = V ÷ R ≈ 23.7 ÷ 192 ≈ 0.124 A, six times what a pin can supply. Holding power: P = V × I ≈ 3 W, spent as long as the pantograph is up."
+   },
+   "keep": {
+    "fr": "Un distributeur **monostable** consomme tant qu’il est commandé : la puissance de sa bobine vaut **P = U × I**.",
+    "en": "A **monostable** valve draws power as long as it is commanded: its coil power is **P = V × I**."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "Y1.+",
+     "Y1.-"
+    ],
+    "state": {
+     "UNO.D2": 1
+    },
+    "tolerance": 0.05
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : l’air est coupé",
+    "en": "Test: the air is cut"
+   },
+   "text": {
+    "fr": "Pantographe levé, BTN1 toujours appuyé, fermez la vanne d’isolement : cliquez sur « Observer », puis sur « Appuyer sur 0V1 ». Le circuit se vide par l’échappement de 0V1 : le pantographe redescend seul, **LED2** s’allume, et le programme coupe Y1.\nRouvrez ensuite 0V1 : l’air revient et, la commande étant toujours donnée, le pantographe remonte.",
+    "en": "With the pantograph up and BTN1 still pressed, close the isolating valve: click “Observe”, then “Press 0V1”. The circuit empties through the exhaust of 0V1: the pantograph comes down by itself, **LED2** lights up, and the program switches Y1 off.\nThen reopen 0V1: air comes back and, the command still being given, the pantograph rises again."
+   },
+   "hint": {
+    "fr": "Même sans programme, le pantographe serait retombé : c’est le ressort qui le ramène, pas la carte. Le pressostat, lui, sert à ne commander la montée que si la pression est suffisante : un pantographe mal appuyé sur le fil provoque des arcs électriques. Sur beaucoup de trains, quand la réserve est vide après un long stationnement, un petit compresseur auxiliaire alimenté par la batterie la remplit d’abord.",
+    "en": "Even with no program, the pantograph would have dropped: the spring brings it back, not the board. The pressure switch is there to command the rise only when pressure is sufficient: a pantograph pressed too weakly against the wire causes electric arcs. On many trains, when the reserve is empty after a long stop, a small auxiliary compressor powered by the battery fills it first."
+   },
+   "keep": {
+    "fr": "**Sécurité positive** : quand l’énergie manque, la machine va d’elle-même vers sa position sûre. Ici, c’est le **ressort** qui abaisse le pantographe, pas le programme.",
+    "en": "**Fail-safe design**: when energy is lost, the machine goes to its safe position by itself. Here the **spring** lowers the pantograph, not the program."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed",
+     "iso": "pressed"
+    },
+    "expect": {
+     "c1": "in",
+     "Y1": "off",
+     "LED1": "off",
+     "LED2": "on"
+    },
+    "hold": 600
+   }
+  }
+ ],
+ "workspace": "elec"
+}

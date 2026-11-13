@@ -1,0 +1,1479 @@
+{
+ "id": "pn14-poste-percage-carte",
+ "level": "pro",
+ "minutes": 60,
+ "title": {
+  "fr": "Poste de serrage et de perçage piloté par une carte",
+  "en": "Clamp-and-drill station driven by a board"
+ },
+ "summary": {
+  "fr": "Un poste automatique comme on en trouve dans les ateliers du monde entier : le vérin A serre la pièce, le vérin B descend le foret, puis le foret remonte et la pièce est libérée. Vous choisissez les distributeurs d’après ce qui doit se passer si le courant est coupé, écrivez le GRAFCET du cycle A+ B+ B− A− et en tirez le programme de la carte.",
+  "en": "An automatic station of the kind found in workshops all over the world: cylinder A clamps the part, cylinder B feeds the drill, then the drill goes back up and the part is released. You choose the valves from what must happen if the power is cut, write the GRAFCET of the A+ B+ B− A− cycle and turn it into the board program."
+ },
+ "objectives": [
+  {
+   "fr": "Choisir un distributeur monostable ou bistable d’après le comportement voulu à la coupure de courant",
+   "en": "Choose a monostable or bistable valve from the behaviour wanted on a power cut"
+  },
+  {
+   "fr": "Écrire le GRAFCET d’un cycle A+ B+ B− A− avec ses capteurs de fin de course",
+   "en": "Write the GRAFCET of an A+ B+ B− A− cycle with its end-of-stroke sensors"
+  },
+  {
+   "fr": "Obtenir le programme de la carte à partir du GRAFCET et vérifier le cycle",
+   "en": "Get the board program from the GRAFCET and check the cycle"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Le distributeur fixe le comportement **sans courant** : bistable, le vérin garde sa position (l’étau reste serré) ; monostable, il revient au repos (le foret remonte).",
+   "en": "The valve sets the behaviour **without power**: bistable, the cylinder keeps its position (the vice stays clamped); monostable, it returns to rest (the drill goes back up)."
+  },
+  {
+   "fr": "Serrer puis percer : cycle **A+ B+ B− A−**, lancé seulement sur les conditions initiales `BTN1 . a0 . b0`.",
+   "en": "Clamp then drill: cycle **A+ B+ B− A−**, started only on the initial conditions `BTN1 . a0 . b0`."
+  },
+  {
+   "fr": "Bistable : une impulsion par mouvement (Y1, Y2). Monostable : l’action est maintenue pour sortir (Y3), son absence fait rentrer.",
+   "en": "Bistable: one pulse per movement (Y1, Y2). Monostable: the action is held to extend (Y3), its absence retracts."
+  },
+  {
+   "fr": "Un GRAFCET se programme avec une variable par étape, puis les transitions, puis les sorties : la carte travaille comme un automate (lire, décider, écrire).",
+   "en": "A GRAFCET is programmed with one variable per step, then the transitions, then the outputs: the board works like a PLC (read, decide, write)."
+  },
+  {
+   "fr": "Un capteur muet bloque le cycle : on surveille la durée des étapes. L’arrêt d’urgence, lui, agit sur l’énergie sans passer par le programme.",
+   "en": "A silent sensor stalls the cycle: step durations are monitored. The emergency stop acts on the energy without going through the program."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Poste de serrage et de perçage",
+  "comps": [
+   {
+    "id": "uno_jwa8ob",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_y406bp",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "coil24_nf3hw5",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "coil24_e1lgsm",
+    "type": "coil24",
+    "name": "Y2",
+    "x": 9,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "coil24_n3ekba",
+    "type": "coil24",
+    "name": "Y3",
+    "x": -69,
+    "z": 57,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_gw1lb5",
+    "type": "cylsensor",
+    "name": "A0",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_wzpce1",
+    "type": "cylsensor",
+    "name": "A1",
+    "x": -36,
+    "z": 92,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_98x199",
+    "type": "cylsensor",
+    "name": "B0",
+    "x": -39,
+    "z": -36,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_k1gpd8",
+    "type": "cylsensor",
+    "name": "B1",
+    "x": 17,
+    "z": -48,
+    "r": 0
+   },
+   {
+    "id": "breadboard_b071sw",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 5,
+    "z": 146,
+    "r": 0
+   },
+   {
+    "id": "psu24_p1t2gj",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_wvmewt",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 15,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "res-1k_xvfdrk",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "diode_mr20ms",
+    "type": "diode",
+    "name": "D1",
+    "x": 10,
+    "z": -17,
+    "r": 0
+   },
+   {
+    "id": "pn2222_kge7xm",
+    "type": "pn2222",
+    "name": "Q2",
+    "x": -9,
+    "z": 70,
+    "r": 0
+   },
+   {
+    "id": "res-1k_r5wr1u",
+    "type": "res-1k",
+    "name": "R2",
+    "x": 33,
+    "z": 99,
+    "r": 0
+   },
+   {
+    "id": "diode_99tb2g",
+    "type": "diode",
+    "name": "D2",
+    "x": -15,
+    "z": 108,
+    "r": 0
+   },
+   {
+    "id": "pn2222_37xzg0",
+    "type": "pn2222",
+    "name": "Q3",
+    "x": -51,
+    "z": 60,
+    "r": 0
+   },
+   {
+    "id": "res-1k_pfvk8v",
+    "type": "res-1k",
+    "name": "R3",
+    "x": -66,
+    "z": 82,
+    "r": 0
+   },
+   {
+    "id": "diode_zddqz1",
+    "type": "diode",
+    "name": "D3",
+    "x": -97,
+    "z": 65,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "A",
+         "s0": "A0",
+         "s1": "A1"
+        }
+       },
+       {
+        "id": "B",
+        "type": "cyl2",
+        "x": 36,
+        "y": 0,
+        "p": {
+         "label": "B",
+         "s0": "B0",
+         "s1": "B1"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "sol",
+         "coilL": "Y1",
+         "coilR": "Y2",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "v2",
+        "type": "v52",
+        "x": 28,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y3",
+         "label": "2V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 16,
+        "y": 22,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "grafcet": {
+       "name": "G1",
+       "drive": true,
+       "inputs": [],
+       "steps": [
+        {
+         "n": 0,
+         "init": true,
+         "act": "",
+         "r": "",
+         "to": null,
+         "alt": []
+        }
+       ],
+       "parts": []
+      },
+      "scene": {
+       "kind": "station",
+       "clamp": "A",
+       "drill": "B",
+       "start": "BTN1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "Poste de serrage et de perçage",
+   "comps": [
+    {
+     "id": "uno_jwa8ob",
+     "type": "uno",
+     "name": "UNO",
+     "x": 0,
+     "z": 34,
+     "r": 0
+    },
+    {
+     "id": "button_y406bp",
+     "type": "button",
+     "name": "BTN1",
+     "x": -22,
+     "z": -4,
+     "r": 0
+    },
+    {
+     "id": "coil24_nf3hw5",
+     "type": "coil24",
+     "name": "Y1",
+     "x": 55,
+     "z": 35,
+     "r": 0
+    },
+    {
+     "id": "coil24_e1lgsm",
+     "type": "coil24",
+     "name": "Y2",
+     "x": 9,
+     "z": 97,
+     "r": 0
+    },
+    {
+     "id": "coil24_n3ekba",
+     "type": "coil24",
+     "name": "Y3",
+     "x": -69,
+     "z": 57,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_gw1lb5",
+     "type": "cylsensor",
+     "name": "A0",
+     "x": 45,
+     "z": 73,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_wzpce1",
+     "type": "cylsensor",
+     "name": "A1",
+     "x": -36,
+     "z": 92,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_98x199",
+     "type": "cylsensor",
+     "name": "B0",
+     "x": -39,
+     "z": -36,
+     "r": 0
+    },
+    {
+     "id": "cylsensor_k1gpd8",
+     "type": "cylsensor",
+     "name": "B1",
+     "x": 17,
+     "z": -48,
+     "r": 0
+    },
+    {
+     "id": "breadboard_b071sw",
+     "type": "breadboard",
+     "name": "BB1",
+     "x": 5,
+     "z": 146,
+     "r": 0
+    },
+    {
+     "id": "psu24_p1t2gj",
+     "type": "psu24",
+     "name": "PS1",
+     "x": 84,
+     "z": 37,
+     "r": 0
+    },
+    {
+     "id": "pn2222_wvmewt",
+     "type": "pn2222",
+     "name": "Q1",
+     "x": 15,
+     "z": -4,
+     "r": 0
+    },
+    {
+     "id": "res-1k_xvfdrk",
+     "type": "res-1k",
+     "name": "R1",
+     "x": 72,
+     "z": 69,
+     "r": 0
+    },
+    {
+     "id": "diode_mr20ms",
+     "type": "diode",
+     "name": "D1",
+     "x": 10,
+     "z": -17,
+     "r": 0
+    },
+    {
+     "id": "pn2222_kge7xm",
+     "type": "pn2222",
+     "name": "Q2",
+     "x": -9,
+     "z": 70,
+     "r": 0
+    },
+    {
+     "id": "res-1k_r5wr1u",
+     "type": "res-1k",
+     "name": "R2",
+     "x": 33,
+     "z": 99,
+     "r": 0
+    },
+    {
+     "id": "diode_99tb2g",
+     "type": "diode",
+     "name": "D2",
+     "x": -15,
+     "z": 108,
+     "r": 0
+    },
+    {
+     "id": "pn2222_37xzg0",
+     "type": "pn2222",
+     "name": "Q3",
+     "x": -51,
+     "z": 60,
+     "r": 0
+    },
+    {
+     "id": "res-1k_pfvk8v",
+     "type": "res-1k",
+     "name": "R3",
+     "x": -66,
+     "z": 82,
+     "r": 0
+    },
+    {
+     "id": "diode_zddqz1",
+     "type": "diode",
+     "name": "D3",
+     "x": -97,
+     "z": 65,
+     "r": 0
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "button_y406bp",
+      "2"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "GND"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w2",
+     "a": [
+      "button_y406bp",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D7"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w3",
+     "a": [
+      "uno_jwa8ob",
+      "GND (2)"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-11"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse vers la breadboard"
+    },
+    {
+     "id": "w4",
+     "a": [
+      "psu24_p1t2gj",
+      "-"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-25"
+     ],
+     "color": "#3a3f45",
+     "role": "0 V de l’alimentation 24 V à la masse commune"
+    },
+    {
+     "id": "w5",
+     "a": [
+      "psu24_p1t2gj",
+      "+"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "A30"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V vers la breadboard"
+    },
+    {
+     "id": "w6",
+     "a": [
+      "coil24_nf3hw5",
+      "+"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "B30"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V"
+    },
+    {
+     "id": "w7",
+     "a": [
+      "diode_mr20ms",
+      "K"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "C30"
+     ],
+     "color": "#e5484d",
+     "role": "Cathode de la diode de roue libre au +"
+    },
+    {
+     "id": "w8",
+     "a": [
+      "coil24_nf3hw5",
+      "-"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "A29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w9",
+     "a": [
+      "pn2222_wvmewt",
+      "C"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "B29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w10",
+     "a": [
+      "diode_mr20ms",
+      "A"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "C29"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w11",
+     "a": [
+      "pn2222_wvmewt",
+      "E"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-24"
+     ],
+     "color": "#3a3f45",
+     "role": "Émetteur à la masse"
+    },
+    {
+     "id": "w12",
+     "a": [
+      "pn2222_wvmewt",
+      "B"
+     ],
+     "b": [
+      "res-1k_xvfdrk",
+      "2"
+     ],
+     "color": "#f08a3c",
+     "role": "Résistance de base"
+    },
+    {
+     "id": "w13",
+     "a": [
+      "res-1k_xvfdrk",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D2"
+     ],
+     "color": "#f2c94c",
+     "role": "Commande du transistor"
+    },
+    {
+     "id": "w14",
+     "a": [
+      "coil24_e1lgsm",
+      "+"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "D30"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V"
+    },
+    {
+     "id": "w15",
+     "a": [
+      "breadboard_b071sw",
+      "E30"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "A17"
+     ],
+     "color": "#e5484d",
+     "role": "Pont entre deux rangées"
+    },
+    {
+     "id": "w16",
+     "a": [
+      "diode_99tb2g",
+      "K"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "B17"
+     ],
+     "color": "#e5484d",
+     "role": "Cathode de la diode de roue libre au +"
+    },
+    {
+     "id": "w17",
+     "a": [
+      "coil24_e1lgsm",
+      "-"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "A18"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w18",
+     "a": [
+      "pn2222_kge7xm",
+      "C"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "B18"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w19",
+     "a": [
+      "diode_99tb2g",
+      "A"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "C18"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w20",
+     "a": [
+      "pn2222_kge7xm",
+      "E"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-15"
+     ],
+     "color": "#3a3f45",
+     "role": "Émetteur à la masse"
+    },
+    {
+     "id": "w21",
+     "a": [
+      "pn2222_kge7xm",
+      "B"
+     ],
+     "b": [
+      "res-1k_r5wr1u",
+      "2"
+     ],
+     "color": "#f08a3c",
+     "role": "Résistance de base"
+    },
+    {
+     "id": "w22",
+     "a": [
+      "res-1k_r5wr1u",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D8"
+     ],
+     "color": "#f2c94c",
+     "role": "Commande du transistor"
+    },
+    {
+     "id": "w23",
+     "a": [
+      "coil24_n3ekba",
+      "+"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "C17"
+     ],
+     "color": "#e5484d",
+     "role": "Alimentation 24 V"
+    },
+    {
+     "id": "w24",
+     "a": [
+      "diode_zddqz1",
+      "K"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "D17"
+     ],
+     "color": "#e5484d",
+     "role": "Cathode de la diode de roue libre au +"
+    },
+    {
+     "id": "w25",
+     "a": [
+      "coil24_n3ekba",
+      "-"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "A1"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w26",
+     "a": [
+      "pn2222_37xzg0",
+      "C"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "B1"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w27",
+     "a": [
+      "diode_zddqz1",
+      "A"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "C1"
+     ],
+     "color": "#f08a3c",
+     "role": "Borne −, collecteur et anode de la diode"
+    },
+    {
+     "id": "w28",
+     "a": [
+      "pn2222_37xzg0",
+      "E"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-1"
+     ],
+     "color": "#3a3f45",
+     "role": "Émetteur à la masse"
+    },
+    {
+     "id": "w29",
+     "a": [
+      "pn2222_37xzg0",
+      "B"
+     ],
+     "b": [
+      "res-1k_pfvk8v",
+      "2"
+     ],
+     "color": "#f08a3c",
+     "role": "Résistance de base"
+    },
+    {
+     "id": "w30",
+     "a": [
+      "res-1k_pfvk8v",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D5"
+     ],
+     "color": "#f2c94c",
+     "role": "Commande du transistor"
+    },
+    {
+     "id": "w31",
+     "a": [
+      "cylsensor_gw1lb5",
+      "2"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-23"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w32",
+     "a": [
+      "cylsensor_gw1lb5",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D3"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w33",
+     "a": [
+      "cylsensor_wzpce1",
+      "2"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-2"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w34",
+     "a": [
+      "cylsensor_wzpce1",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D9"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w35",
+     "a": [
+      "cylsensor_98x199",
+      "2"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-3"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w36",
+     "a": [
+      "cylsensor_98x199",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D12"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    },
+    {
+     "id": "w37",
+     "a": [
+      "cylsensor_k1gpd8",
+      "2"
+     ],
+     "b": [
+      "breadboard_b071sw",
+      "T-17"
+     ],
+     "color": "#3a3f45",
+     "role": "Masse"
+    },
+    {
+     "id": "w38",
+     "a": [
+      "cylsensor_k1gpd8",
+      "1"
+     ],
+     "b": [
+      "uno_jwa8ob",
+      "D6"
+     ],
+     "color": "#f2c94c",
+     "role": "Entrée"
+    }
+   ],
+   "settings": {
+    "kind": "epneu",
+    "prog": {
+     "rules": [],
+     "boards": {
+      "uno_jwa8ob": {
+       "code": "// Programme de UNO, écrit par Jollof Studio à partir du GRAFCET du plan pneumatique.\n// Une évolution par tour de loop() ; vous pouvez le modifier librement.\n\nconst int BTN1 = 7;\nconst int A0_PIN = 3;\nconst int B0 = 12;\nconst int A1_PIN = 9;\nconst int B1 = 6;\n// GRAFCET : une variable par étape, vraie quand l’étape est active.\nbool X0 = true;\nbool X1 = false;\nbool X2 = false;\nbool X3 = false;\nbool X4 = false;\nconst int Q1 = 2;\nconst int Q3 = 5;\nconst int Q2 = 8;\n\nunsigned long dernierAffichage = 0;\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(BTN1, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW\n  pinMode(A0_PIN, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(B0, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(A1_PIN, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(B1, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(Q1, OUTPUT); // base de Q1 : HIGH, le transistor conduit et Y1 est excitée\n  pinMode(Q3, OUTPUT); // base de Q3 : HIGH, le transistor conduit et Y3 est excitée\n  pinMode(Q2, OUTPUT); // base de Q2 : HIGH, le transistor conduit et Y2 est excitée\n}\n\nvoid loop() {\n  // Mesures\n  bool btn1_appuye = digitalRead(BTN1) == LOW;\n  bool a0_piston = digitalRead(A0_PIN) == LOW;\n  bool b0_piston = digitalRead(B0) == LOW;\n  bool a1_piston = digitalRead(A1_PIN) == LOW;\n  bool b1_piston = digitalRead(B1) == LOW;\n\n  // 1. Transitions franchissables : toutes calculées avant d’évoluer (franchissement simultané).\n  bool t0_1 = X0 && ((btn1_appuye && a0_piston) && b0_piston); // X0 → X1 : BTN1 . a0 . b0\n  bool t1_2 = X1 && a1_piston; // X1 → X2 : a1\n  bool t2_3 = X2 && b1_piston; // X2 → X3 : b1\n  bool t3_4 = X3 && b0_piston; // X3 → X4 : b0\n  bool t4_0 = X4 && a0_piston; // X4 → X0 : a0\n\n  // 2. Évolution : on désactive les étapes amont, puis on active les étapes aval.\n  if (t0_1) { X0 = false; }\n  if (t1_2) { X1 = false; }\n  if (t2_3) { X2 = false; }\n  if (t3_4) { X3 = false; }\n  if (t4_0) { X4 = false; }\n  if (t0_1) { X1 = true; }\n  if (t1_2) { X2 = true; }\n  if (t2_3) { X3 = true; }\n  if (t3_4) { X4 = true; }\n  if (t4_0) { X0 = true; }\n\n  // Sorties : chacune est commandée tant qu’une étape qui la porte est active.\n  if (X1) {\n    digitalWrite(Q1, HIGH);\n  } else {\n    digitalWrite(Q1, LOW);\n  }\n  if (X2) {\n    digitalWrite(Q3, HIGH);\n  } else {\n    digitalWrite(Q3, LOW);\n  }\n  if (X4) {\n    digitalWrite(Q2, HIGH);\n  } else {\n    digitalWrite(Q2, LOW);\n  }\n\n  // Mesures sur le moniteur série, une fois par seconde\n  if (millis() - dernierAffichage >= 1000) {\n    dernierAffichage = millis();\n    Serial.print(F(\"BTN1 est appuyé : \"));\n    Serial.print(btn1_appuye ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"A0 détecte le piston : \"));\n    Serial.print(a0_piston ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"B0 détecte le piston : \"));\n    Serial.print(b0_piston ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"A1 détecte le piston : \"));\n    Serial.print(a1_piston ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"B1 détecte le piston : \"));\n    Serial.println(b1_piston ? \"oui\" : \"non\");\n  }\n  delay(10); // une centaine de tours par seconde : assez pour réagir, sans calcul inutile\n}\n",
+       "auto": false
+      }
+     },
+     "states": {},
+     "mem": {},
+     "net": null
+    },
+    "modules": {
+     "pneu": {
+      "circuit": {
+       "elements": [
+        {
+         "id": "A",
+         "type": "cyl2",
+         "x": 0,
+         "y": 0,
+         "p": {
+          "label": "A",
+          "s0": "A0",
+          "s1": "A1"
+         }
+        },
+        {
+         "id": "B",
+         "type": "cyl2",
+         "x": 36,
+         "y": 0,
+         "p": {
+          "label": "B",
+          "s0": "B0",
+          "s1": "B1"
+         }
+        },
+        {
+         "id": "v1",
+         "type": "v52",
+         "x": -8,
+         "y": 12,
+         "p": {
+          "left": "sol",
+          "right": "sol",
+          "coilL": "Y1",
+          "coilR": "Y2",
+          "label": "1V1"
+         }
+        },
+        {
+         "id": "v2",
+         "type": "v52",
+         "x": 28,
+         "y": 12,
+         "p": {
+          "left": "sol",
+          "right": "spring",
+          "coilL": "Y3",
+          "label": "2V1"
+         }
+        },
+        {
+         "id": "src",
+         "type": "supply",
+         "x": 16,
+         "y": 22,
+         "p": {
+          "bar": 6
+         }
+        }
+       ],
+       "tubes": [
+        {
+         "id": "t1",
+         "a": [
+          "src",
+          "1"
+         ],
+         "b": [
+          "v1",
+          "1"
+         ]
+        },
+        {
+         "id": "t2",
+         "a": [
+          "src",
+          "1"
+         ],
+         "b": [
+          "v2",
+          "1"
+         ]
+        },
+        {
+         "id": "t3",
+         "a": [
+          "v1",
+          "4"
+         ],
+         "b": [
+          "A",
+          "1"
+         ]
+        },
+        {
+         "id": "t4",
+         "a": [
+          "v1",
+          "2"
+         ],
+         "b": [
+          "A",
+          "2"
+         ]
+        },
+        {
+         "id": "t5",
+         "a": [
+          "v2",
+          "4"
+         ],
+         "b": [
+          "B",
+          "1"
+         ]
+        },
+        {
+         "id": "t6",
+         "a": [
+          "v2",
+          "2"
+         ],
+         "b": [
+          "B",
+          "2"
+         ]
+        }
+       ],
+       "grafcet": {
+        "name": "G1",
+        "drive": false,
+        "inputs": [],
+        "parts": [],
+        "steps": [
+         {
+          "n": 0,
+          "init": true,
+          "act": "",
+          "r": "BTN1 . a0 . b0",
+          "to": null,
+          "alt": []
+         },
+         {
+          "n": 1,
+          "init": false,
+          "act": "Y1",
+          "r": "a1",
+          "to": null,
+          "alt": []
+         },
+         {
+          "n": 2,
+          "init": false,
+          "act": "Y3",
+          "r": "b1",
+          "to": null,
+          "alt": []
+         },
+         {
+          "n": 3,
+          "init": false,
+          "act": "",
+          "r": "b0",
+          "to": null,
+          "alt": []
+         },
+         {
+          "n": 4,
+          "init": false,
+          "act": "Y2",
+          "r": "a0",
+          "to": null,
+          "alt": []
+         }
+        ]
+       },
+       "scene": {
+        "kind": "station",
+        "clamp": "A",
+        "drill": "B",
+        "start": "BTN1"
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le poste",
+    "en": "The station"
+   },
+   "text": {
+    "fr": "Sur ce poste, le vérin **A** serre la pièce dans l’étau et le vérin **B** descend le foret. Le foret doit être ressorti avant qu’on desserre : le cycle est **A+ B+ B− A−**.\n- **BTN1** : le bouton de départ du cycle ;\n- **Y1** et **Y2** : les deux électroaimants du distributeur **bistable 1V1** (Y1 : serrer, Y2 : desserrer) ;\n- **Y3** : l’électroaimant du distributeur **monostable 2V1** (Y3 : descendre le foret ; sans courant, un ressort le fait remonter) ;\n- **A0**, **A1** : les capteurs du vérin A (tige rentrée, tige sortie) ; **B0**, **B1** : ceux du vérin B.\nChaque électrovanne a son transistor (Q1 à Q3) et sa diode de roue libre (D1 à D3), sur l’alimentation 24 V **PS1**.\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre le poste : l’étau poussé par A, la broche de perçage portée par B et le bouton de départ.",
+    "en": "At this station, cylinder **A** clamps the part in the vice and cylinder **B** feeds the drill. The drill must be out before unclamping: the cycle is **A+ B+ B− A−**.\n- **BTN1**: the cycle start button;\n- **Y1** and **Y2**: the two solenoids of **bistable valve 1V1** (Y1: clamp, Y2: unclamp);\n- **Y3**: the solenoid of **monostable valve 2V1** (Y3: feed the drill; without power a spring brings it back up);\n- **A0**, **A1**: the sensors of cylinder A (rod in, rod out); **B0**, **B1**: those of cylinder B.\nEach solenoid has its transistor (Q1 to Q3) and its flyback diode (D1 to D3), on the 24 V supply **PS1**.\nThe **3D** view (“3D” button of the pneumatic workspace) shows the station: the vice pushed by A, the drilling spindle carried by B and the start button."
+   }
+  },
+  {
+   "title": {
+    "fr": "Et si le courant est coupé ?",
+    "en": "What if the power is cut?"
+   },
+   "text": {
+    "fr": "Le courant est coupé en plein perçage : toutes les bobines retombent. Que doivent faire l’étau (A) et le foret (B), et quels distributeurs le garantissent ?",
+    "en": "The power is cut in the middle of drilling: every coil drops out. What must the vice (A) and the drill (B) do, and which valves guarantee it?"
+   },
+   "hint": {
+    "fr": "Desserrer une pièce pendant que le foret est dedans la laisserait tourner avec lui. Laisser le foret en bas bloquerait la pièce et l’outil. On veut donc : étau serré, foret remonté.",
+    "en": "Unclamping a part while the drill is in it would let it spin with the drill. Leaving the drill down would jam the part and the tool. So the aim is: vice clamped, drill back up."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les deux vérins rentrent : deux distributeurs monostables",
+      "en": "Both cylinders retract: two monostable valves"
+     },
+     {
+      "fr": "Les deux restent où ils sont : deux distributeurs bistables",
+      "en": "Both stay where they are: two bistable valves"
+     },
+     {
+      "fr": "A desserre et B reste en bas : la pièce est libérée tout de suite",
+      "en": "A unclamps and B stays down: the part is released at once"
+     },
+     {
+      "fr": "A reste serré (distributeur bistable : il garde sa position) et B remonte (distributeur monostable : son ressort le ramène)",
+      "en": "A stays clamped (bistable valve: it keeps its position) and B goes back up (monostable valve: its spring returns it)"
+     }
+    ],
+    "answer": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Dans le plan **Pneumatique**, raccordez la partie puissance :\n- la source à l’orifice **1** de 1V1 et à l’orifice **1** de 2V1 ;\n- 1V1 : orifice **4** → orifice **1** du vérin A, orifice **2** → orifice **2** du vérin A ;\n- 2V1 : orifice **4** → orifice **1** du vérin B, orifice **2** → orifice **2** du vérin B.\nLes orifices **3** et **5** restent libres : ce sont les échappements.",
+    "en": "In the **Pneumatics** workspace, connect the power part:\n- the supply to port **1** of 1V1 and to port **1** of 2V1;\n- 1V1: port **4** → port **1** of cylinder A, port **2** → port **2** of cylinder A;\n- 2V1: port **4** → port **1** of cylinder B, port **2** → port **2** of cylinder B.\nPorts **3** and **5** stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un orifice (petit rond) et en relâchant sur un autre. Un orifice peut recevoir plusieurs tuyaux. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. A port can take several tubes. Click a tube to select it, Delete removes it."
+   },
+   "keep": {
+    "fr": "Le type de distributeur fixe le comportement **sans courant** : bistable, le vérin garde sa position ; monostable, il revient au repos. On le choisit pour que la coupure laisse la machine dans un état sûr.",
+    "en": "The valve type sets the behaviour **without power**: bistable, the cylinder keeps its position; monostable, it returns to rest. It is chosen so that a power cut leaves the machine in a safe state."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "src:1",
+      "v2:1"
+     ],
+     [
+      "v1:4",
+      "A:1"
+     ],
+     [
+      "v1:2",
+      "A:2"
+     ],
+     [
+      "v2:4",
+      "B:1"
+     ],
+     [
+      "v2:2",
+      "B:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câblage",
+    "en": "The wiring"
+   },
+   "text": {
+    "fr": "Revenez au plan **Électronique**. Dans l’onglet « Câblage », cliquez sur **Câbler tout le circuit** : chaque électrovanne reçoit son étage (transistor, résistance de base, diode de roue libre, 24 V) ; le bouton et chaque capteur vont entre une broche et la masse. Suivez ensuite un étage du doigt : broche → résistance → base du transistor ; 24 V → bobine → collecteur ; émetteur → masse.",
+    "en": "Go back to the **Electronics** workspace. In the “Wiring” tab, click **Wire the whole circuit**: each solenoid gets its stage (transistor, base resistor, flyback diode, 24 V); the button and each sensor go between a pin and ground. Then trace one stage with your finger: pin → resistor → transistor base; 24 V → coil → collector; emitter → ground."
+   },
+   "hint": {
+    "fr": "Vous pouvez aussi câbler à la main, comme dans le TP « Porte automatique électropneumatique » : le contrôle demande seulement que tout soit câblé, sans erreur de câblage.",
+    "en": "You can also wire by hand, as in the “Electropneumatic automatic door” lab: the check only requires everything to be wired, with no wiring error."
+   },
+   "check": {
+    "type": "wired"
+   }
+  },
+  {
+   "title": {
+    "fr": "Impulsion ou maintien ?",
+    "en": "Pulse or hold?"
+   },
+   "text": {
+    "fr": "Y1 (serrer) ne sera commandée que dans l’étape de serrage, et pourtant la pièce restera serrée pendant tout le perçage. Dans quelles étapes faut-il écrire **Y3** pour que le foret descende, puis remonte ?",
+    "en": "Y1 (clamp) will only be driven in the clamping step, and yet the part will stay clamped throughout drilling. In which steps must **Y3** be written for the drill to go down, then back up?"
+   },
+   "hint": {
+    "fr": "1V1 est bistable : une impulsion sur Y1 suffit, il garde sa position jusqu’à Y2. 2V1 est monostable : Y3 doit être présente tant que le foret descend ; l’étape de remontée n’a donc aucune action.",
+    "en": "1V1 is bistable: a pulse on Y1 is enough, it keeps its position until Y2. 2V1 is monostable: Y3 must be present while the drill goes down; so the step where it goes back up has no action."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Dans l’étape de descente seulement : à l’étape suivante, sans action, le ressort de 2V1 fait remonter le foret",
+      "en": "In the feed step only: in the next step, with no action, the spring of 2V1 brings the drill back up"
+     },
+     {
+      "fr": "Dans toutes les étapes du cycle",
+      "en": "In every step of the cycle"
+     },
+     {
+      "fr": "Dans l’étape de remontée",
+      "en": "In the step where it goes back up"
+     },
+     {
+      "fr": "Dans l’étape initiale",
+      "en": "In the initial step"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Le GRAFCET",
+    "en": "The GRAFCET"
+   },
+   "text": {
+    "fr": "Dans le plan **Pneumatique**, ouvrez le panneau **GRAFCET** et écrivez :\n- **X0** (initiale), sans action ; réceptivité `BTN1 . a0 . b0` : départ demandé, étau ouvert, foret en haut ;\n- **X1** : action `Y1` (A+), réceptivité `a1` ;\n- **X2** : action `Y3` (B+), réceptivité `b1` ;\n- **X3** : aucune action (B−, par le ressort de 2V1), réceptivité `b0` ;\n- **X4** : action `Y2` (A−), réceptivité `a0` (retour à X0).",
+    "en": "In the **Pneumatics** workspace, open the **GRAFCET** panel and write:\n- **X0** (initial), no action; receptivity `BTN1 . a0 . b0`: start requested, vice open, drill up;\n- **X1**: action `Y1` (A+), receptivity `a1`;\n- **X2**: action `Y3` (B+), receptivity `b1`;\n- **X3**: no action (B−, by the spring of 2V1), receptivity `b0`;\n- **X4**: action `Y2` (A−), receptivity `a0` (back to X0)."
+   },
+   "hint": {
+    "fr": "« Ajouter une étape » en bas du panneau ; la dernière transition revient d’elle-même à l’étape initiale. Le point « . » se lit ET ; les noms sont ceux du montage (BTN1) et des capteurs (a0, a1, b0, b1).",
+    "en": "“Add a step” at the bottom of the panel; the last transition goes back to the initial step by itself. The dot “.” reads AND; names are those of the bench (BTN1) and of the sensors (a0, a1, b0, b1)."
+   },
+   "keep": {
+    "fr": "Bistable : une **impulsion** par mouvement (Y1 pour sortir, Y2 pour rentrer). Monostable : l’action est **maintenue** pour sortir, et son absence fait rentrer.",
+    "en": "Bistable: one **pulse** per movement (Y1 to extend, Y2 to retract). Monostable: the action is **held** to extend, and its absence retracts."
+   },
+   "check": {
+    "type": "grafcet",
+    "outputs": [
+     "Y1",
+     "Y2",
+     "Y3"
+    ],
+    "reads": [
+     "BTN1",
+     "a0",
+     "a1",
+     "b0",
+     "b1"
+    ],
+    "minSteps": 5
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme de la carte",
+    "en": "The board program"
+   },
+   "text": {
+    "fr": "Dans l’en-tête du panneau GRAFCET, cliquez sur **Programme Arduino** : le programme de la carte est écrit à partir du GRAFCET et placé dans l’onglet **Code**. Lisez-le : une variable booléenne par étape (`X0` à `X4`), les transitions calculées toutes ensemble, puis les sorties. C’est le fonctionnement d’un automate programmable : lire les entrées, faire évoluer le GRAFCET, écrire les sorties, et recommencer.",
+    "en": "In the GRAFCET panel header, click **Arduino program**: the board program is written from the GRAFCET and placed in the **Code** tab. Read it: one boolean variable per step (`X0` to `X4`), the transitions all computed together, then the outputs. This is how a programmable logic controller works: read the inputs, evolve the GRAFCET, write the outputs, and start again."
+   },
+   "hint": {
+    "fr": "Si un nom du GRAFCET ne correspond à aucun composant du montage, un message le signale : vérifiez BTN1, Y1, Y2, Y3 et les capteurs A0, A1, B0, B1. Le câblage doit être terminé avant d’écrire le programme : c’est lui qui donne les broches.",
+    "en": "If a GRAFCET name matches no part on the bench, a message says so: check BTN1, Y1, Y2, Y3 and sensors A0, A1, B0, B1. Wiring must be finished before writing the program: it provides the pins."
+   },
+   "keep": {
+    "fr": "Un GRAFCET se programme toujours de la même façon : **une variable par étape**, les transitions, puis les sorties. La carte se comporte alors comme un automate : lire, décider, écrire.",
+    "en": "A GRAFCET is always programmed the same way: **one variable per step**, the transitions, then the outputs. The board then behaves like a PLC: read, decide, write."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "\\bX4\\b",
+     "digitalWrite"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai du cycle",
+    "en": "Testing the cycle"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur **BTN1**. Le cycle attendu est **A+ B+ B− A−**. Dans la vue partagée, la chaîne de commande montre chaque bobine et chaque capteur avec sa broche et son état.",
+    "en": "Click “Observe”, then press **BTN1**. The expected cycle is **A+ B+ B− A−**. In the split view, the control chain shows each coil and each sensor with its pin and its state."
+   },
+   "hint": {
+    "fr": "Le cycle ne démarre pas ? A0 et B0 doivent être fermés au repos (tiges rentrées) et le programme téléversé. Un vérin ne revient pas ? Relisez l’étape qui commande son retour.",
+    "en": "The cycle does not start? A0 and B0 must be closed at rest (rods in) and the program uploaded. A cylinder does not come back? Read again the step that commands its return."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": [
+     "A+",
+     "B+",
+     "B-",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Un capteur en panne",
+    "en": "A failed sensor"
+   },
+   "text": {
+    "fr": "Le capteur **b1** (foret en bas) tombe en panne : il ne se ferme plus. Que fait la machine au cycle suivant ?",
+    "en": "Sensor **b1** (drill down) fails: it no longer closes. What does the machine do on the next cycle?"
+   },
+   "hint": {
+    "fr": "Un GRAFCET n’avance que si la réceptivité devient vraie : sans b1, pas de remontée. Une machine réelle surveille donc la durée de chaque étape : une transition de plus sous X2, par exemple `5s/X2`, mène à une étape de défaut qui allume un voyant.",
+    "en": "A GRAFCET only moves on when the receptivity becomes true: without b1, the drill never goes back up. So a real machine monitors the duration of each step: one more transition under X2, for example `5s/X2`, leads to a fault step that lights a lamp."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle saute le perçage et desserre la pièce",
+      "en": "It skips drilling and unclamps the part"
+     },
+     {
+      "fr": "Elle recommence le cycle au début",
+      "en": "It starts the cycle again from the beginning"
+     },
+     {
+      "fr": "Le GRAFCET reste à l’étape X2 : le foret reste en bas, l’étau reste serré, et le cycle attend sans fin",
+      "en": "The GRAFCET stays in step X2: the drill stays down, the vice stays clamped, and the cycle waits forever"
+     },
+     {
+      "fr": "La carte redémarre",
+      "en": "The board restarts"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "L’arrêt d’urgence",
+    "en": "The emergency stop"
+   },
+   "text": {
+    "fr": "Une vraie machine ajoute des modes de marche (cycle par cycle, automatique, réglage) et, à la place de la carte, un automate programmable prévu pour le 24 V et les parasites d’un atelier. Elle a surtout un **arrêt d’urgence**. Comment le réaliser ?",
+    "en": "A real machine adds operating modes (single cycle, automatic, setting) and, instead of the board, a PLC designed for 24 V and the electrical noise of a workshop. Above all it has an **emergency stop**. How should it be built?"
+   },
+   "hint": {
+    "fr": "Un programme peut se bloquer, une sortie peut rester collée : l’arrêt d’urgence ne doit pas en dépendre. Son bouton ouvre une chaîne câblée (relais de sécurité) qui coupe l’alimentation des électrovannes et, selon la machine, l’air des mouvements dangereux. Le programme reçoit seulement l’information, pour se remettre à l’étape initiale.",
+    "en": "A program can hang, an output can stick: the emergency stop must not depend on them. Its button opens a hard-wired chain (safety relay) that cuts the solenoid supply and, depending on the machine, the air of the dangerous movements. The program only receives the information, to go back to the initial step."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Un bouton sur une entrée de la carte : le programme arrête le cycle quand il le lit",
+      "en": "A button on a board input: the program stops the cycle when it reads it"
+     },
+     {
+      "fr": "Un bouton qui ouvre une chaîne câblée de sécurité : elle coupe l’énergie des mouvements dangereux sans passer par le programme",
+      "en": "A button that opens a hard-wired safety chain: it cuts the energy of the dangerous movements without going through the program"
+     },
+     {
+      "fr": "Une temporisation de plus dans le GRAFCET",
+      "en": "One more time delay in the GRAFCET"
+     },
+     {
+      "fr": "Un second bouton de départ",
+      "en": "A second start button"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

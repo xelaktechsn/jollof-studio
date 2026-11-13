@@ -1,0 +1,747 @@
+{
+ "id": "tp23-ter-passage-a-niveau",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 75,
+ "title": {
+  "fr": "TER : un passage à niveau automatique",
+  "en": "TER: an automatic level crossing"
+ },
+ "summary": {
+  "fr": "Inspiré des trains électriques du TER de Dakar : deux capteurs à effet Hall annoncent le train et détectent sa sortie. Feux rouges qui clignotent en alternance, sonnerie commandée par un transistor, barrière sur servomoteur : un automatisme programmé comme une machine à états.",
+  "en": "Inspired by the electric trains of Dakar’s TER: two Hall effect sensors announce the train and detect when it leaves. Alternately flashing red lights, a bell driven through a transistor, a barrier on a servo: an automatic system programmed as a state machine."
+ },
+ "objectives": [
+  {
+   "fr": "Détecter un aimant avec un capteur à effet Hall (sortie active à l’état bas)",
+   "en": "Detect a magnet with a Hall effect sensor (active-low output)"
+  },
+  {
+   "fr": "Commander un buzzer par un transistor, et une barrière avec la bibliothèque Servo",
+   "en": "Drive a buzzer through a transistor, and a barrier with the Servo library"
+  },
+  {
+   "fr": "Programmer une machine à états avec millis() : annonce, fermeture, réouverture",
+   "en": "Program a state machine with millis(): warning, closing, reopening"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Une machine à états avec `millis()` : libre, avertissement, fermé, réouverture. Les capteurs sont relus à chaque tour.",
+   "en": "A state machine with `millis()`: free, warning, closed, reopening. Sensors are read again on every loop."
+  },
+  {
+   "fr": "On prévient avant d’agir : feux et sonnerie d’abord, la barrière descend ensuite.",
+   "en": "Warn before acting: lights and bell first, then the barrier comes down."
+  },
+  {
+   "fr": "Un filtre temporel évite de rouvrir entre deux voitures du train.",
+   "en": "A time filter avoids reopening between two cars of the train."
+  },
+  {
+   "fr": "Sécurité intrinsèque : toute panne doit conduire à l’état sûr (passage fermé).",
+   "en": "Fail-safe: any failure must lead to the safe state (crossing closed)."
+  },
+  {
+   "fr": "Une charge de plus de 20 mA se commande par un transistor.",
+   "en": "A load above 20 mA is driven through a transistor."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Passage à niveau",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "hall_1",
+    "type": "hall",
+    "name": "HALL1",
+    "x": -62,
+    "z": -58,
+    "r": 0
+   },
+   {
+    "id": "servo_1",
+    "type": "servo",
+    "name": "SERVO1",
+    "x": 0,
+    "z": -60,
+    "r": 0
+   },
+   {
+    "id": "hall_2",
+    "type": "hall",
+    "name": "HALL2",
+    "x": 62,
+    "z": -58,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -44,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -27,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": -10,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_2",
+    "type": "led-red",
+    "name": "LED2",
+    "x": 7,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R3",
+    "x": 26,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "npn_1",
+    "type": "npn",
+    "name": "Q1",
+    "x": 44,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 62,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "magnet": 0
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers le rail +"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail −"
+   },
+   {
+    "a": [
+     "hall_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+3"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation du capteur d’annonce"
+   },
+   {
+    "a": [
+     "hall_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur d’annonce"
+   },
+   {
+    "a": [
+     "hall_1",
+     "S"
+    ],
+    "b": [
+     "uno_1",
+     "D2"
+    ],
+    "color": "#3b82f6",
+    "role": "Capteur d’annonce (LOW : aimant)"
+   },
+   {
+    "a": [
+     "hall_2",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+23"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation du capteur de sortie"
+   },
+   {
+    "a": [
+     "hall_2",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur de sortie"
+   },
+   {
+    "a": [
+     "hall_2",
+     "S"
+    ],
+    "b": [
+     "uno_1",
+     "D3"
+    ],
+    "color": "#3b82f6",
+    "role": "Capteur de sortie (LOW : aimant)"
+   },
+   {
+    "a": [
+     "servo_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+13"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du servomoteur"
+   },
+   {
+    "a": [
+     "servo_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-13"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du servomoteur"
+   },
+   {
+    "a": [
+     "servo_1",
+     "SIG"
+    ],
+    "b": [
+     "uno_1",
+     "D9"
+    ],
+    "color": "#f08a3c",
+    "role": "Commande de la barrière"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D5"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du feu LED1"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-5"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D6"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du feu LED2"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-red_2",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_2",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "res-1k_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "npn_1",
+     "B"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "a": [
+     "npn_1",
+     "E"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-17"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "npn_1",
+     "C"
+    ],
+    "color": "#9b7be0",
+    "role": "Buzzer vers le collecteur"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+19"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du buzzer"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : passage à niveau automatique, inspiré des lignes du TER.\n#include <Servo.h>\n\nconst int CAPTEUR_ANNONCE = 2;  // HALL1 · S : LOW quand un aimant du train passe\nconst int CAPTEUR_SORTIE = 3;   // HALL2 · S : LOW quand un aimant du train passe\nconst int FEU_A = 5;            // LED1 rouge\nconst int FEU_B = 6;            // LED2 rouge\nconst int SONNERIE = 8;         // base du transistor Q1, qui commande le buzzer BZ1\nconst int BARRIERE = 9;         // SIG du servomoteur\n\nconst int LEVEE = 90;    // angle de la barrière levée\nconst int BAISSEE = 0;   // angle de la barrière baissée\n\n// États du passage à niveau\nconst int LIBRE = 0;          // aucun train : barrière levée, feux éteints\nconst int AVERTISSEMENT = 1;  // train annoncé : feux et sonnerie, barrière encore levée\nconst int FERME = 2;          // barrière baissée : on attend que le train soit passé\n\nServo barriere;\nint etat = LIBRE;\nunsigned long debut = 0;          // début de l’avertissement (ms)\nbool trainEnSortie = false;       // le train a atteint le capteur de sortie\nunsigned long dernierAimant = 0;  // dernier aimant vu par le capteur de sortie (ms)\n\nvoid setup() {\n  pinMode(CAPTEUR_ANNONCE, INPUT);\n  pinMode(CAPTEUR_SORTIE, INPUT);\n  pinMode(FEU_A, OUTPUT);\n  pinMode(FEU_B, OUTPUT);\n  pinMode(SONNERIE, OUTPUT);\n  barriere.attach(BARRIERE);\n  barriere.write(LEVEE);\n}\n\nvoid loop() {\n  bool aimantAnnonce = digitalRead(CAPTEUR_ANNONCE) == LOW;\n  bool aimantSortie = digitalRead(CAPTEUR_SORTIE) == LOW;\n\n  if (etat == LIBRE) {\n    if (aimantAnnonce) {            // un train arrive\n      etat = AVERTISSEMENT;\n      debut = millis();\n      trainEnSortie = false;\n    }\n  } else {\n    if (aimantSortie) {             // une voiture du train passe devant la sortie\n      trainEnSortie = true;\n      dernierAimant = millis();\n    }\n    if (etat == AVERTISSEMENT && millis() - debut >= 4000) {\n      barriere.write(BAISSEE);      // 4 s d’avertissement, puis la barrière descend\n      etat = FERME;\n    } else if (etat == FERME && trainEnSortie && millis() - dernierAimant >= 3000) {\n      barriere.write(LEVEE);        // plus aucun aimant à la sortie depuis 3 s : le train est passé\n      etat = LIBRE;\n    }\n  }\n\n  // Feux rouges : clignotement en alternance (500 ms chacun) tant que le passage n’est pas libre.\n  if (etat == LIBRE) {\n    digitalWrite(FEU_A, LOW);\n    digitalWrite(FEU_B, LOW);\n  } else {\n    bool premier = (millis() / 500) % 2 == 0;\n    digitalWrite(FEU_A, premier ? HIGH : LOW);\n    digitalWrite(FEU_B, premier ? LOW : HIGH);\n  }\n  // Sonnerie : pendant l’avertissement, avant la descente de la barrière.\n  digitalWrite(SONNERIE, etat == AVERTISSEMENT ? HIGH : LOW);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le passage à niveau",
+    "en": "The level crossing"
+   },
+   "text": {
+    "fr": "Le **TER** relie Dakar à Diamniadio avec des trains électriques, et sa ligne est prolongée vers l’aéroport AIBD. Là où une route croise une voie ferrée, un **passage à niveau** automatique protège piétons et voitures. Vous allez programmer celui d’une maquette inspirée du TER :\n- **HALL1**, le capteur d’**annonce**, placé bien avant le passage, et **HALL2**, le capteur de **sortie**, juste après : un aimant fixé sous chaque voiture du train les fait passer à **LOW** ;\n- deux feux rouges, **LED1** et **LED2** (avec R1 et R2, 220 Ω), qui clignotent en alternance ;\n- la sonnerie **BZ1**, un buzzer actif commandé par le transistor **Q1** (avec R3, 1 kΩ) ;\n- la barrière **SERVO1** : 90° levée, 0° baissée.\nAvec la carte **UNO** et la breadboard **BB1**.",
+    "en": "The **TER** links Dakar to Diamniadio with electric trains, and its line is being extended towards AIBD airport. Where a road crosses a railway, an automatic **level crossing** protects pedestrians and cars. You will program the one of a scale model inspired by the TER:\n- **HALL1**, the **warning** sensor, placed well before the crossing, and **HALL2**, the **exit** sensor, just after it: a magnet fixed under each car of the train makes them go **LOW**;\n- two red lights, **LED1** and **LED2** (with R1 and R2, 220 Ω), flashing alternately;\n- the bell **BZ1**, an active buzzer driven by the transistor **Q1** (with R3, 1 kΩ);\n- the barrier **SERVO1**: 90° raised, 0° lowered.\nWith the **UNO** board and the **BB1** breadboard."
+   }
+  },
+  {
+   "title": {
+    "fr": "Les capteurs et la barrière",
+    "en": "The sensors and the barrier"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », amenez le **5V** de la carte sur le rail **+** de la breadboard, et une broche **GND** sur le rail **-**. Puis :\n- chaque capteur Hall : **VCC** au rail +, **GND** au rail -, et la sortie **S** : **HALL1 sur D2**, **HALL2 sur D3** ;\n- le servomoteur : **VCC** (fil rouge) au rail +, **GND** (fil marron) au rail -, et **SIG** (fil orange) à **D9**.",
+    "en": "In the “Wiring” tab, bring the board’s **5V** to the breadboard **+** rail, and a **GND** pin to the **-** rail. Then:\n- each Hall sensor: **VCC** to the + rail, **GND** to the - rail, and the **S** output: **HALL1 on D2**, **HALL2 on D3**;\n- the servo: **VCC** (red wire) to the + rail, **GND** (brown wire) to the - rail, and **SIG** (orange wire) to **D9**."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : les rails de la breadboard partagent le 5 V et la masse entre tous les modules. Le servomoteur peut demander quelques centaines de mA quand il bouge : il prend son énergie sur le 5 V, jamais sur une sortie de la carte.",
+    "en": "A pin takes only one wire: the breadboard rails share the 5 V and the ground between all the modules. The servo can draw a few hundred mA while moving: it takes its power from the 5 V, never from an output of the board."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.5V",
+      "HALL1.VCC",
+      "HALL2.VCC",
+      "SERVO1.VCC"
+     ],
+     [
+      "UNO.GND*",
+      "HALL1.GND",
+      "HALL2.GND",
+      "SERVO1.GND"
+     ],
+     [
+      "HALL1.S",
+      "UNO.D2"
+     ],
+     [
+      "HALL2.S",
+      "UNO.D3"
+     ],
+     [
+      "SERVO1.SIG",
+      "UNO.D9"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les feux rouges",
+    "en": "The red lights"
+   },
+   "text": {
+    "fr": "Câblez les deux feux, chacun avec sa résistance :\n- **D5** → R1 → **anode A** de LED1 ;\n- **D6** → R2 → **anode A** de LED2 ;\n- les deux **cathodes K** au rail -.",
+    "en": "Wire the two lights, each with its own resistor:\n- **D5** → R1 → **anode A** of LED1;\n- **D6** → R2 → **anode A** of LED2;\n- both **cathodes K** to the - rail."
+   },
+   "hint": {
+    "fr": "Deux sorties différentes : le programme pourra allumer l’une pendant que l’autre est éteinte, pour le clignotement en alternance.",
+    "en": "Two different outputs: the program will be able to turn one on while the other is off, for the alternate flashing."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D5",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D6",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La sonnerie et son transistor",
+    "en": "The bell and its transistor"
+   },
+   "text": {
+    "fr": "Le buzzer demande plus de courant qu’une broche ne doit en fournir : il est commandé par le transistor NPN **Q1**, utilisé en interrupteur.\n- **D8** → **R3** (1 kΩ) → **base B** de Q1 ;\n- **émetteur E** de Q1 au rail - ;\n- patte **-** du buzzer au **collecteur C** de Q1, patte **+** au rail + (5 V).",
+    "en": "The buzzer needs more current than a pin should supply: it is driven by the NPN transistor **Q1**, used as a switch.\n- **D8** → **R3** (1 kΩ) → **base B** of Q1;\n- **emitter E** of Q1 to the - rail;\n- buzzer **-** leg to the **collector C** of Q1, **+** leg to the + rail (5 V)."
+   },
+   "keep": {
+    "fr": "Une broche ne fournit que quelques milliampères : une charge plus gourmande passe par un **transistor**, que la broche commande par sa base à travers une résistance.",
+    "en": "A pin only supplies a few milliamps: a hungrier load goes through a **transistor**, which the pin drives by its base through a resistor."
+   },
+   "hint": {
+    "fr": "Quand D8 passe à HIGH, un petit courant entre dans la base : le transistor conduit entre C et E et laisse passer le courant du buzzer, qui vient du 5 V et non de la broche D8.",
+    "en": "When D8 goes HIGH, a small current flows into the base: the transistor conducts between C and E and lets the buzzer current through, which comes from the 5 V and not from pin D8."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D8",
+      "R3.1|R3.2"
+     ],
+     [
+      "Q1.B",
+      "R3.1|R3.2"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "BZ1.-",
+      "Q1.C"
+     ],
+     [
+      "BZ1.+",
+      "UNO.5V"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme d’essai",
+    "en": "Test program"
+   },
+   "text": {
+    "fr": "Testez tout le montage avant d’écrire l’automatisme. Dans l’onglet « Code » :\n- en haut : `#include <Servo.h>` et `Servo barriere;` ;\n- dans setup() : **D5, D6 et D8 en sortie et à HIGH** (les deux feux et la sonnerie), puis `barriere.attach(9);` et `barriere.write(0);` (barrière baissée) ;\n- loop() reste vide.\nTéléversez et lancez la simulation : les deux feux s’allument, la sonnerie retentit et la barrière descend.",
+    "en": "Test the whole circuit before writing the automatic system. In the “Code” tab:\n- at the top: `#include <Servo.h>` and `Servo barriere;`;\n- in setup(): **D5, D6 and D8 as outputs and HIGH** (both lights and the bell), then `barriere.attach(9);` and `barriere.write(0);` (barrier lowered);\n- loop() stays empty.\nUpload and start the simulation: both lights come on, the bell rings and the barrier goes down."
+   },
+   "hint": {
+    "fr": "La sonnerie reste muette ? Vérifiez le sens du buzzer (+ au 5 V, - au collecteur) et le brochage de Q1 : la résistance R3 arrive sur la base B, l’émetteur E va à la masse.",
+    "en": "The bell stays silent? Check the buzzer’s direction (+ to 5 V, - to the collector) and Q1’s pinout: resistor R3 goes to the base B, the emitter E goes to ground."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<Servo\\.h>",
+     "\\.attach\\s*\\(",
+     "\\.write\\s*\\(",
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\([^)]*HIGH"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Mesure : le courant de la sonnerie",
+    "en": "Measurement: the bell current"
+   },
+   "text": {
+    "fr": "Sonnerie en marche, ouvrez « Instruments » → **Multimètre**, mode **mA**, et choisissez **Q1** comme composant traversé : il indique le courant de collecteur. Le buzzer et le transistor sont en série, c’est donc aussi le courant du buzzer. Notez-le.",
+    "en": "With the bell ringing, open “Instruments” → **Multimeter**, **mA** mode, and pick **Q1** as the component: it shows the collector current. The buzzer and the transistor are in series, so it is also the buzzer current. Enter it."
+   },
+   "hint": {
+    "fr": "Comparez avec les 20 mA conseillés pour une broche de l’Uno : c’est pour cela que le buzzer passe par le transistor. Mesurez aussi le courant dans R3 : c’est le courant de base, I ≈ (5 V − 0,7 V) ÷ 1 kΩ ≈ 4 mA, le seul que fournit vraiment D8.",
+    "en": "Compare with the 20 mA advised for an Uno pin: that is why the buzzer goes through the transistor. Also measure the current through R3: it is the base current, I ≈ (5 V − 0.7 V) ÷ 1 kΩ ≈ 4 mA, the only current D8 really supplies."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "mA",
+    "part": "Q1",
+    "tolerance": 0.12,
+    "state": {
+     "UNO.D8": 1
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’automatisme du passage à niveau",
+    "en": "The level crossing controller"
+   },
+   "text": {
+    "fr": "Remplacez le programme d’essai par une **machine à états** : une variable `etat` dit où en est le passage, et loop() relit les capteurs à chaque tour, sans `delay()`.\n- **libre** : barrière levée (90°), feux et sonnerie éteints. Si HALL1 passe à LOW (`digitalRead(2) == LOW`), le train est annoncé : on note `debut = millis()` et on passe en **avertissement** ;\n- **avertissement** : la sonnerie retentit ; au bout de **4 s** (`millis() - debut >= 4000`), la barrière descend (0°) et on passe en **fermé** ;\n- **fermé** : quand HALL2 n’a plus vu d’aimant depuis **3 s**, le train est passé : la barrière remonte et on revient à **libre**.\nHors de l’état libre, les feux clignotent en alternance : LED1 allumée quand `(millis() / 500) % 2 == 0`, LED2 dans le cas contraire. Téléversez.",
+    "en": "Replace the test program with a **state machine**: a variable `etat` tells where the crossing is at, and loop() reads the sensors on every pass, without `delay()`.\n- **free**: barrier raised (90°), lights and bell off. If HALL1 goes LOW (`digitalRead(2) == LOW`), the train is announced: store `debut = millis()` and go to **warning**;\n- **warning**: the bell rings; after **4 s** (`millis() - debut >= 4000`), the barrier goes down (0°) and go to **closed**;\n- **closed**: when HALL2 has not seen any magnet for **3 s**, the train has passed: the barrier goes back up and return to **free**.\nOutside the free state, the lights flash alternately: LED1 on when `(millis() / 500) % 2 == 0`, LED2 otherwise. Upload."
+   },
+   "keep": {
+    "fr": "**Machine à états** : une variable dit où en est le système ; à chaque tour de loop(), on lit les capteurs et on décide s’il faut changer d’état.",
+    "en": "**State machine**: one variable says where the system stands; on every loop, read the sensors and decide whether to change state."
+   },
+   "hint": {
+    "fr": "Pour les 3 s : à chaque tour où HALL2 est à LOW, notez `dernierAimant = millis();` et retenez dans un `bool` que le train a atteint la sortie. En état fermé, testez ce `bool` et `millis() - dernierAimant >= 3000`.",
+    "en": "For the 3 s: on every pass where HALL2 is LOW, store `dernierAimant = millis();` and remember in a `bool` that the train has reached the exit. In the closed state, test that `bool` and `millis() - dernierAimant >= 3000`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "millis\\s*\\(\\s*\\)",
+     "digitalRead\\s*\\([\\s\\S]*digitalRead\\s*\\(",
+     "\\b4000(?!\\d)",
+     "\\b3000(?!\\d)",
+     "\\.write\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : un train arrive",
+    "en": "Test: a train is coming"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Dans l’onglet « Simulation », section **Environnement**, cochez **Aimant près du capteur** : le train arrive. Les feux clignotent en alternance et la sonnerie retentit ; 4 s plus tard, la barrière descend. Laissez la case cochée jusque-là, puis décochez-la : 3 s après, la barrière remonte.\nCe réglage commun agit sur les deux capteurs Hall à la fois : cocher la case, c’est le train qui passe devant HALL1 puis devant HALL2 ; la décocher, c’est la dernière voiture qui s’éloigne. Pour approcher l’aimant d’un seul capteur, cochez « Réglage à part » sous sa mesure (section Mesures).",
+    "en": "Click “Observe”. In the “Simulation” tab, **Environment** section, tick **Magnet near the sensor**: the train is coming. The lights flash alternately and the bell rings; 4 s later, the barrier goes down. Keep the box ticked until then, then untick it: 3 s later, the barrier goes back up.\nThis shared setting acts on both Hall sensors at once: ticking the box means the train passing HALL1 then HALL2; unticking it means the last car moving away. To bring the magnet near one sensor only, tick “Own setting” under its reading (Readings section)."
+   },
+   "keep": {
+    "fr": "On **prévient avant d’agir** : feux et sonnerie d’abord, la barrière ne descend qu’ensuite.",
+    "en": "**Warn before acting**: lights and bell first, the barrier only comes down afterwards."
+   },
+   "hint": {
+    "fr": "Rien ne se passe ? La ligne HALL1 de la section Mesures doit indiquer « Aimant détecté ». Si c’est le cas, vérifiez la condition `== LOW` et que `etat` change bien de valeur.",
+    "en": "Nothing happens? The HALL1 line of the Readings section must say “Magnet detected”. If it does, check the `== LOW` condition and that `etat` really changes value."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "BZ1": "on",
+     "LED1": "on",
+     "LED2": "off"
+    },
+    "hold": 250
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi attendre 3 s ?",
+    "en": "Why wait 3 s?"
+   },
+   "text": {
+    "fr": "Le programme ne relève la barrière qu’après **3 s sans aimant** devant HALL2. Pourquoi ne pas la relever dès que HALL2 repasse à HIGH ?",
+    "en": "The program only raises the barrier after **3 s without a magnet** in front of HALL2. Why not raise it as soon as HALL2 goes back HIGH?"
+   },
+   "hint": {
+    "fr": "C’est un **filtre temporel** : on ne croit le train parti que si le capteur reste libre plus longtemps que le plus grand écart entre deux aimants. Essayez : barrière baissée, décochez puis recochez vite la case : la barrière reste baissée.",
+    "en": "It is a **time filter**: the train is only considered gone if the sensor stays free for longer than the largest gap between two magnets. Try it: with the barrier down, untick then quickly re-tick the box: the barrier stays down."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Pour laisser refroidir le servomoteur entre deux mouvements",
+      "en": "To let the servo cool down between two movements"
+     },
+     {
+      "fr": "Parce que digitalRead() met 3 s à lire un capteur à effet Hall",
+      "en": "Because digitalRead() takes 3 s to read a Hall effect sensor"
+     },
+     {
+      "fr": "Pour que la sonnerie ait le temps de s’arrêter",
+      "en": "So that the bell has time to stop"
+     },
+     {
+      "fr": "Entre deux voitures du train, il n’y a pas d’aimant : HALL2 repasse à HIGH un court instant, et la barrière se relèverait au milieu du train",
+      "en": "Between two cars of the train there is no magnet: HALL2 goes back HIGH for a short moment, and the barrier would rise in the middle of the train"
+     }
+    ],
+    "answer": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Et si un capteur tombe en panne ?",
+    "en": "What if a sensor fails?"
+   },
+   "text": {
+    "fr": "Le capteur d’annonce HALL1 tombe en panne : sa sortie **S** reste bloquée à **HIGH**, comme s’il ne voyait jamais d’aimant. Que se passe-t-il au train suivant, et qu’en conclure ?",
+    "en": "The warning sensor HALL1 fails: its **S** output stays stuck **HIGH**, as if it never saw a magnet. What happens with the next train, and what should we conclude?"
+   },
+   "hint": {
+    "fr": "C’est le principe de **sécurité intrinsèque** : une panne (capteur hors service, fil coupé) doit conduire à l’état le plus sûr, et non à l’état dangereux. Notre maquette ne le respecte pas : un fil coupé laisserait même l’entrée D2 « en l’air », avec une lecture imprévisible. Un vrai système surveille ses capteurs et ferme le passage au moindre doute.",
+    "en": "This is the **fail-safe** principle: a fault (broken sensor, cut wire) must lead to the safest state, not to the dangerous one. Our model does not follow it: a cut wire would even leave input D2 “floating”, with an unpredictable reading. A real system monitors its sensors and closes the crossing at the slightest doubt."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le train n’est pas annoncé : barrière levée, feux éteints. Un système de sécurité doit être conçu pour qu’une panne le mette dans l’état sûr (passage fermé)",
+      "en": "The train is not announced: barrier up, lights off. A safety system must be designed so that a fault puts it in the safe state (crossing closed)"
+     },
+     {
+      "fr": "Rien de grave : HALL2 prend le relais et ferme la barrière",
+      "en": "Nothing serious: HALL2 takes over and closes the barrier"
+     },
+     {
+      "fr": "La barrière se baisse et ne se relève plus jamais",
+      "en": "The barrier goes down and never comes back up"
+     },
+     {
+      "fr": "La carte détecte la panne et arrête le train",
+      "en": "The board detects the fault and stops the train"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

@@ -1,0 +1,491 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Vérin électropneumatique",
+ "description": "Arduino Uno, une électrovanne 24 V (Y1) commandée par un transistor et alimentée par un bloc 24 V, deux capteurs de vérin (B1 tige rentrée, B2 tige sortie) et un bouton. Dans le plan de travail Pneumatique : un distributeur 5/2 monostable Y1, un réducteur de débit et un vérin double effet. Règles : arrivée en B2, Y1 est coupée et la tige rentre ; sinon, un appui sur BTN1 quand la tige est rentrée (B1) excite Y1 et la tige sort lentement. Y1 ne repart qu’en fin de retour : pas d’à-coups en B2, et bouton maintenu, les cycles complets s’enchaînent.",
+ "en": {
+  "name": "Electropneumatic cylinder",
+  "description": "Arduino Uno, a 24 V solenoid valve (Y1) driven by a transistor and powered by a 24 V supply, two cylinder sensors (B1 rod retracted, B2 rod extended) and a button. In the Pneumatic workspace: a 5/2 single-solenoid valve Y1, a flow control valve and a double-acting cylinder. Rules: when the rod reaches B2, Y1 is switched off and the rod retracts; otherwise, pressing BTN1 while the rod is retracted (B1) energizes Y1 and the rod slowly extends. Y1 only starts again at the end of the return stroke: no jerking at B2, and with the button held, full cycles follow one another."
+ },
+ "comps": [
+  {
+   "id": "uno_fiwkj4",
+   "type": "uno",
+   "name": "UNO",
+   "x": 0,
+   "z": 34,
+   "r": 0
+  },
+  {
+   "id": "button_y3hcts",
+   "type": "button",
+   "name": "BTN1",
+   "x": -22,
+   "z": -4,
+   "r": 0
+  },
+  {
+   "id": "coil24_32luck",
+   "type": "coil24",
+   "name": "Y1",
+   "x": 55,
+   "z": 35,
+   "r": 0
+  },
+  {
+   "id": "cylsensor_rhvsro",
+   "type": "cylsensor",
+   "name": "B1",
+   "x": 45,
+   "z": 73,
+   "r": 0
+  },
+  {
+   "id": "cylsensor_8p35kn",
+   "type": "cylsensor",
+   "name": "B2",
+   "x": 9,
+   "z": 97,
+   "r": 0
+  },
+  {
+   "id": "breadboard_zo6wih",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 5,
+   "z": 146,
+   "r": 0
+  },
+  {
+   "id": "psu24_35wsyp",
+   "type": "psu24",
+   "name": "PS1",
+   "x": 84,
+   "z": 37,
+   "r": 0
+  },
+  {
+   "id": "pn2222_mwqxxl",
+   "type": "pn2222",
+   "name": "Q1",
+   "x": 15,
+   "z": -4,
+   "r": 0
+  },
+  {
+   "id": "res-1k_stnpge",
+   "type": "res-1k",
+   "name": "R1",
+   "x": 72,
+   "z": 69,
+   "r": 0
+  },
+  {
+   "id": "diode_ykalbf",
+   "type": "diode",
+   "name": "D1",
+   "x": 10,
+   "z": -17,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "id": "w1",
+   "a": [
+    "button_y3hcts",
+    "2"
+   ],
+   "b": [
+    "uno_fiwkj4",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "id": "w2",
+   "a": [
+    "button_y3hcts",
+    "1"
+   ],
+   "b": [
+    "uno_fiwkj4",
+    "D7"
+   ],
+   "color": "#f2c94c",
+   "role": "Entrée"
+  },
+  {
+   "id": "w3",
+   "a": [
+    "uno_fiwkj4",
+    "GND (2)"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "T-11"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse vers la breadboard"
+  },
+  {
+   "id": "w4",
+   "a": [
+    "psu24_35wsyp",
+    "-"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "T-25"
+   ],
+   "color": "#3a3f45",
+   "role": "0 V de l’alimentation 24 V à la masse commune"
+  },
+  {
+   "id": "w5",
+   "a": [
+    "psu24_35wsyp",
+    "+"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "A30"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 24 V vers la breadboard"
+  },
+  {
+   "id": "w6",
+   "a": [
+    "coil24_32luck",
+    "+"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "B30"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 24 V"
+  },
+  {
+   "id": "w7",
+   "a": [
+    "diode_ykalbf",
+    "K"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "C30"
+   ],
+   "color": "#e5484d",
+   "role": "Cathode de la diode de roue libre au +"
+  },
+  {
+   "id": "w8",
+   "a": [
+    "coil24_32luck",
+    "-"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "A29"
+   ],
+   "color": "#f08a3c",
+   "role": "Borne −, collecteur et anode de la diode"
+  },
+  {
+   "id": "w9",
+   "a": [
+    "pn2222_mwqxxl",
+    "C"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "B29"
+   ],
+   "color": "#f08a3c",
+   "role": "Borne −, collecteur et anode de la diode"
+  },
+  {
+   "id": "w10",
+   "a": [
+    "diode_ykalbf",
+    "A"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "C29"
+   ],
+   "color": "#f08a3c",
+   "role": "Borne −, collecteur et anode de la diode"
+  },
+  {
+   "id": "w11",
+   "a": [
+    "pn2222_mwqxxl",
+    "E"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "T-24"
+   ],
+   "color": "#3a3f45",
+   "role": "Émetteur à la masse"
+  },
+  {
+   "id": "w12",
+   "a": [
+    "pn2222_mwqxxl",
+    "B"
+   ],
+   "b": [
+    "res-1k_stnpge",
+    "2"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance de base"
+  },
+  {
+   "id": "w13",
+   "a": [
+    "res-1k_stnpge",
+    "1"
+   ],
+   "b": [
+    "uno_fiwkj4",
+    "D2"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande du transistor"
+  },
+  {
+   "id": "w14",
+   "a": [
+    "cylsensor_rhvsro",
+    "2"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "T-23"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "id": "w15",
+   "a": [
+    "cylsensor_rhvsro",
+    "1"
+   ],
+   "b": [
+    "uno_fiwkj4",
+    "D3"
+   ],
+   "color": "#f2c94c",
+   "role": "Entrée"
+  },
+  {
+   "id": "w16",
+   "a": [
+    "cylsensor_8p35kn",
+    "2"
+   ],
+   "b": [
+    "breadboard_zo6wih",
+    "T-15"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "id": "w17",
+   "a": [
+    "cylsensor_8p35kn",
+    "1"
+   ],
+   "b": [
+    "uno_fiwkj4",
+    "D8"
+   ],
+   "color": "#f2c94c",
+   "role": "Entrée"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {},
+  "prog": {
+   "rules": [
+    {
+     "kind": "rule",
+     "id": "rb2stop",
+     "src": {
+      "comp": "cylsensor_8p35kn",
+      "sig": "pressed"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "act",
+       "id": "ab2off",
+       "comp": "coil24_32luck",
+       "act": "off",
+       "arg": null
+      }
+     ],
+     "else": [
+      {
+       "kind": "rule",
+       "id": "rbtn",
+       "src": {
+        "comp": "button_y3hcts",
+        "sig": "pressed"
+       },
+       "op": "==",
+       "v": 1,
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "rule",
+         "id": "rb1",
+         "src": {
+          "comp": "cylsensor_rhvsro",
+          "sig": "pressed"
+         },
+         "op": "==",
+         "v": 1,
+         "from": [
+          0,
+          100
+         ],
+         "then": [
+          {
+           "kind": "act",
+           "id": "ay1on",
+           "comp": "coil24_32luck",
+           "act": "on",
+           "arg": null
+          }
+         ],
+         "else": []
+        }
+       ],
+       "else": []
+      }
+     ]
+    }
+   ],
+   "boards": {
+    "uno_fiwkj4": {
+     "code": "// Programme de UNO (Arduino Uno), généré par Jollof Studio à partir des règles.\n// Vous pouvez le modifier librement : il ne sera plus régénéré.\n\nconst int B2 = 8;\nconst int Q1 = 2;\nconst int BTN1 = 7;\nconst int B1 = 3;\n\nunsigned long dernierAffichage = 0;\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(B2, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n  pinMode(Q1, OUTPUT); // base de Q1 : HIGH, le transistor conduit et Y1 est excitée\n  pinMode(BTN1, INPUT_PULLUP); // relâché : HIGH, appuyé : LOW\n  pinMode(B1, INPUT_PULLUP); // piston absent : HIGH, piston devant le capteur : LOW\n}\n\nvoid loop() {\n  // Mesures\n  bool b2_piston = digitalRead(B2) == LOW;\n  bool btn1_appuye = digitalRead(BTN1) == LOW;\n  bool b1_piston = digitalRead(B1) == LOW;\n\n  // Règle 1 : Quand B2 détecte le piston : Y1 est coupée ; sinon [Quand BTN1 est appuyé : [Quand B1 détecte le piston : Y1 est excitée]].\n  if (b2_piston) {\n    digitalWrite(Q1, LOW);\n  } else if (btn1_appuye) { // Règle 1.1\n    // Règle 1.1.1 : Quand B1 détecte le piston : Y1 est excitée.\n    if (b1_piston) {\n      digitalWrite(Q1, HIGH);\n    }\n  }\n\n  // Mesures sur le moniteur série, une fois par seconde\n  if (millis() - dernierAffichage >= 1000) {\n    dernierAffichage = millis();\n    Serial.print(F(\"B2 détecte le piston : \"));\n    Serial.print(b2_piston ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"BTN1 est appuyé : \"));\n    Serial.print(btn1_appuye ? \"oui\" : \"non\");\n    Serial.print(F(\" | \"));\n    Serial.print(F(\"B1 détecte le piston : \"));\n    Serial.println(b1_piston ? \"oui\" : \"non\");\n  }\n  delay(10); // une centaine de tours par seconde : assez pour réagir, sans calcul inutile\n}\n",
+     "auto": true
+    }
+   },
+   "states": {},
+   "mem": {},
+   "net": null
+  },
+  "modules": {
+   "pneu": {
+    "circuit": {
+     "elements": [
+      {
+       "id": "src",
+       "type": "supply",
+       "x": 11,
+       "y": 24,
+       "p": {}
+      },
+      {
+       "id": "v1",
+       "type": "v52",
+       "x": 0,
+       "y": 14,
+       "p": {
+        "left": "sol",
+        "right": "spring",
+        "coilL": "Y1"
+       }
+      },
+      {
+       "id": "fc",
+       "type": "flowctl",
+       "x": 20,
+       "y": 5,
+       "p": {
+        "open": 60
+       }
+      },
+      {
+       "id": "c1",
+       "type": "cyl2",
+       "x": 0,
+       "y": 0,
+       "p": {
+        "time": 1,
+        "s0": "B1",
+        "s1": "B2",
+        "label": "1A"
+       }
+      }
+     ],
+     "tubes": [
+      {
+       "id": "t1",
+       "a": [
+        "src",
+        "1"
+       ],
+       "b": [
+        "v1",
+        "1"
+       ]
+      },
+      {
+       "id": "t2",
+       "a": [
+        "v1",
+        "4"
+       ],
+       "b": [
+        "c1",
+        "1"
+       ]
+      },
+      {
+       "id": "t3",
+       "a": [
+        "v1",
+        "2"
+       ],
+       "b": [
+        "fc",
+        "1"
+       ]
+      },
+      {
+       "id": "t4",
+       "a": [
+        "fc",
+        "2"
+       ],
+       "b": [
+        "c1",
+        "2"
+       ]
+      }
+     ]
+    }
+   }
+  }
+ }
+}

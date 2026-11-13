@@ -1,0 +1,376 @@
+{
+ "id": "pn04-force-et-pression",
+ "level": "lycee",
+ "minutes": 40,
+ "title": {
+  "fr": "Force et pression : le modèle physique",
+  "en": "Force and pressure: the physical model"
+ },
+ "summary": {
+  "fr": "Un vérin de 32 mm doit pousser une charge de 300 N. Avec le modèle physique, la simulation calcule la pression de chaque chambre et la force du piston : on vérifie F = p × S et on cherche la pression minimale.",
+  "en": "A 32 mm cylinder must push a 300 N load. With the physical model, the simulation computes the pressure in each chamber and the piston force: check F = p × S and find the minimum pressure."
+ },
+ "objectives": [
+  {
+   "fr": "Calculer la force d’un vérin : F = p × S",
+   "en": "Compute a cylinder’s force: F = p × S"
+  },
+  {
+   "fr": "Lire un manomètre et la pression des chambres",
+   "en": "Read a pressure gauge and the chamber pressures"
+  },
+  {
+   "fr": "Choisir une pression de service pour une charge donnée",
+   "en": "Choose an operating pressure for a given load"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "**F = p × S**, avec p en Pa (1 bar = 10⁵ Pa) et S = π × d² ÷ 4 en m². Exemple : 6 bar sur Ø 32 mm donnent environ 480 N.",
+   "en": "**F = p × A**, with p in Pa (1 bar = 10⁵ Pa) and A = π × d² ÷ 4 in m². Example: 6 bar on Ø 32 mm give about 480 N."
+  },
+  {
+   "fr": "À la rentrée, l’air pousse sur une couronne (piston moins tige) : la force est plus faible qu’à la sortie.",
+   "en": "On retraction, air pushes on a ring (piston minus rod): the force is lower than on extension."
+  },
+  {
+   "fr": "La pression ne dépasse pas celle du réseau : un vérin trop chargé cale sans dommage.",
+   "en": "Pressure does not exceed the network’s: an overloaded cylinder stalls without damage."
+  },
+  {
+   "fr": "Pour choisir une pression ou un diamètre : p = F ÷ S, puis une marge pour les frottements et l’accélération.",
+   "en": "To choose a pressure or a bore: p = F ÷ A, then a margin for friction and acceleration."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Force et pression",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "model": "physical",
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A",
+         "bore": 32,
+         "rod": 12,
+         "stroke": 100,
+         "mass": 2,
+         "load": 300
+        }
+       },
+       {
+        "id": "g",
+        "type": "gauge",
+        "x": -7,
+        "y": 2,
+        "p": {}
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "push",
+         "right": "spring",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": 10,
+        "y": 5,
+        "p": {
+         "open": 40,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 20,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "fc",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "fc",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "g",
+      "1"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le modèle physique",
+    "en": "The physical model"
+   },
+   "text": {
+    "fr": "Ce circuit est simulé avec le **modèle physique** (onglet Pneumatique, « Modèle de simulation ») : l’air remplit les chambres du vérin, la pression monte, et le piston ne bouge que si la force de l’air dépasse la charge et les frottements.\nLe vérin **1A** a un alésage (diamètre du piston) de **32 mm** et pousse une charge de **300 N**. Le réseau donne **6 bar**. Le manomètre **g** affiche la pression de la chambre arrière.\nLa vue **3D** (bouton « 3D » en haut du plan) montre le vérin en vraie grandeur : sa tige bouge avec la simulation.",
+    "en": "This circuit uses the **physical model** (Pneumatics tab, “Simulation model”): air fills the cylinder chambers, pressure rises, and the piston only moves when the air force exceeds the load and friction.\nCylinder **1A** has a **32 mm** bore (piston diameter) and pushes a **300 N** load. The network gives **6 bar**. Gauge **g** shows the rear chamber pressure.\nThe **3D** view (“3D” button at the top of the workspace) shows the cylinder life-size: its rod moves with the simulation."
+   }
+  },
+  {
+   "title": {
+    "fr": "La force du vérin",
+    "en": "The cylinder’s force"
+   },
+   "text": {
+    "fr": "La force de l’air sur le piston vaut F = p × S, avec p en pascals (1 bar = 10⁵ Pa) et S en m². Que vaut-elle sous 6 bar, pour un piston de 32 mm ?",
+    "en": "The air force on the piston is F = p × S, with p in pascals (1 bar = 10⁵ Pa) and S in m². What is it at 6 bar, for a 32 mm piston?"
+   },
+   "keep": {
+    "fr": "**F = p × S** : p en pascals (1 bar = 10⁵ Pa), S en m² (S = π × d² ÷ 4), F en newtons.",
+    "en": "**F = p × A**: p in pascals (1 bar = 10⁵ Pa), A in m² (A = π × d² ÷ 4), F in newtons."
+   },
+   "hint": {
+    "fr": "S = π × r² = π × 0,016² ≈ 8,04 × 10⁻⁴ m². F = 6 × 10⁵ × 8,04 × 10⁻⁴ ≈ 482 N : de quoi pousser 300 N.",
+    "en": "S = π × r² = π × 0.016² ≈ 8.04 × 10⁻⁴ m². F = 6 × 10⁵ × 8.04 × 10⁻⁴ ≈ 482 N: enough to push 300 N."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 48 N",
+      "en": "About 48 N"
+     },
+     {
+      "fr": "Environ 192 N",
+      "en": "About 192 N"
+     },
+     {
+      "fr": "Environ 482 N",
+      "en": "About 482 N"
+     },
+     {
+      "fr": "Environ 4 825 N",
+      "en": "About 4,825 N"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez :\n- la source à l’orifice **1** du distributeur 1V1 ;\n- l’orifice **4** de 1V1 à l’orifice **1** du vérin ;\n- l’orifice **2** de 1V1 à l’orifice **1** du réducteur de débit 1V2, son orifice **2** à l’orifice **2** du vérin ;\n- le manomètre **g** à l’orifice **1** du vérin.",
+    "en": "Connect:\n- the supply to port **1** of valve 1V1;\n- port **4** of 1V1 to cylinder port **1**;\n- port **2** of 1V1 to port **1** of flow control valve 1V2, its port **2** to cylinder port **2**;\n- gauge **g** to cylinder port **1**."
+   },
+   "hint": {
+    "fr": "Tirez un tuyau en partant d’un orifice (petit rond) et en relâchant sur un autre. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. Click a tube to select it, Delete removes it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "fc:1"
+     ],
+     [
+      "fc:2",
+      "c1:2"
+     ],
+     [
+      "g:1",
+      "c1:1"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai sous charge",
+    "en": "Test under load"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis maintenez le bouton de 1V1 : la pression monte dans la chambre arrière, puis la tige sort. Dans l’onglet Pneumatique, la section Simulation donne la position, la vitesse, la pression des deux chambres et la force.",
+    "en": "Click “Observe”, then hold 1V1’s button: pressure rises in the rear chamber, then the rod extends. In the Pneumatics tab, the Simulation section shows position, speed, both chamber pressures and the force."
+   },
+   "keep": {
+    "fr": "Le piston ne démarre que lorsque la force de l’air dépasse la charge et les frottements : la pression monte d’abord, le mouvement vient ensuite.",
+    "en": "The piston only starts when the air force exceeds the load and friction: pressure rises first, movement comes next."
+   },
+   "hint": {
+    "fr": "La tige ne sort pas ? Vérifiez le tuyau de la source vers l’orifice 1, et que la charge du vérin est bien de 300 N.",
+    "en": "The rod does not extend? Check the tube from the supply to port 1, and that the cylinder load is 300 N."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "v1": "pressed"
+    },
+    "expect": {
+     "c1": "out"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Trop lourd",
+    "en": "Too heavy"
+   },
+   "text": {
+    "fr": "Dans l’onglet Pneumatique, sélectionnez le vérin et passez sa charge à **500 N**, puis appuyez de nouveau. Que se passe-t-il, et que montre le manomètre ?",
+    "en": "In the Pneumatics tab, select the cylinder and set its load to **500 N**, then press again. What happens, and what does the gauge show?"
+   },
+   "hint": {
+    "fr": "La pression ne dépasse jamais celle du réseau : 6 bar × 8,04 × 10⁻⁴ m² ≈ 482 N < 500 N. Le vérin reste bloqué, sous pression, sans danger : c’est un atout de la pneumatique.",
+    "en": "Pressure never exceeds the network’s: 6 bar × 8.04 × 10⁻⁴ m² ≈ 482 N < 500 N. The cylinder stays stalled, pressurised, safely: that is one strength of pneumatics."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La tige sort plus lentement, le manomètre reste à 0",
+      "en": "The rod extends more slowly, the gauge stays at 0"
+     },
+     {
+      "fr": "La tige reste rentrée ; la chambre arrière monte à 6 bar sans que le piston bouge",
+      "en": "The rod stays in; the rear chamber rises to 6 bar without the piston moving"
+     },
+     {
+      "fr": "Le vérin éclate",
+      "en": "The cylinder bursts"
+     },
+     {
+      "fr": "La source monte à 10 bar pour compenser",
+      "en": "The supply rises to 10 bar to make up"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "La pression minimale",
+    "en": "The minimum pressure"
+   },
+   "text": {
+    "fr": "Remettez la charge à 300 N. Quelle pression faut-il au minimum pour la pousser (sans compter les frottements) ? Vérifiez en changeant la pression de la source.",
+    "en": "Set the load back to 300 N. What is the minimum pressure needed to push it (friction aside)? Check by changing the supply pressure."
+   },
+   "keep": {
+    "fr": "Dans l’autre sens : **p = F ÷ S**. On ajoute toujours une marge pour les frottements et l’accélération : un vérin ne se choisit jamais « tout juste ».",
+    "en": "The other way round: **p = F ÷ A**. A margin is always added for friction and acceleration: a cylinder is never chosen “just enough”."
+   },
+   "hint": {
+    "fr": "p = F / S = 300 / 8,04 × 10⁻⁴ ≈ 3,7 × 10⁵ Pa, soit 3,7 bar. En pratique, on prend une marge (frottements, accélération) : on règle environ 5 bar, ou on choisit un vérin plus gros.",
+    "en": "p = F / S = 300 / 8.04 × 10⁻⁴ ≈ 3.7 × 10⁵ Pa, i.e. 3.7 bar. In practice a margin is taken (friction, acceleration): about 5 bar is set, or a larger cylinder is chosen."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 1,5 bar",
+      "en": "About 1.5 bar"
+     },
+     {
+      "fr": "Environ 3,7 bar",
+      "en": "About 3.7 bar"
+     },
+     {
+      "fr": "Environ 5,9 bar",
+      "en": "About 5.9 bar"
+     },
+     {
+      "fr": "Il faut 6 bar, toujours",
+      "en": "It always takes 6 bar"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

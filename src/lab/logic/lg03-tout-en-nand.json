@@ -1,0 +1,562 @@
+{
+ "id": "lg03-tout-en-nand",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 35,
+ "title": {
+  "fr": "Tout en NON-ET",
+  "en": "Everything from NAND"
+ },
+ "summary": {
+  "fr": "Avec une seule sorte de porte, la porte NON-ET, construire un inverseur, une porte ET et une porte OU, puis expliquer le montage par les lois de De Morgan.",
+  "en": "With a single kind of gate, the NAND gate, build an inverter, an AND gate and an OR gate, then explain the circuit with De Morgan’s laws."
+ },
+ "objectives": [
+  {
+   "fr": "Connaître la table de la porte NON-ET",
+   "en": "Know the NAND truth table"
+  },
+  {
+   "fr": "Construire NON, ET et OU avec des NON-ET seulement",
+   "en": "Build NOT, AND and OR from NAND gates only"
+  },
+  {
+   "fr": "Appliquer les lois de De Morgan",
+   "en": "Apply De Morgan’s laws"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Uniquement des portes NON-ET !"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 15,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 44,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 44,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l3",
+     "type": "led",
+     "x": 44,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "S3",
+      "color": "yellow"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Uniquement des portes NON-ET !"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 15,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 44,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "red"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 44,
+     "y": 11,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l3",
+     "type": "led",
+     "x": 44,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "S3",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "g1",
+     "type": "nand",
+     "x": 18,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g2",
+     "type": "nand",
+     "x": 18,
+     "y": 10,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g3",
+     "type": "nand",
+     "x": 28,
+     "y": 10,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g4",
+     "type": "nand",
+     "x": 18,
+     "y": 17,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g5",
+     "type": "nand",
+     "x": 18,
+     "y": 23,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g6",
+     "type": "nand",
+     "x": 28,
+     "y": 20,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "l1",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "B"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "g3",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "g3",
+      "B"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "g3",
+      "Y"
+     ],
+     "b": [
+      "l2",
+      "A"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g4",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g4",
+      "B"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g5",
+      "A"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g5",
+      "B"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "g4",
+      "Y"
+     ],
+     "b": [
+      "g6",
+      "A"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "g5",
+      "Y"
+     ],
+     "b": [
+      "g6",
+      "B"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "g6",
+      "Y"
+     ],
+     "b": [
+      "l3",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Une porte universelle",
+    "en": "A universal gate"
+   },
+   "text": {
+    "fr": "La porte **NON-ET** (NAND en anglais) est le contraire de la porte ET : sa sortie vaut **0** seulement quand toutes ses entrées valent 1. Son équation : Y = /(A.B).\nElle est dite **universelle** : avec des NON-ET seulement, on peut fabriquer toutes les autres portes. C’est pourquoi elle est si répandue dans les circuits intégrés (le boîtier 74HC00 contient quatre portes NON-ET).\nDans ce TP, **interdiction** d’utiliser une autre porte que NON-ET !",
+    "en": "The **NAND** gate is the opposite of the AND gate: its output is **0** only when all its inputs are 1. Its equation: Y = /(A.B).\nIt is called **universal**: with NAND gates only, you can make every other gate. That is why it is so common in integrated circuits (the 74HC00 package holds four NAND gates).\nIn this lab, you may **not** use any gate other than NAND!"
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La table du NON-ET",
+    "en": "The NAND truth table"
+   },
+   "text": {
+    "fr": "Remplissez la table de Y = /(A.B) : calculez d’abord A.B, puis inversez le résultat.",
+    "en": "Fill in the table of Y = /(A.B): first work out A.B, then invert the result."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "Y": "/(A.B)"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Un inverseur",
+    "en": "An inverter"
+   },
+   "text": {
+    "fr": "Construisez un inverseur avec **une seule** porte NON-ET (bibliothèque, **Portes logiques**) : S1 doit valoir /A. Reliez sa sortie à **S1**.",
+    "en": "Build an inverter with a **single** NAND gate (library, **Logic gates**): S1 must equal /A. Connect its output to **S1**."
+   },
+   "hint": {
+    "fr": "Regardez les lignes de la table où les deux entrées sont égales.",
+    "en": "Look at the rows of the table where both inputs are equal."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A"
+    ],
+    "outputs": {
+     "S1": "/A"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Une porte ET",
+    "en": "An AND gate"
+   },
+   "text": {
+    "fr": "Avec **deux** portes NON-ET, construisez une porte ET : **S2** = A.B.",
+    "en": "With **two** NAND gates, build an AND gate: **S2** = A.B."
+   },
+   "hint": {
+    "fr": "Une porte NON-ET donne le contraire de A.B. Comment remettre ce résultat à l’endroit ? Vous venez de construire ce qu’il faut.",
+    "en": "A NAND gate gives the opposite of A.B. How do you turn the result back? You have just built what you need."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S2": "A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Une porte OU",
+    "en": "An OR gate"
+   },
+   "text": {
+    "fr": "Avec **trois** portes NON-ET, construisez une porte OU : **S3** = A + B. Commencez par inverser A et B, chacun avec sa porte NON-ET, puis envoyez /A et /B dans une troisième porte NON-ET.",
+    "en": "With **three** NAND gates, build an OR gate: **S3** = A + B. Start by inverting A and B, each with its own NAND gate, then send /A and /B into a third NAND gate."
+   },
+   "hint": {
+    "fr": "Vérifiez la ligne A = 0, B = 0 : les deux inverseurs donnent 1 et 1, et la dernière porte donne… 0. C’est bien le OU.",
+    "en": "Check the row A = 0, B = 0: both inverters give 1 and 1, and the last gate gives… 0. That is indeed OR."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S3": "A+B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Les lois de De Morgan",
+    "en": "De Morgan’s laws"
+   },
+   "text": {
+    "fr": "Pourquoi le montage de S3 marche-t-il ? Il calcule /(/A./B). D’après **De Morgan**, le contraire d’un produit est la somme des contraires : /(X.Y) = /X + /Y. Avec X = /A et Y = /B, on retrouve A + B.\nÀ vous : écrivez **/(A+B)** sans barre sur la somme, comme un produit de deux termes.",
+    "en": "Why does the S3 circuit work? It computes /(/A./B). According to **De Morgan**, the opposite of a product is the sum of the opposites: /(X.Y) = /X + /Y. With X = /A and Y = /B, you get A + B.\nYour turn: write **/(A+B)** without a bar over the sum, as a product of two terms."
+   },
+   "hint": {
+    "fr": "La seconde loi de De Morgan échange les rôles : le contraire d’une somme est le produit des contraires.",
+    "en": "De Morgan’s second law swaps the roles: the opposite of a sum is the product of the opposites."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "B"
+    ],
+    "answer": "/A./B",
+    "form": "product"
+   }
+  },
+  {
+   "title": {
+    "fr": "Rien que des NON-ET",
+    "en": "Nothing but NAND"
+   },
+   "text": {
+    "fr": "Vérification du cahier des charges : votre plan de travail ne doit contenir **que des portes NON-ET** (en plus des interrupteurs et des LED). Si une autre porte s’est glissée, remplacez-la.",
+    "en": "Checking the specification: your workspace must contain **only NAND gates** (besides the switches and LEDs). If another gate slipped in, replace it."
+   },
+   "check": {
+    "type": "logic-parts",
+    "allow": [
+     "nand"
+    ],
+    "require": {
+     "nand": 3
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi « universelle » ?",
+    "en": "Why “universal”?"
+   },
+   "text": {
+    "fr": "Vous avez construit NON, ET et OU avec des NON-ET seulement. Que peut-on en conclure ?",
+    "en": "You built NOT, AND and OR from NAND gates only. What can you conclude?"
+   },
+   "hint": {
+    "fr": "Toute équation s’écrit avec des ET, des OU et des NON.",
+    "en": "Any equation can be written with ANDs, ORs and NOTs."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La porte NON-ET est plus rapide que les autres",
+      "en": "The NAND gate is faster than the others"
+     },
+     {
+      "fr": "Toute fonction logique peut être réalisée avec des NON-ET seulement",
+      "en": "Any logic function can be built from NAND gates only"
+     },
+     {
+      "fr": "La porte NON-ET ne sert qu’à fabriquer des inverseurs",
+      "en": "The NAND gate is only good for making inverters"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

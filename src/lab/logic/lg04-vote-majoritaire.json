@@ -1,0 +1,561 @@
+{
+ "id": "lg04-vote-majoritaire",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 35,
+ "title": {
+  "fr": "Le vote à la majorité",
+  "en": "Majority vote"
+ },
+ "summary": {
+  "fr": "Partir d’un cahier des charges écrit (trois juges, la lampe s’allume si au moins deux votent oui) pour arriver au montage : table de vérité, équation simplifiée par le tableau de Karnaugh, câblage.",
+  "en": "Go from a written specification (three judges, the lamp lights if at least two vote yes) to the circuit: truth table, equation simplified with a Karnaugh map, wiring."
+ },
+ "objectives": [
+  {
+   "fr": "Traduire un cahier des charges en table de vérité",
+   "en": "Turn a specification into a truth table"
+  },
+  {
+   "fr": "Simplifier une équation avec un tableau de Karnaugh",
+   "en": "Simplify an equation with a Karnaugh map"
+  },
+  {
+   "fr": "Câbler une fonction à trois entrées",
+   "en": "Wire a three-input function"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Juges A, B, C : 1 = oui, 0 = non"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 15,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "lS",
+     "type": "led",
+     "x": 42,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "S",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lU",
+     "type": "led",
+     "x": 42,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "label": "U",
+      "color": "yellow"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Juges A, B, C : 1 = oui, 0 = non"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "sC",
+     "type": "switch",
+     "x": 4,
+     "y": 15,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "lS",
+     "type": "led",
+     "x": 42,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "S",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lU",
+     "type": "led",
+     "x": 42,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "label": "U",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "g1",
+     "type": "and",
+     "x": 18,
+     "y": 2,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g2",
+     "type": "and",
+     "x": 18,
+     "y": 9,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g3",
+     "type": "and",
+     "x": 18,
+     "y": 16,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g4",
+     "type": "or",
+     "x": 30,
+     "y": 9,
+     "r": 0,
+     "p": {
+      "n": 3
+     }
+    },
+    {
+     "id": "g5",
+     "type": "and",
+     "x": 30,
+     "y": 22,
+     "r": 0,
+     "p": {
+      "n": 3
+     }
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "B"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g3",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "g3",
+      "B"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "g4",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "g4",
+      "B"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "g3",
+      "Y"
+     ],
+     "b": [
+      "g4",
+      "C"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "g4",
+      "Y"
+     ],
+     "b": [
+      "lS",
+      "A"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g5",
+      "A"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g5",
+      "B"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "sC",
+      "Q"
+     ],
+     "b": [
+      "g5",
+      "C"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "g5",
+      "Y"
+     ],
+     "b": [
+      "lU",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le cahier des charges",
+    "en": "The specification"
+   },
+   "text": {
+    "fr": "Au concours de slam du lycée, trois juges A, B et C votent chacun avec un interrupteur : **1 = oui**, **0 = non**. La lampe **S** s’allume quand **au moins deux juges** votent oui.\nLa démarche de l’électronicien :\n- traduire la phrase en **table de vérité** ;\n- en tirer une **équation**, la plus simple possible ;\n- **câbler** l’équation, puis vérifier.",
+    "en": "At the school slam contest, three judges A, B and C each vote with a switch: **1 = yes**, **0 = no**. Lamp **S** lights when **at least two judges** vote yes.\nThe engineer’s method:\n- turn the sentence into a **truth table**;\n- derive an **equation**, as simple as possible;\n- **wire** the equation, then check it."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La table de vérité",
+    "en": "The truth table"
+   },
+   "text": {
+    "fr": "Remplissez la colonne S : pour chaque ligne, comptez les 1 parmi A, B et C. S vaut 1 s’il y en a deux ou trois.",
+    "en": "Fill in column S: for each row, count the 1s among A, B and C. S is 1 if there are two or three."
+   },
+   "hint": {
+    "fr": "Sur les huit lignes, quatre donnent S = 1.",
+    "en": "Out of the eight rows, four give S = 1."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "B",
+     "C"
+    ],
+    "outputs": {
+     "S": "A.B + A.C + B.C"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Un terme par ligne",
+    "en": "One term per row"
+   },
+   "text": {
+    "fr": "Chaque ligne où S = 1 donne un terme produit qui ne vaut 1 que sur cette ligne. Pour la ligne A = 0, B = 1, C = 1, quel est ce terme ?",
+    "en": "Each row where S = 1 gives a product term that is 1 on that row only. For the row A = 0, B = 1, C = 1, what is that term?"
+   },
+   "hint": {
+    "fr": "Une variable qui vaut 0 sur la ligne apparaît avec une barre (/).",
+    "en": "A variable that is 0 on the row appears with a bar (/)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "A.B.C",
+      "en": "A.B.C"
+     },
+     {
+      "fr": "/A.B.C",
+      "en": "/A.B.C"
+     },
+     {
+      "fr": "/A./B./C",
+      "en": "/A./B./C"
+     },
+     {
+      "fr": "A + B + C",
+      "en": "A + B + C"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation simplifiée",
+    "en": "The simplified equation"
+   },
+   "text": {
+    "fr": "En réunissant les quatre termes, on obtient une équation juste mais longue : /A.B.C + A./B.C + A.B./C + A.B.C.\nSimplifiez-la avec un **tableau de Karnaugh** : placez les quatre 1, puis entourez des groupes de **deux cases voisines**. Chaque groupe donne un terme de deux lettres.\nÉcrivez l’équation simplifiée de S.",
+    "en": "Joining the four terms gives an equation that is right but long: /A.B.C + A./B.C + A.B./C + A.B.C.\nSimplify it with a **Karnaugh map**: place the four 1s, then circle groups of **two neighboring cells**. Each group gives a two-letter term.\nWrite the simplified equation of S."
+   },
+   "hint": {
+    "fr": "Trois groupes de deux suffisent ; la case A.B.C sert aux trois. Dans un groupe, la lettre qui change disparaît.",
+    "en": "Three groups of two are enough; cell A.B.C is shared by all three. In a group, the letter that changes disappears."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "B",
+     "C"
+    ],
+    "answer": "A.B + A.C + B.C",
+    "form": "sop",
+    "maxTerms": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câblage",
+    "en": "Wiring it"
+   },
+   "text": {
+    "fr": "Câblez votre équation : une porte **ET** par terme, puis une porte **OU à trois entrées** qui les réunit, vers la LED **S**. Pour donner trois entrées à la porte OU, sélectionnez-la et changez son **nombre d’entrées** dans ses propriétés.",
+    "en": "Wire your equation: one **AND** gate per term, then a **three-input OR** gate that joins them, to LED **S**. To give the OR gate three inputs, select it and change its **number of inputs** in its properties."
+   },
+   "hint": {
+    "fr": "Chaque interrupteur alimente deux portes ET : tirez deux fils depuis sa broche.",
+    "en": "Each switch feeds two AND gates: drag two wires from its pin."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B",
+     "C"
+    ],
+    "outputs": {
+     "S": "A.B + A.C + B.C"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’onglet Table",
+    "en": "The Table tab"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Table**, à droite. Le logiciel y calcule, à partir de votre circuit :\n- sa **table de vérité** : comparez-la à celle de l’étape 2 ;\n- l’**équation simplifiée** de S ;\n- le **tableau de Karnaugh**, avec ses regroupements.\nRetrouvez-vous les mêmes groupes que sur votre feuille ?",
+    "en": "Open the **Table** tab on the right. From your circuit, the software works out:\n- its **truth table**: compare it with the one from step 2;\n- the **simplified equation** of S;\n- the **Karnaugh map**, with its groups.\nDo you find the same groups as on your sheet?"
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Lire le tableau de Karnaugh",
+    "en": "Reading the Karnaugh map"
+   },
+   "text": {
+    "fr": "Dans le tableau de Karnaugh de S, combien de regroupements faut-il au minimum pour couvrir tous les 1 ?",
+    "en": "In the Karnaugh map of S, what is the smallest number of groups needed to cover all the 1s?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1",
+      "en": "1"
+     },
+     {
+      "fr": "2",
+      "en": "2"
+     },
+     {
+      "fr": "3",
+      "en": "3"
+     },
+     {
+      "fr": "4",
+      "en": "4"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Et l’unanimité ?",
+    "en": "What about unanimity?"
+   },
+   "text": {
+    "fr": "Le président du jury veut un second voyant, **U**, allumé seulement quand les **trois** juges votent oui. Trouvez son équation, puis câblez-la avec **une seule** porte.",
+    "en": "The head of the jury wants a second light, **U**, on only when **all three** judges vote yes. Find its equation, then wire it with a **single** gate."
+   },
+   "hint": {
+    "fr": "Une porte ET peut, elle aussi, avoir trois entrées.",
+    "en": "An AND gate can have three inputs too."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B",
+     "C"
+    ],
+    "outputs": {
+     "U": "A.B.C"
+    }
+   }
+  }
+ ]
+}

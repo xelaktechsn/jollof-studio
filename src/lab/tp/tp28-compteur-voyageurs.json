@@ -1,0 +1,601 @@
+{
+ "id": "tp28-compteur-voyageurs",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 60,
+ "title": {
+  "fr": "Compteur de voyageurs d’une station",
+  "en": "Station passenger counter"
+ },
+ "summary": {
+  "fr": "Inspiré des gares du TER et des stations du BRT aux heures de pointe : deux capteurs infrarouges placés l’un après l’autre à l’entrée d’une station distinguent les entrées des sorties par l’ordre dans lequel elles sont coupées. Le programme compte les voyageurs, affiche le compte au moniteur série et allume un voyant rouge « station pleine ».",
+  "en": "Inspired by TER and BRT stations at rush hour: two infrared sensors placed one after the other at a station entrance tell entries from exits by the order in which they are crossed. The program counts the passengers, prints the count to the serial monitor and lights a red “station full” indicator."
+ },
+ "objectives": [
+  {
+   "fr": "Lire deux entrées actives à l’état bas (LOW = quelqu’un devant)",
+   "en": "Read two active-low inputs (LOW = someone in front)"
+  },
+  {
+   "fr": "Déduire un sens de passage de l’ordre de deux évènements",
+   "en": "Work out a direction from the order of two events"
+  },
+  {
+   "fr": "Compter avec une variable et allumer un voyant au-delà d’une limite",
+   "en": "Count with a variable and light an indicator beyond a limit"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Le sens de passage se déduit de l’ordre dans lequel deux barrières sont coupées.",
+   "en": "The direction of travel is deduced from the order in which two beams are cut."
+  },
+  {
+   "fr": "Un évènement se compte une seule fois : on attend le retour à l’état de repos avant le suivant.",
+   "en": "An event is counted only once: wait for the return to the rest state before the next one."
+  },
+  {
+   "fr": "Un délai maximal (3 s) évite de rester bloqué sur un demi-tour.",
+   "en": "A maximum delay (3 s) avoids getting stuck on a U-turn."
+  },
+  {
+   "fr": "La distance entre capteurs et les délais du programme se choisissent ensemble.",
+   "en": "Sensor spacing and program delays are chosen together."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Compteur de voyageurs",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "irobst_1",
+    "type": "irobst",
+    "name": "OBS1",
+    "x": -68,
+    "z": 126,
+    "r": 0
+   },
+   {
+    "id": "irobst_2",
+    "type": "irobst",
+    "name": "OBS2",
+    "x": -44,
+    "z": 126,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -4,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 14,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": 32,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED2",
+    "x": 50,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "dist": 100
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers le rail"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+5"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation du capteur A"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-6"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur A"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "OUT"
+    ],
+    "b": [
+     "uno_1",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Barrière A (côté rue)"
+   },
+   {
+    "a": [
+     "irobst_2",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+9"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation du capteur B"
+   },
+   {
+    "a": [
+     "irobst_2",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-10"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur B"
+   },
+   {
+    "a": [
+     "irobst_2",
+     "OUT"
+    ],
+    "b": [
+     "uno_1",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Barrière B (côté quai)"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D6"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-13"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#e5484d",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-19"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : compteur de voyageurs à l’entrée d’une station.\n// Barrière A côté rue (capteur OBS1), barrière B côté quai (OBS2) : leur sortie OUT passe à LOW\n// quand quelqu’un est devant. A puis B : une entrée ; B puis A : une sortie.\nconst int BARRIERE_A = 2;\nconst int BARRIERE_B = 3;\nconst int LED_VERTE = 6;              // il reste de la place\nconst int LED_ROUGE = 7;              // station pleine\nconst int CAPACITE = 3;               // maquette : 3 voyageurs au plus\nconst unsigned long DELAI = 3000;     // ms pour atteindre la seconde barrière\n\nint voyageurs = 0;                    // voyageurs dans la station\nchar premiere = '-';                  // barrière coupée en premier : 'A', 'B', '-' (aucune) ou 'X' (passage compté)\nunsigned long debut = 0;              // instant où la première barrière a été coupée\n\nvoid setup() {\n  Serial.begin(9600);\n  pinMode(BARRIERE_A, INPUT); // le module tient lui-même sa sortie (HIGH au repos)\n  pinMode(BARRIERE_B, INPUT);\n  pinMode(LED_VERTE, OUTPUT);\n  pinMode(LED_ROUGE, OUTPUT);\n  Serial.println(\"Compteur de voyageurs\");\n}\n\nvoid loop() {\n  bool a = digitalRead(BARRIERE_A) == LOW;\n  bool b = digitalRead(BARRIERE_B) == LOW;\n\n  if (premiere == '-') {\n    // Personne en cours de passage : quelle barrière est coupée la première ?\n    if (a) {\n      premiere = 'A';\n      debut = millis();\n    } else if (b) {\n      premiere = 'B';\n      debut = millis();\n    }\n  } else if (premiere == 'A' && b) {\n    voyageurs++;                      // A puis B : une entrée\n    Serial.print(\"Entree, voyageurs : \");\n    Serial.println(voyageurs);\n    premiere = 'X';\n  } else if (premiere == 'B' && a) {\n    if (voyageurs > 0) voyageurs--;   // B puis A : une sortie\n    Serial.print(\"Sortie, voyageurs : \");\n    Serial.println(voyageurs);\n    premiere = 'X';\n  } else if (premiere != 'X' && millis() - debut > DELAI) {\n    premiere = '-';                   // pas de seconde barrière : demi-tour, rien à compter\n  }\n  // Passage compté : on attend que les deux barrières soient libres.\n  if (premiere == 'X' && !a && !b) premiere = '-';\n\n  // Voyants : rouge quand la station est pleine, vert sinon.\n  if (voyageurs >= CAPACITE) {\n    digitalWrite(LED_ROUGE, HIGH);\n    digitalWrite(LED_VERTE, LOW);\n  } else {\n    digitalWrite(LED_ROUGE, LOW);\n    digitalWrite(LED_VERTE, HIGH);\n  }\n  delay(20);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Compter les voyageurs",
+    "en": "Counting passengers"
+   },
+   "text": {
+    "fr": "Aux heures de pointe, les quais d’une gare du TER ou d’une station du BRT se remplissent vite. Pour savoir combien de voyageurs se trouvent dans une station, on compte ceux qui **entrent** et ceux qui **sortent** par le même passage.\nL’idée : deux barrières l’une après l’autre, **A côté rue** puis **B côté quai**. Qui coupe **A puis B** entre ; qui coupe **B puis A** sort.\nChaque barrière est un **capteur d’obstacle infrarouge** (FC-51) : sa sortie **OUT** passe à **LOW** quand quelqu’un passe devant, à moins de 20 cm. Dans l’onglet « Simulation », chaque capteur peut avoir sa propre distance (« Réglage à part » sous sa mesure) : c’est ainsi qu’un voyageur coupe A sans couper B.\nMatériel : **UNO**, les capteurs **OBS1** (barrière A) et **OBS2** (barrière B), **LED1** verte (« entrez ») et **LED2** rouge (« station pleine ») avec **R1** et **R2** (220 Ω), la breadboard **BB1**.",
+    "en": "At rush hour, the platforms of a TER or BRT station fill up quickly. To know how many passengers are inside a station, you count those who **enter** and those who **leave** through the same passage.\nThe idea: two barriers one after the other, **A on the street side** then **B on the platform side**. Whoever crosses **A then B** comes in; whoever crosses **B then A** leaves.\nEach barrier is an **infrared obstacle sensor** (FC-51): its **OUT** pin goes **LOW** when someone passes in front, closer than 20 cm. In the “Simulation” tab, each sensor can have its own distance (“Own setting” under its reading): that is how a passenger crosses A without crossing B.\nParts: **UNO**, the sensors **OBS1** (barrier A) and **OBS2** (barrier B), the green **LED1** (“come in”) and red **LED2** (“station full”) with **R1** and **R2** (220 Ω), the **BB1** breadboard."
+   },
+   "keep": {
+    "fr": "Deux capteurs l’un après l’autre donnent le **sens** : c’est l’ordre des évènements (A puis B, ou B puis A) qui compte.",
+    "en": "Two sensors one after the other give the **direction**: what matters is the order of the events (A then B, or B then A)."
+   }
+  },
+  {
+   "title": {
+    "fr": "Entrée ou sortie ?",
+    "en": "Entry or exit?"
+   },
+   "text": {
+    "fr": "Un voyageur coupe d’abord la barrière **B** (côté quai), puis la barrière **A** (côté rue). Que fait-il ?",
+    "en": "A passenger first crosses barrier **B** (platform side), then barrier **A** (street side). What are they doing?"
+   },
+   "hint": {
+    "fr": "Il vient du quai (B) et va vers la rue (A) : c’est une sortie, le compteur doit baisser de 1. Quelqu’un qui coupe A puis repart sans couper B fait demi-tour : on ne compte rien.",
+    "en": "They come from the platform (B) and head for the street (A): that is an exit, the counter must go down by 1. Someone who crosses A and turns back without crossing B makes a U-turn: nothing is counted."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il entre dans la station",
+      "en": "They are entering the station"
+     },
+     {
+      "fr": "Il sort de la station",
+      "en": "They are leaving the station"
+     },
+     {
+      "fr": "Il fait demi-tour sans entrer",
+      "en": "They turn back without entering"
+     },
+     {
+      "fr": "Impossible à savoir : il faudrait une troisième barrière",
+      "en": "Impossible to tell: a third barrier would be needed"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les deux capteurs",
+    "en": "The two sensors"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », alimentez les deux capteurs : **VCC** au rail **+** de la breadboard, relié au **5V** de l’UNO, et **GND** au rail **-**, relié à un **GND**. Puis reliez **OUT** de **OBS1** (barrière A) à **D2** et **OUT** de **OBS2** (barrière B) à **D3**.",
+    "en": "In the “Wiring” tab, power both sensors: **VCC** to the breadboard **+** rail, joined to the UNO **5V**, and **GND** to the **-** rail, joined to a **GND** pin. Then connect **OUT** of **OBS1** (barrier A) to **D2** and **OUT** of **OBS2** (barrier B) to **D3**."
+   },
+   "hint": {
+    "fr": "Pas de résistance : le module fixe lui-même le niveau de OUT (HIGH au repos, LOW devant un obstacle). Les rails + et - courent sur toute la longueur de la breadboard.",
+    "en": "No resistor: the module sets the level of OUT itself (HIGH at rest, LOW in front of an obstacle). The + and - rails run along the whole breadboard."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D2",
+      "OBS1.OUT"
+     ],
+     [
+      "UNO.D3",
+      "OBS2.OUT"
+     ],
+     [
+      "OBS1.VCC",
+      "OBS2.VCC",
+      "UNO.5V"
+     ],
+     [
+      "OBS1.GND",
+      "OBS2.GND",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les voyants",
+    "en": "The indicator lights"
+   },
+   "text": {
+    "fr": "Reliez **D6** → R1 → anode **A** de **LED1** (verte), **D7** → R2 → anode **A** de **LED2** (rouge), et les deux cathodes **K** au rail **-**.",
+    "en": "Connect **D6** → R1 → anode **A** of **LED1** (green), **D7** → R2 → anode **A** of **LED2** (red), and both cathodes **K** to the **-** rail."
+   },
+   "hint": {
+    "fr": "Les rails - du haut et du bas ne sont pas reliés : si la carte va sur l’un et les cathodes sur l’autre, posez un fil entre les deux.",
+    "en": "The top and bottom - rails are not connected: if the board goes to one and the cathodes to the other, add a wire between them."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D6",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D7",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Programme de test",
+    "en": "Test program"
+   },
+   "text": {
+    "fr": "Testez d’abord les barrières. Dans l’onglet « Code » :\n- dans setup() : `Serial.begin(9600);`, `pinMode(2, INPUT);`, `pinMode(3, INPUT);`, puis D6 et D7 en sortie ;\n- dans loop() : si `digitalRead(2) == LOW` (barrière A coupée), LED1 allumée, sinon éteinte ; de même avec `digitalRead(3)` pour LED2.\nCliquez sur « Téléverser ».",
+    "en": "First test the barriers. In the “Code” tab:\n- in setup(): `Serial.begin(9600);`, `pinMode(2, INPUT);`, `pinMode(3, INPUT);`, then D6 and D7 as outputs;\n- in loop(): if `digitalRead(2) == LOW` (barrier A crossed), LED1 on, otherwise off; likewise with `digitalRead(3)` for LED2.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "La logique est inversée : LOW veut dire « quelqu’un devant la barrière ». INPUT_PULLUP marcherait aussi : le module tient déjà sa sortie au niveau haut au repos.",
+    "en": "The logic is inverted: LOW means “someone in front of the barrier”. INPUT_PULLUP would also work: the module already holds its output high at rest."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "Serial\\.begin\\s*\\(",
+     "pinMode\\s*\\([^)]*INPUT",
+     "digitalRead\\s*\\(",
+     "\\bLOW\\b",
+     "pinMode\\s*\\([^)]*OUTPUT",
+     "digitalWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : barrière B",
+    "en": "Test: barrier B"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer ». Dans l’onglet « Simulation », section **Mesures**, cochez **Réglage à part** sous **OBS1** et sous **OBS2** : chacun a maintenant son propre curseur de distance. Approchez un voyageur de la barrière B : distance de **OBS2** à **5 cm**. Seule **LED2** doit s’allumer. Remettez ensuite OBS2 à **100 cm**.",
+    "en": "Click “Observe”. In the “Simulation” tab, **Readings** section, tick **Own setting** under **OBS1** and under **OBS2**: each now has its own distance slider. Bring a passenger to barrier B: set **OBS2**’s distance to **5 cm**. Only **LED2** must light up. Then set OBS2 back to **100 cm**."
+   },
+   "hint": {
+    "fr": "C’est LED1 qui s’allume ? Les barrières sont inversées : vérifiez quel capteur va sur D2 et lequel sur D3. Rien ne s’allume ? La ligne OBS2 de la section Mesures doit indiquer « Obstacle détecté ».",
+    "en": "LED1 lights up instead? The barriers are swapped: check which sensor goes to D2 and which to D3. Nothing lights up? The OBS2 line in the Readings section must say “Obstacle detected”."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED2": "on",
+     "LED1": "off"
+    },
+    "hold": 300
+   }
+  },
+  {
+   "title": {
+    "fr": "Le compteur",
+    "en": "The counter"
+   },
+   "text": {
+    "fr": "Remplacez le test par le compteur. Variables globales : `int voyageurs = 0;`, `char premiere = '-';` (la barrière coupée en premier) et `unsigned long debut = 0;`. Dans loop() :\n- `bool a = digitalRead(2) == LOW;` et `bool b = digitalRead(3) == LOW;` ;\n- si `premiere == '-'` et qu’une barrière est coupée : `premiere` prend la valeur `'A'` ou `'B'`, et `debut = millis();` ;\n- si `premiere == 'A'` et `b` : `voyageurs++` (une entrée) ; si `premiere == 'B'` et `a` : `voyageurs--` (une sortie, jamais sous 0). Affichez le compte au moniteur série, puis `premiere = 'X'` : on attend que les deux barrières soient libres pour revenir à `'-'` ;\n- sans seconde barrière au bout de **3 s** (`millis() - debut > 3000`) : demi-tour, `premiere = '-'` ;\n- si `voyageurs >= 3` (capacité de la maquette) : LED2 allumée et LED1 éteinte ; sinon l’inverse.\nCliquez sur « Téléverser ».",
+    "en": "Replace the test with the counter. Global variables: `int voyageurs = 0;`, `char premiere = '-';` (the barrier crossed first) and `unsigned long debut = 0;`. In loop():\n- `bool a = digitalRead(2) == LOW;` and `bool b = digitalRead(3) == LOW;`;\n- if `premiere == '-'` and a barrier is crossed: `premiere` becomes `'A'` or `'B'`, and `debut = millis();`;\n- if `premiere == 'A'` and `b`: `voyageurs++` (an entry); if `premiere == 'B'` and `a`: `voyageurs--` (an exit, never below 0). Print the count to the serial monitor, then `premiere = 'X'`: wait for both barriers to be free before going back to `'-'`;\n- no second barrier after **3 s** (`millis() - debut > 3000`): a U-turn, `premiere = '-'`;\n- if `voyageurs >= 3` (capacity of the model): LED2 on and LED1 off; otherwise the opposite.\nClick “Upload”."
+   },
+   "keep": {
+    "fr": "Pour compter **une fois** par passage, on attend que les deux barrières soient redevenues libres avant d’accepter un nouveau voyageur.",
+    "en": "To count **once** per passage, wait until both beams are free again before accepting a new passenger."
+   },
+   "hint": {
+    "fr": "Pourquoi l’état 'X' ? Tant que le voyageur est encore devant B, la condition « A puis B » resterait vraie à chaque tour de loop() : sans cette attente, une seule entrée serait comptée des dizaines de fois.",
+    "en": "Why the 'X' state? While the passenger is still in front of B, the “A then B” condition would stay true at each turn of loop(): without this wait, a single entry would be counted dozens of times."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "pinMode\\s*\\([^)]*INPUT",
+     "digitalRead\\s*\\(",
+     "millis\\s*\\(",
+     "\\+\\+|\\+=\\s*1\\b",
+     "--|-=\\s*1\\b",
+     "Serial\\.print(ln)?\\s*\\(",
+     ">=|>"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la station se remplit",
+    "en": "Test: the station fills up"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis faites entrer **trois** voyageurs. Pour chacun : distance de **OBS1** (A) à **5 cm**, puis **OBS2** (B) à **5 cm**, puis les deux de nouveau à **100 cm** (le voyageur est passé). Au troisième, **LED2** rouge « station pleine » s’allume et **LED1** s’éteint. Suivez le compte au moniteur série.",
+    "en": "Click “Observe”, then let **three** passengers in. For each one: set **OBS1** (A) to **5 cm**, then **OBS2** (B) to **5 cm**, then both back to **100 cm** (the passenger has gone through). At the third one, the red **LED2** “station full” lights up and **LED1** goes off. Follow the count in the serial monitor."
+   },
+   "hint": {
+    "fr": "Le compte bondit de plusieurs unités d’un coup ? Il manque l’attente des deux barrières libres. Il n’augmente pas ? Coupez B moins de 3 s après A.",
+    "en": "The count jumps by several at once? The wait for both barriers to be free is missing. It does not go up? Cross B less than 3 s after A."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED2": "on",
+     "LED1": "off"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : un voyageur sort",
+    "en": "Test: a passenger leaves"
+   },
+   "text": {
+    "fr": "Station pleine, faites sortir un voyageur : **OBS2** (B) à **5 cm**, puis **OBS1** (A) à **5 cm**, puis les deux à **100 cm**. Le compte redescend à 2 : **LED1** verte se rallume et **LED2** s’éteint.",
+    "en": "With the station full, let one passenger out: **OBS2** (B) to **5 cm**, then **OBS1** (A) to **5 cm**, then both to **100 cm**. The count goes back down to 2: green **LED1** comes back on and **LED2** goes off."
+   },
+   "hint": {
+    "fr": "LED2 reste allumée ? Vérifiez la branche « B puis A » : elle doit diminuer voyageurs.",
+    "en": "LED2 stays on? Check the “B then A” branch: it must decrease voyageurs."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED1": "on",
+     "LED2": "off"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Où poser les capteurs ?",
+    "en": "Where to place the sensors?"
+   },
+   "text": {
+    "fr": "À l’entrée d’une vraie station, on pose les deux capteurs à **2 m** l’un de l’autre. Un voyageur chargé de bagages met 4 s pour aller de A à B. Que fait le programme ?",
+    "en": "At a real station entrance, the two sensors are placed **2 m** apart. A passenger carrying luggage takes 4 s to go from A to B. What does the program do?"
+   },
+   "hint": {
+    "fr": "Après 3 s sans barrière B, le programme conclut à un demi-tour et oublie A : quand le voyageur coupe enfin B, il est pris pour quelqu’un qui sort… puis rien, faute de A. On rapproche donc les capteurs (quelques dizaines de centimètres) ou on allonge le délai.",
+    "en": "After 3 s without barrier B, the program decides it was a U-turn and forgets A: when the passenger finally crosses B, they look like someone leaving… then nothing, as A does not follow. So the sensors are placed closer (a few tens of centimetres) or the delay is made longer."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il compte une entrée, comme d’habitude",
+      "en": "It counts an entry, as usual"
+     },
+     {
+      "fr": "Il ne compte pas cette entrée : au bout de 3 s sans B, il a conclu à un demi-tour",
+      "en": "It does not count this entry: after 3 s without B, it decided it was a U-turn"
+     },
+     {
+      "fr": "Il compte deux entrées",
+      "en": "It counts two entries"
+     },
+     {
+      "fr": "Le programme se bloque jusqu’au voyageur suivant",
+      "en": "The program freezes until the next passenger"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

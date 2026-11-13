@@ -1,0 +1,994 @@
+{
+ "id": "pn11-brt-porte-secours",
+ "level": "lycee",
+ "minutes": 60,
+ "series": "dakar",
+ "title": {
+  "fr": "BRT : porte de bus et ouverture de secours",
+  "en": "BRT: bus door and emergency release"
+ },
+ "summary": {
+  "fr": "Inspiré des bus du BRT : le conducteur ouvre et ferme la porte d’un appui sur un bouton, un capteur « porte fermée » autorise le départ, et une poignée de secours vide l’air du vérin pour que la porte s’ouvre à la main, même sans électricité.",
+  "en": "Inspired by BRT buses: the driver opens and closes the door with one press of a button, a “door closed” sensor allows departure, and an emergency handle dumps the cylinder air so the door can be opened by hand, even without electricity."
+ },
+ "objectives": [
+  {
+   "fr": "Mémoriser un ordre avec un front montant : un appui ouvre, l’appui suivant ferme",
+   "en": "Store an order with a rising edge: one press opens, the next press closes"
+  },
+  {
+   "fr": "Autoriser le départ par un ET : porte fermée ET circuit sous pression",
+   "en": "Allow departure with an AND: door closed AND circuit pressurised"
+  },
+  {
+   "fr": "Expliquer une ouverture de secours qui vide l’air du vérin",
+   "en": "Explain an emergency release that dumps the cylinder air"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "**Front montant** et mémoire : `appui && !appuiAvant` n’est vrai qu’une fois par appui ; une variable garde l’ordre (ouvrir ou fermer).",
+   "en": "**Rising edge** and memory: `appui && !appuiAvant` is true only once per press; a variable keeps the order (open or close)."
+  },
+  {
+   "fr": "Le départ est autorisé sur des **preuves** : porte fermée (capteur B1) ET circuit sous pression (pressostat S1), pas sur l’ordre donné.",
+   "en": "Departure is allowed on **evidence**: door closed (sensor B1) AND circuit pressurised (pressure switch S1), not on the order given."
+  },
+  {
+   "fr": "**Ouverture de secours** : une vanne manuelle 3/2 coupe l’arrivée d’air et vide les deux chambres du vérin ; la porte s’ouvre à la main, sans électricité.",
+   "en": "**Emergency release**: a manual 3/2 valve cuts the air supply and empties both cylinder chambers; the door opens by hand, without electricity."
+  },
+  {
+   "fr": "Un réducteur de débit sur l’air qui sort de la chambre arrière ralentit la fermeture.",
+   "en": "A flow control valve on the air leaving the rear chamber slows the closing."
+  },
+  {
+   "fr": "Le retour de l’énergie peut provoquer un mouvement : on vérifie que personne n’est exposé avant de remettre l’air.",
+   "en": "The return of energy can cause a movement: check that nobody is exposed before restoring the air."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Porte de bus et ouverture de secours",
+  "comps": [
+   {
+    "id": "uno_0bay19",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_tz98r9",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "coil24_yam1cj",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "pressostat_60g1z7",
+    "type": "pressostat",
+    "name": "S1",
+    "x": 8,
+    "z": -13,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_8t0odg",
+    "type": "cylsensor",
+    "name": "B1",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "led-green_5u06qa",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 9,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "led-red_1mri3j",
+    "type": "led-red",
+    "name": "LED2",
+    "x": -36,
+    "z": 92,
+    "r": 0
+   },
+   {
+    "id": "breadboard_ktrwr2",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 4,
+    "z": 133,
+    "r": 0
+   },
+   {
+    "id": "psu24_189c9o",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_5lpahf",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "res-1k_p5pn11",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 7,
+    "z": 79,
+    "r": 0
+   },
+   {
+    "id": "diode_9i2dml",
+    "type": "diode",
+    "name": "D1",
+    "x": 50,
+    "z": -23,
+    "r": 0
+   },
+   {
+    "id": "res-220_bs6bo1",
+    "type": "res-220",
+    "name": "R2",
+    "x": -8,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "res-220_0iflja",
+    "type": "res-220",
+    "name": "R3",
+    "x": -23,
+    "z": 72,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A",
+         "time": 1.5,
+         "s0": "B1",
+         "bore": 32,
+         "rod": 12,
+         "stroke": 200
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": -1,
+        "y": 7,
+        "p": {
+         "open": 50,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 16,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "s1",
+        "type": "pswitch",
+        "x": 14,
+        "y": 16,
+        "p": {
+         "sensor": "S1",
+         "bar": 4
+        }
+       },
+       {
+        "id": "urg",
+        "type": "v32",
+        "x": -5,
+        "y": 26,
+        "p": {
+         "act": "push",
+         "normal": "no",
+         "label": "0S1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 0,
+        "y": 36,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "door",
+       "skin": "bus",
+       "cyl": "1A",
+       "open": "BTN1",
+       "emergency": "urg",
+       "coil": "Y1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "id": "w1",
+    "a": [
+     "button_tz98r9",
+     "2"
+    ],
+    "b": [
+     "uno_0bay19",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w2",
+    "a": [
+     "button_tz98r9",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w3",
+    "a": [
+     "uno_0bay19",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "id": "w4",
+    "a": [
+     "psu24_189c9o",
+     "-"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "0 V de l’alimentation 24 V à la masse commune"
+   },
+   {
+    "id": "w5",
+    "a": [
+     "psu24_189c9o",
+     "+"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "A30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V vers la breadboard"
+   },
+   {
+    "id": "w6",
+    "a": [
+     "coil24_yam1cj",
+     "+"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "B30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V"
+   },
+   {
+    "id": "w7",
+    "a": [
+     "diode_9i2dml",
+     "K"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "C30"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode de roue libre au +"
+   },
+   {
+    "id": "w8",
+    "a": [
+     "coil24_yam1cj",
+     "-"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "A29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w9",
+    "a": [
+     "pn2222_5lpahf",
+     "C"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "B29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w10",
+    "a": [
+     "diode_9i2dml",
+     "A"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "C29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w11",
+    "a": [
+     "pn2222_5lpahf",
+     "E"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "id": "w12",
+    "a": [
+     "pn2222_5lpahf",
+     "B"
+    ],
+    "b": [
+     "res-1k_p5pn11",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "id": "w13",
+    "a": [
+     "res-1k_p5pn11",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "id": "w14",
+    "a": [
+     "pressostat_60g1z7",
+     "2"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-15"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w15",
+    "a": [
+     "pressostat_60g1z7",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w16",
+    "a": [
+     "cylsensor_8t0odg",
+     "2"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w17",
+    "a": [
+     "cylsensor_8t0odg",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w18",
+    "a": [
+     "led-green_5u06qa",
+     "K"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-14"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w19",
+    "a": [
+     "led-green_5u06qa",
+     "A"
+    ],
+    "b": [
+     "res-220_bs6bo1",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w20",
+    "a": [
+     "res-220_bs6bo1",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D6"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "id": "w21",
+    "a": [
+     "led-red_1mri3j",
+     "K"
+    ],
+    "b": [
+     "breadboard_ktrwr2",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w22",
+    "a": [
+     "led-red_1mri3j",
+     "A"
+    ],
+    "b": [
+     "res-220_0iflja",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w23",
+    "a": [
+     "res-220_0iflja",
+     "1"
+    ],
+    "b": [
+     "uno_0bay19",
+     "D9"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : porte de bus du BRT avec ouverture de secours.\n// Chaque appui sur BTN1 change l'ordre donné à la porte : ouvrir, puis fermer.\n// Le départ n'est autorisé que si la porte est fermée ET tenue par la pression d'air.\nconst int BOUTON = 7;        // BTN1 : bouton de porte du conducteur, lu avec INPUT_PULLUP\nconst int PRESSOSTAT = 8;    // S1 : fermé quand le circuit de la porte est sous pression\nconst int CAPTEUR_B1 = 3;    // B1 : fermé quand la porte est fermée (tige rentrée)\nconst int BOBINE = 2;        // base du transistor Q1 (par R1) qui commande la bobine Y1\nconst int VOYANT_DEPART = 6; // LED1 verte : départ autorisé\nconst int VOYANT_SECOURS = 9; // LED2 rouge : poignée de secours tirée (plus d'air)\n\nbool ouvrir = false;         // ordre en cours : true = porte ouverte demandée\nbool appuiAvant = false;     // état du bouton au tour précédent\n\nvoid setup() {\n  pinMode(BOUTON, INPUT_PULLUP);\n  pinMode(PRESSOSTAT, INPUT_PULLUP);\n  pinMode(CAPTEUR_B1, INPUT_PULLUP);\n  pinMode(BOBINE, OUTPUT);\n  pinMode(VOYANT_DEPART, OUTPUT);\n  pinMode(VOYANT_SECOURS, OUTPUT);\n}\n\nvoid loop() {\n  bool appui = digitalRead(BOUTON) == LOW;\n  bool airOk = digitalRead(PRESSOSTAT) == LOW;\n  bool fermee = digitalRead(CAPTEUR_B1) == LOW;\n  // Front montant : le bouton vient d'être appuyé (un seul changement par appui).\n  if (appui && !appuiAvant) {\n    ouvrir = !ouvrir;\n  }\n  appuiAvant = appui;\n  digitalWrite(BOBINE, ouvrir ? HIGH : LOW);\n  digitalWrite(VOYANT_DEPART, (fermee && airOk && !ouvrir) ? HIGH : LOW);\n  digitalWrite(VOYANT_SECOURS, airOk ? LOW : HIGH);\n  delay(20); // un tour toutes les 20 ms : les rebonds du contact ne sont pas comptés deux fois\n}"
+  },
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "urg",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "urg",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "urg",
+      "2"
+     ],
+     "b": [
+      "s1",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "fc",
+      "1"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "fc",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t6",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La porte du bus",
+    "en": "The bus door"
+   },
+   "text": {
+    "fr": "Sur beaucoup de bus, les portes sont mues par des **vérins pneumatiques**. Cette maquette s’inspire d’une porte de bus du **BRT** :\n- **BTN1** : le bouton de porte du conducteur (un appui ouvre, l’appui suivant ferme) ;\n- **Y1** : l’électrovanne 24 V du distributeur 5/2 **1V1**, alimentée par **PS1** et commandée par le transistor **Q1** ;\n- **1A** : le vérin double effet de la porte (tige sortie : porte ouverte) ; le réducteur **1V2** freine la fermeture ;\n- **B1** : le capteur « porte fermée » ;\n- **0S1** : la **poignée de secours**, un distributeur 3/2 à commande manuelle placé sur l’arrivée d’air ;\n- **S1** : le pressostat, fermé tant que le circuit de la porte est sous pression ;\n- **LED1** (verte) : départ autorisé ; **LED2** (rouge) : poignée de secours tirée.\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre la porte du bus, poussée par le vérin 1A, avec son bouton d’ouverture et sa poignée rouge de secours, qui se tire d’un clic.",
+    "en": "On many buses the doors are moved by **pneumatic cylinders**. This model is inspired by a **BRT** bus door:\n- **BTN1**: the driver’s door button (one press opens, the next press closes);\n- **Y1**: the 24 V solenoid of 5/2 valve **1V1**, powered by **PS1** and driven by transistor **Q1**;\n- **1A**: the door’s double-acting cylinder (rod out: door open); flow control **1V2** slows the closing;\n- **B1**: the “door closed” sensor;\n- **0S1**: the **emergency handle**, a manually operated 3/2 valve on the air inlet;\n- **S1**: the pressure switch, closed as long as the door circuit is pressurised;\n- **LED1** (green): departure allowed; **LED2** (red): emergency handle pulled.\nThe **3D** view (“3D” button of the pneumatic workspace) shows the bus door, pushed by cylinder 1A, with its open button and its red emergency handle, pulled with one click."
+   }
+  },
+  {
+   "title": {
+    "fr": "La poignée de secours",
+    "en": "The emergency handle"
+   },
+   "text": {
+    "fr": "Après un accident, les voyageurs doivent pouvoir sortir même si le bus n’a plus d’électricité. La poignée de secours **0S1** coupe l’arrivée d’air et met le circuit de la porte à l’échappement. Que devient la porte ?",
+    "en": "After an accident, passengers must be able to get out even if the bus has no electricity left. Emergency handle **0S1** cuts the air inlet and connects the door circuit to exhaust. What happens to the door?"
+   },
+   "hint": {
+    "fr": "Un vérin sans pression n’oppose presque aucun effort : il ne reste que les frottements à vaincre. La poignée agit directement sur l’air, sans passer par la carte ni par la bobine : elle fonctionne batterie coupée.",
+    "en": "A cylinder with no pressure offers almost no resistance: only friction is left to overcome. The handle acts directly on the air, bypassing the board and the coil: it works with the battery cut off."
+   },
+   "keep": {
+    "fr": "Une commande de secours agit **directement sur l’énergie** (ici l’air), sans dépendre de l’électronique ni du programme.",
+    "en": "An emergency control acts **directly on the energy** (here the air), without depending on electronics or on the program."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle s’ouvre brusquement, poussée par l’air",
+      "en": "It bursts open, pushed by air"
+     },
+     {
+      "fr": "Elle reste verrouillée : sans air, un vérin est bloqué",
+      "en": "It stays locked: without air a cylinder is jammed"
+     },
+     {
+      "fr": "Les deux chambres du vérin se vident : plus aucune force ne retient la porte, on l’ouvre en la poussant à la main",
+      "en": "Both cylinder chambers empty: no force holds the door any more, it opens when pushed by hand"
+     },
+     {
+      "fr": "Elle se ferme plus fort",
+      "en": "It closes harder"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "L’étage de commande de Y1",
+    "en": "The Y1 driver stage"
+   },
+   "text": {
+    "fr": "Comme dans le TP « Porte automatique électropneumatique », la bobine **Y1** (24 V) est commandée par le transistor **Q1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
+    "en": "As in the “Electropneumatic automatic door” lab, coil **Y1** (24 V) is driven by transistor **Q1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",
+    "en": "A pin takes only one wire: to join three pins (Y1 +, PS1 +, D1 K), go through a breadboard row. Diode D1 protects Q1 from the voltage spike the coil sends back when switched off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "Y1.+",
+      "PS1.+",
+      "D1.K"
+     ],
+     [
+      "Y1.-",
+      "Q1.C",
+      "D1.A"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "PS1.-",
+      "UNO.GND*"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D2",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton, les capteurs et les voyants",
+    "en": "The button, the sensors and the lamps"
+   },
+   "text": {
+    "fr": "Reliez les trois contacts, chacun entre une broche et la masse : **BTN1** sur **D7**, le pressostat **S1** sur **D8**, le capteur **B1** sur **D3**.\nPuis les voyants, chacun avec sa résistance de 220 Ω : **D6** → **R2** → anode **A** de **LED1** (verte) ; **D9** → **R3** → anode **A** de **LED2** (rouge) ; les cathodes **K** à la masse.",
+    "en": "Connect the three contacts, each between a pin and ground: **BTN1** on **D7**, pressure switch **S1** on **D8**, sensor **B1** on **D3**.\nThen the lamps, each with its 220 Ω resistor: **D6** → **R2** → anode **A** of **LED1** (green); **D9** → **R3** → anode **A** of **LED2** (red); cathodes **K** to ground."
+   },
+   "hint": {
+    "fr": "Aucune résistance pour les contacts : le programme activera la résistance de tirage interne (`INPUT_PULLUP`). Contact ouvert, la broche lit HIGH ; contact fermé, elle lit LOW.",
+    "en": "No resistor for the contacts: the program will enable the internal pull-up (`INPUT_PULLUP`). Contact open, the pin reads HIGH; contact closed, it reads LOW."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.D7"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ],
+     [
+      "S1.1|S1.2",
+      "UNO.D8"
+     ],
+     [
+      "S1.1|S1.2",
+      "UNO.GND*"
+     ],
+     [
+      "B1.1|B1.2",
+      "UNO.D3"
+     ],
+     [
+      "B1.1|B1.2",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D6",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D9",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.A",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique** et tirez les tuyaux :\n- source d’air → orifice **1** de la poignée de secours **0S1** ;\n- orifice **2** de 0S1 → orifice **1** du distributeur **1V1**, et aussi → le pressostat **S1** ;\n- orifice **4** de 1V1 → orifice **1** du réducteur **1V2** ; orifice **2** du réducteur → chambre arrière du vérin (orifice **1**) ;\n- orifice **2** de 1V1 → chambre avant du vérin (orifice **2**).\nLes orifices **3** et **5** de 1V1 et l’orifice **3** de 0S1 restent libres : ce sont les échappements.",
+    "en": "Switch to the **Pneumatics** workspace and draw the tubes:\n- air supply → port **1** of emergency handle **0S1**;\n- port **2** of 0S1 → port **1** of valve **1V1**, and also → pressure switch **S1**;\n- port **4** of 1V1 → port **1** of flow control **1V2**; port **2** of the flow control → cylinder rear chamber (port **1**);\n- port **2** of 1V1 → cylinder front chamber (port **2**).\nPorts **3** and **5** of 1V1 and port **3** of 0S1 stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un orifice (petit rond) et en relâchant sur un autre. Un orifice peut recevoir plusieurs tuyaux. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. A port can take several tubes. Click a tube to select it, Delete removes it."
+   },
+   "keep": {
+    "fr": "Le réducteur est placé sur l’air qui **sort** de la chambre arrière : il freine la **fermeture**. Une porte qui se ferme doucement laisse le temps de s’écarter.",
+    "en": "The flow control sits on the air **leaving** the rear chamber: it slows the **closing**. A door that closes gently leaves time to step aside."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "urg:1"
+     ],
+     [
+      "urg:2",
+      "v1:1"
+     ],
+     [
+      "urg:2",
+      "s1:1"
+     ],
+     [
+      "v1:4",
+      "fc:1"
+     ],
+     [
+      "fc:2",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code » :\n- setup() : D7 (BTN1), D8 (S1) et D3 (B1) en `INPUT_PULLUP` ; D2 (bobine), D6 (LED1) et D9 (LED2) en sortie ;\n- deux variables globales : `bool ouvrir = false;` (l’ordre en cours) et `bool appuiAvant = false;` ;\n- dans loop() : `bool appui = digitalRead(7) == LOW;` puis, si `appui && !appuiAvant` (le bouton **vient** d’être appuyé), `ouvrir = !ouvrir;` ; ensuite `appuiAvant = appui;` ;\n- la bobine suit l’ordre : `digitalWrite(2, ouvrir ? HIGH : LOW);` ;\n- **LED1** (départ autorisé) : porte fermée (B1) **ET** pression présente (S1) **ET** aucun ordre d’ouverture ;\n- **LED2** : allumée quand S1 est ouvert (poignée tirée) ;\n- terminez loop() par `delay(20);`.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab:\n- setup(): D7 (BTN1), D8 (S1) and D3 (B1) as `INPUT_PULLUP`; D2 (coil), D6 (LED1) and D9 (LED2) as outputs;\n- two global variables: `bool ouvrir = false;` (the current order) and `bool appuiAvant = false;`;\n- in loop(): `bool appui = digitalRead(7) == LOW;` then, if `appui && !appuiAvant` (the button has **just** been pressed), `ouvrir = !ouvrir;`; then `appuiAvant = appui;`;\n- the coil follows the order: `digitalWrite(2, ouvrir ? HIGH : LOW);`;\n- **LED1** (departure allowed): door closed (B1) **AND** pressure present (S1) **AND** no open order;\n- **LED2**: on when S1 is open (handle pulled);\n- end loop() with `delay(20);`.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "Sans `appuiAvant`, loop() verrait le bouton appuyé des dizaines de fois pendant un seul appui et la porte hésiterait. Le `delay(20)` laisse passer les rebonds du contact, qui durent quelques millisecondes sur un vrai bouton.",
+    "en": "Without `appuiAvant`, loop() would see the button pressed dozens of times during a single press and the door would dither. The `delay(20)` lets contact bounce pass, which lasts a few milliseconds on a real button."
+   },
+   "keep": {
+    "fr": "**Front montant** : `appui && !appuiAvant` n’est vrai qu’une fois par appui. La variable `ouvrir` est une **mémoire** : elle garde l’ordre après le relâchement du bouton.",
+    "en": "**Rising edge**: `appui && !appuiAvant` is true only once per press. Variable `ouvrir` is a **memory**: it keeps the order after the button is released."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "digitalRead\\s*\\(",
+     "digitalWrite\\s*\\(",
+     "&&"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : ouvrir",
+    "en": "Test: opening"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis donnez un appui bref sur **BTN1** : Y1 est excitée et le reste après le relâchement, la porte s’ouvre, et **LED1** s’éteint (pas de départ porte ouverte).",
+    "en": "Click “Observe”, then give **BTN1** a short press: Y1 is energised and stays so after release, the door opens, and **LED1** goes off (no departure with the door open)."
+   },
+   "hint": {
+    "fr": "La porte se referme dès que vous relâchez ? Le programme recopie le bouton au lieu de mémoriser l’ordre : il manque `ouvrir = !ouvrir` sur le front montant.",
+    "en": "The door closes as soon as you release? The program copies the button instead of storing the order: `ouvrir = !ouvrir` on the rising edge is missing."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "released"
+    },
+    "expect": {
+     "Y1": "on",
+     "c1": "out",
+     "LED1": "off"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : fermer, départ autorisé",
+    "en": "Test: closing, departure allowed"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et donnez un second appui bref sur **BTN1** : la porte se ferme doucement, freinée par le réducteur 1V2. Quand **B1** se ferme, **LED1** s’allume : le conducteur peut partir.",
+    "en": "Click “Observe” and give **BTN1** a second short press: the door closes gently, slowed by flow control 1V2. When **B1** closes, **LED1** lights up: the driver may leave."
+   },
+   "hint": {
+    "fr": "LED1 reste éteinte porte fermée ? Vérifiez le capteur B1 (D3) et, dans le plan, que la fin de course « tige rentrée » du vérin porte le repère B1.",
+    "en": "LED1 stays off with the door closed? Check sensor B1 (D3) and, in the plan, that the cylinder’s “rod in” end sensor carries tag B1."
+   },
+   "keep": {
+    "fr": "Un ordre donné n’est pas un ordre exécuté : le départ n’est autorisé que lorsque le capteur B1 **confirme** que la porte est fermée.",
+    "en": "An order given is not an order carried out: departure is only allowed once sensor B1 **confirms** the door is closed."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "released"
+    },
+    "expect": {
+     "Y1": "off",
+     "c1": "in",
+     "LED1": "on"
+    },
+    "hold": 600
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la poignée de secours",
+    "en": "Test: the emergency handle"
+   },
+   "text": {
+    "fr": "Porte fermée, cliquez sur « Observer » puis sur « Appuyer sur 0S1 » (ou tirez la poignée rouge dans la vue 3D). Le circuit se vide : les tuyaux passent à l’échappement, **S1** s’ouvre, **LED2** s’allume et **LED1** s’éteint. La porte est toujours fermée (B1), mais plus rien ne la tient : le départ n’est plus autorisé.",
+    "en": "With the door closed, click “Observe” then “Press 0S1” (or pull the red handle in the 3D view). The circuit empties: the tubes go to exhaust, **S1** opens, **LED2** lights up and **LED1** goes off. The door is still closed (B1), but nothing holds it any more: departure is no longer allowed."
+   },
+   "hint": {
+    "fr": "LED1 reste allumée ? L’autorisation doit être un ET : porte fermée (B1) ET pression présente (S1).",
+    "en": "LED1 stays on? The authorisation must be an AND: door closed (B1) AND pressure present (S1)."
+   },
+   "keep": {
+    "fr": "Porte fermée ne veut pas dire porte **tenue** : l’autorisation de départ demande les deux informations, B1 **et** S1.",
+    "en": "Door closed does not mean door **held**: the departure authorisation needs both pieces of information, B1 **and** S1."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "urg": "pressed"
+    },
+    "expect": {
+     "c1": "in",
+     "LED1": "off",
+     "LED2": "on"
+    },
+    "hold": 600
+   }
+  },
+  {
+   "title": {
+    "fr": "Remettre l’air",
+    "en": "Restoring the air"
+   },
+   "text": {
+    "fr": "Poignée tirée, quelqu’un a appuyé sur BTN1 : l’ordre « ouvrir » est mémorisé, mais rien n’a bougé faute d’air. On repousse maintenant la poignée. Que se passe-t-il ?",
+    "en": "With the handle pulled, someone pressed BTN1: the “open” order is stored, but nothing moved for lack of air. The handle is now pushed back. What happens?"
+   },
+   "hint": {
+    "fr": "Essayez : poignée tirée, appuyez sur BTN1, puis relâchez 0S1. Sur un bus comme sur une machine, on ne remet l’énergie qu’après avoir vérifié que personne ne se trouve sur le trajet du mouvement.",
+    "en": "Try it: handle pulled, press BTN1, then release 0S1. On a bus as on a machine, energy is only restored after checking that nobody stands in the path of the movement."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : il faut appuyer de nouveau sur BTN1",
+      "en": "Nothing: BTN1 must be pressed again"
+     },
+     {
+      "fr": "L’air revient et le vérin exécute aussitôt l’ordre mémorisé : la porte bouge toute seule",
+      "en": "Air comes back and the cylinder at once carries out the stored order: the door moves by itself"
+     },
+     {
+      "fr": "Le programme redémarre et oublie l’ordre",
+      "en": "The program restarts and forgets the order"
+     },
+     {
+      "fr": "La porte reste libre tant qu’on ne coupe pas le courant",
+      "en": "The door stays free until the power is cut"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ],
+ "workspace": "elec"
+}

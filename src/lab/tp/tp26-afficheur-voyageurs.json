@@ -1,0 +1,547 @@
+{
+ "id": "tp26-afficheur-voyageurs",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 60,
+ "title": {
+  "fr": "Afficheur d’information voyageurs",
+  "en": "Passenger information display"
+ },
+ "summary": {
+  "fr": "Inspiré du BRT de Dakar : l’écran d’une station annonce « Prochain bus » et le temps d’attente. Un écran LCD 16×2 en I2C affiche un compte à rebours en minutes et secondes calculé avec millis() ; un bouton signale le bus à quai (« Bus a quai ») et le décompte repart à son départ.",
+  "en": "Inspired by Dakar’s BRT: a station screen announces the “next bus” and the waiting time. A 16×2 I2C LCD shows a countdown in minutes and seconds computed with millis(); a button signals a bus at the platform (“Bus a quai”) and the countdown restarts when it leaves."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler et programmer un écran LCD I2C (LiquidCrystal_I2C)",
+   "en": "Wire and program an I2C LCD (LiquidCrystal_I2C)"
+  },
+  {
+   "fr": "Mesurer le temps sans bloquer le programme, avec millis()",
+   "en": "Measure time without blocking the program, with millis()"
+  },
+  {
+   "fr": "Convertir des secondes en minutes et secondes (division entière et modulo)",
+   "en": "Convert seconds into minutes and seconds (integer division and modulo)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un écran LCD I2C se branche avec 4 fils (VCC, GND, SDA, SCL) et se pilote par son adresse.",
+   "en": "An I2C LCD is connected with 4 wires (VCC, GND, SDA, SCL) and driven through its address."
+  },
+  {
+   "fr": "On vérifie l’alimentation au multimètre avant d’accuser le programme.",
+   "en": "Check the power supply with the multimeter before blaming the program."
+  },
+  {
+   "fr": "Un compte à rebours se calcule avec `millis()` ; le programme reste libre de lire le bouton.",
+   "en": "A countdown is computed with `millis()`; the program stays free to read the button."
+  },
+  {
+   "fr": "Division entière et modulo : minutes = s / 60, secondes = s % 60.",
+   "en": "Integer division and modulo: minutes = s / 60, seconds = s % 60."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Afficheur voyageurs",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "lcd1602_1",
+    "type": "lcd1602",
+    "name": "LCD1",
+    "x": 0,
+    "z": -72,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "button_1",
+    "type": "button",
+    "name": "BTN1",
+    "x": -26,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": 2,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 24,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": []
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "lcd1602_1",
+     "VCC"
+    ],
+    "b": [
+     "uno_1",
+     "5V"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V"
+   },
+   {
+    "a": [
+     "lcd1602_1",
+     "GND"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "lcd1602_1",
+     "SDA"
+    ],
+    "b": [
+     "uno_1",
+     "SDA"
+    ],
+    "color": "#3d7be0",
+    "role": "Données I2C"
+   },
+   {
+    "a": [
+     "lcd1602_1",
+     "SCL"
+    ],
+    "b": [
+     "uno_1",
+     "SCL"
+    ],
+    "color": "#f2c94c",
+    "role": "Horloge I2C"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail"
+   },
+   {
+    "a": [
+     "breadboard_1",
+     "T-25"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-25"
+    ],
+    "color": "#3a3f45",
+    "role": "Pont entre les rails −"
+   },
+   {
+    "a": [
+     "button_1",
+     "1"
+    ],
+    "b": [
+     "uno_1",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée (bus arrivé)"
+   },
+   {
+    "a": [
+     "button_1",
+     "2"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-6"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D7"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "B-14"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : afficheur d’information voyageurs d’une station de bus.\n// Compte à rebours jusqu’au prochain bus, calculé avec millis().\n// Le bouton joue le détecteur du quai : appuyé, un bus est à quai.\n#include <Wire.h>\n#include <LiquidCrystal_I2C.h>\n\nLiquidCrystal_I2C lcd(0x27, 16, 2);       // adresse I2C 0x27, 16 colonnes, 2 lignes\n\nconst int BOUTON = 2;                     // détecteur du quai (bouton vers la masse)\nconst int LED_QUAI = 7;                   // voyant vert « bus à quai »\nconst unsigned long INTERVALLE = 120000;  // 2 min entre deux bus (maquette)\n\nunsigned long passage = 0;                // instant du dernier passage d’un bus (ms)\n\nvoid setup() {\n  pinMode(BOUTON, INPUT_PULLUP);\n  pinMode(LED_QUAI, OUTPUT);\n  lcd.init();\n  lcd.backlight();\n  lcd.setCursor(0, 0);\n  lcd.print(\"Prochain bus\");\n}\n\nvoid loop() {\n  if (digitalRead(BOUTON) == LOW) {\n    // Un bus est à quai : le compte à rebours repartira de 2 min à son départ.\n    passage = millis();\n    digitalWrite(LED_QUAI, HIGH);\n    lcd.setCursor(0, 0);\n    lcd.print(\"Bus a quai      \");   // pas d’accent sur l’écran LCD\n    lcd.setCursor(0, 1);\n    lcd.print(\"Montez SVP      \");\n  } else {\n    digitalWrite(LED_QUAI, LOW);\n    unsigned long ecoule = millis() - passage;   // ms depuis le dernier bus\n    unsigned long reste = 0;                     // secondes avant le prochain bus\n    if (ecoule < INTERVALLE) reste = (INTERVALLE - ecoule) / 1000;\n    int minutes = reste / 60;         // division entière\n    int secondes = reste % 60;        // reste de la division\n    lcd.setCursor(0, 0);\n    lcd.print(\"Prochain bus    \");\n    lcd.setCursor(0, 1);\n    if (reste == 0) {\n      lcd.print(\"Bus imminent    \");\n    } else {\n      lcd.print(\"dans \");\n      lcd.print(minutes);\n      lcd.print(\" min \");\n      if (secondes < 10) lcd.print(\"0\");\n      lcd.print(secondes);\n      lcd.print(\" s \");\n    }\n  }\n  delay(200);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’écran de la station",
+    "en": "The station screen"
+   },
+   "text": {
+    "fr": "Sur une ligne de bus à haut niveau de service comme le **BRT** de Dakar, les voyageurs aiment savoir quand arrive le prochain bus. Imaginez l’écran d’une station : « Prochain bus dans 1 min 30 s ».\nSur le plan de travail : la carte **UNO**, l’écran **LCD1** (16 caractères × 2 lignes, avec un adaptateur **I2C** à l’adresse **0x27**), le bouton **BTN1**, qui joue le détecteur du quai (appuyé : un bus est à quai), la LED verte **LED1** « bus à quai » avec sa résistance **R1** (220 Ω), et la breadboard **BB1**.\nL’I2C n’utilise que **deux fils** de données : **SDA** (données) et **SCL** (horloge). Sur l’Uno, ce sont les broches **A4** et **A5**, recopiées en haut de la carte sous les noms SDA et SCL.",
+    "en": "On a bus rapid transit line like Dakar’s **BRT**, passengers like to know when the next bus is coming. Picture a station screen: “Next bus in 1 min 30 s”.\nOn the workspace: the **UNO** board, the **LCD1** screen (16 characters × 2 lines, with an **I2C** adapter at address **0x27**), the **BTN1** button, which plays the platform detector (pressed: a bus is at the platform), the green **LED1** “bus at the platform” with its resistor **R1** (220 Ω), and the **BB1** breadboard.\nI2C uses only **two data wires**: **SDA** (data) and **SCL** (clock). On the Uno, these are pins **A4** and **A5**, repeated at the top of the board as SDA and SCL."
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher l’écran",
+    "en": "Connecting the screen"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », reliez **VCC** de LCD1 au **5V** de l’UNO, **GND** à une masse, **SDA** à **SDA** (ou A4) et **SCL** à **SCL** (ou A5).",
+    "en": "In the “Wiring” tab, connect **VCC** of LCD1 to the UNO’s **5V**, **GND** to a ground, **SDA** to **SDA** (or A4) and **SCL** to **SCL** (or A5)."
+   },
+   "keep": {
+    "fr": "**I2C** : deux fils de données, SDA avec SDA et SCL avec SCL, plus l’alimentation. Chaque module a une **adresse** (ici 0x27).",
+    "en": "**I2C**: two data wires, SDA to SDA and SCL to SCL, plus power. Each module has an **address** (here 0x27)."
+   },
+   "hint": {
+    "fr": "Le rétroéclairage et le contraste de cet écran demandent 5 V : pas de 3V3. SDA avec SDA, SCL avec SCL : en I2C, les fils ne se croisent pas.",
+    "en": "This screen’s backlight and contrast need 5 V: not 3V3. SDA to SDA, SCL to SCL: on I2C, the wires do not cross."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "LCD1.VCC",
+      "UNO.5V"
+     ],
+     [
+      "LCD1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "LCD1.SDA",
+      "UNO.SDA"
+     ],
+     [
+      "LCD1.SCL",
+      "UNO.SCL"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Contrôle : alimentation de l’écran",
+    "en": "Check: the screen supply"
+   },
+   "text": {
+    "fr": "Lancez la simulation, ouvrez « Instruments » → **Multimètre**, mode **V** : pointe rouge sur **LCD1 · VCC**, pointe noire sur **LCD1 · GND**. Notez la tension.",
+    "en": "Start the simulation, open “Instruments” → **Multimeter**, **V** mode: red probe on **LCD1 · VCC**, black probe on **LCD1 · GND**. Enter the voltage."
+   },
+   "hint": {
+    "fr": "On attend 5 V. Un écran mal alimenté reste sombre ou n’affiche que des rectangles : vérifiez toujours l’alimentation avant d’accuser le programme.",
+    "en": "You should get 5 V. A badly powered screen stays dark or only shows blocks: always check the supply before blaming the program."
+   },
+   "check": {
+    "type": "measure",
+    "unit": "V",
+    "probe": [
+     "LCD1.VCC",
+     "LCD1.GND"
+    ],
+    "tolerance": 0.12
+   }
+  },
+  {
+   "title": {
+    "fr": "Premier message",
+    "en": "First message"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », affichez un premier message :\n- en haut : `#include <Wire.h>`, `#include <LiquidCrystal_I2C.h>` et `LiquidCrystal_I2C lcd(0x27, 16, 2);` ;\n- dans setup() : `lcd.init();`, `lcd.backlight();`, `lcd.setCursor(0, 0);` (colonne 0, ligne 0) puis `lcd.print(\"Prochain bus\");`.\nCliquez sur « Téléverser » et lancez la simulation : le texte apparaît sur la première ligne.",
+    "en": "In the “Code” tab, show a first message:\n- at the top: `#include <Wire.h>`, `#include <LiquidCrystal_I2C.h>` and `LiquidCrystal_I2C lcd(0x27, 16, 2);`;\n- in setup(): `lcd.init();`, `lcd.backlight();`, `lcd.setCursor(0, 0);` (column 0, line 0) then `lcd.print(\"Prochain bus\");`.\nClick “Upload” and start the simulation: the text appears on the first line."
+   },
+   "hint": {
+    "fr": "Écran allumé mais vide ? Vérifiez l’adresse 0x27 et l’appel à lcd.backlight(). Les colonnes et les lignes se comptent à partir de 0.",
+    "en": "Screen lit but empty? Check the 0x27 address and the call to lcd.backlight(). Columns and lines are counted from 0."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<LiquidCrystal_I2C\\.h>",
+     "LiquidCrystal_I2C\\s+\\w+\\s*\\(\\s*0x27",
+     "\\.(init|begin)\\s*\\(",
+     "\\.backlight\\s*\\(",
+     "\\.setCursor\\s*\\(",
+     "\\.print\\s*\\(\\s*\"Prochain bus"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton et le voyant",
+    "en": "The button and the light"
+   },
+   "text": {
+    "fr": "Ajoutez le détecteur du quai et son voyant :\n- **BTN1** : une patte → **D2**, l’autre → masse (rail **-** de la breadboard, relié à un **GND** de l’UNO) ;\n- **D7** → R1 → anode **A** de **LED1**, cathode **K** → masse.",
+    "en": "Add the platform detector and its light:\n- **BTN1**: one leg → **D2**, the other → ground (breadboard **-** rail, joined to a **GND** pin of the UNO);\n- **D7** → R1 → anode **A** of **LED1**, cathode **K** → ground."
+   },
+   "hint": {
+    "fr": "Pas de résistance pour le bouton : le programme activera la résistance de tirage interne (INPUT_PULLUP). D2 lira HIGH au repos et LOW quand on appuie.",
+    "en": "No resistor for the button: the program will turn on the internal pull-up (INPUT_PULLUP). D2 will read HIGH at rest and LOW when pressed."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D2",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "UNO.GND*",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "UNO.D7",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "delay() ou millis() ?",
+    "en": "delay() or millis()?"
+   },
+   "text": {
+    "fr": "Pour le compte à rebours, on pourrait écrire `delay(1000);` et retirer une seconde à chaque tour de loop(). Le programme utilise plutôt `millis()`, le nombre de millisecondes écoulées depuis le démarrage de la carte. Pourquoi ?",
+    "en": "For the countdown, we could write `delay(1000);` and take one second off at each turn of loop(). The program uses `millis()` instead, the number of milliseconds since the board started. Why?"
+   },
+   "hint": {
+    "fr": "Avec millis(), loop() tourne sans arrêt : elle lit le bouton à chaque tour et calcule le temps restant à partir de l’instant du dernier bus, sans jamais attendre.",
+    "en": "With millis(), loop() runs non-stop: it reads the button at each turn and works out the time left from the moment of the last bus, without ever waiting."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Parce que delay() ne fonctionne pas avec un écran LCD",
+      "en": "Because delay() does not work with an LCD"
+     },
+     {
+      "fr": "Pendant un delay(1000), le programme est bloqué : un appui court sur le bouton passerait inaperçu, et le temps passé à afficher s’ajouterait à chaque seconde",
+      "en": "During a delay(1000), the program is blocked: a short press of the button would go unnoticed, and the time spent displaying would add up to each second"
+     },
+     {
+      "fr": "Parce que millis() compte en minutes, ce qui évite les calculs",
+      "en": "Because millis() counts in minutes, which avoids calculations"
+     },
+     {
+      "fr": "Il n’y a aucune différence",
+      "en": "There is no difference"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le compte à rebours",
+    "en": "The countdown"
+   },
+   "text": {
+    "fr": "Écrivez le programme complet :\n- en haut : `unsigned long passage = 0;` (instant du dernier passage d’un bus, en ms) et un intervalle de **2 min** entre deux bus (`120000` ms) ;\n- dans setup() : `pinMode(2, INPUT_PULLUP);` et `pinMode(7, OUTPUT);` ;\n- dans loop(), si `digitalRead(2) == LOW` (un bus est à quai) : `passage = millis();`, LED1 allumée et « Bus a quai » à l’écran ;\n- sinon : LED1 éteinte, `unsigned long ecoule = millis() - passage;` et `reste = (120000 - ecoule) / 1000` secondes (« Bus imminent » quand `ecoule` dépasse 120 000) ; sur la deuxième ligne, `reste / 60` minutes et `reste % 60` secondes, par exemple « dans 1 min 55 s ».\nTerminez loop() par `delay(200);` et cliquez sur « Téléverser ».",
+    "en": "Write the full program:\n- at the top: `unsigned long passage = 0;` (time of the last bus, in ms) and an interval of **2 min** between two buses (`120000` ms);\n- in setup(): `pinMode(2, INPUT_PULLUP);` and `pinMode(7, OUTPUT);`;\n- in loop(), if `digitalRead(2) == LOW` (a bus is at the platform): `passage = millis();`, LED1 on and “Bus a quai” on the screen;\n- otherwise: LED1 off, `unsigned long ecoule = millis() - passage;` and `reste = (120000 - ecoule) / 1000` seconds (“Bus imminent” once `ecoule` goes past 120,000); on the second line, `reste / 60` minutes and `reste % 60` seconds, for example “dans 1 min 55 s”.\nEnd loop() with `delay(200);` and click “Upload”."
+   },
+   "keep": {
+    "fr": "Avec `millis()`, le temps restant se **calcule** à chaque tour (instant prévu − instant présent) au lieu d’être décompté avec des `delay()`.",
+    "en": "With `millis()`, the remaining time is **computed** on every loop (planned time − present time) instead of being counted down with `delay()`."
+   },
+   "hint": {
+    "fr": "La plupart des écrans LCD 16×2 ne connaissent pas les lettres accentuées : écrivez « Bus a quai ». Complétez chaque texte par des espaces jusqu’à 16 caractères, pour effacer les restes du message précédent.",
+    "en": "Most 16×2 LCDs do not know accented letters: write “Bus a quai”. Pad each text with spaces up to 16 characters, to erase what is left of the previous message."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "millis\\s*\\(",
+     "INPUT_PULLUP",
+     "digitalRead\\s*\\(",
+     "\\/\\s*60\\b",
+     "%\\s*60\\b",
+     "Bus [aà] quai",
+     "\\b120000\\b|\\b2\\s*\\*\\s*60\\s*\\*\\s*1000\\b"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Minutes et secondes",
+    "en": "Minutes and seconds"
+   },
+   "text": {
+    "fr": "Il reste `reste = 135` secondes avant le prochain bus. Qu’affiche la deuxième ligne de l’écran, avec `minutes = reste / 60` et `secondes = reste % 60` (des variables entières) ?",
+    "en": "There are `reste = 135` seconds left before the next bus. What does the screen’s second line show, with `minutes = reste / 60` and `secondes = reste % 60` (integer variables)?"
+   },
+   "keep": {
+    "fr": "Entre deux entiers, `/` donne le quotient et `%` le reste de la division : c’est ainsi qu’on sépare les minutes des secondes.",
+    "en": "Between two integers, `/` gives the quotient and `%` the remainder of the division: this is how minutes are split from seconds."
+   },
+   "hint": {
+    "fr": "Entre deux entiers, / donne le quotient sans virgule : 135 / 60 = 2 ; % donne le reste de la division : 135 % 60 = 15, car 2 × 60 + 15 = 135.",
+    "en": "Between two integers, / gives the quotient without decimals: 135 / 60 = 2; % gives the remainder of the division: 135 % 60 = 15, since 2 × 60 + 15 = 135."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "dans 1 min 35 s",
+      "en": "dans 1 min 35 s"
+     },
+     {
+      "fr": "dans 2 min 15 s",
+      "en": "dans 2 min 15 s"
+     },
+     {
+      "fr": "dans 2 min 25 s",
+      "en": "dans 2 min 25 s"
+     },
+     {
+      "fr": "dans 13 min 05 s",
+      "en": "dans 13 min 05 s"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : le bus arrive",
+    "en": "Test: the bus arrives"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur **BTN1** et maintenez-le une seconde : un bus est à quai, **LED1** s’allume et l’écran affiche « Bus a quai ». Relâchez : le bus repart et le compte à rebours reprend à 2 min.",
+    "en": "Click “Observe”, then press **BTN1** and hold it for a second: a bus is at the platform, **LED1** lights up and the screen shows “Bus a quai”. Release it: the bus leaves and the countdown starts again at 2 min."
+   },
+   "hint": {
+    "fr": "LED1 reste éteinte ? Vérifiez INPUT_PULLUP sur D2 et le test digitalRead(2) == LOW. L’écran ne change pas ? Réécrivez les deux lignes à chaque tour de loop().",
+    "en": "LED1 stays off? Check INPUT_PULLUP on D2 and the digitalRead(2) == LOW test. The screen does not change? Rewrite both lines at each turn of loop()."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed"
+    },
+    "expect": {
+     "LED1": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Les accents sur l’écran",
+    "en": "Accents on the screen"
+   },
+   "text": {
+    "fr": "Pourquoi le programme écrit-il « Bus a quai » et non « Bus à quai » ?",
+    "en": "Why does the program write “Bus a quai” and not “Bus à quai” (French for “bus at the platform”)?"
+   },
+   "hint": {
+    "fr": "Le contrôleur de ces écrans (HD44780) contient un jeu de caractères gravé, le plus souvent sans les accents du français. On peut dessiner jusqu’à 8 caractères personnels avec lcd.createChar(), par exemple un « à ».",
+    "en": "These screens’ controller (HD44780) has a built-in character set, usually without French accents. You can draw up to 8 custom characters with lcd.createChar(), for example an “à”."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le texte serait trop long pour une ligne de 16 caractères",
+      "en": "The text would be too long for a 16-character line"
+     },
+     {
+      "fr": "La plupart des écrans LCD 16×2 n’ont pas de lettres accentuées dans leur jeu de caractères : « à » s’afficherait comme des signes sans rapport",
+      "en": "Most 16×2 LCDs have no accented letters in their character set: “à” would show up as unrelated symbols"
+     },
+     {
+      "fr": "Le bus I2C ne transmet que des majuscules",
+      "en": "The I2C bus only carries capital letters"
+     },
+     {
+      "fr": "Le compilateur refuse les accents dans le programme",
+      "en": "The compiler refuses accents in the program"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

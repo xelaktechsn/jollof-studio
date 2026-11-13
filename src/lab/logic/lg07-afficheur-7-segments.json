@@ -1,0 +1,900 @@
+{
+ "id": "lg07-afficheur-7-segments",
+ "domain": "logic",
+ "level": "pro",
+ "minutes": 40,
+ "title": {
+  "fr": "Décodeurs et afficheur 7 segments",
+  "en": "Decoders and the 7-segment display"
+ },
+ "summary": {
+  "fr": "Du nombre binaire à l’affichage : le décodeur 2 vers 4, le décodeur 7 segments et son afficheur, puis l’équation d’un segment construite avec des portes.",
+  "en": "From a binary number to a display: the 2-to-4 decoder, the 7-segment decoder and its display, then the equation of a segment built from gates."
+ },
+ "objectives": [
+  {
+   "fr": "Utiliser un décodeur binaire",
+   "en": "Use a binary decoder"
+  },
+  {
+   "fr": "Câbler une chaîne d’affichage 7 segments",
+   "en": "Wire a 7-segment display chain"
+  },
+  {
+   "fr": "Établir l’équation d’un segment",
+   "en": "Derive the equation of a segment"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Décodeur 2 vers 4"
+     }
+    },
+    {
+     "id": "sA1",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A1"
+     }
+    },
+    {
+     "id": "sA0",
+     "type": "switch",
+     "x": 4,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "A0"
+     }
+    },
+    {
+     "id": "lL0",
+     "type": "led",
+     "x": 36,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "L0",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lL1",
+     "type": "led",
+     "x": 36,
+     "y": 6,
+     "r": 0,
+     "p": {
+      "label": "L1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL2",
+     "type": "led",
+     "x": 36,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "L2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lL3",
+     "type": "led",
+     "x": 36,
+     "y": 14,
+     "r": 0,
+     "p": {
+      "label": "L3",
+      "color": "blue"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "text": "Afficheur 7 segments"
+     }
+    },
+    {
+     "id": "dN",
+     "type": "dip",
+     "x": 4,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "label": "N",
+      "bits": 4
+     }
+    },
+    {
+     "id": "aff",
+     "type": "seg7",
+     "x": 36,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "color": "red"
+     }
+    },
+    {
+     "id": "la",
+     "type": "led",
+     "x": 36,
+     "y": 35,
+     "r": 0,
+     "p": {
+      "label": "a",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lg",
+     "type": "led",
+     "x": 36,
+     "y": 39,
+     "r": 0,
+     "p": {
+      "label": "g",
+      "color": "red"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 45,
+     "r": 0,
+     "p": {
+      "text": "Segments a et g des chiffres 0 à 3"
+     }
+    },
+    {
+     "id": "sB1",
+     "type": "switch",
+     "x": 4,
+     "y": 49,
+     "r": 0,
+     "p": {
+      "label": "B1"
+     }
+    },
+    {
+     "id": "sB0",
+     "type": "switch",
+     "x": 4,
+     "y": 55,
+     "r": 0,
+     "p": {
+      "label": "B0"
+     }
+    },
+    {
+     "id": "lSa",
+     "type": "led",
+     "x": 40,
+     "y": 50,
+     "r": 0,
+     "p": {
+      "label": "Sa",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lSg",
+     "type": "led",
+     "x": 40,
+     "y": 56,
+     "r": 0,
+     "p": {
+      "label": "Sg",
+      "color": "red"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "Décodeur 2 vers 4"
+     }
+    },
+    {
+     "id": "sA1",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A1"
+     }
+    },
+    {
+     "id": "sA0",
+     "type": "switch",
+     "x": 4,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "A0"
+     }
+    },
+    {
+     "id": "lL0",
+     "type": "led",
+     "x": 36,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "L0",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lL1",
+     "type": "led",
+     "x": 36,
+     "y": 6,
+     "r": 0,
+     "p": {
+      "label": "L1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL2",
+     "type": "led",
+     "x": 36,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "L2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lL3",
+     "type": "led",
+     "x": 36,
+     "y": 14,
+     "r": 0,
+     "p": {
+      "label": "L3",
+      "color": "blue"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "text": "Afficheur 7 segments"
+     }
+    },
+    {
+     "id": "dN",
+     "type": "dip",
+     "x": 4,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "label": "N",
+      "bits": 4
+     }
+    },
+    {
+     "id": "aff",
+     "type": "seg7",
+     "x": 36,
+     "y": 23,
+     "r": 0,
+     "p": {
+      "color": "red"
+     }
+    },
+    {
+     "id": "la",
+     "type": "led",
+     "x": 36,
+     "y": 35,
+     "r": 0,
+     "p": {
+      "label": "a",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lg",
+     "type": "led",
+     "x": 36,
+     "y": 39,
+     "r": 0,
+     "p": {
+      "label": "g",
+      "color": "red"
+     }
+    },
+    {
+     "id": "t3",
+     "type": "text",
+     "x": 4,
+     "y": 45,
+     "r": 0,
+     "p": {
+      "text": "Segments a et g des chiffres 0 à 3"
+     }
+    },
+    {
+     "id": "sB1",
+     "type": "switch",
+     "x": 4,
+     "y": 49,
+     "r": 0,
+     "p": {
+      "label": "B1"
+     }
+    },
+    {
+     "id": "sB0",
+     "type": "switch",
+     "x": 4,
+     "y": 55,
+     "r": 0,
+     "p": {
+      "label": "B0"
+     }
+    },
+    {
+     "id": "lSa",
+     "type": "led",
+     "x": 40,
+     "y": 50,
+     "r": 0,
+     "p": {
+      "label": "Sa",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lSg",
+     "type": "led",
+     "x": 40,
+     "y": 56,
+     "r": 0,
+     "p": {
+      "label": "Sg",
+      "color": "red"
+     }
+    },
+    {
+     "id": "dec",
+     "type": "decoder",
+     "x": 18,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "n": 2
+     }
+    },
+    {
+     "id": "b7",
+     "type": "bcd7",
+     "x": 18,
+     "y": 23,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "n1",
+     "type": "not",
+     "x": 16,
+     "y": 55,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g1",
+     "type": "or",
+     "x": 28,
+     "y": 49,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA0",
+      "Q"
+     ],
+     "b": [
+      "dec",
+      "A0"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sA1",
+      "Q"
+     ],
+     "b": [
+      "dec",
+      "A1"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "dec",
+      "Y0"
+     ],
+     "b": [
+      "lL0",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "dec",
+      "Y1"
+     ],
+     "b": [
+      "lL1",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "dec",
+      "Y2"
+     ],
+     "b": [
+      "lL2",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "dec",
+      "Y3"
+     ],
+     "b": [
+      "lL3",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "dN",
+      "0"
+     ],
+     "b": [
+      "b7",
+      "D0"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "dN",
+      "1"
+     ],
+     "b": [
+      "b7",
+      "D1"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "dN",
+      "2"
+     ],
+     "b": [
+      "b7",
+      "D2"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "dN",
+      "3"
+     ],
+     "b": [
+      "b7",
+      "D3"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "b7",
+      "a"
+     ],
+     "b": [
+      "aff",
+      "a"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "b7",
+      "b"
+     ],
+     "b": [
+      "aff",
+      "b"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "b7",
+      "c"
+     ],
+     "b": [
+      "aff",
+      "c"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "b7",
+      "d"
+     ],
+     "b": [
+      "aff",
+      "d"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "b7",
+      "e"
+     ],
+     "b": [
+      "aff",
+      "e"
+     ]
+    },
+    {
+     "id": "w16",
+     "a": [
+      "b7",
+      "f"
+     ],
+     "b": [
+      "aff",
+      "f"
+     ]
+    },
+    {
+     "id": "w17",
+     "a": [
+      "b7",
+      "g"
+     ],
+     "b": [
+      "aff",
+      "g"
+     ]
+    },
+    {
+     "id": "w18",
+     "a": [
+      "b7",
+      "a"
+     ],
+     "b": [
+      "la",
+      "A"
+     ]
+    },
+    {
+     "id": "w19",
+     "a": [
+      "b7",
+      "g"
+     ],
+     "b": [
+      "lg",
+      "A"
+     ]
+    },
+    {
+     "id": "w20",
+     "a": [
+      "sB0",
+      "Q"
+     ],
+     "b": [
+      "n1",
+      "A"
+     ]
+    },
+    {
+     "id": "w21",
+     "a": [
+      "sB1",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w22",
+     "a": [
+      "n1",
+      "Y"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w23",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "lSa",
+      "A"
+     ]
+    },
+    {
+     "id": "w24",
+     "a": [
+      "sB1",
+      "Q"
+     ],
+     "b": [
+      "lSg",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le décodeur",
+    "en": "The decoder"
+   },
+   "text": {
+    "fr": "Un **décodeur** reçoit un nombre binaire et active **une seule** de ses sorties : celle dont le numéro est ce nombre. Avec 2 bits d’entrée (A1 A0), il a 4 sorties, Y0 à Y3.\nOn s’en sert pour choisir un élément parmi plusieurs : une case mémoire, un afficheur, une lampe…",
+    "en": "A **decoder** receives a binary number and activates **only one** of its outputs: the one whose number is that number. With 2 input bits (A1 A0), it has 4 outputs, Y0 to Y3.\nIt is used to pick one element among several: a memory cell, a display, a lamp…"
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le décodeur 2 vers 4",
+    "en": "Wiring the 2-to-4 decoder"
+   },
+   "text": {
+    "fr": "Dans la bibliothèque (**Combinatoire**), posez un **décodeur** (2 vers 4 par défaut). Reliez l’interrupteur A0 à l’entrée A0, A1 à A1, et les sorties Y0 à Y3 aux LED **L0** à **L3**. L’entrée EN, en bas, peut rester libre : le décodeur est alors toujours actif.",
+    "en": "In the library (**Combinational**), place a **decoder** (2 to 4 by default). Connect switch A0 to input A0, A1 to A1, and outputs Y0 to Y3 to LEDs **L0** to **L3**. The EN input at the bottom can stay unconnected: the decoder is then always enabled."
+   },
+   "hint": {
+    "fr": "Essayez les quatre numéros : 00, 01, 10, 11. Une seule LED doit s’allumer à chaque fois.",
+    "en": "Try the four numbers: 00, 01, 10, 11. Only one LED must light each time."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A1",
+     "A0"
+    ],
+    "outputs": {
+     "L0": "/A1./A0",
+     "L1": "/A1.A0",
+     "L2": "A1./A0",
+     "L3": "A1.A0"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation d’une sortie",
+    "en": "The equation of an output"
+   },
+   "text": {
+    "fr": "Écrivez l’équation de la sortie **L1** en fonction de A1 et A0.",
+    "en": "Write the equation of output **L1** in terms of A1 and A0."
+   },
+   "hint": {
+    "fr": "L1 ne s’allume que pour un seul numéro : lequel ? Une variable à 0 s’écrit avec `/`.",
+    "en": "L1 lights for one number only: which one? A variable at 0 is written with `/`."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A1",
+     "A0"
+    ],
+    "answer": "/A1.A0"
+   }
+  },
+  {
+   "title": {
+    "fr": "La chaîne d’affichage",
+    "en": "The display chain"
+   },
+   "text": {
+    "fr": "Plus bas sur le plan de travail : un bloc d’interrupteurs **N** (un nombre de 4 bits) et un **afficheur 7 segments**. Entre les deux, il manque le **décodeur 7 segments** (bibliothèque, **Combinatoire**) : il transforme le nombre en segments à allumer.\n- reliez les bits 0 à 3 de N aux entrées D0 à D3 du décodeur ;\n- reliez ses sorties a à g aux entrées a à g de l’afficheur ;\n- pour le contrôle, reliez aussi la sortie a du décodeur à la LED **a**, et sa sortie g à la LED **g** (une sortie peut alimenter plusieurs entrées).",
+    "en": "Further down the workspace: a switch block **N** (a 4-bit number) and a **7-segment display**. Between them, the **7-segment decoder** is missing (library, **Combinational**): it turns the number into segments to light.\n- connect bits 0 to 3 of N to inputs D0 to D3 of the decoder;\n- connect its outputs a to g to inputs a to g of the display;\n- for the check, also connect decoder output a to LED **a**, and output g to LED **g** (one output can feed several inputs)."
+   },
+   "hint": {
+    "fr": "Le contrôle essaie les 16 valeurs de N et regarde les LED a et g ; l’afficheur, lui, se vérifie à l’œil.",
+    "en": "The check tries all 16 values of N and looks at LEDs a and g; the display itself is checked by eye."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "N3",
+     "N2",
+     "N1",
+     "N0"
+    ],
+    "outputs": {
+     "a": "1011011111101011",
+     "g": "0011111011110111"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Au-delà de 9",
+    "en": "Beyond 9"
+   },
+   "text": {
+    "fr": "Réglez N = 1011 (onze : bits 3, 1 et 0 à 1). Qu’affiche l’afficheur ?",
+    "en": "Set N = 1011 (eleven: bits 3, 1 and 0 at 1). What does the display show?"
+   },
+   "hint": {
+    "fr": "Un afficheur ne montre qu’un seul chiffre. Après 9 viennent A, b, C, d, E et F.",
+    "en": "A display shows only one digit. After 9 come A, b, C, d, E and F."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "« b » : le chiffre hexadécimal onze",
+      "en": "“b”: the hexadecimal digit eleven"
+     },
+     {
+      "fr": "« 11 »",
+      "en": "“11”"
+     },
+     {
+      "fr": "« 1 »",
+      "en": "“1”"
+     },
+     {
+      "fr": "Rien : il s’éteint",
+      "en": "Nothing: it goes dark"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Les segments de 0 à 3",
+    "en": "Segments for 0 to 3"
+   },
+   "text": {
+    "fr": "Le décodeur 7 segments n’a rien de magique : chaque segment a sa propre équation. Cherchons celles des segments **a** (en haut) et **g** (au milieu) pour les seuls chiffres 0 à 3, écrits sur deux bits B1 B0.\nAffichez 0, 1, 2 puis 3 avec N et regardez si a et g sont allumés. Remplissez la table.",
+    "en": "The 7-segment decoder is not magic: each segment has its own equation. Let us find those of segments **a** (top) and **g** (middle) for digits 0 to 3 only, written on two bits B1 B0.\nShow 0, 1, 2 then 3 with N and see whether a and g are lit. Fill in the table."
+   },
+   "hint": {
+    "fr": "Pour le chiffre 1, seuls les deux segments de droite sont allumés.",
+    "en": "For digit 1, only the two right-hand segments are lit."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "B1",
+     "B0"
+    ],
+    "outputs": {
+     "a": "1011",
+     "g": "0011"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation du segment a",
+    "en": "The equation of segment a"
+   },
+   "text": {
+    "fr": "Écrivez l’équation du segment a en fonction de B1 et B0, la plus simple possible. Astuce : a ne vaut 0 que sur une seule ligne.",
+    "en": "Write the equation of segment a in terms of B1 and B0, as simple as possible. Tip: a is 0 on one row only."
+   },
+   "hint": {
+    "fr": "a vaut 0 seulement pour B1 = 0 et B0 = 1 : il vaut donc 1 dès que B1 = 1 **ou** que B0 = 0.",
+    "en": "a is 0 only for B1 = 0 and B0 = 1: so it is 1 as soon as B1 = 1 **or** B0 = 0."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "B1",
+     "B0"
+    ],
+    "answer": "B1 + /B0",
+    "form": "sop",
+    "maxTerms": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler les segments a et g",
+    "en": "Wiring segments a and g"
+   },
+   "text": {
+    "fr": "En bas du plan de travail, câblez vos équations : les interrupteurs B1 et B0 en entrée, la LED **Sa** pour le segment a, la LED **Sg** pour le segment g. Regardez la colonne g de votre table : faut-il vraiment une porte ?",
+    "en": "At the bottom of the workspace, wire your equations: switches B1 and B0 as inputs, LED **Sa** for segment a, LED **Sg** for segment g. Look at the g column of your table: is a gate really needed?"
+   },
+   "hint": {
+    "fr": "Pour a : une porte NON sur B0, puis une porte OU. Pour g : comparez la colonne g à la colonne B1.",
+    "en": "For a: a NOT gate on B0, then an OR gate. For g: compare column g with column B1."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "B1",
+     "B0"
+    ],
+    "outputs": {
+     "Sa": "B1 + /B0",
+     "Sg": "B1"
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,738 @@
+{
+ "id": "tp24-ter-fermeture-portes",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 70,
+ "title": {
+  "fr": "TER : la fermeture des portes",
+  "en": "TER: closing the doors"
+ },
+ "summary": {
+  "fr": "Inspiré des portes des trains du TER de Dakar : un bouton lance l’avertissement (bips et voyant clignotant), puis un servomoteur ferme la porte degré par degré. Un capteur infrarouge placé dans l’ouverture la fait rouvrir si quelqu’un passe.",
+  "en": "Inspired by the doors of Dakar’s TER trains: a button starts the warning (beeps and a flashing light), then a servo closes the door degree by degree. An infrared sensor placed in the doorway makes it reopen if someone walks through."
+ },
+ "objectives": [
+  {
+   "fr": "Détecter l’instant de l’appui sur un bouton lu avec INPUT_PULLUP",
+   "en": "Detect the moment a button read with INPUT_PULLUP is pressed"
+  },
+  {
+   "fr": "Faire bouger un servomoteur progressivement avec millis()",
+   "en": "Move a servo gradually with millis()"
+  },
+  {
+   "fr": "Ajouter une sécurité : un obstacle dans la porte l’empêche de se fermer",
+   "en": "Add a safety feature: an obstacle in the doorway stops it from closing"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Bouton en `INPUT_PULLUP` : appuyé = LOW. On agit sur le front (`appui && !appuiAvant`), pas sur le niveau.",
+   "en": "Button with `INPUT_PULLUP`: pressed = LOW. Act on the edge (`appui && !appuiAvant`), not on the level."
+  },
+  {
+   "fr": "Avant de fermer, la porte avertit (bips, voyant clignotant).",
+   "en": "Before closing, the door warns (beeps, flashing light)."
+  },
+  {
+   "fr": "Un mouvement progressif se programme par petits pas datés avec `millis()`, sans `delay()`.",
+   "en": "A gradual movement is programmed in small steps timed with `millis()`, without `delay()`."
+  },
+  {
+   "fr": "Un obstacle annule ou inverse la fermeture : la porte se rouvre complètement.",
+   "en": "An obstacle cancels or reverses closing: the door reopens fully."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Fermeture des portes",
+  "comps": [
+   {
+    "id": "uno_1",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "breadboard_1",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 0,
+    "z": 76,
+    "r": 0
+   },
+   {
+    "id": "irobst_1",
+    "type": "irobst",
+    "name": "OBS1",
+    "x": -50,
+    "z": -62,
+    "r": 0
+   },
+   {
+    "id": "servo_1",
+    "type": "servo",
+    "name": "SERVO1",
+    "x": 4,
+    "z": -60,
+    "r": 0
+   },
+   {
+    "id": "button_1",
+    "type": "button",
+    "name": "BTN1",
+    "x": 56,
+    "z": -48,
+    "r": 0,
+    "inp": {
+     "pressed": false
+    }
+   },
+   {
+    "id": "res-220_1",
+    "type": "res-220",
+    "name": "R1",
+    "x": -44,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-red_1",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -27,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-220_2",
+    "type": "res-220",
+    "name": "R2",
+    "x": -10,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "led-green_1",
+    "type": "led-green",
+    "name": "LED2",
+    "x": 7,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "res-1k_1",
+    "type": "res-1k",
+    "name": "R3",
+    "x": 26,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "npn_1",
+    "type": "npn",
+    "name": "Q1",
+    "x": 44,
+    "z": 122,
+    "r": 0
+   },
+   {
+    "id": "buzzer_1",
+    "type": "buzzer",
+    "name": "BZ1",
+    "x": 62,
+    "z": 122,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "env": {
+    "dist": 100
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "a": [
+     "uno_1",
+     "5V"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+1"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V vers le rail +"
+   },
+   {
+    "a": [
+     "uno_1",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers le rail −"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D2"
+    ],
+    "b": [
+     "button_1",
+     "1"
+    ],
+    "color": "#3b82f6",
+    "role": "Entrée (INPUT_PULLUP)"
+   },
+   {
+    "a": [
+     "button_1",
+     "2"
+    ],
+    "b": [
+     "uno_1",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Bouton vers la masse"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+3"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du capteur"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-3"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du capteur"
+   },
+   {
+    "a": [
+     "irobst_1",
+     "OUT"
+    ],
+    "b": [
+     "uno_1",
+     "D4"
+    ],
+    "color": "#3b82f6",
+    "role": "Sortie du capteur (LOW : obstacle)"
+   },
+   {
+    "a": [
+     "servo_1",
+     "VCC"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+13"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du servomoteur"
+   },
+   {
+    "a": [
+     "servo_1",
+     "GND"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-13"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse du servomoteur"
+   },
+   {
+    "a": [
+     "servo_1",
+     "SIG"
+    ],
+    "b": [
+     "uno_1",
+     "D9"
+    ],
+    "color": "#f08a3c",
+    "role": "Commande de la porte"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D5"
+    ],
+    "b": [
+     "res-220_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du voyant d’avertissement"
+   },
+   {
+    "a": [
+     "res-220_1",
+     "2"
+    ],
+    "b": [
+     "led-red_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-red_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-5"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D6"
+    ],
+    "b": [
+     "res-220_2",
+     "1"
+    ],
+    "color": "#3fb27f",
+    "role": "Commande du voyant « porte fermée »"
+   },
+   {
+    "a": [
+     "res-220_2",
+     "2"
+    ],
+    "b": [
+     "led-green_1",
+     "A"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "a": [
+     "led-green_1",
+     "K"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-8"
+    ],
+    "color": "#3a3f45",
+    "role": "Cathode vers la masse"
+   },
+   {
+    "a": [
+     "uno_1",
+     "D8"
+    ],
+    "b": [
+     "res-1k_1",
+     "1"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "a": [
+     "res-1k_1",
+     "2"
+    ],
+    "b": [
+     "npn_1",
+     "B"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "a": [
+     "npn_1",
+     "E"
+    ],
+    "b": [
+     "breadboard_1",
+     "T-17"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "-"
+    ],
+    "b": [
+     "npn_1",
+     "C"
+    ],
+    "color": "#9b7be0",
+    "role": "Buzzer vers le collecteur"
+   },
+   {
+    "a": [
+     "buzzer_1",
+     "+"
+    ],
+    "b": [
+     "breadboard_1",
+     "T+19"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 5 V du buzzer"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : fermeture d’une porte de train, inspirée du TER.\n#include <Servo.h>\n\nconst int BOUTON = 2;     // BTN1 : commande de fermeture (appuyé = LOW)\nconst int CAPTEUR = 4;    // OBS1 · OUT : LOW quand quelqu’un est dans la porte\nconst int VOYANT = 5;     // LED1 rouge : avertissement\nconst int PORTE_OK = 6;   // LED2 verte : porte fermée\nconst int SONNERIE = 8;   // base du transistor Q1, qui commande le buzzer BZ1\nconst int MOTEUR = 9;     // SIG du servomoteur\n\nconst int ANGLE_OUVERTE = 90;\nconst int ANGLE_FERMEE = 0;\n\n// États de la porte\nconst int OUVERTE = 0;    // porte ouverte, en attente\nconst int ALERTE = 1;     // 3 s de bips avant la fermeture\nconst int FERMETURE = 2;  // la porte se ferme, degré par degré\nconst int FERMEE = 3;     // porte fermée\n\nServo porte;\nint etat = OUVERTE;\nint angle = ANGLE_OUVERTE;\nunsigned long debut = 0;       // début de l’alerte (ms)\nunsigned long dernierPas = 0;  // heure du dernier degré de fermeture (ms)\nbool appuiAvant = false;       // état du bouton au tour précédent\n\nvoid ouvrir() {\n  angle = ANGLE_OUVERTE;\n  porte.write(angle);\n  etat = OUVERTE;\n}\n\nvoid setup() {\n  pinMode(BOUTON, INPUT_PULLUP);\n  pinMode(CAPTEUR, INPUT);\n  pinMode(VOYANT, OUTPUT);\n  pinMode(PORTE_OK, OUTPUT);\n  pinMode(SONNERIE, OUTPUT);\n  porte.attach(MOTEUR);\n  ouvrir();\n}\n\nvoid loop() {\n  bool appui = digitalRead(BOUTON) == LOW;\n  bool nouvelAppui = appui && !appuiAvant;  // le bouton vient d’être enfoncé\n  appuiAvant = appui;\n  bool obstacle = digitalRead(CAPTEUR) == LOW;\n\n  if (etat == OUVERTE) {\n    if (nouvelAppui && !obstacle) {      // personne dans la porte : on lance l’alerte\n      etat = ALERTE;\n      debut = millis();\n    }\n  } else if (etat == ALERTE) {\n    if (obstacle) ouvrir();              // quelqu’un passe : la fermeture est annulée\n    else if (millis() - debut >= 3000) etat = FERMETURE;\n  } else if (etat == FERMETURE) {\n    if (obstacle) {\n      ouvrir();                          // sécurité : la porte se rouvre aussitôt\n    } else if (millis() - dernierPas >= 20) {\n      dernierPas = millis();\n      angle = angle - 1;                 // un degré toutes les 20 ms\n      porte.write(angle);\n      if (angle <= ANGLE_FERMEE) etat = FERMEE;\n    }\n  } else {\n    // FERMEE : dans la maquette, un nouvel appui rouvre la porte (arrivée en gare).\n    if (nouvelAppui) ouvrir();\n  }\n\n  // Avertissement pendant l’alerte et la fermeture : bips et voyant, 400 ms sur 600.\n  bool bip = (etat == ALERTE || etat == FERMETURE) && millis() % 600 < 400;\n  digitalWrite(VOYANT, bip ? HIGH : LOW);\n  digitalWrite(SONNERIE, bip ? HIGH : LOW);\n  digitalWrite(PORTE_OK, etat == FERMEE ? HIGH : LOW);\n}"
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La porte du train",
+    "en": "The train door"
+   },
+   "text": {
+    "fr": "Les trains électriques du **TER** relient Dakar à Diamniadio. À chaque gare, les portes s’ouvrent puis se referment : leur fermeture doit **prévenir** les voyageurs et ne jamais **coincer** quelqu’un. Vous allez programmer la porte d’une maquette inspirée du TER :\n- le bouton **BTN1** : la commande de fermeture ;\n- le voyant rouge **LED1** (avec R1) et la sonnerie **BZ1**, un buzzer actif commandé par le transistor **Q1** (avec R3, 1 kΩ) : ils avertissent pendant **3 s** avant la fermeture ;\n- le servomoteur **SERVO1** : la porte, ouverte à 90°, fermée à 0° ;\n- le capteur infrarouge **OBS1**, dans l’ouverture de la porte : sa sortie **OUT** passe à **LOW** si quelqu’un s’y trouve ;\n- le voyant vert **LED2** (avec R2) : allumé quand la porte est fermée.\nAvec la carte **UNO** et la breadboard **BB1**.",
+    "en": "The electric trains of the **TER** link Dakar to Diamniadio. At each station, the doors open and then close again: their closing must **warn** passengers and never **trap** anyone. You will program the door of a scale model inspired by the TER:\n- the **BTN1** button: the closing command;\n- the red light **LED1** (with R1) and the bell **BZ1**, an active buzzer driven by the transistor **Q1** (with R3, 1 kΩ): they give a warning for **3 s** before closing;\n- the **SERVO1** servo: the door, open at 90°, closed at 0°;\n- the **OBS1** infrared sensor, in the doorway: its **OUT** output goes **LOW** if someone is there;\n- the green light **LED2** (with R2): on when the door is closed.\nWith the **UNO** board and the **BB1** breadboard."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bouton et le capteur",
+    "en": "The button and the sensor"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Câblage », amenez le **5V** de la carte sur le rail **+** de la breadboard, et une broche **GND** sur le rail **-**. Puis :\n- le bouton BTN1 : une patte à **D2**, l’autre à une broche **GND** ;\n- le capteur OBS1 : **VCC** au rail +, **GND** au rail -, **OUT** à **D4**.",
+    "en": "In the “Wiring” tab, bring the board’s **5V** to the breadboard **+** rail, and a **GND** pin to the **-** rail. Then:\n- the BTN1 button: one leg to **D2**, the other to a **GND** pin;\n- the OBS1 sensor: **VCC** to the + rail, **GND** to the - rail, **OUT** to **D4**."
+   },
+   "keep": {
+    "fr": "`INPUT_PULLUP` : pas de résistance à ajouter. Bouton relâché, la broche lit HIGH ; appuyé, elle lit **LOW**.",
+    "en": "`INPUT_PULLUP`: no resistor to add. Button released, the pin reads HIGH; pressed, it reads **LOW**."
+   },
+   "hint": {
+    "fr": "Le bouton n’a pas besoin de résistance : le programme activera le tirage interne de D2 (`INPUT_PULLUP`). Relâché, D2 lit HIGH ; appuyé, le bouton relie D2 à la masse et D2 lit LOW.",
+    "en": "The button needs no resistor: the program will turn on D2’s internal pull-up (`INPUT_PULLUP`). Released, D2 reads HIGH; pressed, the button connects D2 to ground and D2 reads LOW."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D2",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "UNO.GND*",
+      "BTN1.1|BTN1.2"
+     ],
+     [
+      "OBS1.VCC",
+      "UNO.5V"
+     ],
+     [
+      "OBS1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "OBS1.OUT",
+      "UNO.D4"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La porte et les voyants",
+    "en": "The door and the lights"
+   },
+   "text": {
+    "fr": "Câblez :\n- le servomoteur : **VCC** (fil rouge) au rail +, **GND** (fil marron) au rail -, **SIG** (fil orange) à **D9** ;\n- le voyant rouge : **D5** → R1 → **anode A** de LED1, **cathode K** au rail - ;\n- le voyant vert : **D6** → R2 → **anode A** de LED2, **cathode K** au rail -.",
+    "en": "Wire:\n- the servo: **VCC** (red wire) to the + rail, **GND** (brown wire) to the - rail, **SIG** (orange wire) to **D9**;\n- the red light: **D5** → R1 → **anode A** of LED1, **cathode K** to the - rail;\n- the green light: **D6** → R2 → **anode A** of LED2, **cathode K** to the - rail."
+   },
+   "hint": {
+    "fr": "Le servomoteur peut demander quelques centaines de mA quand il bouge : il prend son énergie sur le 5 V. La broche D9 ne lui envoie que des impulsions de commande.",
+    "en": "The servo can draw a few hundred mA while moving: it takes its power from the 5 V. Pin D9 only sends it control pulses."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "SERVO1.VCC",
+      "UNO.5V"
+     ],
+     [
+      "SERVO1.GND",
+      "UNO.GND*"
+     ],
+     [
+      "SERVO1.SIG",
+      "UNO.D9"
+     ],
+     [
+      "UNO.D5",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.A",
+      "R1.1|R1.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D6",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La sonnerie et son transistor",
+    "en": "The bell and its transistor"
+   },
+   "text": {
+    "fr": "Un buzzer actif demande environ 25 à 30 mA, plus que les 20 mA conseillés pour une broche de l’Uno : il est commandé par le transistor NPN **Q1**, utilisé en interrupteur.\n- **D8** → **R3** (1 kΩ) → **base B** de Q1 ;\n- **émetteur E** de Q1 au rail - ;\n- patte **-** du buzzer au **collecteur C** de Q1, patte **+** au rail + (5 V).",
+    "en": "An active buzzer draws about 25 to 30 mA, more than the 20 mA advised for an Uno pin: it is driven by the NPN transistor **Q1**, used as a switch.\n- **D8** → **R3** (1 kΩ) → **base B** of Q1;\n- **emitter E** of Q1 to the - rail;\n- buzzer **-** leg to the **collector C** of Q1, **+** leg to the + rail (5 V)."
+   },
+   "hint": {
+    "fr": "D8 ne fournit que le petit courant de base (environ 4 mA) ; le courant du buzzer vient du 5 V et traverse le transistor de C vers E.",
+    "en": "D8 only supplies the small base current (about 4 mA); the buzzer current comes from the 5 V and flows through the transistor from C to E."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "UNO.D8",
+      "R3.1|R3.2"
+     ],
+     [
+      "Q1.B",
+      "R3.1|R3.2"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "BZ1.-",
+      "Q1.C"
+     ],
+     [
+      "BZ1.+",
+      "UNO.5V"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Avertir, puis fermer",
+    "en": "Warn, then close"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez le programme de la porte, sans `delay()`, avec une variable `etat` :\n- en haut : `#include <Servo.h>` et `Servo porte;` ; dans setup() : `pinMode(2, INPUT_PULLUP)`, D5, D6 et D8 en sortie, `porte.attach(9);` et `porte.write(90);` (porte ouverte) ;\n- **ouverte** : à l’instant où l’on appuie sur BTN1, on note `debut = millis()` et on passe en **alerte** ;\n- **alerte** : LED1 et le buzzer bipent ensemble (allumés quand `millis() % 600 < 400`) ; au bout de **3 s**, on passe en **fermeture** ;\n- **fermeture** : toutes les **20 ms**, l’angle diminue de 1° (`porte.write(angle)`), les bips continuent ; à 0°, la porte est **fermée** ;\n- **fermée** : LED2 allumée, bips arrêtés ; dans la maquette, un nouvel appui rouvre la porte (arrivée en gare).\nTéléversez.",
+    "en": "In the “Code” tab, write the door program, without `delay()`, with an `etat` variable:\n- at the top: `#include <Servo.h>` and `Servo porte;`; in setup(): `pinMode(2, INPUT_PULLUP)`, D5, D6 and D8 as outputs, `porte.attach(9);` and `porte.write(90);` (door open);\n- **open**: at the moment BTN1 is pressed, store `debut = millis()` and go to **warning**;\n- **warning**: LED1 and the buzzer beep together (on when `millis() % 600 < 400`); after **3 s**, go to **closing**;\n- **closing**: every **20 ms**, the angle goes down by 1° (`porte.write(angle)`), the beeps go on; at 0°, the door is **closed**;\n- **closed**: LED2 on, beeps stopped; in the model, a new press opens the door again (arrival at a station).\nUpload."
+   },
+   "keep": {
+    "fr": "Une porte **prévient avant de bouger** : signal sonore et voyant d’abord, mouvement ensuite.",
+    "en": "A door **warns before it moves**: sound and light first, movement afterwards."
+   },
+   "hint": {
+    "fr": "L’instant de l’appui : gardez l’état du bouton au tour précédent, `bool nouvelAppui = appui && !appuiAvant; appuiAvant = appui;`. Pour la fermeture, une variable `dernierPas` : `if (millis() - dernierPas >= 20) { dernierPas = millis(); angle = angle - 1; porte.write(angle); }`.",
+    "en": "The moment of the press: keep the button state from the previous pass, `bool nouvelAppui = appui && !appuiAvant; appuiAvant = appui;`. For the closing, a `dernierPas` variable: `if (millis() - dernierPas >= 20) { dernierPas = millis(); angle = angle - 1; porte.write(angle); }`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "#include\\s*<Servo\\.h>",
+     "\\.attach\\s*\\(",
+     "\\.write\\s*\\(",
+     "millis\\s*\\(\\s*\\)",
+     "\\b3000(?!\\d)"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : l’avertissement",
+    "en": "Test: the warning"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis appuyez sur BTN1 (cliquez dessus dans la scène) : pendant 3 s, LED1 clignote et la sonnerie bipe ; puis la porte se ferme doucement, toujours en bipant.",
+    "en": "Click “Observe”, then press BTN1 (click it in the scene): for 3 s, LED1 flashes and the bell beeps; then the door closes slowly, still beeping."
+   },
+   "hint": {
+    "fr": "Rien ne se passe ? Vérifiez que D2 est en `INPUT_PULLUP` et que l’appui se teste avec `== LOW`. La sonnerie reste muette alors que LED1 clignote ? Revoyez le câblage du transistor.",
+    "en": "Nothing happens? Check that D2 is set to `INPUT_PULLUP` and that the press is tested with `== LOW`. The bell stays silent while LED1 flashes? Go over the transistor wiring again."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "BZ1": "on",
+     "LED1": "on"
+    },
+    "hold": 200
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : porte fermée",
+    "en": "Test: door closed"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et laissez la porte finir de se fermer (appuyez de nouveau sur BTN1 si elle est restée ouverte) : à 0°, les bips s’arrêtent et LED2 s’allume.",
+    "en": "Click “Observe” and let the door finish closing (press BTN1 again if it stayed open): at 0°, the beeps stop and LED2 lights up."
+   },
+   "hint": {
+    "fr": "La fermeture dure 90 pas de 20 ms, soit 1,8 s. LED2 ne s’allume pas ? Vérifiez que l’état « fermée » est bien atteint quand l’angle arrive à 0.",
+    "en": "The closing takes 90 steps of 20 ms, i.e. 1.8 s. LED2 does not light up? Check that the “closed” state is really reached when the angle gets to 0."
+   },
+   "check": {
+    "type": "watch",
+    "expect": {
+     "LED2": "on"
+    },
+    "hold": 500
+   }
+  },
+  {
+   "title": {
+    "fr": "L’instant de l’appui",
+    "en": "The moment of the press"
+   },
+   "text": {
+    "fr": "Le programme ne réagit pas à « bouton enfoncé » (`appui`), mais à « bouton qui **vient** d’être enfoncé » (`appui && !appuiAvant`). Pourquoi ?",
+    "en": "The program does not react to “button pressed” (`appui`), but to “button **just** pressed” (`appui && !appuiAvant`). Why?"
+   },
+   "hint": {
+    "fr": "loop() tourne des milliers de fois par seconde. Avec `appui` seul, un doigt resté sur le bouton rouvrirait la porte dès qu’elle est fermée, puis relancerait l’alerte, et ainsi de suite. On détecte le **front** : le passage de « relâché » à « appuyé ».",
+    "en": "loop() runs thousands of times per second. With `appui` alone, a finger left on the button would open the door as soon as it is closed, then start the warning again, and so on. We detect the **edge**: the change from “released” to “pressed”."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Pour que le bouton s’use moins vite",
+      "en": "So that the button wears out more slowly"
+     },
+     {
+      "fr": "Parce que digitalRead() ne lit le bouton qu’un tour sur deux",
+      "en": "Because digitalRead() only reads the button every other pass"
+     },
+     {
+      "fr": "Pour ne réagir qu’une fois par appui : bouton maintenu, la porte ne doit pas se rouvrir ni relancer l’alerte à chaque tour de loop()",
+      "en": "To react only once per press: with the button held down, the door must not reopen or restart the warning on every pass of loop()"
+     },
+     {
+      "fr": "Pour économiser la mémoire de la carte",
+      "en": "To save the board’s memory"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "La sécurité : personne dans la porte",
+    "en": "Safety: nobody in the doorway"
+   },
+   "text": {
+    "fr": "Ajoutez la lecture du capteur OBS1 (`pinMode(4, INPUT)` ; `digitalRead(4) == LOW` : quelqu’un est dans la porte) :\n- porte **ouverte** : un appui sur BTN1 ne lance rien tant que quelqu’un est dans la porte ;\n- pendant l’**alerte**, un obstacle **annule** la fermeture : retour à « ouverte » ;\n- pendant la **fermeture**, un obstacle fait **rouvrir** la porte tout de suite (`porte.write(90)`) et le programme revient à « ouverte ».\nTéléversez.",
+    "en": "Add the reading of the OBS1 sensor (`pinMode(4, INPUT)`; `digitalRead(4) == LOW`: someone is in the doorway):\n- door **open**: pressing BTN1 starts nothing as long as someone is in the doorway;\n- during the **warning**, an obstacle **cancels** the closing: back to “open”;\n- during the **closing**, an obstacle makes the door **reopen** straight away (`porte.write(90)`) and the program goes back to “open”.\nUpload."
+   },
+   "keep": {
+    "fr": "Face à un obstacle, la porte se **rouvre en entier** : s’arrêter à mi-course laisserait la personne coincée.",
+    "en": "Facing an obstacle, the door **reopens fully**: stopping halfway would leave the person trapped."
+   },
+   "hint": {
+    "fr": "Une fonction `ouvrir()` qui fait `angle = 90; porte.write(angle); etat = OUVERTE;` sert dans les trois cas, et aussi dans setup().",
+    "en": "An `ouvrir()` function that does `angle = 90; porte.write(angle); etat = OUVERTE;` serves in all three cases, and in setup() too."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "digitalRead\\s*\\([\\s\\S]*digitalRead\\s*\\(",
+     "pinMode\\s*\\([^)]*INPUT",
+     "==\\s*LOW|LOW\\s*=="
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : quelqu’un dans la porte",
+    "en": "Test: someone in the doorway"
+   },
+   "text": {
+    "fr": "Lancez la simulation et appuyez sur BTN1. Pendant que la porte se ferme, réglez la **Distance de l’obstacle** à **10 cm** (onglet « Simulation », section **Environnement**) : quelqu’un passe dans la porte. Que se passe-t-il ?",
+    "en": "Start the simulation and press BTN1. While the door is closing, set the **Obstacle distance** to **10 cm** (“Simulation” tab, **Environment** section): someone walks through the door. What happens?"
+   },
+   "hint": {
+    "fr": "Rouvrir complètement, plutôt que s’arrêter à mi-course, libère la personne. Remettez la distance à 100 cm : la porte attend un nouvel appui, qui relance l’avertissement depuis le début.",
+    "en": "Opening fully, rather than stopping halfway, frees the person. Set the distance back to 100 cm: the door waits for a new press, which starts the warning again from the beginning."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La porte finit de se fermer, puis LED2 s’allume",
+      "en": "The door finishes closing, then LED2 lights up"
+     },
+     {
+      "fr": "La porte s’arrête à mi-course et y reste bloquée",
+      "en": "The door stops halfway and stays stuck there"
+     },
+     {
+      "fr": "La carte redémarre",
+      "en": "The board restarts"
+     },
+     {
+      "fr": "La porte se rouvre aussitôt et les bips s’arrêtent ; LED2 reste éteinte et il faut appuyer de nouveau sur BTN1, une fois la porte dégagée",
+      "en": "The door reopens straight away and the beeps stop; LED2 stays off and BTN1 must be pressed again, once the doorway is clear"
+     }
+    ],
+    "answer": 3
+   }
+  }
+ ]
+}

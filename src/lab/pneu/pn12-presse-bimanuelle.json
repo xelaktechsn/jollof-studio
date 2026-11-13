@@ -1,0 +1,938 @@
+{
+ "id": "pn12-presse-bimanuelle",
+ "level": "pro",
+ "minutes": 60,
+ "title": {
+  "fr": "Presse de marquage : commande bimanuelle par une carte",
+  "en": "Marking press: two-hand control by a board"
+ },
+ "summary": {
+  "fr": "Une presse pneumatique d’établi frappe un repère sur des pièces. Elle ne descend que si l’opérateur appuie sur deux boutons à moins de 0,5 s l’un de l’autre et les garde appuyés ; une main relâchée, la tige remonte. On calcule la force de frappe, F = p × S, et on programme la commande avec millis().",
+  "en": "A bench-top pneumatic press stamps a mark on parts. It only comes down if the operator presses two buttons less than 0.5 s apart and keeps them pressed; one hand released, the rod goes back up. You compute the stamping force, F = p × A, and program the control with millis()."
+ },
+ "objectives": [
+  {
+   "fr": "Calculer la force d’un vérin : F = p × S",
+   "en": "Compute a cylinder’s force: F = p × A"
+  },
+  {
+   "fr": "Programmer une commande bimanuelle : appuis simultanés (0,5 s), maintien, relâchement",
+   "en": "Program a two-hand control: simultaneous presses (0.5 s), hold, release"
+  },
+  {
+   "fr": "Savoir pourquoi une vraie fonction de sécurité est confiée à un module certifié",
+   "en": "Know why a real safety function is entrusted to a certified module"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "**F = p × S**, avec p en Pa (1 bar = 10⁵ Pa) et S = π × d² ÷ 4 en m² : 6 bar sur un piston de 50 mm donnent environ 1 180 N.",
+   "en": "**F = p × A**, with p in Pa (1 bar = 10⁵ Pa) and A = π × d² ÷ 4 in m²: 6 bar on a 50 mm piston give about 1,180 N."
+  },
+  {
+   "fr": "Commande bimanuelle (principe de la norme EN ISO 13851) : deux appuis à moins de **0,5 s** l’un de l’autre, mouvement seulement **tant que** les deux boutons sont tenus, **relâchement des deux** avant un nouveau cycle.",
+   "en": "Two-hand control (principle of standard EN ISO 13851): two presses less than **0.5 s** apart, movement only **while** both buttons are held, **both released** before a new cycle."
+  },
+  {
+   "fr": "Pour comparer deux instants, on note `millis()` au front montant de chaque bouton et on calcule l’écart.",
+   "en": "To compare two moments, note `millis()` on the rising edge of each button and compute the gap."
+  },
+  {
+   "fr": "Distributeur monostable : bouton relâché ou courant coupé, le ressort ramène le tiroir et le poinçon remonte.",
+   "en": "Monostable valve: button released or power cut, the spring returns the spool and the punch goes back up."
+  },
+  {
+   "fr": "Un programme ordinaire montre le principe ; sur une vraie machine, la fonction de sécurité est assurée par un module de sécurité certifié.",
+   "en": "An ordinary program shows the principle; on a real machine the safety function is provided by a certified safety module."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Presse de marquage à commande bimanuelle",
+  "comps": [
+   {
+    "id": "uno_x0s357",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 34,
+    "r": 0
+   },
+   {
+    "id": "button_iymob7",
+    "type": "button",
+    "name": "BTN1",
+    "x": -22,
+    "z": -4,
+    "r": 0
+   },
+   {
+    "id": "button_k0jtja",
+    "type": "button",
+    "name": "BTN2",
+    "x": 8,
+    "z": -13,
+    "r": 0
+   },
+   {
+    "id": "coil24_rvff0k",
+    "type": "coil24",
+    "name": "Y1",
+    "x": 55,
+    "z": 35,
+    "r": 0
+   },
+   {
+    "id": "cylsensor_q0wffs",
+    "type": "cylsensor",
+    "name": "B2",
+    "x": 45,
+    "z": 73,
+    "r": 0
+   },
+   {
+    "id": "led-green_uz3owu",
+    "type": "led-green",
+    "name": "LED1",
+    "x": 9,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "led-red_a3oh0f",
+    "type": "led-red",
+    "name": "LED2",
+    "x": -36,
+    "z": 92,
+    "r": 0
+   },
+   {
+    "id": "breadboard_w9nndy",
+    "type": "breadboard",
+    "name": "BB1",
+    "x": 4,
+    "z": 133,
+    "r": 0
+   },
+   {
+    "id": "psu24_e3rcnx",
+    "type": "psu24",
+    "name": "PS1",
+    "x": 84,
+    "z": 37,
+    "r": 0
+   },
+   {
+    "id": "pn2222_yuc9l7",
+    "type": "pn2222",
+    "name": "Q1",
+    "x": 72,
+    "z": 69,
+    "r": 0
+   },
+   {
+    "id": "res-1k_qeao7n",
+    "type": "res-1k",
+    "name": "R1",
+    "x": 7,
+    "z": 79,
+    "r": 0
+   },
+   {
+    "id": "diode_lb1041",
+    "type": "diode",
+    "name": "D1",
+    "x": 50,
+    "z": -23,
+    "r": 0
+   },
+   {
+    "id": "res-220_7t5q2x",
+    "type": "res-220",
+    "name": "R2",
+    "x": -8,
+    "z": 97,
+    "r": 0
+   },
+   {
+    "id": "res-220_vuq2fn",
+    "type": "res-220",
+    "name": "R3",
+    "x": -23,
+    "z": 72,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "epneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "c1",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "1A",
+         "time": 0.8,
+         "s1": "B2",
+         "bore": 50,
+         "rod": 20,
+         "stroke": 50
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": 6,
+        "y": 7,
+        "p": {
+         "open": 60,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 16,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 26,
+        "p": {
+         "bar": 6
+        }
+       }
+      ],
+      "tubes": [],
+      "scene": {
+       "kind": "press",
+       "cyl": "1A",
+       "left": "BTN1",
+       "right": "BTN2"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [
+   {
+    "id": "w1",
+    "a": [
+     "button_iymob7",
+     "2"
+    ],
+    "b": [
+     "uno_x0s357",
+     "GND"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w2",
+    "a": [
+     "button_iymob7",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D7"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w3",
+    "a": [
+     "button_k0jtja",
+     "2"
+    ],
+    "b": [
+     "uno_x0s357",
+     "GND (3)"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w4",
+    "a": [
+     "button_k0jtja",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D8"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w5",
+    "a": [
+     "uno_x0s357",
+     "GND (2)"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-12"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse vers la breadboard"
+   },
+   {
+    "id": "w6",
+    "a": [
+     "psu24_e3rcnx",
+     "-"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-25"
+    ],
+    "color": "#3a3f45",
+    "role": "0 V de l’alimentation 24 V à la masse commune"
+   },
+   {
+    "id": "w7",
+    "a": [
+     "psu24_e3rcnx",
+     "+"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "A30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V vers la breadboard"
+   },
+   {
+    "id": "w8",
+    "a": [
+     "coil24_rvff0k",
+     "+"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "B30"
+    ],
+    "color": "#e5484d",
+    "role": "Alimentation 24 V"
+   },
+   {
+    "id": "w9",
+    "a": [
+     "diode_lb1041",
+     "K"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "C30"
+    ],
+    "color": "#e5484d",
+    "role": "Cathode de la diode de roue libre au +"
+   },
+   {
+    "id": "w10",
+    "a": [
+     "coil24_rvff0k",
+     "-"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "A29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w11",
+    "a": [
+     "pn2222_yuc9l7",
+     "C"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "B29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w12",
+    "a": [
+     "diode_lb1041",
+     "A"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "C29"
+    ],
+    "color": "#f08a3c",
+    "role": "Borne −, collecteur et anode de la diode"
+   },
+   {
+    "id": "w13",
+    "a": [
+     "pn2222_yuc9l7",
+     "E"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-24"
+    ],
+    "color": "#3a3f45",
+    "role": "Émetteur à la masse"
+   },
+   {
+    "id": "w14",
+    "a": [
+     "pn2222_yuc9l7",
+     "B"
+    ],
+    "b": [
+     "res-1k_qeao7n",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance de base"
+   },
+   {
+    "id": "w15",
+    "a": [
+     "res-1k_qeao7n",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D2"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande du transistor"
+   },
+   {
+    "id": "w16",
+    "a": [
+     "cylsensor_q0wffs",
+     "2"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-23"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w17",
+    "a": [
+     "cylsensor_q0wffs",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D3"
+    ],
+    "color": "#f2c94c",
+    "role": "Entrée"
+   },
+   {
+    "id": "w18",
+    "a": [
+     "led-green_uz3owu",
+     "K"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-15"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w19",
+    "a": [
+     "led-green_uz3owu",
+     "A"
+    ],
+    "b": [
+     "res-220_7t5q2x",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w20",
+    "a": [
+     "res-220_7t5q2x",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D6"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   },
+   {
+    "id": "w21",
+    "a": [
+     "led-red_a3oh0f",
+     "K"
+    ],
+    "b": [
+     "breadboard_w9nndy",
+     "T-1"
+    ],
+    "color": "#3a3f45",
+    "role": "Masse"
+   },
+   {
+    "id": "w22",
+    "a": [
+     "led-red_a3oh0f",
+     "A"
+    ],
+    "b": [
+     "res-220_vuq2fn",
+     "2"
+    ],
+    "color": "#f08a3c",
+    "role": "Résistance série (Anode)"
+   },
+   {
+    "id": "w23",
+    "a": [
+     "res-220_vuq2fn",
+     "1"
+    ],
+    "b": [
+     "uno_x0s357",
+     "D9"
+    ],
+    "color": "#f2c94c",
+    "role": "Commande"
+   }
+  ],
+  "code": {
+   "UNO": "// TP : presse de marquage à commande bimanuelle.\n// La presse ne descend que si les deux boutons sont appuyés à moins de 0,5 s l'un de l'autre,\n// et seulement tant que les deux restent appuyés. Une main relâchée : la tige remonte.\nconst int MAIN_GAUCHE = 7;    // BTN1, lu avec INPUT_PULLUP\nconst int MAIN_DROITE = 8;    // BTN2, lu avec INPUT_PULLUP\nconst int CAPTEUR_B2 = 3;     // B2 : fermé en fin de course (tige sortie, marquage fait)\nconst int BOBINE = 2;         // base du transistor Q1 (par R1) qui commande la bobine Y1\nconst int VOYANT_FAIT = 6;    // LED1 verte : marquage fait\nconst int VOYANT_DEFAUT = 9;  // LED2 rouge : appuis trop écartés, relâchez les deux boutons\nconst unsigned long ECART_MAX = 500; // ms entre les deux appuis\n\nbool gAvant = false;          // état des boutons au tour précédent\nbool dAvant = false;\nunsigned long tGauche = 0;    // instant du dernier appui de chaque main\nunsigned long tDroite = 0;\nbool autorise = false;        // descente autorisée\nbool defaut = false;          // appuis non simultanés\n\nvoid setup() {\n  pinMode(MAIN_GAUCHE, INPUT_PULLUP);\n  pinMode(MAIN_DROITE, INPUT_PULLUP);\n  pinMode(CAPTEUR_B2, INPUT_PULLUP);\n  pinMode(BOBINE, OUTPUT);\n  pinMode(VOYANT_FAIT, OUTPUT);\n  pinMode(VOYANT_DEFAUT, OUTPUT);\n}\n\nvoid loop() {\n  bool g = digitalRead(MAIN_GAUCHE) == LOW;\n  bool d = digitalRead(MAIN_DROITE) == LOW;\n  unsigned long t = millis();\n  if (g && !gAvant) { tGauche = t; }   // front montant de chaque bouton\n  if (d && !dAvant) { tDroite = t; }\n  // Le second bouton vient d'être appuyé : on compare les deux instants.\n  if (g && d && !(gAvant && dAvant)) {\n    unsigned long ecart = 0;\n    if (tGauche > tDroite) { ecart = tGauche - tDroite; } else { ecart = tDroite - tGauche; }\n    if (ecart <= ECART_MAX) { autorise = true; } else { defaut = true; }\n  }\n  if (!g || !d) { autorise = false; }  // une main relâchée : retour immédiat\n  if (!g && !d) { defaut = false; }    // les deux relâchés : prêt pour un nouveau cycle\n  digitalWrite(BOBINE, autorise ? HIGH : LOW);\n  digitalWrite(VOYANT_FAIT, digitalRead(CAPTEUR_B2) == LOW ? HIGH : LOW);\n  digitalWrite(VOYANT_DEFAUT, defaut ? HIGH : LOW);\n  gAvant = g;\n  dAvant = d;\n  delay(5);\n}"
+  },
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "c1",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "fc",
+      "1"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "fc",
+      "2"
+     ],
+     "b": [
+      "c1",
+      "2"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La presse de marquage",
+    "en": "The marking press"
+   },
+   "text": {
+    "fr": "Une **presse de marquage** frappe un numéro ou un logo sur une pièce : le vérin **1A** descend le poinçon. Les mains de l’opérateur ne doivent jamais se trouver dessous : la presse se commande à **deux mains**, sur deux boutons éloignés l’un de l’autre.\n- **BTN1** et **BTN2** : les deux boutons du pupitre ;\n- **Y1** : l’électrovanne 24 V du distributeur 5/2 monostable **1V1**, alimentée par **PS1** et commandée par le transistor **Q1** ;\n- **1A** : le vérin double effet, de 50 mm d’alésage ; le réducteur **1V2** règle la vitesse de descente ;\n- **B2** : le capteur de fin de course (poinçon en bas) ; **LED1** (verte) : marquage fait ;\n- **LED2** (rouge) : appuis trop écartés, il faut relâcher les deux boutons.\nLa vue **3D** (bouton « 3D » du plan pneumatique) montre la presse et son pupitre : un clic sur un bouton le garde appuyé, un autre clic le relâche.",
+    "en": "A **marking press** stamps a number or a logo on a part: cylinder **1A** brings the punch down. The operator’s hands must never be under it: the press is operated with **both hands**, on two buttons set apart.\n- **BTN1** and **BTN2**: the two console buttons;\n- **Y1**: the 24 V solenoid of monostable 5/2 valve **1V1**, powered by **PS1** and driven by transistor **Q1**;\n- **1A**: the double-acting cylinder, 50 mm bore; flow control **1V2** sets the descent speed;\n- **B2**: the end-of-stroke sensor (punch down); **LED1** (green): marking done;\n- **LED2** (red): presses too far apart, both buttons must be released.\nThe **3D** view (“3D” button of the pneumatic workspace) shows the press and its console: one click on a button keeps it pressed, another click releases it."
+   }
+  },
+  {
+   "title": {
+    "fr": "La force de frappe",
+    "en": "The stamping force"
+   },
+   "text": {
+    "fr": "Le vérin 1A a un piston de **50 mm** de diamètre et le réseau donne **6 bar**. Quelle force pousse le poinçon (F = p × S) ?",
+    "en": "Cylinder 1A has a **50 mm** diameter piston and the network gives **6 bar**. What force pushes the punch (F = p × A)?"
+   },
+   "hint": {
+    "fr": "S = π × r² = π × 0,025² ≈ 1,96 × 10⁻³ m² : le rayon est la moitié du diamètre. F = 6 × 10⁵ Pa × 1,96 × 10⁻³ m² ≈ 1 178 N, le poids d’environ 120 kg. Au retour, la tige de 20 mm réduit la surface : environ 990 N.",
+    "en": "A = π × r² = π × 0.025² ≈ 1.96 × 10⁻³ m²: the radius is half the diameter. F = 6 × 10⁵ Pa × 1.96 × 10⁻³ m² ≈ 1,178 N, the weight of about 120 kg. On the return, the 20 mm rod reduces the area: about 990 N."
+   },
+   "keep": {
+    "fr": "**F = p × S** : p en pascals (1 bar = 10⁵ Pa), S = π × d² ÷ 4 en m², F en newtons. Attention : la formule utilise le rayon ou le diamètre, pas l’un pour l’autre.",
+    "en": "**F = p × A**: p in pascals (1 bar = 10⁵ Pa), A = π × d² ÷ 4 in m², F in newtons. Careful: the formula uses the radius or the diameter, not one for the other."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Environ 118 N",
+      "en": "About 118 N"
+     },
+     {
+      "fr": "Environ 4 712 N",
+      "en": "About 4,712 N"
+     },
+     {
+      "fr": "Environ 1 178 N",
+      "en": "About 1,178 N"
+     },
+     {
+      "fr": "6 N, comme la pression",
+      "en": "6 N, like the pressure"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "L’étage de commande de Y1",
+    "en": "The Y1 driver stage"
+   },
+   "text": {
+    "fr": "La bobine **Y1** (24 V) est commandée par le transistor **Q1**, avec sa diode de roue libre **D1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
+    "en": "Coil **Y1** (24 V) is driven by transistor **Q1**, with its flyback diode **D1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
+   },
+   "hint": {
+    "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",
+    "en": "A pin takes only one wire: to join three pins (Y1 +, PS1 +, D1 K), go through a breadboard row. Diode D1 protects Q1 from the voltage spike the coil sends back when switched off."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "Y1.+",
+      "PS1.+",
+      "D1.K"
+     ],
+     [
+      "Y1.-",
+      "Q1.C",
+      "D1.A"
+     ],
+     [
+      "Q1.E",
+      "UNO.GND*"
+     ],
+     [
+      "PS1.-",
+      "UNO.GND*"
+     ],
+     [
+      "Q1.B",
+      "R1.1|R1.2"
+     ],
+     [
+      "UNO.D2",
+      "R1.1|R1.2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les boutons, le capteur et les voyants",
+    "en": "The buttons, the sensor and the lamps"
+   },
+   "text": {
+    "fr": "Reliez les trois contacts, chacun entre une broche et la masse : **BTN1** sur **D7**, **BTN2** sur **D8**, le capteur **B2** sur **D3**.\nPuis les voyants, chacun avec sa résistance de 220 Ω : **D6** → **R2** → anode **A** de **LED1** (verte) ; **D9** → **R3** → anode **A** de **LED2** (rouge) ; les cathodes **K** à la masse.",
+    "en": "Connect the three contacts, each between a pin and ground: **BTN1** on **D7**, **BTN2** on **D8**, sensor **B2** on **D3**.\nThen the lamps, each with its 220 Ω resistor: **D6** → **R2** → anode **A** of **LED1** (green); **D9** → **R3** → anode **A** of **LED2** (red); cathodes **K** to ground."
+   },
+   "hint": {
+    "fr": "Aucune résistance pour les contacts : le programme activera la résistance de tirage interne (`INPUT_PULLUP`). Contact ouvert, la broche lit HIGH ; contact fermé, elle lit LOW.",
+    "en": "No resistor for the contacts: the program will enable the internal pull-up (`INPUT_PULLUP`). Contact open, the pin reads HIGH; contact closed, it reads LOW."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.D7"
+     ],
+     [
+      "BTN1.1|BTN1.2",
+      "UNO.GND*"
+     ],
+     [
+      "BTN2.1|BTN2.2",
+      "UNO.D8"
+     ],
+     [
+      "BTN2.1|BTN2.2",
+      "UNO.GND*"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.D3"
+     ],
+     [
+      "B2.1|B2.2",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D6",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.A",
+      "R2.1|R2.2"
+     ],
+     [
+      "LED1.K",
+      "UNO.GND*"
+     ],
+     [
+      "UNO.D9",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.A",
+      "R3.1|R3.2"
+     ],
+     [
+      "LED2.K",
+      "UNO.GND*"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Passez au plan **Pneumatique** et tirez les tuyaux :\n- source d’air → orifice **1** du distributeur **1V1** ;\n- orifice **4** de 1V1 → chambre arrière du vérin (orifice **1**) ;\n- orifice **2** de 1V1 → orifice **1** du réducteur **1V2** ; orifice **2** du réducteur → chambre avant du vérin (orifice **2**).\nLes orifices **3** et **5** restent libres : ce sont les échappements.",
+    "en": "Switch to the **Pneumatics** workspace and draw the tubes:\n- air supply → port **1** of valve **1V1**;\n- port **4** of 1V1 → cylinder rear chamber (port **1**);\n- port **2** of 1V1 → port **1** of flow control **1V2**; port **2** of the flow control → cylinder front chamber (port **2**).\nPorts **3** and **5** stay free: they are the exhausts."
+   },
+   "hint": {
+    "fr": "Un tuyau se tire en partant d’un orifice (petit rond) et en relâchant sur un autre. Un orifice peut recevoir plusieurs tuyaux. Un clic sur un tuyau le sélectionne, Suppr le retire.",
+    "en": "Draw a tube by starting on a port (small circle) and releasing on another. A port can take several tubes. Click a tube to select it, Delete removes it."
+   },
+   "keep": {
+    "fr": "Avec un distributeur **monostable**, couper Y1 suffit pour que le poinçon remonte : c’est le ressort du distributeur qui le décide, même si le courant disparaît.",
+    "en": "With a **monostable** valve, switching Y1 off is enough for the punch to go back up: the valve’s spring decides it, even if the power disappears."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "c1:1"
+     ],
+     [
+      "v1:2",
+      "fc:1"
+     ],
+     [
+      "fc:2",
+      "c1:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Dans l’onglet « Code », écrivez la commande bimanuelle. Le temps se mesure avec `millis()`, le nombre de millisecondes écoulées depuis le démarrage :\n- setup() : D7 (BTN1), D8 (BTN2) et D3 (B2) en `INPUT_PULLUP` ; D2, D6 et D9 en sortie ;\n- à chaque tour de loop(), lisez les deux boutons (`g`, `d`) et gardez leur état du tour précédent (`gAvant`, `dAvant`) ;\n- au **front montant** de chaque bouton, notez l’instant : `tGauche = millis();` ou `tDroite = millis();` ;\n- à l’instant où les deux boutons deviennent appuyés, calculez l’écart entre `tGauche` et `tDroite` : s’il vaut **500 ms au plus**, `autorise = true;`, sinon `defaut = true;` ;\n- dès qu’un bouton est relâché : `autorise = false;` ; quand les deux sont relâchés : `defaut = false;` ;\n- sorties : la bobine (D2) suit `autorise` ; LED1 (D6) s’allume quand B2 est fermé ; LED2 (D9) suit `defaut`.\nCliquez sur « Téléverser ».",
+    "en": "In the “Code” tab, write the two-hand control. Time is measured with `millis()`, the number of milliseconds since start-up:\n- setup(): D7 (BTN1), D8 (BTN2) and D3 (B2) as `INPUT_PULLUP`; D2, D6 and D9 as outputs;\n- on every loop, read both buttons (`g`, `d`) and keep their state from the previous loop (`gAvant`, `dAvant`);\n- on the **rising edge** of each button, note the time: `tGauche = millis();` or `tDroite = millis();`;\n- at the moment both buttons become pressed, compute the gap between `tGauche` and `tDroite`: if it is **500 ms at most**, `autorise = true;`, otherwise `defaut = true;`;\n- as soon as one button is released: `autorise = false;`; when both are released: `defaut = false;`;\n- outputs: the coil (D2) follows `autorise`; LED1 (D6) lights when B2 is closed; LED2 (D9) follows `defaut`.\nClick “Upload”."
+   },
+   "hint": {
+    "fr": "Les instants sont des `unsigned long`. L’écart : `if (tGauche > tDroite) { ecart = tGauche - tDroite; } else { ecart = tDroite - tGauche; }`. L’instant où les deux deviennent appuyés : `g && d && !(gAvant && dAvant)`.",
+    "en": "Times are `unsigned long`. The gap: `if (tGauche > tDroite) { ecart = tGauche - tDroite; } else { ecart = tDroite - tGauche; }`. The moment both become pressed: `g && d && !(gAvant && dAvant)`."
+   },
+   "keep": {
+    "fr": "Trois règles : appuis à moins de **0,5 s** l’un de l’autre, mouvement seulement **tant que** les deux boutons sont tenus, **relâchement des deux** avant un nouveau cycle.",
+    "en": "Three rules: presses less than **0.5 s** apart, movement only **while** both buttons are held, **both released** before a new cycle."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "INPUT_PULLUP",
+     "millis\\s*\\(\\s*\\)",
+     "\\b500\\b",
+     "digitalWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : une seule main",
+    "en": "Test: one hand"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », appuyez sur **BTN1** seul et gardez-le appuyé une seconde : dans l’onglet Simulation, Maj + clic sur « Appuyer sur le bouton » le verrouille ; dans la vue 3D, un clic suffit. La presse ne doit pas bouger.",
+    "en": "Click “Observe”, press **BTN1** alone and keep it pressed for a second: in the Simulation tab, Shift + click on “Press the button” latches it; in the 3D view, one click is enough. The press must not move."
+   },
+   "hint": {
+    "fr": "La presse descend avec un seul bouton ? La bobine ne doit suivre que `autorise`, qui exige les deux boutons.",
+    "en": "The press comes down with one button? The coil must only follow `autorise`, which requires both buttons."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed",
+     "BTN2": "released"
+    },
+    "expect": {
+     "Y1": "off",
+     "c1": "in"
+    },
+    "hold": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : trop tard",
+    "en": "Test: too late"
+   },
+   "text": {
+    "fr": "BTN1 toujours appuyé depuis plus d’une seconde, cliquez sur « Observer » et appuyez aussi sur **BTN2** : l’écart dépasse 0,5 s. La presse reste en haut et **LED2** s’allume. C’est ce qui arrive à qui bloque un bouton avec du ruban adhésif pour travailler d’une seule main.",
+    "en": "With BTN1 still pressed for more than a second, click “Observe” and press **BTN2** too: the gap exceeds 0.5 s. The press stays up and **LED2** lights. This is what happens to someone who tapes a button down to work with one hand."
+   },
+   "hint": {
+    "fr": "La presse descend quand même ? Vérifiez la comparaison de l’écart avec 500 ms, et que les instants sont notés au front montant (`g && !gAvant`), pas à chaque tour.",
+    "en": "The press comes down anyway? Check the comparison of the gap with 500 ms, and that times are noted on the rising edge (`g && !gAvant`), not on every loop."
+   },
+   "keep": {
+    "fr": "Le délai de 0,5 s empêche de **neutraliser** un bouton : un bouton bloqué en permanence ne donne plus jamais l’autorisation.",
+    "en": "The 0.5 s limit prevents **defeating** a button: a button held down permanently never gives the authorisation again."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed",
+     "BTN2": "pressed"
+    },
+    "expect": {
+     "Y1": "off",
+     "c1": "in",
+     "LED2": "on"
+    },
+    "hold": 800
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : les deux mains ensemble",
+    "en": "Test: both hands together"
+   },
+   "text": {
+    "fr": "Relâchez les deux boutons (LED2 s’éteint). Cliquez sur « Observer », puis appuyez sur **BTN1** et **BTN2** presque en même temps et tenez-les : la presse descend, **B2** se ferme en fin de course, **LED1** s’allume. Relâchez ensuite un seul bouton : la tige remonte aussitôt.",
+    "en": "Release both buttons (LED2 goes off). Click “Observe”, then press **BTN1** and **BTN2** almost at the same time and hold them: the press comes down, **B2** closes at the end of the stroke, **LED1** lights. Then release just one button: the rod goes back up at once."
+   },
+   "hint": {
+    "fr": "À la souris : dans l’onglet Simulation, Maj + clic sur le premier bouton, puis clic maintenu tout de suite sur le second ; ou deux clics rapprochés sur le pupitre de la vue 3D. LED2 s’allume ? Trop lent : relâchez tout et recommencez.",
+    "en": "With the mouse: in the Simulation tab, Shift + click on the first button, then hold a click on the second one right away; or two quick clicks on the console in the 3D view. LED2 lights? Too slow: release everything and try again."
+   },
+   "check": {
+    "type": "watch",
+    "when": {
+     "BTN1": "pressed",
+     "BTN2": "pressed"
+    },
+    "expect": {
+     "Y1": "on",
+     "c1": "out",
+     "LED1": "on"
+    },
+    "hold": 400
+   }
+  },
+  {
+   "title": {
+    "fr": "Et sur une vraie presse ?",
+    "en": "And on a real press?"
+   },
+   "text": {
+    "fr": "Votre programme applique le principe des commandes bimanuelles décrit par la norme EN ISO 13851. Peut-on installer cette carte telle quelle sur une vraie presse ?",
+    "en": "Your program applies the principle of two-hand control devices described by standard EN ISO 13851. Can this board be fitted as it is on a real press?"
+   },
+   "hint": {
+    "fr": "Si la sortie de la carte reste collée à l’état haut, ou si le programme se bloque, la presse descend sans les deux mains. Un module de sécurité bimanuel lit chaque bouton sur deux contacts, se surveille lui-même et coupe l’énergie au moindre désaccord. La carte, elle, peut gérer le reste : comptage des pièces, voyants, cadence.",
+    "en": "If the board output sticks high, or if the program hangs, the press comes down without both hands. A two-hand safety module reads each button on two contacts, monitors itself and cuts the energy at the slightest disagreement. The board can handle the rest: part counting, lamps, pace."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Oui, puisque le programme respecte les trois règles",
+      "en": "Yes, since the program follows the three rules"
+     },
+     {
+      "fr": "Oui, à condition d’ajouter un bouton d’arrêt d’urgence",
+      "en": "Yes, provided an emergency stop button is added"
+     },
+     {
+      "fr": "Non : la fonction de sécurité doit continuer à protéger même si un composant tombe en panne ; on la confie à un module de sécurité certifié, à deux canaux surveillés",
+      "en": "No: the safety function must keep protecting even if a component fails; it is entrusted to a certified safety module with two monitored channels"
+     },
+     {
+      "fr": "Non : une carte Arduino est trop lente pour mesurer 0,5 s",
+      "en": "No: an Arduino board is too slow to measure 0.5 s"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ],
+ "workspace": "elec"
+}

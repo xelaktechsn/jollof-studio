@@ -1,0 +1,709 @@
+{
+ "id": "lg08-bascule-rs",
+ "domain": "logic",
+ "level": "lycee",
+ "minutes": 30,
+ "title": {
+  "fr": "La bascule RS : une mémoire d’un bit",
+  "en": "The RS latch: a one-bit memory"
+ },
+ "summary": {
+  "fr": "Construire un verrou RS avec deux portes NON-OU, découvrir la mise à 1, la remise à 0 et la mémoire, comprendre l’état interdit, puis réaliser une alarme qui reste déclenchée après une intrusion brève.",
+  "en": "Build an RS latch from two NOR gates, discover set, reset and memory, understand the forbidden state, then make an alarm that stays on after a brief intrusion."
+ },
+ "objectives": [
+  {
+   "fr": "Expliquer comment un rebouclage crée une mémoire",
+   "en": "Explain how a feedback loop creates a memory"
+  },
+  {
+   "fr": "Lire et compléter la table d’un verrou RS",
+   "en": "Read and complete the table of an RS latch"
+  },
+  {
+   "fr": "Utiliser un verrou RS dans une application : une alarme",
+   "en": "Use an RS latch in an application: an alarm"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "R : remise à 0 — S : mise à 1"
+     }
+    },
+    {
+     "id": "sR",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "R"
+     }
+    },
+    {
+     "id": "sS",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "S"
+     }
+    },
+    {
+     "id": "lQ",
+     "type": "led",
+     "x": 36,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQN",
+     "type": "led",
+     "x": 36,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "QN",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 36,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "text": "Alarme : C = capteur de porte"
+     }
+    },
+    {
+     "id": "bC",
+     "type": "button",
+     "x": 4,
+     "y": 29,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "bRAZ",
+     "type": "button",
+     "x": 4,
+     "y": 33,
+     "r": 0,
+     "p": {
+      "label": "RAZ"
+     }
+    },
+    {
+     "id": "lAL",
+     "type": "led",
+     "x": 36,
+     "y": 29,
+     "r": 0,
+     "p": {
+      "label": "AL",
+      "color": "red"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "R : remise à 0 — S : mise à 1"
+     }
+    },
+    {
+     "id": "sR",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "R"
+     }
+    },
+    {
+     "id": "sS",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "S"
+     }
+    },
+    {
+     "id": "lQ",
+     "type": "led",
+     "x": 36,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "Q",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQN",
+     "type": "led",
+     "x": 36,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "QN",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 36,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 25,
+     "r": 0,
+     "p": {
+      "text": "Alarme : C = capteur de porte"
+     }
+    },
+    {
+     "id": "bC",
+     "type": "button",
+     "x": 4,
+     "y": 29,
+     "r": 0,
+     "p": {
+      "label": "C"
+     }
+    },
+    {
+     "id": "bRAZ",
+     "type": "button",
+     "x": 4,
+     "y": 33,
+     "r": 0,
+     "p": {
+      "label": "RAZ"
+     }
+    },
+    {
+     "id": "lAL",
+     "type": "led",
+     "x": 36,
+     "y": 29,
+     "r": 0,
+     "p": {
+      "label": "AL",
+      "color": "red"
+     }
+    },
+    {
+     "id": "n1",
+     "type": "nor",
+     "x": 20,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "n2",
+     "type": "nor",
+     "x": 20,
+     "y": 11,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "rs1",
+     "type": "srlatch",
+     "x": 20,
+     "y": 18,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "rs2",
+     "type": "srlatch",
+     "x": 20,
+     "y": 29,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sR",
+      "Q"
+     ],
+     "b": [
+      "n1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "n2",
+      "Y"
+     ],
+     "b": [
+      "n1",
+      "B"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "n1",
+      "Y"
+     ],
+     "b": [
+      "lQ",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "n1",
+      "Y"
+     ],
+     "b": [
+      "n2",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "sS",
+      "Q"
+     ],
+     "b": [
+      "n2",
+      "B"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "n2",
+      "Y"
+     ],
+     "b": [
+      "lQN",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "sS",
+      "Q"
+     ],
+     "b": [
+      "rs1",
+      "S"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "sR",
+      "Q"
+     ],
+     "b": [
+      "rs1",
+      "R"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "rs1",
+      "Q"
+     ],
+     "b": [
+      "lQ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "bC",
+      "Q"
+     ],
+     "b": [
+      "rs2",
+      "S"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "bRAZ",
+      "Q"
+     ],
+     "b": [
+      "rs2",
+      "R"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "rs2",
+      "Q"
+     ],
+     "b": [
+      "lAL",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Une porte qui se souvient ?",
+    "en": "A gate that remembers?"
+   },
+   "text": {
+    "fr": "Jusqu’ici, la sortie d’une porte dépendait seulement de ses entrées du moment : c’est la logique **combinatoire**. Une **bascule** (ou verrou) se souvient de ce qui s’est passé avant : c’est la logique **séquentielle**.\nSur le plan de travail :\n- **S** (de l’anglais Set) : mise à 1 ;\n- **R** (Reset) : remise à 0 ;\n- les LED **Q** (la mémoire) et **QN** (« Q barre », l’inverse de Q).\nPlus bas, la LED **Q2** et le montage de l’alarme serviront dans la suite du TP.",
+    "en": "So far, a gate’s output depended only on its present inputs: that is **combinational** logic. A **latch** (or flip-flop) remembers what happened before: that is **sequential** logic.\nOn the workspace:\n- **S** (Set): sets the memory to 1;\n- **R** (Reset): resets it to 0;\n- LEDs **Q** (the memory) and **QN** (“Q bar”, the inverse of Q).\nFurther down, LED **Q2** and the alarm circuit will be used later in this lab."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Deux portes NON-OU croisées",
+    "en": "Two cross-coupled NOR gates"
+   },
+   "text": {
+    "fr": "Posez deux portes **NON-OU** (Portes logiques) et croisez-les :\n- porte du haut : entrées **R** et sortie de la porte du bas ; sa sortie va à la LED **Q** ;\n- porte du bas : entrées **S** et sortie de la porte du haut ; sa sortie va à la LED **QN**.\nEssayez ensuite : S à 1 puis à 0, R à 1 puis à 0. Que fait Q quand S et R sont revenus à 0 ?",
+    "en": "Place two **NOR** gates (Logic gates) and cross-couple them:\n- top gate: inputs **R** and the output of the bottom gate; its output goes to LED **Q**;\n- bottom gate: inputs **S** and the output of the top gate; its output goes to LED **QN**.\nThen try: S to 1 then 0, R to 1 then 0. What does Q do once S and R are both back at 0?"
+   },
+   "hint": {
+    "fr": "Une porte NON-OU donne 1 seulement si ses deux entrées valent 0. C’est le fil qui revient de la sortie d’une porte vers l’entrée de l’autre (le rebouclage) qui crée la mémoire.",
+    "en": "A NOR gate gives 1 only when both its inputs are 0. The wire running back from one gate’s output to the other gate’s input (the feedback loop) is what creates the memory."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "S": 1
+      },
+      "expect": {
+       "Q": 1,
+       "QN": 0
+      }
+     },
+     {
+      "set": {
+       "S": 0
+      },
+      "expect": {
+       "Q": 1,
+       "QN": 0
+      }
+     },
+     {
+      "set": {
+       "R": 1
+      },
+      "expect": {
+       "Q": 0,
+       "QN": 1
+      }
+     },
+     {
+      "set": {
+       "R": 0
+      },
+      "expect": {
+       "Q": 0,
+       "QN": 1
+      }
+     },
+     {
+      "set": {
+       "S": 1
+      },
+      "expect": {
+       "Q": 1,
+       "QN": 0
+      }
+     },
+     {
+      "set": {
+       "S": 0
+      },
+      "expect": {
+       "Q": 1,
+       "QN": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La table du verrou",
+    "en": "The latch table"
+   },
+   "text": {
+    "fr": "Dans cette table, **Q** est l’état de la mémoire avant d’agir, **Q+** son état juste après avoir réglé S et R. Remplissez la colonne Q+ en vérifiant sur votre montage.\nLes deux dernières lignes (S = R = 1) correspondent à l’état interdit, étudié à l’étape suivante : elles ne sont pas notées.",
+    "en": "In this table, **Q** is the memory state before acting, **Q+** its state just after setting S and R. Fill in the Q+ column, checking on your circuit.\nThe last two rows (S = R = 1) are the forbidden state, studied in the next step: they are not marked."
+   },
+   "hint": {
+    "fr": "Commencez par les lignes où S = R = 0 : le verrou ne fait que se souvenir.",
+    "en": "Start with the rows where S = R = 0: the latch just remembers."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "S",
+     "R",
+     "Q"
+    ],
+    "outputs": {
+     "Q+": "010011xx"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’état interdit",
+    "en": "The forbidden state"
+   },
+   "text": {
+    "fr": "Mettez **S = 1 et R = 1** en même temps et observez Q et QN. Que se passe-t-il, et pourquoi évite-t-on cette combinaison ?",
+    "en": "Set **S = 1 and R = 1** at the same time and watch Q and QN. What happens, and why is this combination avoided?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Q et QN s’allument toutes les deux",
+      "en": "Q and QN both light up"
+     },
+     {
+      "fr": "Q et QN s’éteignent toutes les deux : elles ne sont plus l’inverse l’une de l’autre, et si S et R reviennent à 0 au même instant, on ne peut pas prévoir l’état final",
+      "en": "Q and QN both go off: they are no longer the inverse of each other, and if S and R return to 0 at the same instant, the final state cannot be predicted"
+     },
+     {
+      "fr": "Rien ne change : le verrou garde son état",
+      "en": "Nothing changes: the latch keeps its state"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le verrou RS tout prêt",
+    "en": "The ready-made RS latch"
+   },
+   "text": {
+    "fr": "La bibliothèque propose le même circuit en un seul bloc : le **Verrou RS** (catégorie Bascules). Posez-en un, reliez son entrée S à l’interrupteur **S**, son entrée R à l’interrupteur **R** et sa sortie Q à la LED **Q2**.\nRefaites vos essais : Q2 doit toujours être égale à Q.",
+    "en": "The library offers the same circuit as a single block: the **RS latch** (Flip-flops category). Place one, connect its S input to switch **S**, its R input to switch **R** and its Q output to LED **Q2**.\nRepeat your tests: Q2 must always equal Q."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "S": 1
+      },
+      "expect": {
+       "Q2": 1,
+       "Q": 1
+      }
+     },
+     {
+      "set": {
+       "S": 0
+      },
+      "expect": {
+       "Q2": 1,
+       "Q": 1
+      }
+     },
+     {
+      "set": {
+       "R": 1
+      },
+      "expect": {
+       "Q2": 0,
+       "Q": 0
+      }
+     },
+     {
+      "set": {
+       "R": 0
+      },
+      "expect": {
+       "Q2": 0,
+       "Q": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le chronogramme",
+    "en": "The timing diagram"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Chronogramme**, à droite, puis jouez : S à 1 puis à 0, attendez un peu, puis R à 1 puis à 0. Sur le relevé, Q passe à 1 quand S monte et **reste** à 1 après que S est redescendu : c’est la mémoire. Q2 suit exactement Q.\nÀ savoir : à la mise sous tension, un verrou peut démarrer à 0 comme à 1. C’est pourquoi un vrai montage commence toujours par une remise à 0.",
+    "en": "Open the **Timing** tab on the right, then play: S to 1 then 0, wait a moment, then R to 1 then 0. On the recording, Q goes to 1 when S rises and **stays** at 1 after S has gone back down: that is the memory. Q2 follows Q exactly.\nGood to know: at power-up, a latch may start at 0 or at 1. That is why a real circuit always begins with a reset."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Application : une alarme",
+    "en": "Application: an alarm"
+   },
+   "text": {
+    "fr": "En bas du plan de travail : le bouton **C** est un capteur de porte (1 tant que la porte est ouverte), le bouton **RAZ** permet au gardien de remettre l’alarme à zéro et la LED **AL** représente la sirène.\nL’alarme doit se déclencher même si la porte n’est ouverte qu’un instant, et rester déclenchée jusqu’à la remise à zéro. Réalisez-la avec un second **Verrou RS**.",
+    "en": "At the bottom of the workspace: button **C** is a door sensor (1 while the door is open), button **RAZ** (French for “reset”) lets the guard reset the alarm, and LED **AL** stands for the siren.\nThe alarm must go off even if the door is opened only for an instant, and stay on until it is reset. Build it with a second **RS latch**."
+   },
+   "hint": {
+    "fr": "Quelle entrée du verrou le capteur C doit-il commander : celle qui met à 1 ou celle qui remet à 0 ?",
+    "en": "Which latch input should sensor C drive: the one that sets to 1 or the one that resets to 0?"
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "pulse": "RAZ",
+      "expect": {
+       "AL": 0
+      }
+     },
+     {
+      "pulse": "C",
+      "expect": {
+       "AL": 1
+      }
+     },
+     {
+      "pulse": "RAZ",
+      "expect": {
+       "AL": 0
+      }
+     },
+     {
+      "rise": "C",
+      "expect": {
+       "AL": 1
+      }
+     },
+     {
+      "pulse": "RAZ",
+      "expect": {
+       "AL": 1
+      }
+     },
+     {
+      "fall": "C",
+      "expect": {
+       "AL": 1
+      }
+     },
+     {
+      "pulse": "RAZ",
+      "expect": {
+       "AL": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Porte restée ouverte",
+    "en": "Door left open"
+   },
+   "text": {
+    "fr": "La porte reste ouverte (C maintenu à 1) pendant que le gardien appuie sur RAZ, puis le relâche. Que fait l’alarme ? Aidez-vous de la table de l’étape 3.",
+    "en": "The door stays open (C held at 1) while the guard presses RAZ, then releases it. What does the alarm do? Use the table from step 3."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle s’éteint pour de bon",
+      "en": "It goes off for good"
+     },
+     {
+      "fr": "Elle se rallume dès que RAZ est relâché : S = 1 remet aussitôt Q à 1",
+      "en": "It comes back on as soon as RAZ is released: S = 1 sets Q back to 1 at once"
+     },
+     {
+      "fr": "Elle clignote tant que la porte reste ouverte",
+      "en": "It blinks as long as the door stays open"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

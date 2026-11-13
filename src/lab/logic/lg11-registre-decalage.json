@@ -1,0 +1,934 @@
+{
+ "id": "lg11-registre-decalage",
+ "domain": "logic",
+ "level": "pro",
+ "minutes": 35,
+ "title": {
+  "fr": "Le registre à décalage",
+  "en": "The shift register"
+ },
+ "summary": {
+  "fr": "Construire un registre à décalage de 4 bits avec des bascules D qui partagent la même horloge, y faire entrer des bits en série, puis réaliser un chenillard avec le bloc registre à décalage rebouclé par un inverseur.",
+  "en": "Build a 4-bit shift register from D flip-flops sharing the same clock, feed bits into it serially, then make a light chaser with the shift-register block fed back through an inverter."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un montage synchrone (horloge commune)",
+   "en": "Wire a synchronous circuit (shared clock)"
+  },
+  {
+   "fr": "Suivre le décalage des bits à chaque front d’horloge",
+   "en": "Follow how the bits shift on each clock edge"
+  },
+  {
+   "fr": "Utiliser un registre à décalage rebouclé : un chenillard",
+   "en": "Use a shift register with feedback: a light chaser"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "E : entrée série"
+     }
+    },
+    {
+     "id": "sE",
+     "type": "switch",
+     "x": 4,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "E"
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 2
+     }
+    },
+    {
+     "id": "lQ1",
+     "type": "led",
+     "x": 21,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 32,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ3",
+     "type": "led",
+     "x": 43,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q3",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ4",
+     "type": "led",
+     "x": 54,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q4",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "text": "Chenillard"
+     }
+    },
+    {
+     "id": "lL0",
+     "type": "led",
+     "x": 28,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L0",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL1",
+     "type": "led",
+     "x": 34,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL2",
+     "type": "led",
+     "x": 40,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL3",
+     "type": "led",
+     "x": 46,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L3",
+      "color": "yellow"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "E : entrée série"
+     }
+    },
+    {
+     "id": "sE",
+     "type": "switch",
+     "x": 4,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "E"
+     }
+    },
+    {
+     "id": "cH",
+     "type": "clock",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "H",
+      "freq": 2
+     }
+    },
+    {
+     "id": "lQ1",
+     "type": "led",
+     "x": 21,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ2",
+     "type": "led",
+     "x": 32,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q2",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ3",
+     "type": "led",
+     "x": 43,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q3",
+      "color": "green"
+     }
+    },
+    {
+     "id": "lQ4",
+     "type": "led",
+     "x": 54,
+     "y": 2,
+     "r": 0,
+     "p": {
+      "label": "Q4",
+      "color": "green"
+     }
+    },
+    {
+     "id": "t2",
+     "type": "text",
+     "x": 4,
+     "y": 18,
+     "r": 0,
+     "p": {
+      "text": "Chenillard"
+     }
+    },
+    {
+     "id": "lL0",
+     "type": "led",
+     "x": 28,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L0",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL1",
+     "type": "led",
+     "x": 34,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L1",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL2",
+     "type": "led",
+     "x": 40,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "lL3",
+     "type": "led",
+     "x": 46,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "label": "L3",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "f1",
+     "type": "dff",
+     "x": 14,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "f2",
+     "type": "dff",
+     "x": 25,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "f3",
+     "type": "dff",
+     "x": 36,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "f4",
+     "type": "dff",
+     "x": 47,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "sr",
+     "type": "shift",
+     "x": 16,
+     "y": 21,
+     "r": 0,
+     "p": {
+      "bits": 4
+     }
+    },
+    {
+     "id": "inv",
+     "type": "not",
+     "x": 18,
+     "y": 28,
+     "r": 180,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sE",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "D"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "f1",
+      "Q"
+     ],
+     "b": [
+      "f2",
+      "D"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "f2",
+      "Q"
+     ],
+     "b": [
+      "f3",
+      "D"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "f3",
+      "Q"
+     ],
+     "b": [
+      "f4",
+      "D"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "f1",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "f2",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "f3",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "f4",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "f1",
+      "Q"
+     ],
+     "b": [
+      "lQ1",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "f2",
+      "Q"
+     ],
+     "b": [
+      "lQ2",
+      "A"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "f3",
+      "Q"
+     ],
+     "b": [
+      "lQ3",
+      "A"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "f4",
+      "Q"
+     ],
+     "b": [
+      "lQ4",
+      "A"
+     ]
+    },
+    {
+     "id": "w13",
+     "a": [
+      "cH",
+      "Q"
+     ],
+     "b": [
+      "sr",
+      "CLK"
+     ]
+    },
+    {
+     "id": "w14",
+     "a": [
+      "sr",
+      "Q0"
+     ],
+     "b": [
+      "lL0",
+      "A"
+     ]
+    },
+    {
+     "id": "w15",
+     "a": [
+      "sr",
+      "Q1"
+     ],
+     "b": [
+      "lL1",
+      "A"
+     ]
+    },
+    {
+     "id": "w16",
+     "a": [
+      "sr",
+      "Q2"
+     ],
+     "b": [
+      "lL2",
+      "A"
+     ]
+    },
+    {
+     "id": "w17",
+     "a": [
+      "sr",
+      "Q3"
+     ],
+     "b": [
+      "lL3",
+      "A"
+     ]
+    },
+    {
+     "id": "w18",
+     "a": [
+      "sr",
+      "Q3"
+     ],
+     "b": [
+      "inv",
+      "A"
+     ]
+    },
+    {
+     "id": "w19",
+     "a": [
+      "inv",
+      "Y"
+     ],
+     "b": [
+      "sr",
+      "DIN"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le montage",
+    "en": "The setup"
+   },
+   "text": {
+    "fr": "Sur le plan de travail :\n- l’interrupteur **E** : l’entrée série, où l’on présente les bits un par un ;\n- l’horloge **H**. Sous le plan de travail, **Pas** avance d’un front à la fois (un front montant, puis un descendant) et **▶** la fait tourner seule ;\n- en haut, quatre LED **Q1** à **Q4** ; en bas, quatre LED **L0** à **L3** pour le chenillard.",
+    "en": "On the workspace:\n- switch **E**: the serial input, where bits are presented one at a time;\n- clock **H**. Under the workspace, **Step** advances one edge at a time (a rising edge, then a falling one) and **▶** runs it on its own;\n- at the top, four LEDs **Q1** to **Q4**; at the bottom, four LEDs **L0** to **L3** for the light chaser."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Première bascule",
+    "en": "First flip-flop"
+   },
+   "text": {
+    "fr": "Posez une **Bascule D** (catégorie Bascules). Reliez **E** à son entrée D, **H** à son entrée d’horloge et sa sortie Q à la LED **Q1**.\nMettez E à 1 et avancez avec **Pas** jusqu’à ce que Q1 s’allume.",
+    "en": "Place a **D flip-flop** (Flip-flops category). Connect **E** to its D input, **H** to its clock input and its Q output to LED **Q1**.\nSet E to 1 and advance with **Step** until Q1 lights up."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "E": 1
+      },
+      "expect": {
+       "Q1": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q1": 1
+      }
+     },
+     {
+      "set": {
+       "E": 0
+      },
+      "expect": {
+       "Q1": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q1": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Quatre bascules en chaîne",
+    "en": "Four flip-flops in a chain"
+   },
+   "text": {
+    "fr": "Ajoutez trois bascules D à droite de la première :\n- la sortie Q de chaque bascule va à l’entrée D de la suivante ;\n- **toutes** les entrées d’horloge sont reliées à **H** : le montage est **synchrone** ;\n- leurs sorties vont aux LED **Q2**, **Q3** et **Q4**.",
+    "en": "Add three D flip-flops to the right of the first one:\n- each flip-flop’s Q output goes to the D input of the next one;\n- **all** the clock inputs are connected to **H**: the circuit is **synchronous**;\n- their outputs go to LEDs **Q2**, **Q3** and **Q4**."
+   },
+   "hint": {
+    "fr": "Au front d’horloge, toutes les bascules lisent leur entrée D au même instant, avant que quoi que ce soit ne change : chacune prend ce que la précédente contenait juste avant.",
+    "en": "On the clock edge, all the flip-flops read their D input at the same instant, before anything changes: each one takes what the previous one held just before."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "E": 1
+      },
+      "pulse": "H",
+      "expect": {
+       "Q1": 1,
+       "Q2": 0,
+       "Q3": 0,
+       "Q4": 0
+      }
+     },
+     {
+      "set": {
+       "E": 0
+      },
+      "pulse": "H",
+      "expect": {
+       "Q1": 0,
+       "Q2": 1,
+       "Q3": 0,
+       "Q4": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q1": 0,
+       "Q2": 0,
+       "Q3": 1,
+       "Q4": 0
+      }
+     },
+     {
+      "set": {
+       "E": 1
+      },
+      "pulse": "H",
+      "expect": {
+       "Q1": 1,
+       "Q2": 0,
+       "Q3": 0,
+       "Q4": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q1": 1,
+       "Q2": 1,
+       "Q3": 0,
+       "Q4": 0
+      }
+     },
+     {
+      "set": {
+       "E": 0
+      },
+      "pulse": "H",
+      "expect": {
+       "Q1": 0,
+       "Q2": 1,
+       "Q3": 1,
+       "Q4": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "Q1": 0,
+       "Q2": 0,
+       "Q3": 1,
+       "Q4": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Observer le décalage",
+    "en": "Watching the shift"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Chronogramme**. Mettez E à 1, avancez d’une période (deux appuis sur **Pas**), remettez E à 0, puis continuez d’avancer. Le 1 entré passe de Q1 à Q2, puis Q3, puis Q4, et sort du registre.\nSur le relevé, Q2 est une copie de Q1 retardée d’une période d’horloge, Q3 une copie de Q2, et ainsi de suite.",
+    "en": "Open the **Timing** tab. Set E to 1, advance one period (two presses on **Step**), set E back to 0, then keep advancing. The 1 you entered moves from Q1 to Q2, then Q3, then Q4, and leaves the register.\nOn the recording, Q2 is a copy of Q1 delayed by one clock period, Q3 a copy of Q2, and so on."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Entrer un mot en série",
+    "en": "Entering a word serially"
+   },
+   "text": {
+    "fr": "Le registre est vide. On envoie sur E les bits 1, 0, 1, 1, dans cet ordre, un bit par front montant de H. Après le 4ᵉ front, que lit-on sur Q1, Q2, Q3, Q4 ?",
+    "en": "The register is empty. The bits 1, 0, 1, 1 are sent on E, in that order, one bit per rising edge of H. After the 4th edge, what do Q1, Q2, Q3, Q4 show?"
+   },
+   "hint": {
+    "fr": "Le premier bit envoyé est celui qui est allé le plus loin dans le registre.",
+    "en": "The first bit sent is the one that has travelled furthest along the register."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1 0 1 1",
+      "en": "1 0 1 1"
+     },
+     {
+      "fr": "1 1 0 1",
+      "en": "1 1 0 1"
+     },
+     {
+      "fr": "0 0 1 1",
+      "en": "0 0 1 1"
+     },
+     {
+      "fr": "1 1 1 1",
+      "en": "1 1 1 1"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Un chenillard",
+    "en": "A light chaser"
+   },
+   "text": {
+    "fr": "En bas, posez un **Registre à décalage** (catégorie Séquentiel) de 4 bits. Reliez son entrée d’horloge à **H** et ses sorties Q0 à Q3 aux LED **L0** à **L3**.\nPour qu’il tourne seul, rebouclez-le : la sortie **Q3** passe par une porte **NON** et revient sur l’entrée série **DIN**.\nAvancez avec **Pas** : les LED s’allument une à une, puis s’éteignent une à une.",
+    "en": "At the bottom, place a 4-bit **Shift register** (Sequential category). Connect its clock input to **H** and its outputs Q0 to Q3 to LEDs **L0** to **L3**.\nTo make it run on its own, feed it back: output **Q3** goes through a **NOT** gate and back into the serial input **DIN**.\nAdvance with **Step**: the LEDs light up one by one, then go out one by one."
+   },
+   "hint": {
+    "fr": "Au départ tout est à 0, donc l’inverseur envoie des 1. Quand le 1 arrive en Q3, l’inverseur se met à envoyer des 0. Pour tourner la porte NON vers la gauche, sélectionnez-la et appuyez deux fois sur R.",
+    "en": "At the start everything is 0, so the inverter sends 1s. When the 1 reaches Q3, the inverter starts sending 0s. To turn the NOT gate to face left, select it and press R twice."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 1,
+       "L1": 0,
+       "L2": 0,
+       "L3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 1,
+       "L1": 1,
+       "L2": 0,
+       "L3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 1,
+       "L1": 1,
+       "L2": 1,
+       "L3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 1,
+       "L1": 1,
+       "L2": 1,
+       "L3": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 0,
+       "L1": 1,
+       "L2": 1,
+       "L3": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 0,
+       "L1": 0,
+       "L2": 1,
+       "L3": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 0,
+       "L1": 0,
+       "L2": 0,
+       "L3": 1
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 0,
+       "L1": 0,
+       "L2": 0,
+       "L3": 0
+      }
+     },
+     {
+      "pulse": "H",
+      "expect": {
+       "L0": 1,
+       "L1": 0,
+       "L2": 0,
+       "L3": 0
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le chenillard en marche",
+    "en": "The chaser running"
+   },
+   "text": {
+    "fr": "Sélectionnez l’horloge H, réglez sa **Fréquence** sur 5 Hz, puis lancez-la avec **▶** : le chenillard se remplit et se vide en boucle.\nDans le **Chronogramme**, comparez L0 et L3 : même forme, décalée de trois périodes d’horloge.",
+    "en": "Select clock H, set its **Frequency** to 5 Hz, then start it with **▶**: the chaser fills up and empties in a loop.\nIn the **Timing** tab, compare L0 and L3: same shape, shifted by three clock periods."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Combien de positions ?",
+    "en": "How many positions?"
+   },
+   "text": {
+    "fr": "Combien de positions différentes (combinaisons de L0 à L3) le chenillard prend-il avant de revenir à son point de départ ?",
+    "en": "How many different positions (combinations of L0 to L3) does the chaser go through before returning to its starting point?"
+   },
+   "hint": {
+    "fr": "Avancez avec Pas en notant L0 L1 L2 L3 à chaque front montant, ou comptez sur le chronogramme.",
+    "en": "Advance with Step and note L0 L1 L2 L3 at each rising edge, or count on the timing diagram."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "4",
+      "en": "4"
+     },
+     {
+      "fr": "8",
+      "en": "8"
+     },
+     {
+      "fr": "16",
+      "en": "16"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À quoi ça sert ?",
+    "en": "What is it for?"
+   },
+   "text": {
+    "fr": "Avec un circuit 74HC595 (un registre à décalage de 8 bits), une carte Arduino commande 8 LED en n’utilisant que 3 fils : donnée, horloge et verrouillage. Comment est-ce possible ?",
+    "en": "With a 74HC595 chip (an 8-bit shift register), an Arduino board drives 8 LEDs using only 3 wires: data, clock and latch. How is that possible?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les 8 bits arrivent l’un après l’autre sur un seul fil (en série) et ressortent tous en même temps (en parallèle)",
+      "en": "The 8 bits arrive one after another on a single wire (serial) and come out all at once (parallel)"
+     },
+     {
+      "fr": "Le 74HC595 invente lui-même les 8 bits",
+      "en": "The 74HC595 makes up the 8 bits by itself"
+     },
+     {
+      "fr": "Chaque fil transporte plusieurs bits au même instant",
+      "en": "Each wire carries several bits at the same instant"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

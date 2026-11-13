@@ -1,0 +1,667 @@
+{
+ "id": "lg14-canton-signal",
+ "domain": "logic",
+ "level": "lycee",
+ "series": "dakar",
+ "minutes": 40,
+ "title": {
+  "fr": "Le signal de canton : rouge ou vert ?",
+  "en": "The block signal: red or green?"
+ },
+ "summary": {
+  "fr": "Inspiré du TER et du BRT de Dakar : sur une voie découpée en cantons, un capteur à l’entrée fait passer le signal au rouge, un capteur à la sortie le remet au vert. Voir pourquoi une porte seule ne suffit pas, réaliser la mémoire avec un verrou RS, puis traiter le cas où les deux capteurs sont actifs ensemble en donnant la priorité au rouge.",
+  "en": "Inspired by Dakar’s TER and BRT: on a track divided into blocks, a sensor at the entrance turns the signal red and a sensor at the exit turns it back to green. See why a gate alone is not enough, build the memory with an RS latch, then handle the case where both sensors are active at once by giving priority to red."
+ },
+ "objectives": [
+  {
+   "fr": "Expliquer pourquoi un signal de canton a besoin d’une mémoire",
+   "en": "Explain why a block signal needs a memory"
+  },
+  {
+   "fr": "Utiliser un verrou RS pour mémoriser un état",
+   "en": "Use an RS latch to store a state"
+  },
+  {
+   "fr": "Donner la priorité à l’état sûr quand deux commandes s’opposent",
+   "en": "Give priority to the safe state when two commands conflict"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "CE : capteur d’entrée · CS : capteur de sortie"
+     }
+    },
+    {
+     "id": "sCE",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "CE"
+     }
+    },
+    {
+     "id": "sCS",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "CS"
+     }
+    },
+    {
+     "id": "lR",
+     "type": "led",
+     "x": 44,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "ROUGE",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lV",
+     "type": "led",
+     "x": 44,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "VERT",
+      "color": "green"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "CE : capteur d’entrée · CS : capteur de sortie"
+     }
+    },
+    {
+     "id": "sCE",
+     "type": "switch",
+     "x": 4,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "CE"
+     }
+    },
+    {
+     "id": "sCS",
+     "type": "switch",
+     "x": 4,
+     "y": 12,
+     "r": 0,
+     "p": {
+      "label": "CS"
+     }
+    },
+    {
+     "id": "lR",
+     "type": "led",
+     "x": 44,
+     "y": 4,
+     "r": 0,
+     "p": {
+      "label": "ROUGE",
+      "color": "red"
+     }
+    },
+    {
+     "id": "lV",
+     "type": "led",
+     "x": 44,
+     "y": 10,
+     "r": 0,
+     "p": {
+      "label": "VERT",
+      "color": "green"
+     }
+    },
+    {
+     "id": "nE",
+     "type": "not",
+     "x": 12,
+     "y": 10,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "gR",
+     "type": "and",
+     "x": 18,
+     "y": 10,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "rs",
+     "type": "srlatch",
+     "x": 28,
+     "y": 4,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sCE",
+      "Q"
+     ],
+     "b": [
+      "rs",
+      "S"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sCE",
+      "Q"
+     ],
+     "b": [
+      "nE",
+      "A"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "nE",
+      "Y"
+     ],
+     "b": [
+      "gR",
+      "A"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sCS",
+      "Q"
+     ],
+     "b": [
+      "gR",
+      "B"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "gR",
+      "Y"
+     ],
+     "b": [
+      "rs",
+      "R"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "rs",
+      "Q"
+     ],
+     "b": [
+      "lR",
+      "A"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "rs",
+      "QN"
+     ],
+     "b": [
+      "lV",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le canton et son signal",
+    "en": "The block and its signal"
+   },
+   "text": {
+    "fr": "Ce TP s’inspire du **TER** et du **BRT** de Dakar, deux transports qui roulent sur des voies réservées. Sur une ligne de chemin de fer, la voie est découpée en tronçons appelés **cantons**, avec une règle de sécurité : **un seul train à la fois** dans un canton. À l’entrée du canton, un signal prévient le conducteur :\n- **ROUGE** : le canton est occupé, il faut s’arrêter ;\n- **VERT** : le canton est libre, on peut avancer.\nDeux capteurs surveillent le canton : **CE** à l’entrée et **CS** à la sortie. Chacun vaut 1 pendant qu’un train passe dessus, puis revient à 0. Sur le plan de travail, ce sont deux interrupteurs : mettez-en un à 1 puis à 0 pour simuler le passage d’un train.",
+    "en": "This lab is inspired by Dakar’s **TER** (regional express train) and **BRT** (Bus Rapid Transit), two transport systems that run on dedicated lanes and tracks. On a railway line, the track is divided into sections called **blocks**, with a safety rule: **only one train at a time** in a block. At the block entrance, a signal tells the driver:\n- **ROUGE** (red): the block is occupied, stop;\n- **VERT** (green): the block is free, go ahead.\nTwo sensors watch the block: **CE** at the entrance and **CS** at the exit. Each is 1 while a train passes over it, then goes back to 0. On the workspace they are two switches: set one to 1 then 0 to simulate a train passing."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Un simple fil suffit-il ?",
+    "en": "Is a plain wire enough?"
+   },
+   "text": {
+    "fr": "Première idée : relier directement le capteur **CE** à la LED **ROUGE**. Faites l’essai : tirez ce fil, puis faites entrer un train : CE à 1, puis à 0. Le train roule maintenant dans le canton, entre les deux capteurs. Que montre le signal ?",
+    "en": "First idea: connect sensor **CE** straight to LED **ROUGE**. Try it: draw that wire, then let a train in: CE to 1, then to 0. The train is now running inside the block, between the two sensors. What does the signal show?"
+   },
+   "hint": {
+    "fr": "Regardez la LED au moment où vous remettez CE à 0.",
+    "en": "Watch the LED at the moment you set CE back to 0."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le rouge reste allumé jusqu’au passage du train sur CS",
+      "en": "Red stays on until the train passes over CS"
+     },
+     {
+      "fr": "Le rouge s’éteint dès que le train a dépassé CE, alors que le canton est encore occupé",
+      "en": "Red goes off as soon as the train has passed CE, although the block is still occupied"
+     },
+     {
+      "fr": "Le rouge ne s’allume jamais",
+      "en": "Red never lights"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Il faut une mémoire",
+    "en": "A memory is needed"
+   },
+   "text": {
+    "fr": "Avec CE = 0 et CS = 0, le canton peut être **libre** (aucun train) ou **occupé** (un train entre les deux capteurs). Mêmes entrées, deux réponses différentes : aucune porte logique ne peut faire cela, car sa sortie ne dépend que de ses entrées du moment. Le circuit doit **se souvenir** du dernier capteur franchi : c’est le rôle d’une **mémoire**.\nSupprimez le fil d’essai (sélectionnez-le, puis Suppr). Posez un **Verrou RS** (catégorie Bascules) :\n- **CE** sur l’entrée **S** (mise à 1 : canton occupé) ;\n- **CS** sur l’entrée **R** (remise à 0 : canton libre) ;\n- la sortie **Q** vers la LED **ROUGE**.\nCommencez par une remise à 0 (CS à 1 puis à 0), puis faites passer un train.",
+    "en": "With CE = 0 and CS = 0, the block may be **free** (no train) or **occupied** (a train between the two sensors). Same inputs, two different answers: no logic gate can do that, because its output depends only on its present inputs. The circuit must **remember** the last sensor passed: that is the job of a **memory**.\nDelete the test wire (select it, then press Delete). Place an **RS latch** (Flip-flops category):\n- **CE** on input **S** (set: block occupied);\n- **CS** on input **R** (reset: block free);\n- output **Q** to LED **ROUGE**.\nStart with a reset (CS to 1 then 0), then run a train through."
+   },
+   "hint": {
+    "fr": "Le fil d’essai CE → ROUGE doit avoir disparu : une LED ne reçoit qu’un seul fil.",
+    "en": "The CE → ROUGE test wire must be gone: an LED takes only one wire."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0
+      }
+     },
+     {
+      "set": {
+       "CE": 1
+      },
+      "expect": {
+       "ROUGE": 1
+      }
+     },
+     {
+      "set": {
+       "CE": 0
+      },
+      "expect": {
+       "ROUGE": 1
+      }
+     },
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0
+      }
+     },
+     {
+      "set": {
+       "CE": 1
+      },
+      "expect": {
+       "ROUGE": 1
+      }
+     },
+     {
+      "set": {
+       "CE": 0
+      },
+      "expect": {
+       "ROUGE": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le feu vert",
+    "en": "The green light"
+   },
+   "text": {
+    "fr": "Le vert doit toujours être l’inverse du rouge. Le verrou RS a justement une seconde sortie, **Q̄** (« Q barre », notée QN), qui vaut l’inverse de Q. Reliez-la à la LED **VERT**.\nFaites passer plusieurs trains : à chaque instant, une seule des deux LED est allumée.",
+    "en": "Green must always be the inverse of red. The RS latch has a second output, **Q̄** (“Q bar”, written QN), which is the inverse of Q. Connect it to LED **VERT**.\nRun several trains through: at every moment, exactly one of the two LEDs is on."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CE": 1
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CE": 0
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les deux capteurs à la fois",
+    "en": "Both sensors at once"
+   },
+   "text": {
+    "fr": "Que se passe-t-il si CE et CS valent 1 **en même temps** ? En service normal, cela ne devrait pas arriver. Mais un système de sécurité doit tout prévoir : capteur en panne, parasite, train mal détecté…\nEssayez : mettez CE à 1, puis CS à 1, et gardez les deux à 1. Que montre le signal ?",
+    "en": "What happens if CE and CS are 1 **at the same time**? In normal service this should not happen. But a safety system must plan for everything: a faulty sensor, electrical noise, a badly detected train…\nTry it: set CE to 1, then CS to 1, and keep both at 1. What does the signal show?"
+   },
+   "hint": {
+    "fr": "C’est l’état interdit du verrou RS : S = R = 1.",
+    "en": "This is the RS latch’s forbidden state: S = R = 1."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "ROUGE allumé : le canton est déclaré occupé",
+      "en": "ROUGE on: the block is declared occupied"
+     },
+     {
+      "fr": "ROUGE et VERT éteints tous les deux : le signal n’indique plus rien au conducteur",
+      "en": "ROUGE and VERT both off: the signal no longer tells the driver anything"
+     },
+     {
+      "fr": "ROUGE et VERT allumés ensemble",
+      "en": "ROUGE and VERT both on"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Dans le doute, rouge",
+    "en": "When in doubt, red"
+   },
+   "text": {
+    "fr": "Principe de sécurité : en cas de doute, on choisit l’état le plus sûr, ici le **rouge**. Quand CE et CS sont actifs ensemble, le canton doit donc être déclaré **occupé**. On parle de mémoire **à marche prioritaire** : la mise à 1 l’emporte sur la remise à 0.\nRemplissez la table de cette nouvelle mémoire : **Q** est l’état avant (1 = occupé), **Q+** l’état juste après.",
+    "en": "Safety principle: when in doubt, choose the safest state, here **red**. So when CE and CS are active together, the block must be declared **occupied**. This is called a **set-priority** memory: setting to 1 wins over resetting to 0.\nFill in the table of this new memory: **Q** is the state before (1 = occupied), **Q+** the state just after."
+   },
+   "hint": {
+    "fr": "Les six premières lignes sont celles du verrou RS ordinaire. Seules les deux dernières (CE = CS = 1) sont nouvelles.",
+    "en": "The first six rows are those of the ordinary RS latch. Only the last two (CE = CS = 1) are new."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "CE",
+     "CS",
+     "Q"
+    ],
+    "outputs": {
+     "Q+": "01001111"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation de la mémoire",
+    "en": "The memory equation"
+   },
+   "text": {
+    "fr": "Lisez la table : Q+ vaut 1 si un train entre (CE = 1), **ou** si aucun train ne sort (CS = 0) **et** que le canton était déjà occupé (Q = 1).\nÉcrivez l’équation de **Q+** en fonction de CE, CS et Q.",
+    "en": "Read the table: Q+ is 1 if a train enters (CE = 1), **or** if no train leaves (CS = 0) **and** the block was already occupied (Q = 1).\nWrite the equation of **Q+** in terms of CE, CS and Q."
+   },
+   "hint": {
+    "fr": "Deux termes reliés par + : le premier est simplement CE. Le second contient Q : c’est lui qui fait la mémoire.",
+    "en": "Two terms joined by +: the first is simply CE. The second contains Q: that is the one that does the remembering."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "CE",
+     "CS",
+     "Q"
+    ],
+    "answer": "CE + /CS.Q",
+    "form": "sop",
+    "maxTerms": 2,
+    "output": "Q+"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler la priorité au rouge",
+    "en": "Wiring priority to red"
+   },
+   "text": {
+    "fr": "Pour obtenir cette mémoire avec le verrou RS, on garde S = CE, mais on bloque la remise à 0 tant que CE est actif : R = CS./CE.\n- Posez une porte **NON** qui reçoit CE ;\n- posez une porte **ET** qui reçoit CS et la sortie de la porte NON ;\n- reliez la sortie de la porte ET à l’entrée **R** du verrou, à la place du fil qui venait de CS.\nAinsi, S et R ne peuvent plus valoir 1 ensemble : l’état interdit a disparu. Refaites l’essai de l’étape 5 : le signal reste rouge.",
+    "en": "To get this memory from the RS latch, keep S = CE, but block the reset while CE is active: R = CS./CE.\n- Place a **NOT** gate that receives CE;\n- place an **AND** gate that receives CS and the NOT gate’s output;\n- connect the AND gate’s output to the latch’s **R** input, instead of the wire that came from CS.\nThis way, S and R can never be 1 together: the forbidden state is gone. Repeat the test from step 5: the signal stays red."
+   },
+   "hint": {
+    "fr": "Vérifiez le cas CE = CS = 1 : la porte NON donne 0, donc R = 0 et S = 1 : le verrou passe à 1.",
+    "en": "Check the case CE = CS = 1: the NOT gate gives 0, so R = 0 and S = 1: the latch goes to 1."
+   },
+   "check": {
+    "type": "logic-seq",
+    "steps": [
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CE": 1
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CE": 0
+      },
+      "expect": {
+       "ROUGE": 1,
+       "VERT": 0
+      }
+     },
+     {
+      "set": {
+       "CS": 1
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     },
+     {
+      "set": {
+       "CS": 0
+      },
+      "expect": {
+       "ROUGE": 0,
+       "VERT": 1
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les limites d’une mémoire d’un bit",
+    "en": "The limits of a one-bit memory"
+   },
+   "text": {
+    "fr": "Votre mémoire ne retient qu’**un bit** : occupé ou libre. Imaginez qu’un deuxième train entre par erreur dans le canton alors que le premier y roule encore. Puis le premier train sort par CS. Que montre le signal ?",
+    "en": "Your memory holds only **one bit**: occupied or free. Imagine a second train enters the block by mistake while the first one is still running in it. Then the first train leaves over CS. What does the signal show?"
+   },
+   "hint": {
+    "fr": "Faites l’essai : CE à 1 puis à 0, deux fois de suite, puis CS à 1 puis à 0.",
+    "en": "Try it: CE to 1 then 0, twice in a row, then CS to 1 then 0."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "VERT, alors que le deuxième train est encore dans le canton : la mémoire ne sait pas compter les trains",
+      "en": "VERT (green), although the second train is still in the block: the memory cannot count trains"
+     },
+     {
+      "fr": "ROUGE, car la mémoire se souvient des deux trains",
+      "en": "ROUGE (red), because the memory remembers both trains"
+     },
+     {
+      "fr": "Les deux LED s’éteignent",
+      "en": "Both LEDs go off"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Pour aller plus loin",
+    "en": "Going further"
+   },
+   "text": {
+    "fr": "Une mémoire d’un bit suffit tant que la règle « un seul train par canton » est respectée : c’est justement le rôle du signal rouge. Pour suivre plusieurs véhicules, il faudrait **compter** : ajouter 1 à chaque passage sur CE, retirer 1 à chaque passage sur CS, et déclarer le canton libre seulement quand le compte revient à 0. C’est l’idée des **compteurs d’essieux** utilisés sur beaucoup de voies ferrées : ils comptent les essieux (les paires de roues) qui entrent dans le canton et qui en sortent.\nOuvrez l’onglet **Chronogramme**, à droite, et faites passer quelques trains : ROUGE monte avec CE et ne redescend qu’avec CS.",
+    "en": "A one-bit memory is enough as long as the rule “only one train per block” is respected: that is exactly what the red signal is for. To follow several vehicles, you would have to **count**: add 1 at each pass over CE, subtract 1 at each pass over CS, and declare the block free only when the count is back to 0. That is the idea behind the **axle counters** used on many railway lines: they count the axles (pairs of wheels) entering and leaving the block.\nOpen the **Timing** tab on the right and run a few trains: ROUGE rises with CE and falls only with CS."
+   },
+   "check": {
+    "type": "info"
+   }
+  }
+ ]
+}

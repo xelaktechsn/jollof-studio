@@ -1,0 +1,416 @@
+{
+ "id": "pn08-porte-ter-grafcet",
+ "level": "lycee",
+ "minutes": 40,
+ "series": "dakar",
+ "title": {
+  "fr": "Porte de TER : temporisation et réouverture",
+  "en": "TER door: time delay and reopening"
+ },
+ "summary": {
+  "fr": "Les portes du Train Express Régional s’ouvrent à la demande, restent ouvertes quelques secondes puis se ferment, et se rouvrent si un voyageur gêne la fermeture. On l’écrit en GRAFCET : une temporisation et une divergence en OU.",
+  "en": "The Regional Express Train doors open on request, stay open a few seconds then close, and reopen if a passenger is in the way. We write it as a GRAFCET: a time delay and an OR divergence."
+ },
+ "objectives": [
+  {
+   "fr": "Écrire une temporisation (5s/X2)",
+   "en": "Write a time delay (5s/X2)"
+  },
+  {
+   "fr": "Commander un distributeur monostable",
+   "en": "Drive a monostable valve"
+  },
+  {
+   "fr": "Ajouter une divergence en OU pour la sécurité",
+   "en": "Add an OR divergence for safety"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Distributeur monostable : l’action est répétée dans chaque étape où la porte reste ouverte ; sans commande, la porte se referme.",
+   "en": "Monostable valve: the action is repeated in every step where the door stays open; with no command the door closes."
+  },
+  {
+   "fr": "Temporisation IEC 60848 : « 5s/X2 » est vraie quand X2 est active depuis 5 s.",
+   "en": "IEC 60848 time delay: “5s/X2” is true when X2 has been active for 5 s."
+  },
+  {
+   "fr": "Divergence en OU : deux transitions sous la même étape (porte fermée a0, ou obstacle obs) ; la première vraie est franchie.",
+   "en": "OR divergence: two transitions under the same step (door closed a0, or obstacle obs); the first one true is cleared."
+  },
+  {
+   "fr": "Un obstacle pendant la fermeture fait rouvrir la porte : on ne termine jamais un mouvement qui peut blesser.",
+   "en": "An obstacle during closing reopens the door: a movement that can injure is never completed."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Porte de TER",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "time": 1.5,
+         "s0": "A0",
+         "s1": "A1",
+         "label": "A"
+        }
+       },
+       {
+        "id": "fc",
+        "type": "flowctl",
+        "x": -8,
+        "y": 2,
+        "p": {
+         "open": 50,
+         "label": "1V2"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "1Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "tubes": [
+       {
+        "id": "t1",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v1",
+         "1"
+        ]
+       },
+       {
+        "id": "t2",
+        "a": [
+         "v1",
+         "4"
+        ],
+        "b": [
+         "fc",
+         "1"
+        ]
+       },
+       {
+        "id": "t3",
+        "a": [
+         "fc",
+         "2"
+        ],
+        "b": [
+         "A",
+         "1"
+        ]
+       },
+       {
+        "id": "t4",
+        "a": [
+         "v1",
+         "2"
+        ],
+        "b": [
+         "A",
+         "2"
+        ]
+       }
+      ],
+      "grafcet": {
+       "name": "G1",
+       "drive": true,
+       "inputs": [
+        {
+         "name": "dcy",
+         "kind": "push"
+        },
+        {
+         "name": "obs",
+         "kind": "switch"
+        }
+       ],
+       "steps": [
+        {
+         "n": 0,
+         "init": true,
+         "act": "",
+         "r": "",
+         "to": null,
+         "alt": []
+        }
+       ],
+       "parts": []
+      },
+      "scene": {
+       "kind": "door",
+       "cyl": "A",
+       "open": "dcy",
+       "obstacle": "obs",
+       "coil": "1Y1"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "grafcet": {
+    "drive": true,
+    "inputs": [
+     {
+      "name": "dcy",
+      "kind": "push"
+     },
+     {
+      "name": "obs",
+      "kind": "switch"
+     }
+    ],
+    "steps": [
+     {
+      "n": 0,
+      "init": true,
+      "act": "",
+      "r": "dcy . a0",
+      "to": null,
+      "alt": []
+     },
+     {
+      "n": 1,
+      "init": false,
+      "act": "1Y1",
+      "r": "a1",
+      "to": null,
+      "alt": []
+     },
+     {
+      "n": 2,
+      "init": false,
+      "act": "1Y1",
+      "r": "5s/X2",
+      "to": null,
+      "alt": []
+     },
+     {
+      "n": 3,
+      "init": false,
+      "act": "",
+      "r": "a0",
+      "to": null,
+      "alt": [
+       {
+        "r": "obs",
+        "to": 1
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La porte du TER",
+    "en": "The TER door"
+   },
+   "text": {
+    "fr": "Le vérin **A** ouvre la porte (A+, capteur **a1** : ouverte) et la ferme (A−, **a0** : fermée). Le distributeur **1V1** est **monostable** : tant que **1Y1** est excité, la porte s’ouvre ou reste ouverte ; sans 1Y1, le ressort le ramène et la porte se ferme. Le réducteur **1V2** freine la fermeture.\nAu pupitre : **dcy**, le bouton d’ouverture du voyageur, et **obs**, le détecteur d’obstacle (un interrupteur : un clic le ferme, un autre l’ouvre).\nLa vue **3D** (bouton « 3D » en haut du plan) montre la porte : le vérin dans le caisson au-dessus de la baie, la courroie qui entraîne le second vantail en sens inverse, les capteurs a0 et a1, et un voyageur dans la baie quand obs est actif. Le bouton vert du vantail s’appuie à la souris.\nLe panneau GRAFCET s’ouvre avec le bouton « GRAFCET », en haut à gauche du plan. Cliquez dans une case pour écrire ; « Ajouter une étape » en bas ; la dernière transition revient d’elle-même à l’étape initiale (↺).",
+    "en": "Cylinder **A** opens the door (A+, sensor **a1**: open) and closes it (A−, **a0**: closed). Valve **1V1** is **monostable**: while **1Y1** is energised, the door opens or stays open; without 1Y1, the spring returns it and the door closes. Flow control **1V2** slows the closing.\nOn the panel: **dcy**, the passenger’s open button, and **obs**, the obstacle detector (a switch: one click closes it, another opens it).\nThe **3D** view (“3D” button at the top of the workspace) shows the door: the cylinder in the box above the doorway, the belt that drives the second leaf the other way, sensors a0 and a1, and a passenger in the doorway when obs is on. The green button on the leaf can be pressed with the mouse.\nThe GRAFCET panel opens with the “GRAFCET” button, top left of the workspace. Click a box to type; “Add a step” at the bottom; the last transition goes back to the initial step by itself (↺)."
+   }
+  },
+  {
+   "title": {
+    "fr": "Où commander 1Y1 ?",
+    "en": "Where to drive 1Y1?"
+   },
+   "text": {
+    "fr": "Avec un distributeur monostable, dans quelles étapes faut-il écrire l’action **1Y1** ?",
+    "en": "With a monostable valve, in which steps must the action **1Y1** be written?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Seulement dans l’étape d’ouverture",
+      "en": "Only in the opening step"
+     },
+     {
+      "fr": "Dans toutes les étapes où la porte doit rester ouverte : sans 1Y1, le ressort la referme",
+      "en": "In every step where the door must stay open: without 1Y1, the spring closes it"
+     },
+     {
+      "fr": "Dans l’étape initiale",
+      "en": "In the initial step"
+     },
+     {
+      "fr": "Nulle part : la porte s’ouvre seule",
+      "en": "Nowhere: the door opens by itself"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "La temporisation",
+    "en": "The time delay"
+   },
+   "text": {
+    "fr": "La porte doit rester ouverte **5 s**. Comment écrire « l’étape X2 est active depuis 5 secondes » ?",
+    "en": "The door must stay open for **5 s**. How do you write “step X2 has been active for 5 seconds”?"
+   },
+   "hint": {
+    "fr": "Notation de la norme IEC 60848 : « 5s/X2 » (on accepte aussi « t/X2/5s »).",
+    "en": "IEC 60848 notation: “5s/X2” (“t/X2/5s” is accepted too)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "X2 . 5",
+      "en": "X2 . 5"
+     },
+     {
+      "fr": "5s/X2",
+      "en": "5s/X2"
+     },
+     {
+      "fr": "t = 5",
+      "en": "t = 5"
+     },
+     {
+      "fr": "↑X2",
+      "en": "↑X2"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Écrire le GRAFCET",
+    "en": "Writing the GRAFCET"
+   },
+   "text": {
+    "fr": "Écrivez :\n- sous **X0** (porte fermée) : `dcy . a0` ;\n- **X1** (ouverture) : `1Y1`, réceptivité `a1` ;\n- **X2** (porte ouverte) : `1Y1`, réceptivité `5s/X2` ;\n- **X3** (fermeture, aucune action) : réceptivité `a0` (retour à X0).\nPuis la **sécurité** : sur X3, ajoutez une transition « ou » (bouton ⑂ au survol de l’étape) de réceptivité `obs` qui mène à **X1** : un obstacle rouvre la porte.",
+    "en": "Write:\n- under **X0** (door closed): `dcy . a0`;\n- **X1** (opening): `1Y1`, receptivity `a1`;\n- **X2** (door open): `1Y1`, receptivity `5s/X2`;\n- **X3** (closing, no action): receptivity `a0` (back to X0).\nThen the **safety**: on X3, add an “or” transition (⑂ button when hovering the step) with receptivity `obs` leading to **X1**: an obstacle reopens the door."
+   },
+   "keep": {
+    "fr": "Avec un distributeur **monostable**, l’action (1Y1) s’écrit dans **chaque** étape où la porte doit être ouverte. Sans courant, le ressort referme la porte.",
+    "en": "With a **monostable** valve, the action (1Y1) is written in **every** step where the door must be open. Without current the spring closes the door."
+   },
+   "hint": {
+    "fr": "Le panneau GRAFCET s’ouvre avec le bouton « GRAFCET », en haut à gauche du plan. Cliquez dans une case pour écrire ; « Ajouter une étape » en bas ; la dernière transition revient d’elle-même à l’étape initiale (↺).",
+    "en": "The GRAFCET panel opens with the “GRAFCET” button, top left of the workspace. Click a box to type; “Add a step” at the bottom; the last transition goes back to the initial step by itself (↺)."
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai",
+    "en": "Test"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer » et appuyez sur **dcy** : la porte doit s’ouvrir (A+), rester ouverte 5 s, puis se fermer (A−).",
+    "en": "Click “Observe” and press **dcy**: the door must open (A+), stay open 5 s, then close (A−)."
+   },
+   "keep": {
+    "fr": "« **5s/X2** » : vraie quand l’étape X2 est active depuis 5 s. C’est la notation des temporisations de la norme IEC 60848.",
+    "en": "“**5s/X2**”: true when step X2 has been active for 5 s. This is the time-delay notation of IEC 60848."
+   },
+   "hint": {
+    "fr": "La porte ne s’ouvre pas ? La réceptivité sous X0 doit être vraie : dcy appuyé et a0 (porte fermée). Elle se referme aussitôt ? 1Y1 doit aussi être dans X2.",
+    "en": "The door does not open? The receptivity under X0 must be true: dcy pressed and a0 (door closed). It closes at once? 1Y1 must also be in X2."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pressed"
+    },
+    "expect": [
+     "A+",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "L’obstacle",
+    "en": "The obstacle"
+   },
+   "text": {
+    "fr": "Pendant la fermeture (X3), **obs** passe à 1. Que fait le GRAFCET ?",
+    "en": "During closing (X3), **obs** becomes 1. What does the GRAFCET do?"
+   },
+   "hint": {
+    "fr": "Essayez : lancez un cycle, et pendant la fermeture cliquez sur obs dans le pupitre. Le diagramme des phases montre la porte qui repart vers l’ouverture.",
+    "en": "Try it: start a cycle, and during closing click obs on the panel. The displacement-step diagram shows the door going back to open."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il attend que la porte soit fermée",
+      "en": "It waits for the door to be closed"
+     },
+     {
+      "fr": "La transition « ou » obs est franchie : retour en X1, 1Y1 rouvre la porte",
+      "en": "The “or” transition obs is cleared: back to X1, 1Y1 reopens the door"
+     },
+     {
+      "fr": "Il s’arrête en X3",
+      "en": "It stops in X3"
+     },
+     {
+      "fr": "Il revient en X0",
+      "en": "It goes back to X0"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Et dans un vrai train ?",
+    "en": "And in a real train?"
+   },
+   "text": {
+    "fr": "Les portes des trains et des bus sont mues par un vérin pneumatique ou, sur beaucoup de matériels récents, par un moteur électrique. Dans les deux cas, leur commande ajoute d’autres conditions à ce GRAFCET : ouverture autorisée seulement à l’arrêt et à quai (une entrée « train à quai » dans la réceptivité de X0), signal sonore avant la fermeture (une action dans X2 conditionnée par le temps), force de fermeture limitée et bords sensibles pour détecter un obstacle.",
+    "en": "Train and bus doors are moved by a pneumatic cylinder or, on much recent rolling stock, by an electric motor. Either way, their control adds other conditions to this GRAFCET: opening allowed only when stopped at the platform (a “train at platform” input in the receptivity under X0), a buzzer before closing (an action in X2 depending on time), limited closing force and sensitive edges to detect an obstacle."
+   },
+   "keep": {
+    "fr": "Une porte ne s’ouvre que si c’est **autorisé** (train arrêté, à quai) et ne se ferme qu’après avoir **prévenu**. Ces conditions s’écrivent dans les réceptivités.",
+    "en": "A door only opens when it is **allowed** (train stopped, at the platform) and only closes after a **warning**. These conditions go into the receptivities."
+   }
+  }
+ ]
+}

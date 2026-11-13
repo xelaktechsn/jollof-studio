@@ -1,0 +1,624 @@
+{
+ "id": "lg02-ou-exclusif",
+ "domain": "logic",
+ "level": "college",
+ "minutes": 30,
+ "title": {
+  "fr": "Le OU exclusif",
+  "en": "The exclusive OR"
+ },
+ "summary": {
+  "fr": "Construire la fonction OU exclusif avec des portes ET, OU, NON, la comparer à la porte OU exclusif et la retrouver dans l’éclairage va-et-vient d’un escalier.",
+  "en": "Build the exclusive OR function from AND, OR and NOT gates, compare it with the XOR gate and find it again in the two-way lighting of a staircase."
+ },
+ "objectives": [
+  {
+   "fr": "Traduire une phrase en table de vérité",
+   "en": "Turn a sentence into a truth table"
+  },
+  {
+   "fr": "Construire une fonction avec plusieurs portes",
+   "en": "Build a function from several gates"
+  },
+  {
+   "fr": "Reconnaître le OU exclusif dans un objet courant",
+   "en": "Recognize the exclusive OR in an everyday object"
+  }
+ ],
+ "start": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "S1 : portes ET, OU, NON · S2 : porte OU exclusif"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 13,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 44,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 44,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "yellow"
+     }
+    }
+   ],
+   "wires": []
+  }
+ },
+ "solution": {
+  "logic": {
+   "elements": [
+    {
+     "id": "t1",
+     "type": "text",
+     "x": 4,
+     "y": 0,
+     "r": 0,
+     "p": {
+      "text": "S1 : portes ET, OU, NON · S2 : porte OU exclusif"
+     }
+    },
+    {
+     "id": "sA",
+     "type": "switch",
+     "x": 4,
+     "y": 3,
+     "r": 0,
+     "p": {
+      "label": "A"
+     }
+    },
+    {
+     "id": "sB",
+     "type": "switch",
+     "x": 4,
+     "y": 13,
+     "r": 0,
+     "p": {
+      "label": "B"
+     }
+    },
+    {
+     "id": "l1",
+     "type": "led",
+     "x": 44,
+     "y": 8,
+     "r": 0,
+     "p": {
+      "label": "S1",
+      "color": "green"
+     }
+    },
+    {
+     "id": "l2",
+     "type": "led",
+     "x": 44,
+     "y": 19,
+     "r": 0,
+     "p": {
+      "label": "S2",
+      "color": "yellow"
+     }
+    },
+    {
+     "id": "nB",
+     "type": "not",
+     "x": 14,
+     "y": 5,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g1",
+     "type": "and",
+     "x": 24,
+     "y": 3,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "nA",
+     "type": "not",
+     "x": 14,
+     "y": 11,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g2",
+     "type": "and",
+     "x": 24,
+     "y": 11,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g3",
+     "type": "or",
+     "x": 34,
+     "y": 7,
+     "r": 0,
+     "p": {}
+    },
+    {
+     "id": "g4",
+     "type": "xor",
+     "x": 34,
+     "y": 18,
+     "r": 0,
+     "p": {}
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g1",
+      "A"
+     ]
+    },
+    {
+     "id": "w2",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "nB",
+      "A"
+     ]
+    },
+    {
+     "id": "w3",
+     "a": [
+      "nB",
+      "Y"
+     ],
+     "b": [
+      "g1",
+      "B"
+     ]
+    },
+    {
+     "id": "w4",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "nA",
+      "A"
+     ]
+    },
+    {
+     "id": "w5",
+     "a": [
+      "nA",
+      "Y"
+     ],
+     "b": [
+      "g2",
+      "A"
+     ]
+    },
+    {
+     "id": "w6",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g2",
+      "B"
+     ]
+    },
+    {
+     "id": "w7",
+     "a": [
+      "g1",
+      "Y"
+     ],
+     "b": [
+      "g3",
+      "A"
+     ]
+    },
+    {
+     "id": "w8",
+     "a": [
+      "g2",
+      "Y"
+     ],
+     "b": [
+      "g3",
+      "B"
+     ]
+    },
+    {
+     "id": "w9",
+     "a": [
+      "g3",
+      "Y"
+     ],
+     "b": [
+      "l1",
+      "A"
+     ]
+    },
+    {
+     "id": "w10",
+     "a": [
+      "sA",
+      "Q"
+     ],
+     "b": [
+      "g4",
+      "A"
+     ]
+    },
+    {
+     "id": "w11",
+     "a": [
+      "sB",
+      "Q"
+     ],
+     "b": [
+      "g4",
+      "B"
+     ]
+    },
+    {
+     "id": "w12",
+     "a": [
+      "g4",
+      "Y"
+     ],
+     "b": [
+      "l2",
+      "A"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Différents ou pareils ?",
+    "en": "Different or the same?"
+   },
+   "text": {
+    "fr": "Le **OU exclusif** (XOR en anglais) vaut **1** quand ses deux entrées sont **différentes**, et **0** quand elles sont pareilles.\nDans ce TP :\n- vous le construisez avec les portes de base (ET, OU, NON) sur la LED **S1** ;\n- vous le comparez à la porte **OU exclusif** toute faite, sur la LED **S2** ;\n- vous le retrouvez dans l’éclairage d’un escalier.",
+    "en": "The **exclusive OR** (XOR) is **1** when its two inputs are **different**, and **0** when they are the same.\nIn this lab:\n- you build it from the basic gates (AND, OR, NOT) on LED **S1**;\n- you compare it with the ready-made **XOR** gate, on LED **S2**;\n- you find it again in the lighting of a staircase."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La table du OU exclusif",
+    "en": "The XOR truth table"
+   },
+   "text": {
+    "fr": "Sans rien câbler pour l’instant, remplissez la table de **S** : 1 si A et B sont différents, 0 s’ils sont pareils.",
+    "en": "Without wiring anything yet, fill in the table of **S**: 1 if A and B are different, 0 if they are the same."
+   },
+   "hint": {
+    "fr": "Deux lignes seulement donnent S = 1.",
+    "en": "Only two rows give S = 1."
+   },
+   "check": {
+    "type": "table-fill",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S": "A^B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "L’équation",
+    "en": "The equation"
+   },
+   "text": {
+    "fr": "Lisez les lignes où S vaut 1 : S = 1 quand (A = 1 **et** B = 0) **ou** quand (A = 0 **et** B = 1).\nÉcrivez cette phrase en équation, avec `.` pour ET, `+` pour OU et `/` pour NON : `A./B` se lit « A et non B ».",
+    "en": "Read the rows where S is 1: S = 1 when (A = 1 **and** B = 0) **or** when (A = 0 **and** B = 1).\nWrite this sentence as an equation, with `.` for AND, `+` for OR and `/` for NOT: `A./B` reads “A and not B”."
+   },
+   "hint": {
+    "fr": "Deux termes reliés par un `+` : le premier est `A./B`, à vous de trouver le second.",
+    "en": "Two terms joined by a `+`: the first one is `A./B`, find the second one."
+   },
+   "check": {
+    "type": "expr",
+    "vars": [
+     "A",
+     "B"
+    ],
+    "answer": "A./B + /A.B",
+    "form": "sop"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le premier terme : A./B",
+    "en": "The first term: A./B"
+   },
+   "text": {
+    "fr": "Construisez **A./B** et reliez-le à **S1** :\n- une porte **NON** dont l’entrée est reliée à B ;\n- une porte **ET** qui reçoit A et la sortie de la porte NON ;\n- la sortie de la porte ET vers **S1**.\nS1 ne doit s’allumer que pour A = 1 et B = 0.",
+    "en": "Build **A./B** and connect it to **S1**:\n- a **NOT** gate whose input is connected to B;\n- an **AND** gate that receives A and the output of the NOT gate;\n- the AND gate output to **S1**.\nS1 must light only for A = 1 and B = 0."
+   },
+   "hint": {
+    "fr": "Une même sortie peut alimenter plusieurs entrées : vous aurez encore besoin de A et de B pour le second terme.",
+    "en": "One output can feed several inputs: you will need A and B again for the second term."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S1": "A./B"
+    }
+   },
+   "solution": {
+    "elements": [
+     {
+      "id": "t1",
+      "type": "text",
+      "x": 4,
+      "y": 0,
+      "r": 0,
+      "p": {
+       "text": "S1 : portes ET, OU, NON · S2 : porte OU exclusif"
+      }
+     },
+     {
+      "id": "sA",
+      "type": "switch",
+      "x": 4,
+      "y": 3,
+      "r": 0,
+      "p": {
+       "label": "A"
+      }
+     },
+     {
+      "id": "sB",
+      "type": "switch",
+      "x": 4,
+      "y": 13,
+      "r": 0,
+      "p": {
+       "label": "B"
+      }
+     },
+     {
+      "id": "l1",
+      "type": "led",
+      "x": 44,
+      "y": 8,
+      "r": 0,
+      "p": {
+       "label": "S1",
+       "color": "green"
+      }
+     },
+     {
+      "id": "l2",
+      "type": "led",
+      "x": 44,
+      "y": 19,
+      "r": 0,
+      "p": {
+       "label": "S2",
+       "color": "yellow"
+      }
+     },
+     {
+      "id": "nB",
+      "type": "not",
+      "x": 14,
+      "y": 5,
+      "r": 0,
+      "p": {}
+     },
+     {
+      "id": "g1",
+      "type": "and",
+      "x": 24,
+      "y": 3,
+      "r": 0,
+      "p": {}
+     }
+    ],
+    "wires": [
+     {
+      "id": "w1",
+      "a": [
+       "sA",
+       "Q"
+      ],
+      "b": [
+       "g1",
+       "A"
+      ]
+     },
+     {
+      "id": "w2",
+      "a": [
+       "sB",
+       "Q"
+      ],
+      "b": [
+       "nB",
+       "A"
+      ]
+     },
+     {
+      "id": "w3",
+      "a": [
+       "nB",
+       "Y"
+      ],
+      "b": [
+       "g1",
+       "B"
+      ]
+     },
+     {
+      "id": "w4",
+      "a": [
+       "g1",
+       "Y"
+      ],
+      "b": [
+       "l1",
+       "A"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le second terme et la porte OU",
+    "en": "The second term and the OR gate"
+   },
+   "text": {
+    "fr": "Construisez de même **/A.B** avec une deuxième porte NON (sur A) et une deuxième porte ET. Ajoutez une porte **OU** qui réunit les deux termes : sa sortie va à **S1**, à la place du fil qui venait de la première porte ET (sélectionnez ce fil, puis appuyez sur Suppr).",
+    "en": "Build **/A.B** the same way with a second NOT gate (on A) and a second AND gate. Add an **OR** gate that joins the two terms: its output goes to **S1**, instead of the wire that came from the first AND gate (select that wire, then press Delete)."
+   },
+   "hint": {
+    "fr": "Chaque porte ET va sur une entrée de la porte OU. Essayez ensuite les quatre positions de A et B : S1 doit suivre la table de l’étape 2.",
+    "en": "Each AND gate goes to one input of the OR gate. Then try the four positions of A and B: S1 must follow the table from step 2."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S1": "A./B + /A.B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "La porte OU exclusif",
+    "en": "The XOR gate"
+   },
+   "text": {
+    "fr": "Dans la bibliothèque (**Portes logiques**), prenez la porte **OU exclusif** : son symbole ressemble à celui du OU, avec un trait courbe en plus à l’arrière (en symboles CEI, un rectangle marqué « =1 »). Reliez A et B à ses entrées, et sa sortie à **S2**.",
+    "en": "In the library (**Logic gates**), take the **XOR** gate: its symbol looks like the OR one, with an extra curved line at the back (in IEC symbols, a rectangle marked “=1”). Connect A and B to its inputs, and its output to **S2**."
+   },
+   "check": {
+    "type": "logic-table",
+    "inputs": [
+     "A",
+     "B"
+    ],
+    "outputs": {
+     "S2": "A^B"
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Comparer S1 et S2",
+    "en": "Compare S1 and S2"
+   },
+   "text": {
+    "fr": "Essayez les quatre positions de A et B : S1 et S2 s’allument toujours ensemble. Ouvrez l’onglet **Table**, à droite : les colonnes S1 et S2 sont identiques.\nLa porte OU exclusif fait donc, à elle seule, le travail de vos cinq portes.",
+    "en": "Try the four positions of A and B: S1 and S2 always light together. Open the **Table** tab on the right: the S1 and S2 columns are identical.\nSo the XOR gate alone does the job of your five gates."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "L’éclairage va-et-vient",
+    "en": "Two-way lighting"
+   },
+   "text": {
+    "fr": "Dans un escalier, un interrupteur en bas (A) et un en haut (B) commandent la même lampe L : on peut l’allumer ou l’éteindre depuis chaque étage. Quand les deux interrupteurs sont à 0, la lampe est éteinte. Basculer **un seul** interrupteur, n’importe lequel, change l’état de la lampe. Quelle porte donne L ?",
+    "en": "In a staircase, a switch at the bottom (A) and one at the top (B) control the same lamp L: it can be switched on or off from either floor. When both switches are at 0, the lamp is off. Flipping **just one** switch, either one, changes the state of the lamp. Which gate gives L?"
+   },
+   "hint": {
+    "fr": "Partez de A = B = 0 (lampe éteinte), basculez A, puis B : que devient L à chaque fois ?",
+    "en": "Start from A = B = 0 (lamp off), flip A, then B: what happens to L each time?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une porte ET",
+      "en": "An AND gate"
+     },
+     {
+      "fr": "Une porte OU",
+      "en": "An OR gate"
+     },
+     {
+      "fr": "Une porte OU exclusif",
+      "en": "An XOR gate"
+     },
+     {
+      "fr": "Une porte NON-ET",
+      "en": "A NAND gate"
+     }
+    ],
+    "answer": 2
+   }
+  }
+ ]
+}

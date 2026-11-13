@@ -1,0 +1,622 @@
+{
+ "id": "pn06-cycle-galets",
+ "level": "lycee",
+ "minutes": 45,
+ "title": {
+  "fr": "Cycle A+ B+ A− B− tout pneumatique",
+  "en": "A+ B+ A− B− all-pneumatic cycle"
+ },
+ "summary": {
+  "fr": "Un poste de transfert de colis : le vérin A lève le colis, le vérin B le pousse sur un second convoyeur. Sans électricité, des distributeurs à galet placés en fin de course enchaînent les mouvements : A sort, B sort, A rentre, B rentre.",
+  "en": "A parcel transfer station: cylinder A lifts the parcel, cylinder B pushes it onto a second conveyor. Without electricity, roller valves at the end of each stroke chain the movements: A out, B out, A in, B in."
+ },
+ "objectives": [
+  {
+   "fr": "Lire un cycle séquentiel et son diagramme des phases",
+   "en": "Read a sequential cycle and its displacement-step diagram"
+  },
+  {
+   "fr": "Commander chaque mouvement par la fin du précédent (galets a0, a1, b0, b1)",
+   "en": "Trigger each movement by the end of the previous one (rollers a0, a1, b0, b1)"
+  },
+  {
+   "fr": "Reconnaître un signal bloquant",
+   "en": "Recognise a blocking signal"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un cycle s’écrit avec les mouvements des vérins, A+ B+ A− B−, et se lit sur le **diagramme des phases** : une ligne par vérin, une colonne par phase.",
+   "en": "A cycle is written with the cylinder movements, A+ B+ A− B−, and read on the **displacement-step diagram**: one line per cylinder, one column per step."
+  },
+  {
+   "fr": "Chaque mouvement est déclenché par la fin de course du précédent (galets a0, a1, b0, b1).",
+   "en": "Each movement is triggered by the end of stroke of the previous one (rollers a0, a1, b0, b1)."
+  },
+  {
+   "fr": "Le distributeur bistable est une mémoire : il garde sa position jusqu’au signal opposé.",
+   "en": "The bistable valve is a memory: it keeps its position until the opposite signal."
+  },
+  {
+   "fr": "Un signal bloquant (deux pilotages opposés sous pression) arrête le cycle : on le supprime par un montage en cascade ou par une commande séquentielle (GRAFCET).",
+   "en": "A blocking signal (two opposite pilots pressurised) stops the cycle: it is removed with a cascade circuit or a sequential control (GRAFCET)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Cycle A+ B+ A− B−",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "A"
+        }
+       },
+       {
+        "id": "B",
+        "type": "cyl2",
+        "x": 36,
+        "y": 0,
+        "p": {
+         "label": "B"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "pilot",
+         "right": "pilot",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "v2",
+        "type": "v52",
+        "x": 28,
+        "y": 12,
+        "p": {
+         "left": "pilot",
+         "right": "pilot",
+         "label": "2V1"
+        }
+       },
+       {
+        "id": "and",
+        "type": "twopress",
+        "x": -16,
+        "y": 18,
+        "p": {}
+       },
+       {
+        "id": "dcy",
+        "type": "v32",
+        "x": -36,
+        "y": 26,
+        "p": {
+         "act": "push",
+         "normal": "nc",
+         "label": "dcy"
+        }
+       },
+       {
+        "id": "b0",
+        "type": "v32",
+        "x": -20,
+        "y": 26,
+        "p": {
+         "act": "roller",
+         "normal": "nc",
+         "cam": "B",
+         "end": "0",
+         "label": "b0"
+        }
+       },
+       {
+        "id": "b1",
+        "type": "v32",
+        "x": -4,
+        "y": 26,
+        "p": {
+         "act": "roller",
+         "normal": "nc",
+         "cam": "B",
+         "end": "1",
+         "label": "b1"
+        }
+       },
+       {
+        "id": "a1",
+        "type": "v32",
+        "x": 12,
+        "y": 26,
+        "p": {
+         "act": "roller",
+         "normal": "nc",
+         "cam": "A",
+         "end": "1",
+         "label": "a1"
+        }
+       },
+       {
+        "id": "a0",
+        "type": "v32",
+        "x": 28,
+        "y": 26,
+        "p": {
+         "act": "roller",
+         "normal": "nc",
+         "cam": "A",
+         "end": "0",
+         "label": "a0"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 10,
+        "y": 36,
+        "p": {}
+       }
+      ],
+      "tubes": [
+       {
+        "id": "t1",
+        "a": [
+         "v1",
+         "4"
+        ],
+        "b": [
+         "A",
+         "1"
+        ]
+       },
+       {
+        "id": "t2",
+        "a": [
+         "v1",
+         "2"
+        ],
+        "b": [
+         "A",
+         "2"
+        ]
+       },
+       {
+        "id": "t3",
+        "a": [
+         "v2",
+         "4"
+        ],
+        "b": [
+         "B",
+         "1"
+        ]
+       },
+       {
+        "id": "t4",
+        "a": [
+         "v2",
+         "2"
+        ],
+        "b": [
+         "B",
+         "2"
+        ]
+       },
+       {
+        "id": "t5",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v1",
+         "1"
+        ]
+       },
+       {
+        "id": "t6",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v2",
+         "1"
+        ]
+       },
+       {
+        "id": "t7",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "dcy",
+         "1"
+        ]
+       },
+       {
+        "id": "t8",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "b0",
+         "1"
+        ]
+       },
+       {
+        "id": "t9",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "b1",
+         "1"
+        ]
+       },
+       {
+        "id": "t10",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "a1",
+         "1"
+        ]
+       },
+       {
+        "id": "t11",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "a0",
+         "1"
+        ]
+       }
+      ],
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t14",
+     "a": [
+      "dcy",
+      "2"
+     ],
+     "b": [
+      "and",
+      "1"
+     ]
+    },
+    {
+     "id": "t15",
+     "a": [
+      "b0",
+      "2"
+     ],
+     "b": [
+      "and",
+      "3"
+     ]
+    },
+    {
+     "id": "t16",
+     "a": [
+      "and",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "14"
+     ]
+    },
+    {
+     "id": "t17",
+     "a": [
+      "a1",
+      "2"
+     ],
+     "b": [
+      "v2",
+      "14"
+     ]
+    },
+    {
+     "id": "t18",
+     "a": [
+      "b1",
+      "2"
+     ],
+     "b": [
+      "v1",
+      "12"
+     ]
+    },
+    {
+     "id": "t19",
+     "a": [
+      "a0",
+      "2"
+     ],
+     "b": [
+      "v2",
+      "12"
+     ]
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le cycle à réaliser",
+    "en": "The cycle to build"
+   },
+   "text": {
+    "fr": "Sur ce poste de transfert, le vérin **A** lève un colis arrivé par un convoyeur et le vérin **B** le pousse sur un second convoyeur, plus haut. Le cycle s’écrit **A+ B+ A− B−** : A sort (levée), B sort (poussée), A rentre (redescente), B rentre.\nChaque vérin a deux **galets de fin de course** : **a0** est actionné quand la tige de A est rentrée, **a1** quand elle est sortie (de même **b0** et **b1**). Ils sont dessinés sous le plan ; une petite marque sur la tige montre la came qui les actionne.\nLes distributeurs **1V1** et **2V1** sont **bistables** et pilotés par l’air : un signal sur 14 fait sortir la tige, un signal sur 12 la fait rentrer.\nLa vue **3D** (bouton « 3D » en haut du plan) montre les vérins en vraie grandeur : leurs tiges bougent avec la simulation.",
+    "en": "At this transfer station, cylinder **A** lifts a parcel brought by a conveyor and cylinder **B** pushes it onto a second, higher conveyor. The cycle is written **A+ B+ A− B−**: A extends (lift), B extends (push), A retracts (lowering), B retracts.\nEach cylinder has two **end-of-stroke roller valves**: **a0** is actuated when A’s rod is in, **a1** when it is out (likewise **b0** and **b1**). They are drawn below the plan; a small mark on the rod shows the cam that actuates them.\nValves **1V1** and **2V1** are **bistable** and air-piloted: a signal on 14 extends the rod, a signal on 12 retracts it.\nThe **3D** view (“3D” button at the top of the workspace) shows the cylinders life-size: their rods move with the simulation."
+   }
+  },
+  {
+   "title": {
+    "fr": "Le signal de chaque mouvement",
+    "en": "The signal for each movement"
+   },
+   "text": {
+    "fr": "Chaque mouvement est déclenché par la fin du mouvement précédent. Quel galet doit piloter **B+** (orifice 14 de 2V1) ?",
+    "en": "Each movement is triggered by the end of the previous one. Which roller should pilot **B+** (port 14 of 2V1)?"
+   },
+   "keep": {
+    "fr": "Dans un cycle tout pneumatique, chaque mouvement est lancé par la **fin de course** du mouvement précédent : c’est la machine elle-même qui dit « j’ai fini ».",
+    "en": "In an all-pneumatic cycle, each movement is started by the **end of stroke** of the previous one: the machine itself says “I am done”."
+   },
+   "hint": {
+    "fr": "Ensuite : b1 (B sorti, colis poussé) pilote A− ; a0 (A rentré) pilote B− ; et le départ est dcy ET b0 (B rentré), par le clapet ET.",
+    "en": "Then: b1 (B out, parcel pushed) pilots A−; a0 (A in) pilots B−; and the start is dcy AND b0 (B in), through the AND valve."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "dcy, le bouton de départ",
+      "en": "dcy, the start button"
+     },
+     {
+      "fr": "a1 : A est sorti, le colis est levé",
+      "en": "a1: A is out, the parcel is lifted"
+     },
+     {
+      "fr": "b0 : B est rentré",
+      "en": "b0: B is in"
+     },
+     {
+      "fr": "a0 : A est rentré",
+      "en": "a0: A is in"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Une mémoire",
+    "en": "A memory"
+   },
+   "text": {
+    "fr": "Le galet a1 n’est actionné que tant que A est sorti. Que fait **2V1** quand a1 est relâché (A rentre) ?",
+    "en": "Roller a1 is actuated only while A is out. What does **2V1** do when a1 is released (A retracts)?"
+   },
+   "hint": {
+    "fr": "Sans ressort de rappel, le tiroir reste où le dernier signal l’a poussé : B reste sorti jusqu’au signal de B− (a0).",
+    "en": "With no return spring, the spool stays where the last signal pushed it: B stays out until the B− signal (a0)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il revient au repos grâce à un ressort",
+      "en": "It returns to rest with a spring"
+     },
+     {
+      "fr": "Il garde sa position : un distributeur bistable est une mémoire",
+      "en": "It keeps its position: a bistable valve is a memory"
+     },
+     {
+      "fr": "Il se met en position centrale",
+      "en": "It goes to a centre position"
+     },
+     {
+      "fr": "Il met B à l’échappement",
+      "en": "It exhausts B"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux de commande",
+    "en": "The control tubes"
+   },
+   "text": {
+    "fr": "La partie puissance est raccordée (source, distributeurs, vérins) ; les galets et dcy sont alimentés. Tirez les **signaux** :\n- **dcy** (orifice 2) → entrée **1** du clapet ET ; **b0** (2) → son entrée **3** ; sa sortie **2** → **14** de **1V1** (A+) ;\n- **a1** (2) → **14** de **2V1** (B+) ;\n- **b1** (2) → **12** de **1V1** (A−) ;\n- **a0** (2) → **12** de **2V1** (B−).",
+    "en": "The power part is connected (supply, valves, cylinders); the rollers and dcy are supplied. Draw the **signals**:\n- **dcy** (port 2) → input **1** of the AND valve; **b0** (2) → its input **3**; its output **2** → **14** of **1V1** (A+);\n- **a1** (2) → **14** of **2V1** (B+);\n- **b1** (2) → **12** of **1V1** (A−);\n- **a0** (2) → **12** of **2V1** (B−)."
+   },
+   "keep": {
+    "fr": "Un distributeur **bistable** garde sa dernière position sans signal : c’est une **mémoire**. Une impulsion suffit pour le commander.",
+    "en": "A **bistable** valve keeps its last position with no signal: it is a **memory**. A pulse is enough to switch it."
+   },
+   "hint": {
+    "fr": "Tirez un tuyau d’un orifice (petit rond) à un autre ; un galet a son orifice 2 en haut.",
+    "en": "Draw a tube from one port (small circle) to another; a roller valve has its port 2 at the top."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "dcy:2",
+      "and:1"
+     ],
+     [
+      "b0:2",
+      "and:3"
+     ],
+     [
+      "and:2",
+      "v1:14"
+     ],
+     [
+      "a1:2",
+      "v2:14"
+     ],
+     [
+      "b1:2",
+      "v1:12"
+     ],
+     [
+      "a0:2",
+      "v2:12"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai du cycle",
+    "en": "Testing the cycle"
+   },
+   "text": {
+    "fr": "Cliquez sur « Observer », puis maintenez **dcy** (bouton ci-dessous, ou clic maintenu sur dcy dans le plan). Les courses sont relevées : il faut observer **A+ B+ A− B−**. Tant que dcy reste appuyé, le cycle recommence.",
+    "en": "Click “Observe”, then hold **dcy** (button below, or hold the click on dcy in the plan). The strokes are recorded: you must observe **A+ B+ A− B−**. While dcy stays pressed, the cycle starts again."
+   },
+   "hint": {
+    "fr": "Un vérin ne bouge pas ? Regardez quel signal arrive sur 14 et 12 de son distributeur (tuyaux bleus : sous pression). Si les deux sont sous pression, le distributeur ne bascule pas.",
+    "en": "A cylinder does not move? Check which signal reaches 14 and 12 of its valve (blue tubes: pressurised). If both are pressurised, the valve does not switch."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pressed"
+    },
+    "expect": [
+     "A+",
+     "B+",
+     "A-",
+     "B-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le diagramme des phases",
+    "en": "The displacement-step diagram"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Pneumatique**, « Cycle observé » trace le **diagramme des phases** : une ligne par vérin, en haut tige sortie (1), en bas tige rentrée (0). Combien de phases compte un cycle A+ B+ A− B− ?",
+    "en": "In the **Pneumatics** tab, “Observed cycle” draws the **displacement-step diagram**: one line per cylinder, top rod out (1), bottom rod in (0). How many steps does an A+ B+ A− B− cycle have?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "2",
+      "en": "2"
+     },
+     {
+      "fr": "4 : un mouvement par phase",
+      "en": "4: one movement per step"
+     },
+     {
+      "fr": "8",
+      "en": "8"
+     },
+     {
+      "fr": "Autant que de galets",
+      "en": "As many as roller valves"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Un signal bloquant",
+    "en": "A blocking signal"
+   },
+   "text": {
+    "fr": "Pour serrer une pièce (A) puis la percer (B), il faut le cycle **A+ B+ B− A−** : le foret ressort avant le desserrage. On le tente avec les mêmes galets : A+ par dcy ET b0, B+ par a1, B− par b1, A− par b0. Que se passe-t-il quand on appuie sur dcy ?",
+    "en": "To clamp a part (A) and then drill it (B), the cycle must be **A+ B+ B− A−**: the drill comes out before unclamping. Let us try it with the same rollers: A+ by dcy AND b0, B+ by a1, B− by b1, A− by b0. What happens when dcy is pressed?"
+   },
+   "hint": {
+    "fr": "C’est un **signal bloquant** : il est encore présent quand le mouvement opposé est demandé (b0 pendant A+, puis a1 pendant B−). Deux solutions : la **cascade** (exemple « Cycle A+ B+ B− A− en cascade ») qui coupe l’air des signaux inutiles, ou un **GRAFCET** qui commande des électrovannes (TP suivant).",
+    "en": "This is a **blocking signal**: it is still present when the opposite movement is requested (b0 during A+, then a1 during B−). Two solutions: the **cascade** (example “A+ B+ B− A− cascade cycle”) which cuts the air of unneeded signals, or a **GRAFCET** driving solenoid valves (next lab)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le cycle se déroule normalement",
+      "en": "The cycle runs normally"
+     },
+     {
+      "fr": "Rien : b0 pilote A− pendant que dcy . b0 pilote A+, 1V1 reçoit les deux signaux et garde sa position",
+      "en": "Nothing: b0 pilots A− while dcy . b0 pilots A+, 1V1 gets both signals and keeps its position"
+     },
+     {
+      "fr": "A sort, puis tout s’arrête faute d’air",
+      "en": "A extends, then everything stops for lack of air"
+     },
+     {
+      "fr": "Une fuite apparaît sur b0",
+      "en": "A leak appears on b0"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "À retenir",
+    "en": "Key points"
+   },
+   "text": {
+    "fr": "- Un cycle séquentiel s’écrit A+ B+ A− B− et se lit sur le **diagramme des phases**.\n- Chaque mouvement est déclenché par la **fin de course** du précédent (galets a0, a1…).\n- Le distributeur bistable est une **mémoire**.\n- Un signal encore présent quand le mouvement opposé est demandé **bloque** le cycle : cascade ou GRAFCET.",
+    "en": "- A sequential cycle is written A+ B+ A− B− and read on the **displacement-step diagram**.\n- Each movement is triggered by the **end of stroke** of the previous one (rollers a0, a1…).\n- The bistable valve is a **memory**.\n- A signal still present when the opposite movement is requested **blocks** the cycle: cascade or GRAFCET."
+   },
+   "keep": {
+    "fr": "**Signal bloquant** : un signal encore présent sur un pilotage quand le signal opposé arrive. Le distributeur bistable ne bascule pas et le cycle s’arrête.",
+    "en": "**Blocking signal**: a signal still present on one pilot when the opposite signal arrives. The bistable valve does not switch and the cycle stops."
+   }
+  }
+ ]
+}
