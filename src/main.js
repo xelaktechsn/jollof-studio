@@ -3582,6 +3582,8 @@ async function start() {
   requestAnimationFrame(() => { mark('frame'); dispatchEvent(new Event('jollof:ready')); });
   if (cadReady) cadReady.then(() => cadArrived());
   if (school) school.afterStart(); else moduleApi.sessions.recover();
+  // Mises à jour (édition gratuite installée) : module chargé après le démarrage, première vérification quelques secondes plus tard.
+  if (import.meta.env.VITE_EDITION !== 'pro' && native.isTauri()) setTimeout(() => import('./ui/update.js').then(m => m.initUpdates({ beforeRestart: autosave })).catch(e => console.warn(e)), 2000);
   if (import.meta.env.DEV) window.__jollof = { ...moduleApi, ai: S.ai,
     test: { // tests de l'interface : état du projet, blocs, composant posé à un point précis (comme un glisser-déposer)
       data: () => serialize(), restore: async d => { await restore(d); commit(); }, blocks: () => blocks.list.map(b => ({ id: b.id, name: b.name, comps: [...b.comps] })),

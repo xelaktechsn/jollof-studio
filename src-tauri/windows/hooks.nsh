@@ -3,17 +3,26 @@
 ; l'application : elle est écrite dans language.txt, à côté de l'exécutable, et lue au
 ; démarrage (commande install_language, src-tauri/src/lib.rs).
 ; 1036 = identifiant Windows du français ; toute autre langue donne l'anglais.
+; Mise à jour depuis l'application (option /UPDATE, variable $UpdateMode du modèle NSIS de Tauri) :
+; la langue déjà installée est gardée telle quelle.
 
 !macro NSIS_HOOK_POSTINSTALL
-  FileOpen $0 "$INSTDIR\language.txt" w
-  ${If} $LANGUAGE == 1036
-    FileWrite $0 "fr"
+  ${If} $UpdateMode = 1
+  ${AndIf} ${FileExists} "$INSTDIR\language.txt"
+    ; rien : mise à jour, langue conservée
   ${Else}
-    FileWrite $0 "en"
+    FileOpen $0 "$INSTDIR\language.txt" w
+    ${If} $LANGUAGE == 1036
+      FileWrite $0 "fr"
+    ${Else}
+      FileWrite $0 "en"
+    ${EndIf}
+    FileClose $0
   ${EndIf}
-  FileClose $0
 !macroend
 
 !macro NSIS_HOOK_PREUNINSTALL
-  Delete "$INSTDIR\language.txt"
+  ${If} $UpdateMode <> 1
+    Delete "$INSTDIR\language.txt"
+  ${EndIf}
 !macroend

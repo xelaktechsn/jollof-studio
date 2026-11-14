@@ -34,6 +34,8 @@ Jollof Studio est une application de bureau, gratuite et open source, pour **câ
 
 Tout est sur la [page des versions](https://github.com/xelaktechsn/jollof-studio/releases/latest).
 
+Déjà installé ? L’application propose elle-même les nouvelles versions (à partir de la 0.2.1).
+
 ## Compiler soi-même
 
 Il faut [Node.js 20+](https://nodejs.org) et [Rust](https://rustup.rs) ([prérequis Tauri](https://tauri.app/start/prerequisites/)).

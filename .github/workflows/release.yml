@@ -10,6 +10,8 @@
 #   Jollof-Studio-Linux-amd64.deb         Debian, Ubuntu
 #   Jollof-Studio-Linux-x86_64.rpm        Fedora, openSUSE
 #   SHA256SUMS.txt                        empreintes
+#   latest.json, *.sig                    mises à jour depuis l'application (scripts/update-manifest.mjs) : l'application
+#                                         lit releases/latest/download/latest.json et vérifie la signature
 #
 # Lancement : pousser une étiquette « v0.1.0 » (égale à la version de src-tauri/tauri.conf.json), ou Actions →
 # Release → Run workflow. macOS viendra plus tard (signature et notarisation Apple).
@@ -115,6 +117,23 @@ jobs:
           fi
           ls -la ../../out
 
+      # Signature des installateurs pour les mises à jour depuis l'application (clé minisign de Tauri, secrets
+      # du dépôt TAURI_SIGNING_PRIVATE_KEY et TAURI_SIGNING_PRIVATE_KEY_PASSWORD). Sans elle, pas de publication :
+      # les installations existantes refuseraient la mise à jour.
+      - name: Signatures des mises à jour
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -e
+          [ -n "$TAURI_SIGNING_PRIVATE_KEY" ] || { echo "::error::secret TAURI_SIGNING_PRIVATE_KEY absent"; exit 1; }
+          for f in out/*; do
+            npx tauri signer sign "$f"
+            [ -s "$f.sig" ] || { echo "::error::signature de $f non produite"; exit 1; }
+          done
+          ls -la out
+
       - uses: actions/upload-artifact@v4
         with:
           name: jollof-studio-${{ runner.os }}
@@ -131,10 +150,15 @@ jobs:
         with:
           path: out
           merge-multiple: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Manifeste des mises à jour
+        run: node scripts/update-manifest.mjs out "${{ needs.version.outputs.tag }}" "$GITHUB_REPOSITORY"
       - name: Empreintes
         run: |
           cd out
-          sha256sum * > SHA256SUMS.txt
+          sha256sum $(ls | grep -v '\.sig$' | grep -v '^latest\.json$') > SHA256SUMS.txt
           cat SHA256SUMS.txt
       - name: Version GitHub
         env:
@@ -158,6 +182,7 @@ jobs:
           - **Windows** : l'installateur n'est pas encore signé ; si SmartScreen s'affiche, « Informations complémentaires » puis « Exécuter quand même ». L'installateur demande la langue. · *The installer is not signed yet: on the SmartScreen prompt choose "More info" then "Run anyway". The installer asks for the language.*
           - **AppImage** : `chmod +x Jollof-Studio-Linux-x86_64.AppImage` puis lancez-le · *then run it*.
           - Empreintes · *Checksums*: `SHA256SUMS.txt`.
+          - Déjà installé ? L'application propose la mise à jour d'elle-même · *Already installed? The app offers the update itself.*
 
           Site : https://xelaktechsn.github.io/jollof-studio/
           EOF

@@ -1,6 +1,6 @@
 [package]
 name = "jollof-studio"
-version = "0.2.0"
+version = "0.2.1"
 description = "Jollof Studio : conception et animation de circuits électroniques en 3D"
 authors = ["Mamadou Sarr"]
 license = "AGPL-3.0-or-later"
@@ -38,3 +38,7 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-process = "2"
+tauri-plugin-updater = "2"

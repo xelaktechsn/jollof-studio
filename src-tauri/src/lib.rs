@@ -732,6 +732,10 @@ fn allowed_navigation(scheme: &str, host: &str) -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        // Mises à jour de l'édition gratuite : manifeste latest.json de la dernière version GitHub,
+        // installateur vérifié par sa signature (clé publique dans tauri.conf.json), puis redémarrage.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(navigation_guard())
         .manage(Mutex::new(Grants::default()))
         .manage(serial::Ports::default())
