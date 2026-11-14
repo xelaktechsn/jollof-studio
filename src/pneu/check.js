@@ -23,6 +23,7 @@ export function checkPneu(c, bench = { coils: [], sensors: [] }) {
     if ((e.type === 'v32' || e.type === 'v52' || e.type === 'v53') && !has(e, '1')) out.push({ level: 'error', text: tl('{0} : l’orifice 1 (alimentation) n’est pas raccordé.', name(e)) });
     if ((e.type === 'v52' || e.type === 'v53') && !has(e, '4') && !has(e, '2')) out.push({ level: 'warning', text: tl('{0} : ni 4 ni 2 n’est raccordé à un vérin.', name(e)) });
     if (e.type === 'v32' && !has(e, '2')) out.push({ level: 'warning', text: tl('{0} : l’orifice 2 (utilisation) n’est pas raccordé.', name(e)) });
+    if (e.type === 'v32' && P.act === 'tempo' && !has(e, '12')) out.push({ level: 'warning', text: tl('{0} : l’orifice de pilotage 12 n’est pas raccordé : le temporisateur ne démarrera jamais.', name(e)) });
     for (const p of portsOf(e)) if (/^1[24]$/.test(p.id) && !has(e, p.id)) out.push({ level: 'error', text: tl('{0} : l’orifice de pilotage {1} n’est pas raccordé.', name(e), p.id) });
     if (e.type === 'v32' && P.act === 'roller') {
       if (!P.cam) out.push({ level: 'error', text: tl('{0} : choisissez le vérin dont la tige actionne ce galet.', name(e)) });

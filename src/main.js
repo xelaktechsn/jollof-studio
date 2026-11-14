@@ -21,6 +21,8 @@ import { installLogic } from './logic/index.js';
 import { installPneu } from './pneu/index.js';
 import { Q, LIGHT, LEVEL, CHOICE, stdMat, setQuality, autoLevel } from './quality.js';
 import { menu as popMenu, confirm as confirmDlg } from './school/ui.js';
+import { createNavDock, dragRect } from './ui/navdock.js';
+import './ui/selection.css';
 import { KINDS, spacesOf, inferKind } from './ui/kind.js';
 import { chooseKind, installKind } from './ui/kindui.js';
 import { installSupervision } from './supervision/index.js';
@@ -53,7 +55,7 @@ import { BY_KEY as CHECK_CODE } from './check/codes.js';
 import { routeWires } from './sim/wiring.js';
 import { createGuides, textSprite, dispose as disposeSprite } from './ui/guides.js';
 import { createBlocks, BLOCK_COLORS } from './ui/blocks.js';
-import { installProjectMenu } from './ui/appbar.js';
+import { installProjectMenu, shortcut } from './ui/appbar.js';
 import { installInspector } from './ui/inspector.js';
 import { toSvg, toPdf, Draw, textWidth } from './schematic/draw.js';
 import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale } from './i18n/index.js';
@@ -85,7 +87,7 @@ const $ = s => document.querySelector(s);
 const mk = (g, m) => new THREE.Mesh(g, m);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const S = {
-  comps: [], wires: [], pinHits: [], color: '#f2c94c', sel: null, selWire: null, pending: null, hover: null,
+  comps: [], wires: [], pinHits: [], color: '#f2c94c', sel: null, multi: new Set(), selWire: null, pending: null, hover: null,
   anim: null, rec: null, drag: null, wireDrag: null, endDrag: null, placing: false, caption: '',
   projectPath: null, projectName: tl('Sans titre'), dirty: false, userLib: [], video: null, simOn: false, simLast: 0,
   faults: [], faultKeys: new Set(), faultWires: new Map(), glowing: new Set(), fly: null, shots: [], vr: null, netNames: {}, netView: false, wireView: 'parts',
@@ -757,7 +759,7 @@ function updateFlow() {
   if (LIGHT && (flowTick++ % 2)) return;
   try { flow.set(wireFlows(S.simA, S.dc, S.wires)); } catch (e) { console.error(e); flow.clear(); }
 }
-let bench = null, flow = null, sch = null, chk = null;
+let bench = null, flow = null, sch = null, chk = null, nav = null;
 let kindUi = null, kindBusy = false; // type de projet : bouton de la barre, changement en cours
 const naturalKey = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 const benchCtx = {
@@ -792,6 +794,7 @@ function tick(now) {
   FRAME.last = now; FRAME.need = false;
   if (S.anim) runAnim(now);
   if (S.fly) runFly(now);
+  if (nav && (moving || S.fly) && !S.view2d) nav.update();
   if (S.wiresDirty || (S.wiresPartial && !S.drag)) layoutWires();
   followView(); placeLamps(); guides.update(); blocks.update(); S.frameHooks.forEach(f => f(now));
   if (S.simOn) simFrame(now);
@@ -930,6 +933,7 @@ function installSchView() {
     connect: joinNodes, cut: cutNodes, wired: busy,
     // Édition sur le schéma : sélection (panneau de gauche) et déplacement (le composant suit sur le tapis).
     select: c => select(c), selected: () => S.sel,
+    view: () => { if (nav) nav.update(); },
     moveBy(c, dx, dy) {
       if (!S.comps.includes(c)) return;
       const p = c.group.position;
@@ -950,6 +954,88 @@ function installSchView() {
   let last = null;
   try { last = localStorage.getItem('jollof-stage-view'); } catch (e) { /* stockage indisponible */ }
   if (last === '2d') setStageView('2d');
+}
+/* ---------- Navigation du plan de travail (src/ui/navdock.js) : scène 3D et schéma ---------- */
+/** Cadre une boîte de la scène, en vol (même angle de vue). */
+function frameBox3(b, minD) {
+  if (b.isEmpty()) return false;
+  const center = b.getCenter(new V3()), size = b.getSize(new V3()).length();
+  flyTo(center, Math.min(controls.maxDistance, Math.max(minD, size * 1.32 / Math.min(1, camera.aspect)))); invalidate(1000);
+  return true;
+}
+const boxOfComps = list => { const b = new THREE.Box3(); list.forEach(c => b.union(compBox(c))); return b; };
+/** Zoom de la scène autour d'un point de la surface (pixels) ; f > 1 : on avance. */
+function zoom3d(f, x, y) {
+  const r = renderer.domElement.getBoundingClientRect();
+  zoomAt({ clientX: r.left + (x ?? r.width / 2), clientY: r.top + (y ?? r.height / 2) }, -Math.log(f)); invalidate(300);
+}
+/** Loupe : la zone tracée remplit la vue (le point visé sous son centre, distance réduite d'autant). */
+function zoomRect3d(r, sr) {
+  setNdc({ clientX: sr.left + r.x + r.w / 2, clientY: sr.top + r.y + r.h / 2 });
+  const hit = ray.intersectObjects(S.comps.map(c => c.group), true)[0], p = hit ? hit.point.clone() : groundAt();
+  if (!p) return true;
+  const dist = camera.position.distanceTo(controls.target), k = Math.max(r.w / sr.width, r.h / sr.height) / 0.92;
+  flyTo(p, Math.min(controls.maxDistance, Math.max(controls.minDistance, dist * k))); invalidate(1000);
+  return true;
+}
+/** Mini-carte de la scène : le tapis vu de dessus (x, z), et ce que voit la caméra. */
+const miniRay = new THREE.Raycaster(), miniNdc = new THREE.Vector2();
+function mini3d() {
+  if (!S.comps.length) return null;
+  const all = boxOfComps(S.comps), chosen = new Set(selComps());
+  const far = camera.position.distanceTo(controls.target) * 4, p = new V3();
+  const view = [[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([x, y]) => {
+    miniNdc.set(x, y); miniRay.setFromCamera(miniNdc, camera);
+    if (miniRay.ray.intersectPlane(groundPlane, p) && p.distanceTo(camera.position) < far) return [p.x, p.z];
+    const d = miniRay.ray.direction; return [camera.position.x + d.x * far, camera.position.z + d.z * far];
+  });
+  return {
+    bounds: [all.min.x, all.min.z, all.max.x, all.max.z],
+    boxes: S.comps.map(c => { const b = compBox(c); return [b.min.x, b.min.z, b.max.x - b.min.x, b.max.z - b.min.z, chosen.has(c)]; }),
+    view
+  };
+}
+function installNav() {
+  const in2d = () => S.view2d && sch;
+  nav = createNavDock($('#stage'), {
+    cls: 'ndStage',
+    active: () => !['logicOpen', 'pneuOpen', 'hubOpen'].some(c => document.body.classList.contains(c)),
+    target: () => (in2d() ? sch.el : renderer.domElement),
+    tools: () => (in2d() ? ['select', 'pan', 'zoom'] : ['orbit', 'select', 'pan', 'zoom']),
+    get tips() { return in2d() ? { select: tl('Sélection · V : cliquer pour choisir, glisser un symbole pour le déplacer') } : { select: tl('Sélection · V : glisser dans le vide pour encadrer des composants (clic droit glissé : déplacer la vue)') }; },
+    zoomBy: (f, x, y) => { if (in2d()) sch.zoomAt(f, x, y); else zoom3d(f, x, y); },
+    panBy: (dx, dy) => { if (in2d()) sch.panBy(-dx, -dy); else { panView(-dx, -dy); invalidate(300); } },
+    zoomPct: () => (in2d() ? sch.zoomPct() : null),
+    get setZoomPct() { return in2d() ? p => sch.setZoomPct(p) : undefined; },
+    fit: () => { if (in2d()) sch.fit(); else if (!frameBox3(boxOfComps(S.comps), 90)) status(tl('Le plan de travail est vide.')); },
+    fitSel: () => (in2d() ? sch.fitSel() : frameBox3(boxOfComps(selComps()), 45)),
+    hasSel: () => selComps().length > 0,
+    zoomRect: (r, sr) => (in2d() ? false : zoomRect3d(r, sr)),
+    mini: { data: () => (in2d() ? sch.mini() : mini3d()), centerOn: (x, y) => { if (in2d()) { sch.centerOn(x, y); return; } const d = new V3(x - controls.target.x, 0, y - controls.target.z); controls.target.add(d); camera.position.add(d); S.fly = null; invalidate(300); } },
+    status: m => status(m),
+    get title() { return in2d() ? tl('Schéma') : tl('Scène 3D'); },
+    shortcuts: () => (in2d() ? [
+      ['Click', tl('Choisir un composant')],
+      ['Drag', tl('Déplacer un symbole (le composant suit en 3D)')],
+      ['Del', tl('Retirer les fils de la broche survolée')],
+      ['S', tl('Revenir à la scène 3D')]
+    ] : [
+      ['Shift+Drag', tl('Encadrer plusieurs composants (dans le vide)')],
+      ['Shift+Click', tl('Ajouter ou retirer un composant de la sélection')],
+      ['Mod+A', tl('Tout sélectionner')],
+      ['Mod+G', tl('Faire un bloc avec la sélection')],
+      ['F2', tl('Renommer le repère (ou double-clic sur son étiquette)')],
+      ['R', tl('Tourner la sélection')],
+      ['Del', tl('Retirer la sélection')],
+      ['←↑→↓', tl('Déplacer la vue')],
+      ['S', tl('Passer au schéma')],
+      ['Esc', tl('Annuler le fil en cours, tout désélectionner')]
+    ]),
+    onTool: t => {
+      if (t === 'select' && !in2d()) status(tl('Sélection : glissez dans le vide pour encadrer des composants. Clic droit glissé : déplacer la vue ; O : revenir à l’orbite.'));
+    }
+  });
+  addEventListener('keyup', e => nav.key(e), true);
 }
 /** Tampon du schéma imprimé : le résultat du vérificateur (sans symbole hors des polices du PDF). */
 function checkStamp() {
@@ -995,6 +1081,7 @@ function setStageView(v) {
   hideSimTip(); $('#tip').hidden = true;
   if (on) { cancelPending(); if (flow) flow.clear(); sch.show(); } else { sch.hide(); if (S.simOn) updateFlow(); invalidate(); }
   try { localStorage.setItem('jollof-stage-view', on ? '2d' : '3d'); } catch (e) { /* stockage indisponible */ }
+  if (nav) nav.update();
 }
 function showTip(ref, e, r) {
   const t = $('#tip');
@@ -1143,6 +1230,7 @@ function onDown(e) {
     if (exact && !c) { lockHint(); return; }
     if (c) { const g = groundAt(); select(c); S.drag = { comp: c, off: c.group.position.clone().sub(g || c.group.position), moved: false }; controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId); }
     else if (exact || wh) lockHint();
+    else if (nav && (nav.tool() === 'select' || e.shiftKey)) startMarquee(e);
     return;
   }
   if (wh && !S.pending) { selectWire(wh); return; }
@@ -1158,10 +1246,36 @@ function onDown(e) {
   }
   const c = compAt();
   if (c) {
-    const g = groundAt(); select(c);
-    S.drag = { comp: c, off: c.group.position.clone().sub(g || c.group.position), moved: false };
+    // Maj + clic : ajouter ou retirer de la sélection.
+    if (e.shiftKey) { toggleMulti(c); S.shiftPick = true; controls.enabled = false; return; }
+    const g = groundAt(), inGroup = S.multi.has(c); select(c, inGroup);
+    // Plusieurs composants choisis : ils suivent celui qu'on glisse.
+    const group = inGroup ? [...S.multi].filter(x => x !== c).map(x => ({ c: x, d: x.group.position.clone().sub(c.group.position) })) : [];
+    S.drag = { comp: c, off: c.group.position.clone().sub(g || c.group.position), moved: false, group };
     controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId);
+    return;
   }
+  // Dans le vide : outil Sélection, ou Maj + glisser, encadre des composants.
+  if (nav && (nav.tool() === 'select' || e.shiftKey)) startMarquee(e);
+}
+/** Rectangle de sélection dans la scène : les composants dont le centre (à l'écran) y tombe. Maj : on ajoute. */
+function startMarquee(e) {
+  controls.enabled = false;
+  const base = e.shiftKey ? selComps() : [];
+  dragRect(e, (r, ev, moved) => {
+    controls.enabled = true;
+    if (!moved) return; // simple clic : onUp désélectionne
+    const cr = renderer.domElement.getBoundingClientRect(), v = new V3(), hit = [];
+    for (const c of S.comps) {
+      compBox(c).getCenter(v).project(camera);
+      if (v.z > 1) continue; // derrière la caméra
+      const x = cr.left + (v.x + 1) / 2 * cr.width, y = cr.top + (1 - v.y) / 2 * cr.height;
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) hit.push(c);
+    }
+    const list = [...new Set([...base, ...hit])];
+    if (list.length) setMulti(list); else select(null);
+    invalidate(300);
+  });
 }
 function onMove(e) {
   const r = setNdc(e);
@@ -1182,7 +1296,9 @@ function onMove(e) {
   if (S.drag) {
     const g = groundAt(); if (!g) return;
     S.drag.comp.group.position.set(Math.round((g.x + S.drag.off.x) * 2) / 2, 0, Math.round((g.z + S.drag.off.z) * 2) / 2);
-    S.drag.comp.group.updateMatrixWorld(true); S.drag.moved = true; rebuildFor(S.drag.comp); updateSel(); return;
+    S.drag.comp.group.updateMatrixWorld(true); S.drag.moved = true; rebuildFor(S.drag.comp);
+    for (const m of S.drag.group || []) { m.c.group.position.copy(S.drag.comp.group.position).add(m.d); m.c.group.updateMatrixWorld(true); rebuildFor(m.c); }
+    updateSel(); return;
   }
   const gp = groundAt();
   $('#cursorPos').textContent = gp ? tl('X {0} · Z {1} mm', fmtMm(gp.x), fmtMm(gp.z)) : '';
@@ -1271,7 +1387,8 @@ function onUp(e) {
     controls.enabled = true; down = null; if (S.simOn) S.simLast = performance.now() - 100; return;
   }
   const r = setNdc(e), moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 : true; down = null;
-  if (S.drag) { if (S.drag.moved) { autoBlocks(S.drag.comp); changed(); } S.drag = null; controls.enabled = true; return; }
+  if (S.shiftPick) { S.shiftPick = false; controls.enabled = true; return; }
+  if (S.drag) { if (S.drag.moved) { autoBlocks(S.drag.comp); (S.drag.group || []).forEach(m => autoBlocks(m.c)); changed(); } S.drag = null; controls.enabled = true; return; }
   if (S.endDrag) {
     const { w, end, fixed } = S.endDrag; S.endDrag = null; controls.enabled = true; rubber.visible = false;
     const p = pinAt(e, r), cur = w[end];
@@ -1351,7 +1468,23 @@ function renderWizard(c) {
 }
 
 /* ---------- Sélection ---------- */
-function select(c) {
+/** Composants choisis : plusieurs (S.multi), sinon celui de l'inspecteur. */
+const selComps = () => (S.multi.size ? [...S.multi] : S.sel ? [S.sel] : []);
+/** Plusieurs composants choisis ; le dernier (ou primary) remplit l'inspecteur. */
+function setMulti(list, primary) {
+  S.multi = new Set(list.length > 1 ? list : []);
+  select(primary && list.includes(primary) ? primary : list[list.length - 1] || null, true);
+  if (list.length > 1) status(tl('{0} composants sélectionnés : glissez-en un pour les déplacer ensemble, R pour les tourner, Suppr pour les retirer.', list.length));
+}
+function toggleMulti(c) {
+  const set = new Set(selComps());
+  if (set.has(c)) set.delete(c); else set.add(c);
+  const list = [...set];
+  setMulti(list, set.has(c) ? c : list[list.length - 1]);
+}
+/** keep : la sélection multiple reste (composant choisi parmi elle). */
+function select(c, keep = false) {
+  if (!keep || !c) S.multi.clear();
   if (c !== S.sel && S.placing) setPlacing(false);
   if (c) selectWire(null);
   S.sel = c; $('#selBox').hidden = !c; if (!c) setPlacing(false);
@@ -1359,9 +1492,79 @@ function select(c) {
   parts.selected(c); // composant en paquet : modifier, exporter, bibliothèque
   updateSel(); renderExplain(); renderBehavior(); renderSelBlock(); revealPart(c);
   if (S.view2d && sch) sch.redraw(); // cadre de sélection sur le schéma
+  paintMulti();
+  if (nav) nav.update();
+}
+/**
+ * Plusieurs composants choisis : le panneau de sélection propose de les regrouper en bloc (au lieu de la fiche du
+ * dernier choisi), de les cadrer, tourner ou supprimer ; un clic sur un nom ne garde que celui-là.
+ */
+function paintMulti() {
+  const box = $('#selBox'), on = S.multi.size > 1;
+  box.classList.toggle('multi', on);
+  let mb = $('#multiBox');
+  if (!mb) {
+    mb = document.createElement('div'); mb.id = 'multiBox'; mb.className = 'multiBox';
+    box.querySelector('.selHead').after(mb);
+    mb.addEventListener('click', e => {
+      const one = e.target.closest('[data-one]'); if (one) { const c = S.comps.find(x => x.id === one.dataset.one); if (c) select(c); return; }
+      const a = e.target.closest('[data-mb]'); if (!a) return;
+      if (a.dataset.mb === 'block') blockFromSel();
+      else if (a.dataset.mb === 'frame') frameBox3(boxOfComps(selComps()), 45);
+      else if (a.dataset.mb === 'rot') $('#rot').click();
+      else if (a.dataset.mb === 'del') $('#del').click();
+    });
+  }
+  if (!on) { mb.innerHTML = ''; return; }
+  const list = [...S.multi], cur = list.map(c => blocks.blockOf(c)), same = cur[0] && cur.every(b => b === cur[0]) ? cur[0] : null;
+  $('#selTitle').textContent = tl('{0} composants', list.length);
+  $('.selName small').textContent = tl('Sélection multiple');
+  mb.innerHTML = `<ul class="mbChips">${list.map(c => `<li><button type="button" data-one="${esc(c.id)}" title="${esc(tl('Ne garder que {0}', c.name))}">${esc(c.name)}</button></li>`).join('')}</ul>
+    <button type="button" class="btn primary wide" data-mb="block">${icon('blockFrame')}<span>${tl('Faire un bloc avec la sélection')}</span><kbd>${shortcut('G')}</kbd></button>
+    ${same ? `<p class="note">${tl('Ils sont déjà tous dans le bloc « {0} ».', esc(same.name))}</p>` : `<p class="note">${tl('Un bloc encadre et nomme une partie du montage (alimentation, capteurs…) : il se déplace d’un geste et se retrouve dans le schéma.')}</p>`}
+    <div class="mbRow"><button type="button" class="btn small" data-mb="frame">${icon('focus')}<span>${tl('Cadrer')}</span></button><button type="button" class="btn small" data-mb="rot">${icon('rotate')}<span>${tl('Tourner')}</span></button><button type="button" class="btn small mbDel" data-mb="del">${icon('trash')}<span>${tl('Supprimer')}</span></button></div>
+    <p class="note">${tl('Glissez l’un d’eux pour les déplacer ensemble · Maj + clic : ajouter ou retirer un composant.')}</p>`;
+}
+/** Bloc fait des composants choisis ; son nom se modifie tout de suite dans l'onglet Câblage. */
+function blockFromSel() {
+  const list = selComps(); if (!list.length) return;
+  const blk = blocks.fromComps(list);
+  renderBlocks(); changed(); invalidate(1000); paintMulti();
+  status(tl('{0} : {1} composant{2} regroupé{3}. Donnez-lui un nom dans l’onglet Câblage.', blk.name, list.length, list.length > 1 ? 's' : '', list.length > 1 ? 's' : ''), 'ok');
+  setTab('wiring'); requestAnimationFrame(() => { const inp = document.querySelector(`#blocks [data-bid="${blk.id}"] input`); if (inp) { inp.focus(); inp.select(); } });
+}
+/** Renomme un composant (son repère : R1, LED1…) : court, unique ; annulable comme toute modification. */
+function renameComp(c, raw) {
+  const n = cleanText(String(raw || '').trim(), 16).replace(/\s+/g, '_');
+  if (!n || n === c.name || !S.comps.includes(c)) return false;
+  if (S.comps.some(x => x !== c && x.name.toLowerCase() === n.toLowerCase())) { status(tl('Le repère {0} est déjà pris.', n), 'warn'); return false; }
+  const old = c.name; c.name = n;
+  if (S.sel === c) $('#selTitle').textContent = n;
+  renderWires(); refreshQuick(); renderExplain(); changed(); invalidate(300);
+  status(tl('{0} renommé en {1}.', old, n), 'ok');
+  return true;
+}
+/** Champ de saisie du repère : à l'endroit double-cliqué (at, coordonnées de la fenêtre) ou dans le panneau de sélection. */
+function editName(c, at = null) {
+  if (!c) return;
+  document.querySelectorAll('.nameEdit').forEach(x => x.remove());
+  const h = $('#selTitle'), inp = document.createElement('input');
+  inp.className = 'nameEdit'; inp.value = c.name; inp.maxLength = 16; inp.spellcheck = false; inp.autocomplete = 'off';
+  inp.setAttribute('aria-label', tl('Repère du composant'));
+  if (at) { inp.classList.add('floating'); inp.style.left = at.x + 'px'; inp.style.top = at.y + 'px'; document.body.appendChild(inp); }
+  else { h.hidden = true; h.after(inp); }
+  let done = false;
+  const finish = ok => { if (done) return; done = true; const v = inp.value; inp.remove(); h.hidden = false; if (ok) renameComp(c, v); };
+  inp.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); finish(true); } else if (e.key === 'Escape') { e.preventDefault(); finish(false); } });
+  inp.addEventListener('blur', () => finish(true));
+  inp.focus(); inp.select();
 }
 function renderBehavior() { $('#behav').innerHTML = prog.behaviorHtml(S.sel); }
+const multiBoxes = []; // cadres des autres composants d'une sélection multiple
 function updateSel() {
+  const extra = [...S.multi].filter(c => c !== S.sel);
+  while (multiBoxes.length < extra.length) { const h = new THREE.Box3Helper(new THREE.Box3(), 0x60a5fa); h.visible = false; scene.add(h); multiBoxes.push(h); }
+  multiBoxes.forEach((h, i) => { const c = extra[i]; h.visible = !!c; if (c) { h.box.setFromObject(c.group); h.box.expandByScalar(1.5); } });
   if (!S.sel) { selHelper.visible = false; return; }
   const g = S.sel.group, f = document.activeElement;
   if (f !== $('#tX')) $('#tX').value = +g.position.x.toFixed(1);
@@ -1375,7 +1578,7 @@ function selectWire(w) {
   S.selWire = w || null;
   handles.forEach(h => (h.visible = !!w));
   if (w) {
-    if (S.sel) { S.sel = null; $('#selBox').hidden = true; setPlacing(false); updateSel(); }
+    if (S.sel || S.multi.size) { S.sel = null; S.multi.clear(); $('#selBox').hidden = true; setPlacing(false); updateSel(); }
     if (w.mesh) w.mesh.material.emissive.copy(new THREE.Color(w.color)).multiplyScalar(0.35);
     handles[0].position.copy(pinWorld(w.a)).add(new V3(0, 4.5, 0));
     handles[1].position.copy(pinWorld(w.b)).add(new V3(0, 4.5, 0));
@@ -2745,7 +2948,7 @@ async function saveProjectFile(saveAs) {
 
 /* ---------- Liaisons de l'interface ---------- */
 function bindUI() {
-  $('#hint').textContent = tl('Glisser broche → broche : tirer un fil · Molette : zoom vers le curseur · Clic droit glissé, deux doigts ou flèches : déplacer la vue · F : cadrer');
+  $('#hint').textContent = tl('Glisser broche → broche : tirer un fil · Molette : zoom vers le curseur · Clic droit glissé, deux doigts ou flèches : déplacer la vue · F : tout voir · ? : raccourcis');
   $('#libSearch').oninput = renderLibrary;
   ['#lib', '#flyList'].forEach(id => {
     const el = $(id);
@@ -2761,6 +2964,21 @@ function bindUI() {
   $('#flyClose').onclick = closeFlyout;
   document.addEventListener('pointerdown', e => { if (S.flyCat && !e.target.closest('#flyout, #railCats')) closeFlyout(); }, true);
   $('#selClose').onclick = () => select(null);
+  // Repère du composant : clic sur son nom, crayon, F2, ou double-clic sur son étiquette dans la scène.
+  $('#selTitle').classList.add('renamable'); $('#selTitle').tabIndex = 0;
+  $('#selTitle').dataset.tip = tl('Renommer · F2 (ou double-clic sur son étiquette)');
+  $('#selTitle').onclick = () => { if (S.sel && !S.multi.size) editName(S.sel); };
+  $('#selTitle').onkeydown = e => { if (e.key === 'Enter' && S.sel && !S.multi.size) { e.preventDefault(); editName(S.sel); } };
+  $('#rot').insertAdjacentHTML('beforebegin', `<button type="button" class="tb" id="renameBtn" data-tip="${tl('Renommer le repère · F2')}" aria-label="${tl('Renommer le repère')}">${icon('edit')}</button>`);
+  $('#renameBtn').onclick = () => { if (S.sel) editName(S.sel); };
+  renderer.domElement.addEventListener('dblclick', e => {
+    if (S.anim || S.view2d) return;
+    setNdc(e);
+    let c = guides.hitTag(ray);
+    if (!c) { const h = ray.intersectObjects(S.comps.filter(x => x.label).map(x => x.label), false)[0]; if (h) c = S.comps.find(x => x.label === h.object) || null; }
+    if (!c) return;
+    e.preventDefault(); select(c); editName(c, { x: e.clientX, y: e.clientY });
+  });
   setLibOpen(libIsOpen(), false);
   requestAnimationFrame(() => requestAnimationFrame(() => $('.app').classList.remove('still')));
   $('#swatches').innerHTML = COLORS.map(([n, c]) => `<button class="sw${c === S.color ? ' on' : ''}" data-c="${c}" style="background:${c}" aria-label="${tl('Fil {0}', n)}" title="${n}"></button>`).join('');
@@ -2786,8 +3004,13 @@ function bindUI() {
     if (b.dataset.a === 'down' && i < w.length - 1) [w[i + 1], w[i]] = [w[i], w[i + 1]];
     w.forEach(buildWire); renderWires(); updatePower(); changed();
   };
-  $('#rot').onclick = () => { if (!S.sel) return; S.sel.group.rotation.y += Math.PI / 2; S.sel.group.updateMatrixWorld(true); rebuildFor(S.sel); updateSel(); changed(); };
-  $('#del').onclick = () => S.sel && removeComp(S.sel);
+  $('#rot').onclick = () => { const list = selComps(); if (!list.length) return; list.forEach(c => { c.group.rotation.y += Math.PI / 2; c.group.updateMatrixWorld(true); rebuildFor(c); }); updateSel(); changed(); };
+  $('#del').onclick = () => {
+    const list = selComps(); if (!list.length) return;
+    if (list.length === 1) { removeComp(list[0]); return; }
+    list.forEach(c => removeComp(c, true)); select(null); renderWires(); updatePower(); changed();
+    status(tl('{0} composants retirés (Ctrl+Z pour les remettre).', list.length), 'ok');
+  };
   $('#placeBtn').onclick = () => setPlacing(!S.placing);
   $('#saveLibBtn').onclick = async () => {
     const c = S.sel; if (!c || !c.custom) return;
@@ -2924,6 +3147,7 @@ function bindUI() {
     status(flow.enabled ? tl('Courant animé : les points vont du + vers le − (sens conventionnel), plus vite quand le courant est fort.') : tl('Courant animé masqué.'), 'ok'); invalidate();
   };
   installSchView();
+  installNav();
   installChecker();
   $('#renderReal').onclick = () => setRender(true);
   document.querySelectorAll('.tab').forEach(t => {
@@ -3127,14 +3351,20 @@ function bindUI() {
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && k === 'y') { e.preventDefault(); redo(); return; }
     if (k === 'escape' && S.flyCat) { closeFlyout(); return; }
+    if (mod && k === 'a') { e.preventDefault(); if (S.comps.length) setMulti(S.comps.slice()); return; }
+    if (mod && k === 'g') { e.preventDefault(); if (selComps().length) blockFromSel(); return; }
+    if (k === 'f2' && S.sel && !S.multi.size) { e.preventDefault(); editName(S.sel); return; }
     if (k === 'escape' && blocks.selected) { blocks.select(null); return; }
     if (k === 'escape' && (S.blockDraw || S.pick)) { setBlockDraw(false); S.pick = null; renderer.domElement.classList.remove('picking'); status(tl('Annulé.')); return; }
     if (k === 'escape' && S.view2d && S.sel && !sch.wiring) select(null);
     if (k === 'escape') { if (S.vr) S.vr.cancel = true; if (S.anim && !S.rec && !S.vr) finishAnim(); cancelPending(); selectWire(null); setPlacing(false); if (!$('#modal').hidden) $('#closeModal').click(); }
     // Timeline ouverte : L ajoute une légende, N une note (Pro), à la tête de lecture.
     if (!mod && !e.altKey && timelineDock.open && timelineDock.shortcut(k)) { e.preventDefault(); return; }
+    // Navigation (outils, zoom, cadrage, mini-carte, aide) ; Espace seulement si le focus n'est pas sur un bouton d'un panneau.
+    const a = document.activeElement, onStage = !a || a === document.body || $('#stage').contains(a);
+    if (nav && (k !== ' ' || onStage) && nav.key(e)) { e.preventDefault(); return; }
+    if (k === 'escape' && S.multi.size) { select(null); return; }
     if (k === 's' && !mod && !e.altKey) { setStageView(S.view2d ? '3d' : '2d'); return; }
-    if (k === 'f') { if (S.view2d) sch.fit(); else frameAll(); }
     const arrows = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] }[k];
     if (arrows && S.view2d) { e.preventDefault(); const st = e.shiftKey ? 240 : 80; sch.panBy(arrows[0] * st, arrows[1] * st); return; }
     if (arrows) { e.preventDefault(); const st = e.shiftKey ? 240 : 80; panView(arrows[0] * st, arrows[1] * st); return; }

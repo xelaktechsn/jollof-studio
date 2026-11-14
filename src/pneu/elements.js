@@ -38,8 +38,16 @@ function actuator(kind, x0, side, h, label, on) {
     const bx = side < 0 ? x + 4 : x + w - 4;
     return `${line(bx, mid, side < 0 ? x0 : x0 + 0, mid)}<path class="pnStroke${on ? ' on' : ''}" d="M${bx} ${mid - 8} Q${bx + side * -6} ${mid} ${bx} ${mid + 8}"/>${line(bx, mid - 8, bx, mid + 8)}`;
   }
-  if (kind === 'pilot') {
-    // Pilotage pneumatique : un triangle et la ligne de pilotage (en tirets) vers l'orifice 12 ou 14.
+  if (kind === 'pilot' || kind === 'tempo') {
+    // Pilotage pneumatique : un triangle et la ligne de pilotage (en tirets) vers l'orifice 12 ou 14. Temporisateur : le
+    // pilotage passe par un réducteur (flèche oblique) qui remplit lentement un petit réservoir, d'où le retard.
+    if (kind === 'tempo') {
+      const tx = side < 0 ? x + 12 : x + 8;
+      const jx = side < 0 ? x + 4 : x + w - 4, rx = side < 0 ? x + 8 : x + w - 8; // jonction du réservoir, réducteur
+      return `<path class="pnStroke${on ? ' on' : ''}" d="M${tx} ${mid - 5} L${tx + side * -6} ${mid} L${tx} ${mid + 5} Z"/>${line(side < 0 ? x : x + w, mid, tx, mid, 'pnDash')}`
+        + `${line(jx, mid, jx, mid + 9, 'pnDash')}<rect class="pnBox" x="${jx - 5}" y="${mid + 9}" width="10" height="7" rx="3"/>` // réservoir
+        + `<path class="pnStroke" d="M${rx - 1} ${mid - 3.5} Q${rx + 1.5} ${mid} ${rx - 1} ${mid + 3.5} M${rx + 3} ${mid - 3.5} Q${rx + 0.5} ${mid} ${rx + 3} ${mid + 3.5}"/>`; // étranglement (réducteur)
+    }
     const tx = side < 0 ? x + 12 : x + 8;
     return `<path class="pnStroke${on ? ' on' : ''}" d="M${tx} ${mid - 5} L${tx + side * -6} ${mid} L${tx} ${mid + 5} Z"/>${line(side < 0 ? x : x + w, mid, tx, mid, 'pnDash')}`;
   }
@@ -50,6 +58,20 @@ function actuator(kind, x0, side, h, label, on) {
   }
   return '';
 }
+/**
+ * Cadran d'un temporisateur, au-dessus de sa commande : le retard réglé ; pendant la simulation, le temps écoulé
+ * remplit le cadran et le texte donne le temps restant (« fini » une fois le distributeur basculé).
+ */
+function timerBadge(P, s) {
+  const d = delayOf(P), t = s ? Math.min(d, s.tm || 0) : 0, k = t / d, cx = 10, cy = -14, r = 8;
+  const fmt = v => String(Math.round(v * 10) / 10).replace('.', ',');
+  const a = k * 2 * Math.PI, ex = cx + r * Math.sin(a), ey = cy - r * Math.cos(a);
+  const pie = k >= 0.999 ? `<circle class="pnTimerFill" cx="${cx}" cy="${cy}" r="${r}"/>` : k > 0 ? `<path class="pnTimerFill" d="M${cx} ${cy} L${cx} ${cy - r} A${r} ${r} 0 ${k > 0.5 ? 1 : 0} 1 ${ex.toFixed(2)} ${ey.toFixed(2)} Z"/>` : '';
+  const label = !s || !t ? `${fmt(d)} s` : k >= 0.999 ? tl('{0} s · fini', fmt(d)) : tl('{0} s / {1} s', fmt(t), fmt(d));
+  return `<g class="pnTimer${s && t > 0 ? (k >= 0.999 ? ' done' : ' run') : ''}"><circle class="pnTimerFace" cx="${cx}" cy="${cy}" r="${r}"/>${pie}${line(cx, cy, cx, cy - r + 2.5)}${line(cx, cy, cx + 4, cy)}${txt(cx + 12, cy + 4, label, 'pnSub pnTimerTxt', 'start')}</g>`;
+}
+/** Retard d'un temporisateur (s), borné. */
+export const delayOf = P => Math.max(0.1, Math.min(600, +P.delay || 3));
 /** Repère d'un galet : vérin et fin de course (a0 tige rentrée, a1 tige sortie), d'après la came choisie. */
 export const camText = P => (P.cam ? `${String(P.cam).toLowerCase()}${P.end === '0' ? '0' : '1'}` : '');
 /** Vérin qui actionne un galet : par identifiant, sinon par repère (sans tenir compte de la casse). */
@@ -63,7 +85,8 @@ export function camTarget(els, ref) {
 // label : repère de l'élément sur le schéma (1V1, 1S1… selon l'usage de la norme ISO 1219), affiché par tagOf sous le
 // symbole, à droite des échappements : les orifices sont fixes, le tiroir glisse au-dessus du repère sans le quitter.
 // cam, end : galet (act « roller ») actionné par le vérin cam en fin de course end ('1' tige sortie, '0' tige rentrée).
-const V32 = { act: 'push', normal: 'nc', coil: '', cam: '', end: '1', label: '' };
+// delay : retard d'un temporisateur (act « tempo »), en secondes.
+const V32 = { act: 'push', normal: 'nc', coil: '', cam: '', end: '1', label: '', delay: 3 };
 const V52 = { left: 'sol', right: 'spring', coilL: '', coilR: '', label: '' };
 const V53 = { left: 'sol', right: 'sol', coilL: '', coilR: '', center: 'closed', label: '' };
 const CYL = { time: 1, s0: '', s1: '', label: '', bore: 25, rod: 10, stroke: 100, mass: 1, load: 0 };
@@ -88,7 +111,7 @@ export const DEFS = {
     size: () => [12, 4],
     ports(el) {
       const p = [{ id: '2', x: 8, y: 0, dir: 'up' }, { id: '1', x: 7, y: 4, dir: 'down' }, { id: '3', x: 9, y: 4, dir: 'down', exhaust: true }];
-      if (props(el).act === 'pilot') p.push({ id: '12', x: 0, y: 2, dir: 'left' });
+      if (props(el).act === 'pilot' || props(el).act === 'tempo') p.push({ id: '12', x: 0, y: 2, dir: 'left' });
       return p;
     },
     draw(el, s) {
@@ -101,7 +124,7 @@ export const DEFS = {
           : arrow(x0 + 20, 0, x0 + 30, 40) + blocked(x0 + 10, 40, true));
       };
       const body = caseOf(20, true) + caseOf(60, false) + actuator(P.act, 20, -1, 40, P.act === 'sol' ? P.coil : P.act === 'roller' ? camText(P) : '', s && pos === 1) + actuator('spring', 100, 1, 40, '', false);
-      return `<g class="pnShift" transform="translate(${pos ? 40 : 0} 0)">${body}</g>${exhaustMark(90, 40)}`;
+      return `<g class="pnShift" transform="translate(${pos ? 40 : 0} 0)">${body}</g>${exhaustMark(90, 40)}${P.act === 'tempo' ? timerBadge(P, s) : ''}`;
     }
   },
   v52: {

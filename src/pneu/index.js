@@ -11,10 +11,11 @@
 import './pneu.css';
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
+import { createNavDock } from '../ui/navdock.js';
 import { menu as popMenu, confirm as confirmDlg, toast } from '../school/ui.js';
 import { PNEU_EXAMPLES } from './examples.js';
 import VERIN from '../../exemples/08-verin-electropneumatique.jollof?raw'; // projet entier : carte, électrovanne, capteurs
-import { DEFS, G, props, camText } from './elements.js';
+import { DEFS, G, props, camText, delayOf } from './elements.js';
 import { cylOf } from './physics.js';
 import { createRunner, runStep, compiled, inputKey, liveReceptivities, readVar } from './run.js';
 import { cleanGrafcet } from './grafcet.js';
@@ -48,13 +49,14 @@ const LIB = () => [
     ['v53', { left: 'sol', right: 'sol', coilL: 'Y1', coilR: 'Y2', center: 'pressure' }, tl('5/3 centre sous pression')]
   ]],
   [tl('Vérins'), [['cyl1', { s0: '', s1: '' }], ['cyl2', { s0: 'B1', s1: 'B2' }]]],
+  [tl('Temporisation'), [['v32', { act: 'tempo', normal: 'nc', delay: 3 }, tl('Temporisateur 3/2 NF : retard à l’ouverture')], ['v32', { act: 'tempo', normal: 'no', delay: 3 }, tl('Temporisateur 3/2 NO : coupure retardée')]]],
   [tl('Fins de course'), [['v32', { act: 'roller', normal: 'nc', cam: '', end: '1' }, tl('3/2 à galet, tige sortie (a1)')], ['v32', { act: 'roller', normal: 'nc', cam: '', end: '0' }, tl('3/2 à galet, tige rentrée (a0)')]]],
   [tl('Débit et pression'), [['flowctl', { open: 50 }], ['gauge', {}], ['pswitch', { sensor: 'S1', bar: 3 }]]],
   [tl('Fonctions logiques'), [['shuttle', {}], ['twopress', {}]]]
 ];
 const ACT = () => ({ push: tl('Bouton poussoir'), sol: tl('Électroaimant (bobine)'), pilot: tl('Pilotage pneumatique') });
 /** Commande d'un 3/2 : en plus, le galet de fin de course actionné par la tige d'un vérin. */
-const ACT32 = () => ({ ...ACT(), roller: tl('Galet (fin de course d’un vérin)') });
+const ACT32 = () => ({ ...ACT(), roller: tl('Galet (fin de course d’un vérin)'), tempo: tl('Temporisation (pilotage retardé)') });
 
 export function installPneu(app) {
   const $ = s => document.querySelector(s), appEl = $('.app');
@@ -82,26 +84,45 @@ export function installPneu(app) {
   /* ---------- Plan de travail ---------- */
   const host = document.createElement('div'); host.className = 'pnHost'; host.hidden = true;
   $('#stage').appendChild(host);
+  let nav = null; // barre de navigation (créée après l'éditeur)
   const ed = createPneuEditor(host, {
     changed() { app.markDirty(); if (ed.circuit().elements.length && app.ensureSpace) app.ensureSpace('pneu'); if (app.recheck) app.recheck(); counts(); renderPane(); if (gfReady && gf.isOpen()) gf.render(); if (gfReady) { refresh3d(); paintSplitBtn(); if (split) paintChain(); } },
     status: (m, k) => app.status(m, k),
     sim: () => (simOn() ? st : null),
     press(id, v) { if (v) pushed.add(id); else pushed.delete(id); },
-    selected: () => renderPane()
+    selected: () => { renderPane(); if (nav) nav.update(); },
+    view: () => { if (nav) nav.update(); }
   });
   host.insertAdjacentHTML('beforeend', `
-    <div class="pnBar top"><button type="button" class="btn glass small pnGfBtn" data-grafcet aria-pressed="false" data-tip="${tl('GRAFCET : la partie commande du circuit, comme un automate')}">${icon('list')}<span>GRAFCET</span></button><button type="button" class="btn glass small pn3dBtn" data-m3open aria-pressed="false" data-tip="${tl('Vue 3D de la machine')}">${icon('box')}<span>3D</span></button><span class="grow"></span>
-      <div class="seg glass pnZoom" role="group" aria-label="${tl('Zoom')}">
-        <button type="button" class="segBtn" data-zoom="out" aria-label="${tl('Dézoomer')}">${icon('minus')}</button>
-        <button type="button" class="segBtn" data-zoom="in" aria-label="${tl('Zoomer')}">${icon('plus')}</button>
-        <button type="button" class="segBtn" data-zoom="fit" data-tip="${tl('Cadrer le circuit · F')}" aria-label="${tl('Cadrer')}">${icon('frame')}</button></div></div>
+    <div class="pnBar top"><button type="button" class="btn glass small pnGfBtn" data-grafcet aria-pressed="false" data-tip="${tl('GRAFCET : la partie commande du circuit, comme un automate')}">${icon('list')}<span>GRAFCET</span></button><button type="button" class="btn glass small pn3dBtn" data-m3open aria-pressed="false" data-tip="${tl('Vue 3D de la machine')}">${icon('box')}<span>3D</span></button><span class="grow"></span></div>
     <div class="pnBar bottom"><div class="pnLegend glass"><span><i class="pnP"></i>${tl('sous pression')}</span><span><i class="pnE"></i>${tl('à l’échappement')}</span><span class="pnLegM"><i class="pnM"></i>${tl('pression intermédiaire')}</span><span><i class="pnC"></i>${tl('fermé')}</span></div><span class="grow"></span><span class="pnRunHint glass">${tl('La simulation est celle du montage : lancez-la avec « Simuler ».')}</span></div>
     <div class="pnEmpty"><div class="pnEmptyCard">${icon('pneu')}<b>${tl('Plan de travail pneumatique')}</b>
       <p>${tl('Glissez une source d’air, un distributeur et un vérin depuis la bibliothèque, puis tirez des tuyaux d’orifice en orifice. Une électrovanne 24 V du montage électronique (repère Y1) commande le distributeur qui porte ce repère ; les capteurs de vérin (B1, B2) renvoient la position du piston à la carte.')}</p>
       <div class="row"><button type="button" class="btn primary" data-tuto>${icon('graduation')}<span>${tl('Tutoriel pas à pas')}</span></button><button type="button" class="btn" data-labs>${icon('checklist')}<span>${tl('TP de pneumatique')}</span></button><button type="button" class="btn" data-examples>${icon('layers')}<span>${tl('Exemples')}</span></button></div></div></div>`);
+  // Navigation commune (src/ui/navdock.js) : outils, zoom, tout voir, sélection, mini-carte, raccourcis.
+  nav = createNavDock(host, {
+    active: () => on || split,
+    target: () => ed.svg,
+    tools: () => ['select', 'pan', 'zoom'],
+    zoomBy: (f, x, y) => ed.zoomAt(f, x, y), panBy: (dx, dy) => ed.panBy(dx, dy),
+    zoomPct: () => ed.zoomPct(), setZoomPct: p => ed.setZoomPct(p),
+    fit: () => ed.fit(), fitSel: () => ed.fitSel(), hasSel: () => ed.hasSel(),
+    mini: { data: () => ed.mini(), centerOn: (x, y) => ed.centerOn(x, y) },
+    status: m => app.status(m),
+    title: tl('Plan pneumatique'),
+    shortcuts: () => [
+      ['Drag', tl('Encadrer plusieurs éléments (dans le vide)')],
+      ['Shift+Click', tl('Ajouter ou retirer un élément de la sélection')],
+      ['Mod+A', tl('Tout sélectionner')],
+      ['Mod+C|Mod+X|Mod+V', tl('Copier, couper, coller')],
+      ['Mod+D', tl('Dupliquer')],
+      ['←↑→↓', tl('Déplacer la sélection (Maj : plus loin)')],
+      ['Del', tl('Retirer la sélection')],
+      ['Alt+Drag', tl('Déplacer la vue')],
+      ['Esc', tl('Tout désélectionner')]
+    ]
+  });
   host.addEventListener('click', e => {
-    const z = e.target.closest('[data-zoom]');
-    if (z) { if (z.dataset.zoom === 'fit') ed.fit(); else ed.zoom(z.dataset.zoom === 'in' ? 1.25 : 0.8); return; }
     const ex = e.target.closest('[data-examples]'); if (ex) { examplesMenu(ex); return; }
     if (e.target.closest('[data-labs]') && app.openLabs) app.openLabs('pneu');
     if (e.target.closest('[data-tuto]') && app.openTutorial) app.openTutorial(TUTORIAL);
@@ -117,7 +138,7 @@ export function installPneu(app) {
     const c = ed.circuit(), C = compiled(c.grafcet); if (!simOn() || !C) return null;
     const names = [...C.vars].filter(v => !C.inputNames.has(v)).sort();
     const X = R.g.X || new Set(), macros = new Set([...C.macros].filter(([, m]) => [...m.steps].some(s => X.has(s))).map(([n]) => n));
-    return { X, macros, out: R.gOut, trans: C.trans, rec: liveReceptivities(R, c, io), vars: names.map(n => [n, readVar(R, c, io, n)]),
+    return { X, macros, out: R.gOut, trans: C.trans, t: R.g.t, since: R.g.since, rec: liveReceptivities(R, c, io), vars: names.map(n => [n, readVar(R, c, io, n)]),
       counters: [...C.counters].map(n => [n, R.g.mem.get(n) || 0]), forced: new Set(R.g.forced ? R.g.forced.keys() : []) };
   };
   const gf = createGrafcetPanel(host, {
@@ -127,7 +148,14 @@ export function installPneu(app) {
     press: (n, v) => { const k = inputKey(n); if (v) pushed.add(k); else pushed.delete(k); },
     pressed: n => pushed.has(inputKey(n)),
     code: () => writeProgram(),
-    opened: () => { paintGf(); refit(); }, closed: () => { paintGf(); refit(); }
+    opened: () => { paintGf(); refit(); }, closed: () => { paintGf(); refit(); },
+    /** Repères du circuit pour la palette du GRAFCET : capteurs (fins de course, pressostats) et bobines. */
+    names() {
+      const els = ed.circuit().elements, P = e => props(e), uniq = a => [...new Set(a.filter(Boolean))];
+      const sensors = uniq(els.flatMap(e => (e.type === 'cyl1' || e.type === 'cyl2' ? [P(e).s0, P(e).s1] : e.type === 'pswitch' ? [P(e).sensor] : [])));
+      const coils = uniq(els.flatMap(e => (e.type === 'v32' ? [P(e).act === 'sol' && P(e).coil] : e.type === 'v52' || e.type === 'v53' ? [P(e).left === 'sol' && P(e).coilL, P(e).right === 'sol' && P(e).coilR] : [])));
+      return { sensors, coils };
+    }
   });
   // Le plan se décale à droite du panneau GRAFCET ouvert : on le recadre.
   const refit = () => requestAnimationFrame(() => { if (on) ed.fit(); });
@@ -229,6 +257,10 @@ export function installPneu(app) {
     if (e.type === 'v32') {
       f += field(tl('Commande'), sel('act', P.act, ACT32())) + field(tl('Au repos'), sel('normal', P.normal, { nc: tl('normalement fermé (1 obturé)'), no: tl('normalement ouvert (1 → 2)') }));
       if (P.act === 'sol') f += field(tl('Bobine (repère du montage)'), txtIn('coil', P.coil, 'pnCoils', 'Y1'));
+      if (P.act === 'tempo') {
+        f += field(tl('Retard (secondes)'), `<input class="inp" type="number" data-k="delay" min="0.1" max="600" step="0.5" value="${delayOf(P)}">`);
+        f += `<p class="note">${tl('Le temporisateur bascule quand son orifice de pilotage 12 est resté sous pression pendant tout le retard ; il revient au repos dès que le pilotage retombe. Le cadran au-dessus du symbole montre le temps écoulé pendant la simulation.')}</p>`;
+      }
       if (P.act === 'roller') {
         // Galet : le vérin dont la tige l'actionne, et à quelle fin de course.
         const cyls = ed.circuit().elements.filter(x => x.type === 'cyl1' || x.type === 'cyl2').map(x => (x.p && x.p.label) || x.id);
@@ -333,6 +365,7 @@ export function installPneu(app) {
     const s = ed.selected(), k = e.target.dataset.k; if (!s || !s.el || !k) return;
     let v = e.target.value;
     if (k === 'time') v = Math.max(0.2, Math.min(20, +v || 1));
+    if (k === 'delay') v = delayOf({ delay: v });
     if (k === 'bar') v = Math.max(0.5, Math.min(10, +v || 3));
     if (['bore', 'rod', 'stroke', 'mass', 'load'].includes(k)) v = Number.isFinite(+v) ? +v : 0;
     if (k === 'open') v = +v; // relâchement du curseur : enregistre le réglage glissé (setProp live) d'un coup
@@ -371,7 +404,7 @@ export function installPneu(app) {
   // d'ouverture, obstacle, deux mains, départ cycle…) viennent du registre SCENES de machine.js : chaque commande est
   // liée à une entrée du GRAFCET, au bouton d'un distributeur ou à un bouton du montage du même nom.
   const m3 = document.createElement('section'); m3.className = 'pn3d glass'; m3.hidden = true; m3.setAttribute('aria-label', tl('Machine 3D'));
-  m3.innerHTML = `<header class="pn3dHead"><b title="${tl('Machine 3D')}">${icon('box')}3D</b><select class="sel" data-m3="kind" aria-label="${tl('Scène')}" hidden></select><span class="pn3dCyls"></span><span class="grow"></span>
+  m3.innerHTML = `<header class="pn3dHead"><b class="pn3dMove" title="${tl('Machine 3D')}"><i class="pn3dDots" aria-hidden="true"></i>${icon('box')}3D</b><select class="sel" data-m3="kind" aria-label="${tl('Scène')}" hidden></select><span class="pn3dCyls"></span><span class="grow"></span>
       <span class="pn3dCtl"></span><button type="button" class="tb" data-m3="big" aria-label="${tl('Agrandir')}">${icon('expand')}</button><button type="button" class="tb" data-m3="close" aria-label="${tl('Fermer la vue 3D')}">${icon('x')}</button></header>
     <div class="pn3dView"><p class="pn3dHint"></p></div>`;
   host.appendChild(m3);
@@ -460,7 +493,7 @@ export function installPneu(app) {
   }
   async function open3d() {
     if (!on) setMode(true);
-    m3.hidden = false; paint3d(); host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'true');
+    m3.hidden = false; keep3d(); paint3d(); host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'true');
     if (!view) {
       loading3d = loading3d || import('./machine.js');
       M3 = await loading3d;
@@ -491,10 +524,42 @@ export function installPneu(app) {
     if (t) { press3(t.dataset.m3toggle, true); return; }
     if (!b) return;
     if (b.dataset.m3 === 'close') close3d();
-    if (b.dataset.m3 === 'big') { m3.classList.toggle('big'); paint3d(); if (view) requestAnimationFrame(() => view.resize()); }
+    if (b.dataset.m3 === 'big') { m3.classList.toggle('big'); unplace3d(); paint3d(); if (view) requestAnimationFrame(() => view.resize()); }
   });
   // Boutons maintenus de l'en-tête (ouvrir, départ cycle, envoyer un colis) : appuyés tant que le clic est maintenu.
   let held3d = null;
+  /*
+   * Fenêtre 3D déplaçable (glisser son en-tête) et redimensionnable (coin en bas à droite) ; sa place est gardée.
+   * Dans la fenêtre, glisser fait tourner la machine, clic droit glissé la déplace, la molette zoome.
+   */
+  const POS3D = 'jollof-pn3d-pos';
+  m3.insertAdjacentHTML('beforeend', `<span class="pn3dGrip" aria-hidden="true"></span>`);
+  m3.querySelector('.pn3dHead').title = tl('Glisser l’en-tête : déplacer la fenêtre · coin en bas à droite : la redimensionner · dans la vue : tourner (glisser), déplacer (clic droit), zoomer (molette)');
+  /** Place la fenêtre (px dans le plan) en la gardant visible. */
+  function place3d(r, save = true) {
+    const H = host.getBoundingClientRect(), w = Math.max(300, Math.min(H.width - 16, r.w)), h = Math.max(200, Math.min(H.height - 16, r.h));
+    const x = Math.max(8, Math.min(H.width - w - 8, r.x)), y = Math.max(44, Math.min(H.height - h - 8, r.y));
+    Object.assign(m3.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px', right: 'auto', bottom: 'auto', maxWidth: 'none' });
+    m3.classList.add('placed');
+    if (save) setPref(POS3D, JSON.stringify({ x, y, w, h }));
+    if (view) view.resize();
+  }
+  function unplace3d() { m3.classList.remove('placed'); ['left', 'top', 'width', 'height', 'right', 'bottom', 'maxWidth'].forEach(k => (m3.style[k] = '')); setPref(POS3D, ''); }
+  const rect3d = () => { const H = host.getBoundingClientRect(), r = m3.getBoundingClientRect(); return { x: r.left - H.left, y: r.top - H.top, w: r.width, h: r.height }; };
+  function drag3d(e, mode) {
+    e.preventDefault(); m3.classList.remove('big');
+    const r0 = rect3d(), x0 = e.clientX, y0 = e.clientY;
+    m3.classList.add('dragging');
+    const mv = ev => { const dx = ev.clientX - x0, dy = ev.clientY - y0; place3d(mode === 'move' ? { ...r0, x: r0.x + dx, y: r0.y + dy } : { ...r0, w: r0.w + dx, h: r0.h + dy }, false); };
+    const up = () => { removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true); m3.classList.remove('dragging'); setPref(POS3D, JSON.stringify(rect3d())); paint3d(); };
+    addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true);
+  }
+  m3.querySelector('.pn3dHead').addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('button, select, input')) return; drag3d(e, 'move'); });
+  m3.querySelector('.pn3dGrip').addEventListener('pointerdown', e => { if (e.button === 0) drag3d(e, 'size'); });
+  m3.querySelector('.pn3dHead').addEventListener('dblclick', e => { if (!e.target.closest('button, select, input')) { unplace3d(); if (view) requestAnimationFrame(() => view.resize()); } });
+  // Place gardée (à la réouverture, et si le plan change de taille).
+  const keep3d = () => { const s = pref(POS3D); if (!s || m3.hidden) return; try { place3d(JSON.parse(s), false); } catch (err) { /* place illisible */ } };
+  new ResizeObserver(() => { if (m3.classList.contains('placed')) place3d(rect3d(), false); }).observe(host);
   m3.addEventListener('pointerdown', e => { const b = e.target.closest('[data-m3press]'); if (!b || e.button !== 0) return; e.preventDefault(); held3d = b.dataset.m3press; press3(held3d, true); });
   addEventListener('pointerup', () => { if (!held3d) return; const r = held3d; held3d = null; press3(r, false); }, true);
 
@@ -518,7 +583,7 @@ export function installPneu(app) {
       if (!libReady) { libReady = true; renderLib(); }
       app.history(ed.history);
       countsBefore = $('#counts').textContent; hintBefore = $('#hint').textContent;
-      $('#hint').textContent = tl('Orifice → orifice : tirer un tuyau · Suppr : retirer · Molette : zoom · glisser le fond : se déplacer · clic maintenu sur un bouton poussoir : l’actionner');
+      $('#hint').textContent = tl('Orifice → orifice : tirer un tuyau · glisser dans le vide : encadrer · Espace + glisser : se déplacer · Molette : zoom · ? : raccourcis');
       app.setTab('pneu'); counts(); renderPane();
       ed.render(); if (!fitted) { fitted = true; requestAnimationFrame(() => ed.fit()); }
       if (pending3d) { pending3d = false; open3d(); }
@@ -539,10 +604,13 @@ export function installPneu(app) {
     const a = document.activeElement;
     if (a && (/INPUT|SELECT|TEXTAREA/.test(a.tagName) || a.isContentEditable)) return;
     const mod = e.ctrlKey || e.metaKey;
-    if (mod) return; // enregistrer, ouvrir, annuler, bibliothèque : application
+    if (mod && !['a', 'c', 'x', 'v', 'd'].includes(e.key.toLowerCase())) return; // enregistrer, ouvrir, annuler, bibliothèque : application
+    if (!mod && nav.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (ed.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    if (mod) return;
     if (e.key.length === 1 || ['Delete', 'Backspace'].includes(e.key)) e.stopImmediatePropagation(); // pas de raccourcis de la scène 3D ici
   }, true);
+  addEventListener('keyup', e => nav.key(e), true); // Espace relâché : la main se range
 
   /* ---------- Simulation commune ---------- */
   // La carte excite les bobines (coil24.coilOn) ; le circuit avance ; les capteurs de vérin du montage suivent.

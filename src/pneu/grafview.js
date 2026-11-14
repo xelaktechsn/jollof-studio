@@ -11,7 +11,7 @@
 import { tl } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { menu as popMenu } from '../school/ui.js';
-import { parseReceptivity, parseActions, INPUT_NAME, PART_NAME, newGrafcet, kindOf, walkItems, walkAll, rootsOf, locate } from './grafcet.js';
+import { parseReceptivity, parseActions, INPUT_NAME, PART_NAME, newGrafcet, kindOf, walkItems, walkAll, rootsOf, locate, cmpOf } from './grafcet.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const clone = g => JSON.parse(JSON.stringify(g));
@@ -46,11 +46,43 @@ const renameSit = (s, a, b) => String(s || '').replace(/\{([^}]*)\}/g, (m, body)
 /** Renomme la variable d'étape Xold en Xnew dans une réceptivité ou une condition (X3, 2s/X3, t/X3/2s). */
 const renameX = (s, a, b) => String(s || '').replace(new RegExp(`\\bX${a}\\b`, 'gi'), `X${b}`);
 
+const fmtS = v => String(Math.round(v * 10) / 10).replace('.', ',');
+/** Temporisations d'une réceptivité : « 5s/X2 », « t/X2/5s », « 500ms/X3 » → [{ n: 2, s: 5 }]. */
+export function timersIn(src) {
+  const out = [], sec = (d, u) => parseFloat(String(d).replace(',', '.')) / (/^ms$/i.test(u) ? 1000 : 1);
+  String(src || '')
+    .replace(/\bt\s*\/\s*X\s*(\d+)\s*\/\s*(\d+(?:[.,]\d+)?)\s*(ms|s)\b/gi, (_, n, d, u) => { out.push({ n: +n, s: sec(d, u) }); return ' '; })
+    .replace(/(\d+(?:[.,]\d+)?)\s*(ms|s)\s*\/\s*X\s*(\d+)/gi, (_, d, u, n) => { out.push({ n: +n, s: sec(d, u) }); return ' '; });
+  return out;
+}
+const CMP_TXT = { eq: '=', ne: '≠', lt: '<', le: '≤', gt: '>', ge: '≥' };
+/** Lecture en clair d'une réceptivité (« dcy ET a0 », « 5 s après l'activation de X2 »), ou null si elle est illisible. */
+export function readReceptivity(src) {
+  const r = parseReceptivity(src); if (r.error) return null; if (!r.expr) return tl('vide : la transition n’est jamais franchie');
+  const say = (e, parent) => {
+    let s;
+    if (e.op === 'const') return e.v ? tl('toujours vrai') : tl('jamais vrai');
+    if (e.op === 'var') {
+      const l = e.name; let m;
+      if ((m = /^__t_(\d+)_(\d+)$/i.exec(l))) return tl('{0} s après l’activation de X{1}', fmtS(+m[2] / 1000), m[1]);
+      if ((m = /^__up_(.+)$/i.exec(l))) return tl('front montant de {0}', m[1]);
+      if ((m = /^__dn_(.+)$/i.exec(l))) return tl('front descendant de {0}', m[1]);
+      const q = cmpOf(l); if (q) return `${q.name} ${CMP_TXT[q.op]} ${q.v}`;
+      if ((m = /^x(\d+)$/i.exec(l))) return tl('X{0} active', m[1]);
+      return l;
+    }
+    if (e.op === 'not') return tl('NON {0}', say(e.a, 'not'));
+    s = `${say(e.a, e.op)} ${e.op === 'and' ? tl('ET') : e.op === 'or' ? tl('OU') : tl('OU exclusif')} ${say(e.b, e.op)}`;
+    return parent && parent !== e.op ? `(${s})` : s;
+  };
+  return say(r.expr, null);
+}
+
 /**
  * host : le plan de travail pneumatique. api : { get() → GRAFCET ou null, set(g) (modification annulable),
  * sim() → simulation en cours ?, live() → { X: Set, macros: Set des macro-étapes actives, rec: [vrai/faux par
  * transition compilée], trans: transitions compilées, vars: [[nom, valeur]] } ou null, press(nom, appuyé),
- * pressed(nom), code(), opened(), closed() }.
+ * pressed(nom), code(), opened(), closed(), names() → { sensors, coils } (repères du circuit, pour la palette) }.
  */
 export function createGrafcetPanel(host, api) {
   const el = document.createElement('aside');
@@ -60,11 +92,10 @@ export function createGrafcetPanel(host, api) {
       <button type="button" class="tb" data-gf="close" aria-label="${tl('Fermer le GRAFCET')}">${icon('x')}</button></header>
     <div class="gfPupitre"></div>
     <div class="gfScroll"><div class="gfChart"></div><svg class="gfLanes" aria-hidden="true"></svg></div>
-    <footer class="gfFoot"><label class="gfDrive"><input type="checkbox" data-gf="drive"><span>${tl('Le GRAFCET commande les électrovannes')}</span></label>
-      <div class="gfHelp"><span>${tl('. ET · + OU · / NON · 3s/X2 temporisation · Y1:=1 mémorisée')}</span><button type="button" class="tb" data-ins="↑" data-tip="${tl('Front montant')}">↑</button><button type="button" class="tb" data-ins="↓" data-tip="${tl('Front descendant')}">↓</button></div></footer>`;
+    <footer class="gfFoot"><div class="gfPal" aria-label="${tl('Palette : noms et opérateurs à insérer')}"></div><label class="gfDrive"><input type="checkbox" data-gf="drive"><span>${tl('Le GRAFCET commande les électrovannes')}</span></label></footer>`;
   host.appendChild(el);
-  const chart = el.querySelector('.gfChart'), lanes = el.querySelector('.gfLanes'), pup = el.querySelector('.gfPupitre');
-  let lastRec = null, jumps = []; // dernière réceptivité choisie (insertion de ↑ et ↓) ; liaisons à tracer
+  const chart = el.querySelector('.gfChart'), lanes = el.querySelector('.gfLanes'), pup = el.querySelector('.gfPupitre'), pal = el.querySelector('.gfPal');
+  let lastRec = null, jumps = []; // dernier champ choisi (réceptivité ou actions : la palette y insère) ; liaisons à tracer
 
   const g = () => api.get() || newGrafcet();
   const commit = fn => { const n = clone(g()); fn(n); api.set(n); };
@@ -108,14 +139,23 @@ export function createGrafcetPanel(host, api) {
         <div class="gfCol"><span class="gfBar"></span></div>
         <input class="gfIn gfR" data-f="r" value="${esc(it.r)}" placeholder="${k === 'par' ? tl('réceptivité de la convergence (=1…)') : tl('réceptivité (dcy . a0…)')}" spellcheck="false" aria-label="${tl('Réceptivité')}">
         <select class="gfTo" data-f="to" aria-label="${tl('Étape suivante')}"><option value=""${it.to == null ? ' selected' : ''}>${esc(label)}</option>${nums.map(n => `<option value="${n}"${it.to === n ? ' selected' : ''}>→ X${n}</option>`).join('')}</select>${k === 'par' ? more('parmore', tl('Bloc parallèle')) : ''}</div>`;
+      h += timerRows(it.r, jump, path, -1);
       (it.alt || []).forEach((t, ai) => {
         h += `<div class="gfRow gfAltRow" data-path="${path}" data-k="${ai}"><div class="gfCol"><span class="gfOr">${tl('ou')}</span></div>
           <input class="gfIn gfR" data-f="ar" data-k="${ai}" value="${esc(t.r)}" placeholder="${tl('réceptivité')}" spellcheck="false">
           <select class="gfTo" data-f="ato" data-k="${ai}">${nums.map(n => `<option value="${n}"${t.to === n ? ' selected' : ''}>→ X${n}</option>`).join('')}</select>
           <button type="button" class="tb" data-gf="altdel" data-k="${ai}" aria-label="${tl('Retirer cette transition')}">${icon('x')}</button></div>`;
+        h += timerRows(t.r, true, path, ai);
       });
     }
     return h;
+  }
+  /**
+   * Temporisation d'une réceptivité, dessinée sous sa transition : un chronomètre, le retard et l'étape qu'il suit ;
+   * pendant la simulation, la barre se remplit et le temps écoulé s'affiche (voir live).
+   */
+  function timerRows(src, jump, path, k) {
+    return timersIn(src).map(t => `<div class="gfRow gfTimerRow${jump ? ' jump' : ''}" data-path="${path}" data-k="${k}"><div class="gfCol"></div><span class="gfTimer" data-tn="${t.n}" data-ts="${t.s}" title="${esc(tl('Temporisation : vraie {0} s après l’activation de l’étape {1}', fmtS(t.s), t.n))}">${icon('clock')}<b>${fmtS(t.s)} s</b><small>${tl('après X{0}', t.n)}</small><i class="gfTBar"><i></i></i><em></em></span></div>`).join('');
   }
   /** Expansions des macro-étapes et encapsulations des étapes encapsulantes, sous le GRAFCET (tous GRAFCET partiels). */
   function expansionsHtml(G) {
@@ -210,6 +250,15 @@ export function createGrafcetPanel(host, api) {
       const v = L && at >= 0 ? L.rec[at] : null;
       r.classList.toggle('true', v === true); r.classList.toggle('ready', v === true && T[at].from.every(n => L.X.has(n)));
     });
+    // Temporisations : temps écoulé depuis l'activation de l'étape suivie (barre et texte).
+    chart.querySelectorAll('.gfTimer').forEach(tm => {
+      const n = +tm.dataset.tn, d = +tm.dataset.ts, act = !!L && L.X.has(n) && L.since && L.since.has(n);
+      const t = act ? Math.max(0, Math.min(d, L.t - L.since.get(n))) : 0, done = act && t >= d - 1e-6;
+      tm.classList.toggle('run', act && !done); tm.classList.toggle('done', done);
+      tm.querySelector('.gfTBar > i').style.width = `${d ? (t / d) * 100 : 0}%`;
+      const txt = act ? (done ? tl('écoulé') : `${fmtS(t)} s`) : '';
+      const em = tm.querySelector('em'); if (em.textContent !== txt) em.textContent = txt;
+    });
     pup.querySelectorAll('[data-press]').forEach(b => { const on = !!api.pressed(b.dataset.press); if (b.getAttribute('aria-pressed') !== String(on)) b.setAttribute('aria-pressed', String(on)); });
     const vs = pup.querySelector('.gfVars');
     if (vs && L) { const h = L.vars.map(([n, v]) => `<i class="${v ? 'on' : ''}">${esc(n)}</i>`).join('') + (L.counters || []).map(([n, v]) => `<i class="gfCnt">${esc(n)} = ${v}</i>`).join(''); if (vs.dataset.h !== h) { vs.dataset.h = h; vs.innerHTML = h; } }
@@ -218,8 +267,9 @@ export function createGrafcetPanel(host, api) {
   }
 
   /* ---------- Saisie ---------- */
-  el.addEventListener('input', e => { if (e.target.matches('.gfR, .gfAct')) validate(); });
-  el.addEventListener('focusin', e => { if (e.target.matches('.gfR')) lastRec = e.target; });
+  el.addEventListener('input', e => { if (e.target.matches('.gfR, .gfAct')) { validate(); paintPal(); } });
+  el.addEventListener('focusin', e => { if (e.target.matches('.gfR, .gfAct')) { lastRec = e.target; paintPal(); } });
+  el.addEventListener('focusout', () => setTimeout(() => { if (!el.contains(document.activeElement) && !pal.contains(document.activeElement)) { lastRec = null; paintPal(); } }, 0));
   el.addEventListener('change', e => {
     if (e.target.dataset.gf === 'drive') { commit(n => { n.drive = e.target.checked; }); return; }
     if (e.target.dataset.f === 'pname') {
@@ -264,7 +314,8 @@ export function createGrafcetPanel(host, api) {
   });
   el.addEventListener('click', e => {
     const b = e.target.closest('[data-gf]'), ins = e.target.closest('[data-ins]');
-    if (ins && lastRec && el.contains(lastRec)) { const p = lastRec.selectionStart ?? lastRec.value.length; lastRec.value = lastRec.value.slice(0, p) + ins.dataset.ins + lastRec.value.slice(lastRec.selectionEnd ?? p); lastRec.focus(); lastRec.setSelectionRange(p + 1, p + 1); validate(); return; }
+    if (ins) { insert(ins.dataset.ins, ins.dataset.kind); return; }
+    if (e.target.closest('[data-tm]')) { const f = pal.querySelector('.gfTmForm'); const s = parseFloat(String(f.querySelector('input').value).replace(',', '.')); const n = f.querySelector('select').value; if (s > 0 && n !== '') insert(`${fmtS(s).replace(',', '.')}s/X${n}`, 'name'); return; }
     if (!b || b.disabled) return;
     const what = b.dataset.gf, row = b.closest('[data-path]'), path = row ? row.dataset.path : null, chip = b.closest('[data-name]');
     if (what === 'close') { close(); return; }
@@ -274,6 +325,45 @@ export function createGrafcetPanel(host, api) {
     if (what === 'partmore') { popMenu(b, [{ label: tl('Supprimer ce GRAFCET partiel'), icon: 'trash', value: 'partdel', danger: true }]).then(v => { if (v) apply('partdel', null, null, +b.dataset.part, null); }); return; }
     apply(what, path, b.dataset.seq, +b.dataset.k, chip && chip.dataset.name);
   });
+
+  /* ---------- Palette : ce qu'on peut écrire dans le champ choisi ---------- */
+  /** Étape « amont » d'une transition (celle que suit sa temporisation par défaut). */
+  const stepOfField = f => { const row = f && f.closest('[data-path]'); if (!row) return null; const it = locate(g(), row.dataset.path).item; return it && kindOf(it) !== 'par' ? it.n : null; };
+  function paintPal() {
+    const f = lastRec && el.contains(lastRec) ? lastRec : null;
+    if (!f) { pal.innerHTML = `<p class="gfPalHint">${icon('info')}<span>${tl('Cliquez dans une réceptivité ou dans les actions d’une étape : les noms, opérateurs et temporisations à insérer apparaissent ici.')}</span></p>`; return; }
+    const G = g(), nm = api.names ? api.names() : { sensors: [], coils: [] }, chip = (v, kind, tip = '', cls = '') => `<button type="button" class="gfChip${cls}" data-ins="${esc(v)}" data-kind="${kind}"${tip ? ` title="${esc(tip)}"` : ''}>${esc(v)}</button>`;
+    const group = (label, html) => (html ? `<div class="gfPalRow"><span>${label}</span><div>${html}</div></div>` : '');
+    if (f.classList.contains('gfAct')) {
+      pal.innerHTML = `<div class="gfPalHead"><b>${tl('Actions de l’étape')}</b><small>${tl('émises tant que l’étape est active ; séparez-les par des virgules')}</small></div>`
+        + group(tl('Électrovannes'), nm.coils.map(c => chip(c, 'act')).join('') || `<small class="gfNone">${tl('aucune bobine dans le circuit')}</small>`)
+        + group(tl('Mémoriser'), chip(':=1', 'op', tl('Mise à 1 mémorisée : la sortie reste à 1 après l’étape')) + chip(':=0', 'op', tl('Mise à 0 mémorisée')) + chip(' si ', 'op', tl('Action conditionnelle : « 1Y1 si p »')));
+      return;
+    }
+    const steps = []; walkAll(G, it => { if (kindOf(it) !== 'par') steps.push(it.n); });
+    const up = stepOfField(f), read = f.value.trim() ? readReceptivity(f.value) : null;
+    pal.innerHTML = `<div class="gfPalHead"><b>${tl('Réceptivité')}</b><small>${tl('condition pour franchir la transition')}</small></div>`
+      + group(tl('Pupitre'), G.inputs.map(x => chip(x.name, 'name', tl('Bouton du pupitre'))).join(''))
+      + group(tl('Capteurs'), nm.sensors.map(s => chip(s, 'name')).join('') || `<small class="gfNone">${tl('aucun capteur de vérin ni pressostat')}</small>`)
+      + group(tl('Logique'), chip(' . ', 'op', tl('ET : les deux conditions'), ' op') + chip(' + ', 'op', tl('OU : l’une ou l’autre'), ' op') + chip('/', 'op', tl('NON : « /a0 » se lit « a0 n’est pas actionné »'), ' op') + chip('↑', 'op', tl('Front montant : l’instant où le signal passe à 1'), ' op') + chip('↓', 'op', tl('Front descendant : l’instant où le signal passe à 0'), ' op') + chip('( )', 'paren', tl('Parenthèses'), ' op') + chip('=1', 'name', tl('Toujours vraie : la transition est franchie aussitôt'), ' op'))
+      + `<div class="gfPalRow"><span>${icon('clock')}${tl('Temporisation')}</span><div class="gfTmForm"><input type="number" min="0.1" step="0.5" value="2" aria-label="${tl('Durée en secondes')}"><span>${tl('s après')}</span><select aria-label="${tl('Étape suivie')}">${steps.map(n => `<option value="${n}"${n === up ? ' selected' : ''}>X${n}</option>`).join('')}</select><button type="button" class="btn small primary" data-tm>${tl('Insérer')}</button></div></div>`
+      + (f.value.trim() ? `<p class="gfRead${read ? '' : ' err'}">${read ? `${tl('Se lit :')} <b>${esc(read)}</b>` : tl('Réceptivité illisible : vérifiez les noms et les opérateurs.')}</p>` : '');
+  }
+  // La palette ne prend pas le focus : le curseur reste dans le champ.
+  pal.addEventListener('mousedown', e => { if (!e.target.closest('input, select')) e.preventDefault(); });
+  /** Insère v au curseur du champ choisi ; un nom collé à un autre est relié par « . » (réceptivité) ou « , » (actions). */
+  function insert(v, kind) {
+    const f = lastRec; if (!f || !el.contains(f)) return;
+    const s = f.selectionStart ?? f.value.length, e2 = f.selectionEnd ?? s, before = f.value.slice(0, s), after = f.value.slice(e2);
+    let t = v;
+    if (kind === 'paren') { t = `(${f.value.slice(s, e2)})`; }
+    else if ((kind === 'name' || kind === 'act') && /[\w)]\s*$/.test(before)) t = (f.classList.contains('gfAct') ? ', ' : ' . ') + v;
+    if (kind === 'op' && t.trim() && /\s$/.test(before) && /^\s/.test(t)) t = t.trimStart();
+    f.value = before + t + after;
+    const caret = kind === 'paren' && s === e2 ? before.length + 1 : before.length + t.length;
+    f.focus(); f.setSelectionRange(caret, caret);
+    f.dispatchEvent(new Event('change', { bubbles: true })); // enregistré tout de suite (annulable), le focus reste
+  }
   /** Menu d'une étape (initiale, « ou », insérer, branches, macro-étape, supprimer) ou d'un bloc parallèle. */
   async function openMenu(b, what, path) {
     const it = locate(g(), path).item; if (!it) return;
@@ -348,7 +438,7 @@ export function createGrafcetPanel(host, api) {
   });
   addEventListener('pointerup', () => { if (held) { api.press(held, false); held = null; live(); } }, true);
 
-  function open() { const was = !el.hidden; el.hidden = false; host.classList.add('gfOpen'); render(); if (!was && api.opened) api.opened(); }
+  function open() { const was = !el.hidden; el.hidden = false; host.classList.add('gfOpen'); render(); paintPal(); if (!was && api.opened) api.opened(); }
   function close() { el.hidden = true; host.classList.remove('gfOpen'); if (api.closed) api.closed(); }
   return { el, open, close, isOpen: () => !el.hidden, render, live, relayout: () => { if (!el.hidden) layout(); } };
 }

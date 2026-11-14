@@ -286,16 +286,20 @@ select.sInput { appearance: auto; }
 .comment { display: flex; gap: 7px; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: #ffffff06; color: var(--fg-2); font-size: 12.5px; }
 
 /* ---------- Pastille de séance (barre d'application) ---------- */
-.sessChip { display: flex; align-items: center; gap: 2px; height: 30px; margin-left: 8px; padding: 2px; border-radius: 10px; background: #3b82f61a; border: 1px solid #3b82f655; animation: fadeIn .2s; max-width: 520px; }
+.sessChip { display: flex; align-items: center; gap: 2px; height: 30px; margin-left: 8px; min-width: 0; flex: 0 1 auto; padding: 2px; border-radius: 10px; background: #3b82f61a; border: 1px solid #3b82f655; animation: fadeIn .2s; max-width: 520px; }
 .sessChip.hurry { background: #e5484d22; border-color: #e5484d88; animation: pulseRed 1.2s infinite; }
 .sessChip.done { background: #3fb27f1c; border-color: #3fb27f66; }
 .sessChip.view { background: #5b9cf51a; border-color: #5b9cf555; }
 .sessChip.group { background: #9b7be01f; border-color: #9b7be066; }
 @keyframes pulseRed { 50% { box-shadow: 0 0 0 4px #e5484d22; } }
 .scMain, .scAct { appearance: none; display: inline-flex; align-items: center; gap: 7px; height: 24px; padding: 0 9px; border: 0; border-radius: 7px; background: transparent; color: var(--fg); font: inherit; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
-.scMain { min-width: 0; }
+.scMain { min-width: 0; flex: 0 1 auto; }
+.scAct { flex: none; } /* Quitter reste toujours visible et cliquable : c'est le titre qui se raccourcit */
 .scMain:hover, .scAct:hover { background: #ffffff12; }
-.scTitle { font-weight: 600; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.scTitle { min-width: 0; font-weight: 600; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+/* Barre étroite : le nom du projet cède sa place à la séance (le TP porte déjà ce nom). */
+.abDoc .project { flex: 0 4 auto; }
+.abDoc:has(.sessChip:not([hidden])) .projBtn { max-width: 150px; }
 .scMeta { display: inline-flex; align-items: center; gap: 4px; color: var(--fg-2); font-family: var(--mono); font-size: 11.5px; }
 .scMeta .ic { width: 12px; height: 12px; }
 .scAct.primary { background: var(--accent-fill); color: var(--accent-ink); font-weight: 600; }

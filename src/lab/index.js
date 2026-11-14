@@ -273,7 +273,7 @@ export function installLab(app) {
           ${r ? `<div class="labRes ${r.ok ? 'ok' : 'ko'}">${icon(r.ok ? 'check' : 'alert')}<span>${r.msg}</span></div>${r.detail || ''}` : ''}
           ${s.hint ? `<details class="labHint"${r && !r.ok ? ' open' : ''}><summary>${icon('info')}${tl('Indice')}</summary><p>${esc(L(s.hint))}</p></details>` : ''}
           ${s.spot ? `<button type="button" class="btn small labShow" data-show-me>${icon('target')}<span>${tl('Montrer où cliquer')}</span></button>` : ''}
-        </div>${st.finishedAt ? `<div class="labDone">${icon('award')}<div><b>${tp.tutorial ? tl('Tutoriel terminé !') : tl('TP terminé !')}</b><small>${tl('Toutes les étapes sont validées. Exportez votre compte-rendu.')}</small></div></div>${takeHtml()}` : ''}</div>
+        </div>${st.finishedAt ? `<div class="labDone">${icon('award')}<div><b>${tp.tutorial ? tl('Tutoriel terminé !') : tl('TP terminé !')}</b><small>${tl('Toutes les étapes sont validées. Exportez votre compte-rendu.')}</small></div><button type="button" class="btn primary small labQuit" data-quit>${icon('check')}<span>${tp.tutorial ? tl('Terminer le tutoriel') : tl('Terminer le TP')}</span></button></div>${takeHtml()}` : ''}</div>
         <footer class="spFoot labFoot"><button type="button" class="btn" data-prev ${i ? '' : 'disabled'} aria-label="${tl('Étape précédente')}">${icon('chevLeft')}</button>
           ${c && c.type !== 'info' && !st.done[i] ? `<button type="button" class="btn primary grow" data-check>${icon('check')}<span>${c.type === 'watch' || c.type === 'pneu-seq' ? tl('Observer') : tl('Vérifier')}</span></button>` : `<button type="button" class="btn primary grow" data-next ${i < total - 1 || !st.done[i] ? '' : 'disabled'}>${i < total - 1 ? tl('Étape suivante') : st.done[i] ? tl('Dernière étape') : tl('Terminer')}${icon(i < total - 1 ? 'chevRight' : 'check')}</button>`}
           <button type="button" class="btn" data-report title="${tl('Compte-rendu en PDF')}">${icon('pdf')}</button>
@@ -348,6 +348,7 @@ export function installLab(app) {
     panel.addEventListener('input', e => { if (e.target.matches('[data-expr]')) { st.answers[st.step] = e.target.value; paintExpr(); clearTimeout(panel.t); panel.t = setTimeout(save, 300); } });
     panel.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-expr]')) { e.preventDefault(); verify(st.step); } });
     panel.addEventListener('click', e => {
+      if (e.target.closest('[data-quit]')) { sessions.end(); return; }
       const cell = e.target.closest('[data-fill]');
       if (cell) {
         const i = st.step, c = tp.steps[i].check, n = 1 << c.inputs.length, o = cell.dataset.fill, k = +cell.dataset.k;
@@ -579,7 +580,10 @@ export function installLab(app) {
 
     const ok = await sessions.begin({
       kind: 'lab', panel, name: L(tp.title), data: project,
-      chip: () => ({ icon: tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : 'checklist', title: L(tp.title), meta: tl('étape {0}/{1}', st.step + 1, total), tone: st.finishedAt ? 'done' : 'work', actions: [{ id: 'end', icon: 'x', tip: tl('Quitter le TP (votre progression est gardée)') }] }),
+      chip: () => ({ icon: tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : 'checklist', title: L(tp.title), meta: tl('étape {0}/{1}', st.step + 1, total), tone: st.finishedAt ? 'done' : 'work', actions: [st.finishedAt
+        // Terminé : un vrai bouton, bien visible, pour quitter.
+        ? { id: 'end', icon: 'check', label: tl('Terminer'), kind: 'primary', tip: tp.tutorial ? tl('Terminer le tutoriel et retrouver votre projet') : tl('Terminer le TP et retrouver votre projet') }
+        : { id: 'end', icon: 'x', tip: tl('Quitter le TP (votre progression est gardée)') }] }),
       action: id => { if (id === 'end') sessions.end(); },
       beforeEnd: async () => { stopWatch(); endTutorial(); save(); return true; },
       onEnd: () => { stopWatch(); endTutorial(); if (offLogic) { clearTimeout(offLogic.t); offLogic(); } } // plus d'enregistrement : le projet personnel revient

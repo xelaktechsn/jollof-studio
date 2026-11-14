@@ -63,6 +63,12 @@ export function createGuides(o) {
   apply();
   return {
     get tags() { return showTags; },
+    /** Composant dont le repère est sous le rayon (double-clic : renommer), ou null. */
+    hitTag(ray) {
+      if (!showTags) return null;
+      const list = [...tagOf].filter(([, s]) => s.visible), h = ray.intersectObjects(list.map(([, s]) => s), false)[0];
+      return h ? list.find(([, s]) => s === h.object)[0] : null;
+    },
     setTags(on) { showTags = on; try { localStorage.setItem('jollof-tags', on ? '1' : '0'); } catch (e) { /* stockage indisponible */ } apply(); },
     /** À chaque image : cube d'orientation et repères suivent la vue. */
     update() { cube.update(); if (showTags) updateTags(); }

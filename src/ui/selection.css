@@ -1,0 +1,24 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Panneau de sélection de la scène 3D : repère renommable, sélection multiple (regrouper en bloc, cadrer, tourner,
+ * supprimer). Préfixes « mb » et « nameEdit ». */
+#selTitle.renamable { cursor: text; border-radius: 5px; padding: 1px 4px; margin-left: -4px; transition: background .12s; }
+#selTitle.renamable:hover, #selTitle.renamable:focus-visible { background: var(--raise); outline: none; }
+#selTitle.renamable:hover::before { content: "✎ "; color: var(--muted); font-size: 12px; }
+.selBox.multi #selTitle.renamable { cursor: default; background: none; }
+.selBox.multi #selTitle.renamable:hover::before { content: none; }
+.nameEdit { width: 100%; max-width: 180px; height: 26px; padding: 0 7px; border-radius: 6px; border: 1px solid var(--accent); background: var(--bg); color: var(--fg); font: 600 14px var(--mono); outline: none; box-shadow: 0 0 0 3px #3b82f633; }
+.nameEdit.floating { position: fixed; z-index: 95; width: 150px; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px #3b82f644, var(--shadow); }
+
+/* Plusieurs composants : la fiche du dernier choisi laisse la place aux actions de groupe. */
+.selBox.multi .selBlock, .selBox.multi .xform, .selBox.multi #autoBtn, .selBox.multi #behav, .selBox.multi #explain,
+.selBox.multi #pkgTools, .selBox.multi #pinTools, .selBox.multi #docSel, .selBox.multi #renameBtn { display: none !important; }
+.multiBox:empty { display: none; }
+.multiBox { display: flex; flex-direction: column; gap: 9px; margin-top: 8px; }
+.mbChips { display: flex; flex-wrap: wrap; gap: 5px; margin: 0; padding: 0; list-style: none; max-height: 92px; overflow: auto; }
+.mbChips button { all: unset; cursor: pointer; padding: 2px 8px; border-radius: 999px; font: 500 11.5px var(--mono); color: var(--fg); background: #3b82f61f; border: 1px solid #3b82f655; }
+.mbChips button:hover { background: #3b82f640; }
+.multiBox .btn.wide kbd { margin-left: auto; font: 500 11px var(--sans); opacity: .75; }
+.mbRow { display: flex; gap: 6px; flex-wrap: wrap; }
+.mbRow .mbDel { color: #ff8a8d; }
+.multiBox .note { margin: 0; font-size: 12px; color: var(--muted); }

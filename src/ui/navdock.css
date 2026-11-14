@@ -1,0 +1,52 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Navigation commune des plans de travail (src/ui/navdock.js) : barre verticale au bord droit, mini-carte,
+ * rectangle de sélection ou de loupe, aide des raccourcis. Préfixe « nd » : rien d'autre ne s'appelle ainsi. */
+.ndDock { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 7; display: flex; flex-direction: column; gap: 6px; animation: fadeIn .18s ease-out; }
+.ndDock[hidden], .ndMini[hidden] { display: none; }
+.ndG { display: flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 10px; background: #11151ae6; border: 1px solid var(--line); box-shadow: 0 6px 20px #0006; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ndG:empty { display: none; }
+.ndB { all: unset; box-sizing: border-box; position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; color: var(--fg-2); cursor: pointer; transition: background .12s, color .12s; }
+.ndB .ic { width: 17px; height: 17px; }
+.ndB:hover { background: var(--raise-2); color: var(--fg); }
+.ndB:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ndB[aria-pressed="true"] { background: var(--accent-fill); color: #fff; box-shadow: inset 0 0 0 1px #ffffff1f; }
+.ndB:disabled { opacity: .32; cursor: default; background: none; color: var(--fg-2); }
+.ndB[hidden] { display: none; }
+.ndPct { font: 600 10px/1 var(--mono); letter-spacing: -.03em; color: var(--fg); }
+/* Bulles à gauche de la barre */
+.ndDock [data-tip]:hover::after, .ndDock [data-tip]:focus-visible::after { left: auto; right: calc(100% + 10px); top: 50%; transform: translateY(-50%); animation-name: fadeIn; }
+.ndDock .ndB:disabled:hover::after { content: none; }
+
+/* Mini-carte : en bas à droite, à côté de la barre */
+.ndMini { position: absolute; right: 56px; bottom: 64px; z-index: 7; padding: 4px; border-radius: 11px; background: #0d1115f2; border: 1px solid var(--line-2); box-shadow: var(--shadow); cursor: crosshair; touch-action: none; animation: fadeIn .15s ease-out; }
+.ndMini canvas { display: block; border-radius: 7px; background: #0a0d10; }
+
+/* Rectangle tracé : sélection (plein) ou loupe (pointillé) */
+.ndRect { position: fixed; z-index: 90; pointer-events: none; border: 1px solid var(--accent-hi); background: #3b82f61a; border-radius: 2px; }
+.ndRect.ndZoomRect { border-style: dashed; background: #60a5fa12; }
+
+/* Curseurs des outils (la surface du plan de travail porte la classe ; prioritaires sur ceux posés par l'éditeur) */
+.ndSurf.ndPan, .ndSurf.ndPan * { cursor: grab !important; }
+.ndSurf.ndPanning, .ndSurf.ndPanning * { cursor: grabbing !important; }
+.ndSurf.ndZoom, .ndSurf.ndZoom * { cursor: zoom-in !important; }
+
+/* Aide : raccourcis */
+.ndHelp { position: fixed; inset: 0; z-index: 80; display: grid; place-items: center; padding: 16px; background: #05080bb8; -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px); animation: fadeIn .12s ease-out; }
+.ndHelpCard { width: min(720px, 100%); max-height: 100%; overflow: auto; padding: 14px 18px 18px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line-2); box-shadow: var(--shadow); }
+.ndHelpCard header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.ndHelpCard header b { display: flex; align-items: center; gap: 9px; font: 600 14px/1.2 var(--sans); color: var(--fg); }
+.ndHelpCard header b .ic { width: 18px; height: 18px; color: var(--accent-hi); }
+.ndCols { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 24px; }
+.ndCols h4 { margin: 8px 0 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+.ndRow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font: 12.5px/1.3 var(--sans); color: var(--fg-2); }
+.ndRow > span:last-child { flex: none; text-align: right; }
+.ndRow kbd { display: inline-block; padding: 2px 6px; border-radius: 5px; font: 500 11px/1.3 var(--mono); color: var(--fg); background: var(--raise-2); border: 1px solid var(--line-2); border-bottom-width: 2px; white-space: nowrap; }
+.ndOr { margin: 0 5px; font-size: 11px; color: var(--muted); }
+@media (max-width: 760px) { .ndCols { grid-template-columns: 1fr; } }
+
+/* Le plan de travail principal (scène 3D, schéma) se cache sous la logique et la pneumatique en plein écran. */
+body.logicOpen .ndStage, body.pneuOpen .ndStage, .app.presenting .ndDock, .app.presenting .ndMini { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .ndDock, .ndMini, .ndHelp { animation: none; } }
+/* Vue 3D de la machine ouverte (pneumatique) : elle occupe le coin de la mini-carte. */
+.pnHost:has(> .pn3d:not([hidden])) > .ndMini { display: none; }

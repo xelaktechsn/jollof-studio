@@ -9,7 +9,7 @@
 //   durée de course, ralentie par le réducteur de débit le plus fermé sur le chemin de l'air ;
 // - les capteurs de fin de course se ferment quand le piston est en bout de course.
 // Un orifice laissé libre est à l'air libre : sous pression, c'est une fuite (signalée), sauf un échappement.
-import { DEFS, props, portsOf, camTarget } from './elements.js';
+import { DEFS, props, portsOf, camTarget, delayOf } from './elements.js';
 
 const key = (id, p) => `${id}:${p}`;
 /** Éléments qui laissent l'air s'échapper par un orifice non raccordé (la source et le manomètre, non). */
@@ -20,7 +20,7 @@ export const END = 0.02;
 /** État de simulation vide : positions des distributeurs, des pistons, pression des orifices. */
 /** Bouton poussoir d'un distributeur : côté 14 (à gauche, l'identifiant seul) ou côté 12 (à droite, « id:R »). */
 export const pushKey = (id, side) => (side === 'R' ? `${id}:R` : id);
-export const createState = () => ({ pos: {}, x: {}, press: {}, rightOn: {}, gate: {}, closed: {}, leaks: [], t: 0 });
+export const createState = () => ({ pos: {}, x: {}, press: {}, rightOn: {}, gate: {}, closed: {}, tm: {}, leaks: [], t: 0 });
 
 /**
  * Position d'un distributeur d'après ses commandes (active(e, genre, bobine, orifice de pilotage) → actionnée ?) :
@@ -28,6 +28,8 @@ export const createState = () => ({ pos: {}, x: {}, press: {}, rightOn: {}, gate
  * par ses ressorts). Partagé par les deux modèles (tout ou rien, physique).
  */
 export function valvePos(e, P, was, active, st) {
+  // Temporisateur : il bascule quand son pilotage est resté sous pression pendant tout le retard (st.tm, compté par le modèle).
+  if (e.type === 'v32' && P.act === 'tempo') return ((st.tm || {})[e.id] || 0) >= delayOf(P) - 1e-9 ? 1 : 0;
   if (e.type === 'v32') return active(e, P.act, P.coil, '12', 'L') ? 1 : 0;
   if (e.type === 'v52') {
     const L = active(e, P.left, P.coilL, '14', 'L'), Rt = P.right === 'spring' ? false : active(e, P.right, P.coilR, '12', 'R');
@@ -98,6 +100,10 @@ export function step(circuit, st, io, dt) {
   const on = k => st.press[k] === 'P' || st.press[k] === 'CP'; // sous pression (ou air sous pression enfermé)
   const active = (e, kind, coil, pilot, side) => (kind === 'sol' ? !!(coil && io.coil(coil)) : kind === 'push' ? !!io.pushed(pushKey(e.id, side)) : kind === 'pilot' ? on(key(e.id, pilot)) : kind === 'roller' ? camOn(els, st, props(e)) : false);
   let leaks = [];
+  // Temporisateurs : le temps court tant que le pilotage 12 est sous pression ; il repart de zéro dès qu'il retombe
+  // (le réservoir se vide aussitôt par le clapet anti-retour).
+  st.tm = st.tm || {};
+  for (const e of els) if (e.type === 'v32' && props(e).act === 'tempo') st.tm[e.id] = on(key(e.id, '12')) ? (st.tm[e.id] || 0) + dt : 0;
   for (let round = 0; round < 8; round++) {
     // 1. Positions des distributeurs.
     let moved = false;
@@ -172,6 +178,6 @@ export function step(circuit, st, io, dt) {
 }
 
 /** État d'un élément pour son dessin : position, piston, pression de ses orifices. */
-export const viewOf = (st, e) => ({ pos: st.pos[e.id] || 0, x: st.x[e.id] || 0, rightOn: !!st.rightOn[e.id], closed: !!(st.closed || {})[e.id], bar: p => (st.bar ? st.bar[key(e.id, p)] : null), press: p => st.press[key(e.id, p)], on: p => ['P', 'CP'].includes(st.press[key(e.id, p)]) });
+export const viewOf = (st, e) => ({ tm: (st.tm || {})[e.id] || 0, pos: st.pos[e.id] || 0, x: st.x[e.id] || 0, rightOn: !!st.rightOn[e.id], closed: !!(st.closed || {})[e.id], bar: p => (st.bar ? st.bar[key(e.id, p)] : null), press: p => st.press[key(e.id, p)], on: p => ['P', 'CP'].includes(st.press[key(e.id, p)]) });
 /** État d'un orifice (pour la couleur des tuyaux). */
 export const portState = (st, id, p) => st.press[key(id, p)] || null;

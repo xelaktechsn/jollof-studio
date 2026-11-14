@@ -88,6 +88,7 @@ export function stepPhysical(circuit, st, io, dt) {
     const add = (e, p, q, Cpq, Cqp = Cpq) => { const a = key(e.id, p), b = key(e.id, q); if (ports.has(a) && ports.has(b)) conns.push([net(a), net(b), Cpq, Cqp, [a, b]]); };
     for (const e of els) {
       const P = props(e);
+      if (e.type === 'v32' && P.act === 'tempo') { st.tm = st.tm || {}; st.tm[e.id] = active(e, 'pilot', '', '12', 'L') ? (st.tm[e.id] || 0) + h : 0; } // temporisateur : temps de pilotage
       if (e.type === 'v32' || e.type === 'v52' || e.type === 'v53') st.pos[e.id] = valvePos(e, P, st.pos[e.id] || 0, active, st);
       const pos = st.pos[e.id] || 0;
       if (['frl', 'v32', 'v52', 'v53'].includes(e.type)) for (const [p, q] of passages(e, P, pos)) add(e, p, q, COND[e.type]);

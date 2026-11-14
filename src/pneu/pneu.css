@@ -52,6 +52,8 @@
 .pnPort:hover { fill: var(--accent); stroke: var(--accent); }
 .pnPort.pnP { fill: var(--pnP); stroke: var(--pnP); }
 .pnRubber { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
+.pnMarquee { fill: #3b82f61a; stroke: var(--accent-hi); stroke-width: 1; pointer-events: none; }
+.pnSvg.pnPanning, .pnSvg.pnPanning * { cursor: grabbing; }
 .pnGhost { opacity: .55; pointer-events: none; }
 .pnBar { position: absolute; left: 12px; right: 12px; display: flex; align-items: center; gap: 8px; pointer-events: none; }
 .pnBar > * { pointer-events: auto; }
@@ -215,7 +217,7 @@
 .gfOr { position: relative; z-index: 1; font: 600 10px var(--sans); color: var(--muted); padding: 1px 4px; border-radius: 4px; }
 .gfTo { flex: 0 0 auto; height: 24px; max-width: 74px; font: 500 11px var(--mono); color: var(--fg-2); background: var(--raise); border: 1px solid var(--line); border-radius: 6px; padding: 0 4px; }
 .gfStepRow { position: relative; }
-.gfMore { flex: 0 0 22px; width: 22px; height: 22px; min-width: 0; padding: 0; opacity: .35; }
+.gfMore { flex: 0 0 22px; width: 22px; height: 22px; min-width: 0; padding: 0; opacity: .6; }
 .gfMore .ic { width: 14px; height: 14px; }
 .gfRow:hover > .gfMore, .gfMore:focus-visible { opacity: 1; }
 /* Branches parallèles : côte à côte entre deux traits doubles (placés d'une branche à l'autre après la mise en page). */
@@ -241,9 +243,43 @@
 .gfAdd { padding: 10px 0 4px 18px; }
 .gfFoot { display: flex; flex-direction: column; gap: 4px; padding: 7px 12px 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--fg-2); }
 .gfDrive { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-.gfHelp { display: flex; align-items: center; gap: 4px; color: var(--muted); font: 500 10.5px var(--mono); }
-.gfHelp span { flex: 1; }
-.gfHelp .tb { width: 22px; height: 20px; min-width: 0; padding: 0; font: 700 12px var(--mono); }
+/* Palette : ce qu'on peut écrire dans le champ choisi (noms du pupitre et du circuit, opérateurs, temporisation). */
+.gfPal { display: flex; flex-direction: column; gap: 5px; padding-bottom: 6px; margin-bottom: 2px; border-bottom: 1px solid var(--line); }
+.gfPalHint { display: flex; gap: 7px; align-items: flex-start; margin: 0; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.gfPalHint .ic { flex: none; width: 14px; height: 14px; margin-top: 1px; color: var(--accent-hi); }
+.gfPalHead { display: flex; align-items: baseline; gap: 7px; }
+.gfPalHead b { font: 600 11px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--fg); }
+.gfPalHead small { font-size: 11px; color: var(--muted); }
+.gfPalRow { display: flex; align-items: flex-start; gap: 6px; }
+.gfPalRow > span { flex: 0 0 76px; display: inline-flex; align-items: center; gap: 4px; padding-top: 4px; font: 600 10px var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.gfPalRow > span .ic { width: 12px; height: 12px; }
+.gfPalRow > div { flex: 1; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.gfChip { all: unset; box-sizing: border-box; height: 22px; padding: 0 8px; border-radius: 6px; font: 600 11.5px var(--mono); color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); cursor: pointer; white-space: pre; }
+.gfChip:hover { border-color: var(--accent); background: #3b82f622; }
+.gfChip.op { color: var(--accent-hi); min-width: 26px; text-align: center; }
+.gfNone { font-size: 11px; color: var(--muted); padding-top: 4px; }
+.gfTmForm { align-items: center; }
+.gfTmForm input { width: 56px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); font: 600 11.5px var(--mono); }
+.gfTmForm select { height: 24px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--raise); color: var(--fg); font: 600 11.5px var(--mono); }
+.gfTmForm > span { font-size: 11.5px; color: var(--fg-2); }
+.gfRead { margin: 2px 0 0; padding: 5px 8px; border-radius: 7px; background: #3b82f614; font-size: 11.5px; color: var(--fg-2); }
+.gfRead b { color: var(--fg); font-weight: 600; }
+.gfRead.err { background: #e5484d1a; color: #ffb3b5; }
+/* Temporisation d'une transition : chronomètre, retard, étape suivie ; pendant la simulation, barre et temps écoulé. */
+.gfTimerRow { min-height: 26px; }
+.gfTimerRow.jump .gfCol::before { display: none; }
+.gfTimer { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; background: #f2c94c14; border: 1px solid #f2c94c55; color: #f2c94c; font: 600 11px var(--mono); }
+.gfTimer .ic { width: 13px; height: 13px; }
+.gfTimer small { font: 500 10.5px var(--sans); color: var(--fg-2); }
+.gfTBar { position: relative; display: inline-block; width: 46px; height: 5px; border-radius: 3px; background: #ffffff14; overflow: hidden; }
+.gfTBar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f2c94c; border-radius: 3px; transition: width .1s linear; }
+.gfTimer em { min-width: 34px; font-style: normal; font-size: 10.5px; }
+.gfTimer.run { background: #f2c94c26; box-shadow: 0 0 0 3px #f2c94c14; }
+.gfTimer.run .ic { animation: gfTick 1s steps(4) infinite; }
+.gfTimer.done { color: var(--pnOn); border-color: var(--pnOn); background: #4ade801c; }
+.gfTimer.done .gfTBar > i { background: var(--pnOn); }
+@keyframes gfTick { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .gfTimer.run .ic { animation: none; } }
 @media (max-width: 1180px) { .gfPanel { width: 300px; } }
 
 /* Étape encapsulante (traits verticaux dans le carré), GRAFCET partiels, forçage, compteurs. */
@@ -261,7 +297,7 @@
 
 /* ---------- Machine 3D (src/pneu/machine.js, chargée à la demande) ---------- */
 .pn3dBtn[aria-pressed="true"] { color: #fff; background: var(--accent); }
-.pn3d { position: absolute; right: 12px; bottom: 52px; z-index: 3; width: 480px; height: 330px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
+.pn3d { position: absolute; right: 56px; bottom: 52px; z-index: 3; width: 480px; height: 330px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
 .pn3d[hidden] { display: none; }
 .pn3d.big { width: min(900px, calc(100% - 400px)); height: calc(100% - 116px); min-width: 480px; }
 .pn3dHead { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 64px 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
@@ -339,3 +375,21 @@
   .pnLegend { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .pnChip .pnLed { transition: none; } }
+/* Temporisateur : cadran au-dessus de sa commande (temps écoulé pendant la simulation). */
+.pnTimerFace { fill: #0f1418; stroke: #9aa6af; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.pnTimerFill { fill: #f2c94c55; stroke: none; }
+.pnTimer.run .pnTimerFace { stroke: #f2c94c; }
+.pnTimer.run .pnTimerTxt { fill: #f2c94c; }
+.pnTimer.done .pnTimerFace { stroke: var(--pnOn); }
+.pnTimer.done .pnTimerFill { fill: color-mix(in srgb, var(--pnOn) 40%, transparent); }
+.pnTimer.done .pnTimerTxt { fill: var(--pnOn); }
+.pnTimerTxt { font-family: var(--mono); }
+/* Fenêtre 3D : en-tête pour la déplacer, coin pour la redimensionner (place gardée). */
+.pn3dHead { cursor: grab; touch-action: none; }
+.pn3d.dragging, .pn3d.dragging .pn3dHead { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+.pn3d.placed { box-shadow: 0 18px 50px #000a; }
+.pn3dGrip { position: absolute; right: 2px; bottom: 2px; z-index: 5; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, #ffffff55 50%, #ffffff55 58%, transparent 58%, transparent 70%, #ffffff55 70%, #ffffff55 78%, transparent 78%); border-radius: 0 0 10px 0; }
+.pn3d.big .pn3dGrip { display: none; }
+.pn3dMove { display: inline-flex; align-items: center; gap: 5px; }
+.pn3dDots { width: 8px; height: 14px; background: radial-gradient(circle, #ffffff70 1.2px, transparent 1.6px) 0 0 / 4px 4.6px; opacity: .8; }
+.pn3dHead:hover .pn3dDots { opacity: 1; }

@@ -49,3 +49,8 @@
 .labTake > b { display: flex; align-items: center; gap: 6px; color: #8fdcb7; margin-bottom: 4px; }
 .labTake > b .ic { width: 14px; height: 14px; }
 .labTake ul { margin: 0; padding-left: 1.2em; } .labTake li { margin: 2px 0; }
+/* TP terminé : bouton pour quitter, dans le cadre vert du panneau. */
+.labDone { flex-wrap: wrap; }
+.labDone > div { flex: 1 1 160px; }
+.labDone .labQuit { margin-left: auto; }
+.labDone .labQuit .ic { width: 14px; height: 14px; color: inherit; }

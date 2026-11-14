@@ -127,6 +127,15 @@ export function createBlocks(o) {
       list.push(b);
       return b;
     },
+    /** Nouveau bloc fait exactement de ces composants (sélection) : ils quittent leur ancien bloc ; le cadre les suit. */
+    fromComps(cs) {
+      const ids = new Set(cs.map(c => c.id));
+      for (const b of list) b.comps = b.comps.filter(id => !ids.has(id));
+      let n = list.length + 1; while (list.some(b => b.name === tl('Bloc {0}', n))) n++;
+      const b = { id: 'b' + Math.random().toString(36).slice(2, 8), name: tl('Bloc {0}', n), color: BLOCK_COLORS[list.length % BLOCK_COLORS.length], comps: [...ids], rect: null, manual: false };
+      list.push(b); hot.set(b, performance.now() + 900);
+      return b;
+    },
     /** Déplace un côté ou un coin (poignée h) jusqu'au point (x, z) du tapis. */
     resize(b, h, x, z, start) {
       const r = [...start];

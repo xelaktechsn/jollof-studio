@@ -10,6 +10,7 @@
 import './logic.css';
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
+import { createNavDock } from '../ui/navdock.js';
 import { menu as popMenu, ask as askDialog, toast, confirm as confirmDlg } from '../school/ui.js';
 import { cleanText } from '../sanitize.js';
 import { DEFS, CATS } from './elements.js';
@@ -101,10 +102,6 @@ export function installLogic(app) {
         <button type="button" class="segBtn" data-style="ansi" data-tip="${tl('Symboles à formes distinctives (ANSI, usage international)')}">ANSI</button>
         <button type="button" class="segBtn" data-style="iec" data-tip="${tl('Symboles rectangulaires « & », « ≥1 », « =1 » (norme CEI, usage en France)')}">${tl('CEI')}</button></div>
       <span class="grow"></span>
-      <div class="seg glass lgZoom" role="group" aria-label="${tl('Zoom')}">
-        <button type="button" class="segBtn" data-zoom="out" aria-label="${tl('Dézoomer')}">${icon('minus')}</button><span class="lgZoomV"></span>
-        <button type="button" class="segBtn" data-zoom="in" aria-label="${tl('Zoomer')}">${icon('plus')}</button>
-        <button type="button" class="segBtn" data-zoom="fit" data-tip="${tl('Cadrer le circuit · F')}" aria-label="${tl('Cadrer')}">${icon('frame')}</button></div>
     </div>
     <div class="lgBar bottom">
       <div class="lgRun glass">
@@ -125,8 +122,6 @@ export function installLogic(app) {
   host.addEventListener('click', e => {
     const s = e.target.closest('[data-style]');
     if (s) { style = s.dataset.style; try { localStorage.setItem(STYLE_KEY, style); } catch (err) { /* rien */ } paintStyle(); ed.redraw(); renderLib(); panels.restyle(); return; }
-    const z = e.target.closest('[data-zoom]');
-    if (z) { if (z.dataset.zoom === 'fit') ed.fit(); else ed.zoom(z.dataset.zoom === 'in' ? 1.25 : 0.8); return; }
     if (e.target.closest('[data-run]')) { ed.setRunning(!ed.running()); return; }
     if (e.target.closest('[data-step]')) { ed.step(); return; }
     if (e.target.closest('[data-reset]')) { ed.reset(); app.status(tl('Bascules, compteurs et temps remis à zéro.')); return; }
@@ -143,8 +138,33 @@ export function installLogic(app) {
   }
   ed.on(k => {
     if (k === 'run' || k === 'tick' || k === 'struct' || k === 'levels') paintRun();
-    if (k === 'view') host.querySelector('.lgZoomV').textContent = Math.round(ed.zoomLevel() * 100) + '%';
+    if (k === 'view' || k === 'select' || k === 'struct') nav.update();
     if (k === 'history' && on) app.historyUI();
+  });
+  // Navigation commune (src/ui/navdock.js) : outils, zoom, tout voir, sélection, mini-carte, raccourcis.
+  const nav = createNavDock(host, {
+    active: () => on,
+    target: () => ed.svg,
+    tools: () => ['select', 'pan', 'zoom'],
+    zoomBy: (f, x, y) => ed.zoomAt(f, x, y), panBy: (dx, dy) => ed.panBy(dx, dy),
+    zoomPct: () => ed.zoomLevel() * 100, setZoomPct: p => ed.setZoomPct(p),
+    fit: () => ed.fit(), fitSel: () => ed.fitSel(), hasSel: () => ed.hasSel(),
+    mini: { data: () => ed.mini(), centerOn: (x, y) => ed.centerOn(x, y) },
+    status: m => app.status(m),
+    title: tl('Plan logique'),
+    shortcuts: () => [
+      ['Drag', tl('Encadrer plusieurs éléments (dans le vide)')],
+      ['Shift+Click', tl('Ajouter ou retirer un élément de la sélection')],
+      ['Mod+A', tl('Tout sélectionner')],
+      ['Mod+C|Mod+X|Mod+V', tl('Copier, couper, coller')],
+      ['Mod+D', tl('Dupliquer')],
+      ['R|Shift+R', tl('Tourner')],
+      ['←↑→↓', tl('Déplacer la sélection (Maj : plus loin)')],
+      ['Del', tl('Retirer la sélection')],
+      ['T', tl('Avancer d’un front d’horloge')],
+      ['Mod+K', tl('Lancer ou arrêter les horloges')],
+      ['Esc', tl('Tout désélectionner')]
+    ]
   });
 
   /* ---------- Bibliothèque logique ---------- */
@@ -311,7 +331,7 @@ export function installLogic(app) {
       if (app.simOn()) app.setSim(false);
       app.history(ed.history);
       countsBefore = $('#counts').textContent; counts();
-      hintBefore = $('#hint').textContent; $('#hint').textContent = tl('Broche → broche : tirer un fil · clic sur un interrupteur : le basculer · R : tourner · Molette : zoom · Espace + glisser : se déplacer');
+      hintBefore = $('#hint').textContent; $('#hint').textContent = tl('Broche → broche : tirer un fil · clic sur un interrupteur : le basculer · R : tourner · Molette : zoom · Espace + glisser : se déplacer · ? : raccourcis');
       const t = currentTab(); if (t !== 'sess' && !t.startsWith('l')) { app.setTab('lcirc'); panels.shown('lcirc'); }
       ed.redraw(); if (!fitted) { fitted = true; requestAnimationFrame(() => ed.fit()); }
       panels.refresh();
@@ -335,11 +355,11 @@ export function installLogic(app) {
     if (a && (/INPUT|SELECT|TEXTAREA/.test(a.tagName) || a.isContentEditable || (a.closest && a.closest('.ProseMirror, .visualHost')))) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (mod && ['s', 'o', 'n', 'b', 'z', 'y'].includes(k)) return; // enregistrer, ouvrir, bibliothèque, annuler : application
-    if (ed.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
+    if (nav.key(e) || ed.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     if (k === 'escape' && stack.length) { goTo(stack.length - 1); e.preventDefault(); e.stopImmediatePropagation(); return; } // Échap dans un bloc : on en sort
     if (!mod) e.stopImmediatePropagation(); // les raccourcis de la scène 3D ne s'appliquent pas ici
   }, true);
-  addEventListener('keyup', e => ed.key(e), true); // toujours : Espace relâché ailleurs ne doit pas rester enfoncé
+  addEventListener('keyup', e => { nav.key(e); ed.key(e); }, true); // toujours : Espace relâché ailleurs ne doit pas rester enfoncé
   addEventListener('blur', () => ed.releaseKeys());
 
   /* ---------- Données du projet ---------- */

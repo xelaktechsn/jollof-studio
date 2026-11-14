@@ -113,3 +113,25 @@ test('Exemples de la pneumatique : sans problème et conformes à leur descripti
   const heavy = by('force'); heavy.elements.find(e => e.id === 'c1').p.load = 500;
   assert.ok(go(heavy, ['v1'], 2).x.c1 < 0.01, '500 N : bloquée');
 });
+
+test('Temporisateur 3/2 NF : le vérin sort seulement après le retard de pilotage, et le retard repart de zéro', () => {
+  // Bouton (3/2 NF) → pilotage 12 du temporisateur (2 s) → vérin simple effet.
+  const c = {
+    elements: [E('src', 'supply', 0, 20), E('b', 'v32', 0, 10, { act: 'push', normal: 'nc' }), E('t', 'v32', 20, 10, { act: 'tempo', normal: 'nc', delay: 2 }), E('c', 'cyl1', 20, 0, { time: 0.2, s1: 'A1' })],
+    tubes: [T('src', '1', 'b', '1'), T('src', '1', 't', '1'), T('b', '2', 't', '12'), T('t', '2', 'c', '1')]
+  };
+  const st = createState();
+  let push = false;
+  const io = { coil: () => false, pushed: id => push && id === 'b' };
+  run(c, st, io, 0.3);
+  assert.equal(st.x.c, 0);
+  push = true;
+  run(c, st, io, 1.5);
+  assert.equal(st.pos.t || 0, 0, 'pas encore basculé à 1,5 s'); assert.equal(st.x.c, 0);
+  assert.ok(st.tm.t > 1.3 && st.tm.t < 1.6, `temps écoulé : ${st.tm.t}`);
+  push = false; run(c, st, io, 0.1);
+  assert.equal(st.tm.t, 0, 'pilotage relâché : le retard repart de zéro');
+  push = true;
+  const r = run(c, st, io, 2.5);
+  assert.equal(st.pos.t, 1); assert.equal(st.x.c, 1); assert.equal(r.sensors.get('A1'), true);
+});

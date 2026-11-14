@@ -206,14 +206,24 @@ export function createSchView(stage, app) {
   function apply() {
     svg.setAttribute('viewBox', `${n3(view.x)} ${n3(view.y)} ${n3(W / view.s)} ${n3(H / view.s)}`);
     request();
+    if (app.view) app.view(); // barre de navigation : zoom, mini-carte
+  }
+  /** Cadre une zone du schéma (mm) : [x0, y0, x1, y1]. */
+  function frameMm(b, maxS = 14) {
+    if (!W) return;
+    const bw = Math.max(10, b[2] - b[0]), bh = Math.max(10, b[3] - b[1]), mx = 28, top = 84, bottom = 64, right = 56;
+    view.s = clamp(Math.min((W - 2 * mx - right) / bw, (H - top - bottom) / bh), 0.8, maxS);
+    view.x = b[0] - ((W - right) / view.s - bw) / 2;
+    view.y = b[1] - (top + (H - top - bottom - bh * view.s) / 2) / view.s;
+    userMoved = true; apply();
   }
   /** Cadre tout le schéma (marges pour les barres d'outils du haut et du bas). */
   function fit(auto) {
     if (!auto) userMoved = false;
     if (!box || !W) { apply(); return; }
-    const bw = Math.max(10, box[2] - box[0]), bh = Math.max(10, box[3] - box[1]), mx = 28, top = 84, bottom = 64;
-    view.s = clamp(Math.min((W - 2 * mx) / bw, (H - top - bottom) / bh), 0.8, 14);
-    view.x = box[0] - (W / view.s - bw) / 2;
+    const bw = Math.max(10, box[2] - box[0]), bh = Math.max(10, box[3] - box[1]), mx = 28, top = 84, bottom = 64, right = 56; // right : barre de navigation
+    view.s = clamp(Math.min((W - 2 * mx - right) / bw, (H - top - bottom) / bh), 0.8, 14);
+    view.x = box[0] - ((W - right) / view.s - bw) / 2;
     view.y = box[1] - (top + (H - top - bottom - bh * view.s) / 2) / view.s;
     apply();
   }
@@ -699,6 +709,22 @@ export function createSchView(stage, app) {
     clear() { lanes = []; lanesDc = null; phases.clear(); lastT = 0; request(); },
     fit: () => fit(false),
     panBy,
+    /* Navigation (src/ui/navdock.js). 100 % : le schéma à sa taille réelle d'impression (1 mm = 96/25,4 pixels). */
+    zoomAt: (f, x, y) => zoomAt(x == null ? W / 2 : x, y == null ? H / 2 : y, f),
+    zoomPct: () => view.s / (96 / 25.4) * 100,
+    setZoomPct: p => zoomAt(W / 2, H / 2, (p / 100) * (96 / 25.4) / view.s),
+    /** Cadre le composant choisi ; faux s'il n'y en a pas (ou s'il n'est pas dessiné). */
+    fitSel() {
+      const c = app.selected ? app.selected() : null, h = c && hits.find(x => x.c === c); if (!h) return false;
+      const m = 14; frameMm([h.all[0] - m, h.all[1] - m, h.all[2] + m, h.all[3] + m], 10); return true;
+    },
+    /** Mini-carte : emprise du schéma, symboles, partie visible (mm). */
+    mini() {
+      if (!box || el.hidden) return null;
+      const c = app.selected ? app.selected() : null;
+      return { bounds: box, boxes: hits.map(h => [h.body[0], h.body[1], h.body[2] - h.body[0], h.body[3] - h.body[1], h.c === c]), view: [view.x, view.y, view.x + W / view.s, view.y + H / view.s] };
+    },
+    centerOn(x, y) { view.x = x - W / 2 / view.s; view.y = y - H / 2 / view.s; userMoved = true; apply(); },
     get values() { return values; },
     set values(v) { values = !!v; try { localStorage.setItem('jollof-sch-values', values ? '1' : '0'); } catch (e) { /* stockage indisponible */ } request(); },
     /** Centre d'un composant à l'écran (coordonnées de la fenêtre), ou null s'il n'est pas dessiné. */

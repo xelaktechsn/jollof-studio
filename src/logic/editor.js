@@ -189,7 +189,7 @@ export function createLogicEditor(host, api) {
   const snap = p => [Math.round(p[0]), Math.round(p[1])];
   function zoomAt(f, cx, cy) {
     const r = svg.getBoundingClientRect(); if (cx == null) { cx = r.width / 2; cy = r.height / 2; }
-    const nk = clamp(k * f, 5, 60); ox = cx - (cx - ox) * nk / k; oy = cy - (cy - oy) * nk / k; k = nk; applyView();
+    const nk = clamp(k * f, 3, 60); ox = cx - (cx - ox) * nk / k; oy = cy - (cy - oy) * nk / k; k = nk; applyView();
   }
   function bounds(list = C.elements) {
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -199,8 +199,20 @@ export function createLogicEditor(host, api) {
   function fit() {
     const b = bounds(), r = svg.getBoundingClientRect();
     if (!b || !r.width) { k = 18; ox = r.width / 3 || 80; oy = r.height / 3 || 60; applyView(); return; }
-    k = clamp(Math.min((r.width - 80) / (b.x1 - b.x0), (r.height - 150) / (b.y1 - b.y0)), 6, 30);
-    ox = (r.width - (b.x1 - b.x0) * k) / 2 - b.x0 * k; oy = (r.height - (b.y1 - b.y0) * k) / 2 - b.y0 * k + 6; applyView();
+    frameBox(b, 30);
+  }
+  function frameBox(b, maxK) {
+    const r = svg.getBoundingClientRect(); if (!r.width) return;
+    const W = r.width - 56; // la barre de navigation, à droite
+    k = clamp(Math.min((W - 80) / (b.x1 - b.x0), (r.height - 150) / (b.y1 - b.y0)), 3, maxK); // grand circuit : tout tient, même petit
+    ox = (W - (b.x1 - b.x0) * k) / 2 - b.x0 * k; oy = (r.height - (b.y1 - b.y0) * k) / 2 - b.y0 * k + 6; applyView();
+  }
+  /** Cadre la sélection (éléments, ou les deux bouts du fil choisi) ; faux si rien n'est choisi. */
+  function fitSel() {
+    let list = [...sel].map(id => byId.get(id)).filter(Boolean);
+    if (!list.length && selWire) { const w = C.wires.find(q => q.id === selWire); if (w) list = [byId.get(w.a[0]), byId.get(w.b[0])].filter(Boolean); }
+    const b = list.length && bounds(list); if (!b) return false;
+    frameBox(b, 40); return true;
   }
 
   /* ---------- Dessin ---------- */
@@ -699,7 +711,19 @@ export function createLogicEditor(host, api) {
     },
     /** Oublie l'historique d'un circuit (bloc supprimé) ; sans argument, celui de tous les blocs (exemple chargé). */
     forget(ctx) { if (ctx) contexts.delete(ctx); else for (const key of [...contexts.keys()]) if (key.startsWith('b:')) contexts.delete(key); },
-    circuit: () => C, sim: () => sim, draw, redraw: () => { dirty = true; draw(); }, fit, zoom: f => zoomAt(f), zoomLevel: () => k / 18,
+    circuit: () => C, sim: () => sim, draw, redraw: () => { dirty = true; draw(); }, fit, fitSel, zoom: f => zoomAt(f), zoomLevel: () => k / 18,
+    /* Navigation (src/ui/navdock.js) : 100 % = 18 pixels par carreau. */
+    zoomAt: (f, x, y) => zoomAt(f, x, y), panBy(dx, dy) { ox += dx; oy += dy; applyView(); },
+    setZoomPct: p => zoomAt((p / 100) * 18 / k), hasSel: () => sel.size > 0 || !!selWire, get svg() { return svg; },
+    mini() {
+      const b = bounds(), r = svg.getBoundingClientRect(); if (!b || !r.width) return null;
+      return {
+        bounds: [b.x0, b.y0, b.x1, b.y1],
+        boxes: C.elements.filter(e => DEFS[e.type] && e.type !== 'junction').map(e => { const { w, h } = sizeOf(e); return [e.x, e.y, w, h, sel.has(e.id)]; }),
+        view: [-ox / k, -oy / k, (r.width - ox) / k, (r.height - oy) / k]
+      };
+    },
+    centerOn(x, y) { const r = svg.getBoundingClientRect(); ox = r.width / 2 - x * k; oy = r.height / 2 - y * k; applyView(); },
     on(fn) { listeners.add(fn); return () => listeners.delete(fn); },
     selection: () => ({ els: [...sel].map(id => byId.get(id)).filter(Boolean), wire: selWire ? C.wires.find(w => w.id === selWire) || null : null }),
     select(ids) { sel = new Set(ids); selWire = null; emit('select'); draw(); },
