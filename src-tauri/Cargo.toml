@@ -28,7 +28,7 @@ serialport = "4"
 # vérification de son empreinte et décompression.
 ureq = { version = "3", default-features = false, features = ["rustls"] }
 sha2 = "0.10"
-zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "4", default-features = false, features = ["deflate-flate2-zlib-rs"] }
 # Supervision MA-ISA du circuit simulé : caisse locale sans Tauri, bâtie sur la caisse publiée maisa-core
 # (crates.io), utilisée telle quelle.
 jollof-supervision = { path = "supervision" }
