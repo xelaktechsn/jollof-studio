@@ -1,6 +1,6 @@
 [package]
 name = "jollof-studio"
-version = "0.1.0"
+version = "0.2.0"
 description = "Jollof Studio : conception et animation de circuits électroniques en 3D"
 authors = ["Mamadou Sarr"]
 license = "AGPL-3.0-or-later"
