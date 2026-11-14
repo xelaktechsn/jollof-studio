@@ -31,7 +31,7 @@ composant sans le dire.
   (Le copyright reste celui du projet ; vos droits sont décrits par le CLA.)
 - Les commentaires expliquent le *pourquoi*, en français, comme le reste du code.
 - Les codes du vérificateur (`J0301`…) ne changent jamais de sens : on en ajoute, on n’en réutilise pas.
-- Un composant ajouté suit le guide « Ajouter un composant » du README et doit passer
+- Un composant ajouté suit le guide « Ajouter un composant » de docs/GUIDE.md et doit passer
   `node --test src/sim/autowire.test.mjs` (câblé seul sur chaque carte, zéro faute).
 
 ### Vérifier avant d’envoyer
@@ -74,7 +74,7 @@ must stay simple, work offline, run fast on old computers, and never let a part 
 - Every new source file starts with the SPDX header shown above.
 - Comments explain *why*, in French like the rest of the code.
 - Checker codes (`J0301`…) never change meaning: add new ones, never reuse.
-- A new part follows “Ajouter un composant” in the README and must pass
+- A new part follows “Ajouter un composant” in docs/GUIDE.md and must pass
   `node --test src/sim/autowire.test.mjs` (wired alone on every board, zero faults).
 
 ### Check before sending

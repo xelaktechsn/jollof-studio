@@ -682,7 +682,7 @@ aside.notes { display: none; }
       <tr><td>Le mode Fidèle ne démarre pas sans Internet</td><td>Il télécharge arduino-cli et les fichiers de la carte à la première utilisation. Le lancer une fois par poste, avec Internet, avant la séance.</td></tr>
       <tr><td>« Rendre la vidéo » enregistre en temps réel</td><td>Le système ne sait pas encoder image par image (fréquent sous Linux). La vidéo est enregistrée pendant la lecture : ne pas toucher à la fenêtre.</td></tr>
       <tr><td>Le poste ne se connecte pas à l’espace classe</td><td>Adresse du serveur (Classe → Serveur), même réseau que le boîtier, Wi-Fi invités, pare-feu.</td></tr>
-      <tr><td>Windows 7 ou 8</td><td>L’application demande Windows 10 ou plus. Une version web peut être servie sur le réseau local (voir le README du projet).</td></tr>
+      <tr><td>Windows 7 ou 8</td><td>L’application demande Windows 10 ou plus. Une version web peut être servie sur le réseau local (voir docs/GUIDE.md du projet).</td></tr>
       <tr><td>Une erreur en mode Fidèle ou MicroPython, alors que le programme semble juste</td><td>Le vérificateur ne lit pas le C++ complet du mode Fidèle, ni les broches calculées en MicroPython : il essaie alors chaque broche reliée en sortie. En MicroPython, écrire les broches en clair (<code>ADC(Pin(28))</code>) ; sinon, ajouter une résistance série (1 kΩ) devant une entrée reliée directement à une alimentation, comme le curseur d’un potentiomètre.</td></tr>
     </tbody>
   </table>
