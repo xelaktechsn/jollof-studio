@@ -165,6 +165,76 @@ section { padding: 110px 0; position: relative; }
 .legal { display: flex; justify-content: space-between; gap: 16px; margin-top: 52px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--dim); font-size: 14px; flex-wrap: wrap; }
 .legal a:hover { color: var(--text); }
 
+/* Télécharger : une carte par système, celle du visiteur mise en avant */
+.download h2 { margin-bottom: 14px; }
+.dlVer { color: var(--muted); font: 400 14px/1.4 var(--mono); margin-bottom: 46px; }
+.dlVer b { color: var(--led); font-weight: 500; }
+.download h2 + .os { margin-top: 46px; }
+.os { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.os > * { min-width: 0; }
+.osCard { position: relative; display: flex; flex-direction: column; align-items: flex-start; gap: 14px; padding: 34px 30px 30px; border: 1px solid var(--line); border-radius: 18px; background: linear-gradient(180deg, var(--panel), var(--bg2)); transition: border-color .25s, box-shadow .25s, transform .25s; }
+.osCard:hover { transform: translateY(-3px); border-color: #3b82f666; }
+.osCard.is-mine { border-color: #3b82f699; box-shadow: 0 0 0 1px #3b82f633, 0 30px 80px #3b82f61f; }
+.osCard .mine { display: none; position: absolute; top: 18px; right: 18px; font: 500 11px/1 var(--mono); letter-spacing: .1em; text-transform: uppercase; color: var(--led); padding: 6px 9px 6px 22px; border: 1px solid #22d3ee44; border-radius: 999px; background: #22d3ee0f; }
+.osCard .mine::before { content: ""; position: absolute; left: 9px; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%; background: var(--led); box-shadow: 0 0 8px var(--led); }
+.osCard.is-mine .mine { display: inline-block; }
+.osIc { width: 44px; height: 44px; fill: var(--text); }
+.osCard[data-os="linux"] .osIc { fill: none; stroke: var(--text); stroke-width: 1.4; stroke-linejoin: round; }
+.osCard[data-os="linux"] .osIc circle { fill: var(--text); stroke: none; }
+.osCard h3 { font-size: 26px; }
+.osCard > p { color: var(--muted); font-size: 15.5px; }
+.osCard .btn { width: 100%; margin-top: 6px; text-transform: none; letter-spacing: 0; font-size: 15.5px; gap: 10px; }
+.osCard .btn small { font: 400 12.5px/1 var(--mono); opacity: .75; }
+.osCard .btn small:empty { display: none; }
+.osCard .btn[disabled] { opacity: .6; cursor: not-allowed; transform: none; }
+.osCard .alt { display: flex; gap: 10px; width: 100%; }
+.osCard .alt a { flex: 1; padding: 10px 12px; border: 1px solid var(--line2); border-radius: 10px; font: 500 14px/1.2 var(--mono); color: var(--text); text-align: center; transition: border-color .15s; }
+.osCard .alt a:hover { border-color: var(--accent); }
+.osCard .alt a span { display: block; margin-top: 4px; font: 400 12px/1.2 var(--sans); color: var(--dim); }
+.osCard .hint { margin-top: 2px; font-size: 13.5px; line-height: 1.5; color: var(--dim); }
+.osCard.soon { background: repeating-linear-gradient(135deg, #ffffff03 0 10px, transparent 10px 20px), var(--bg2); }
+.osCard.soon .osIc, .osCard.soon h3 { opacity: .7; }
+.all { margin-top: 30px; font-size: 15px; }
+.all a { color: var(--accent2); }
+.all a:hover { color: var(--text); }
+
+/* Séparateurs : une porte logique dont les entrées, la porte puis la sortie s'allument au défilement */
+.gates { position: relative; height: 150px; margin: 10px 0; z-index: 1; pointer-events: none; }
+.gates svg { position: absolute; left: 50%; top: 0; width: min(1200px, 100%); height: 150px; transform: translateX(-50%); overflow: visible; }
+.gates .w { fill: none; stroke: #3b82f62e; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.gates .lit { fill: none; stroke: var(--led); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1 1; stroke-dashoffset: 1; filter: drop-shadow(0 0 5px #22d3eeaa); }
+.gates .spark { fill: #ecfeff; filter: drop-shadow(0 0 6px var(--led)) drop-shadow(0 0 12px var(--led)); opacity: 0; }
+.gates .pad { fill: var(--bg); stroke: #3b82f666; stroke-width: 2.5; transition: stroke .3s, fill .3s; }
+.gates .pad.on { stroke: var(--led); fill: #22d3ee33; }
+.gates .lbl { font: 500 19px var(--mono); fill: var(--dim); }
+.gates .bit { font: 600 19px var(--mono); fill: var(--dim); transition: fill .3s; }
+.gates .bit.on { fill: var(--led); }
+.gates .body { fill: var(--bg); stroke: #3b82f680; stroke-width: 3; stroke-linejoin: round; transition: fill .35s, stroke .35s, filter .35s; }
+.gates .extra, .gates .bub { fill: var(--bg); stroke: #3b82f680; stroke-width: 3; transition: stroke .35s, filter .35s; }
+.gates .extra { fill: none; }
+.gates .eq { font: 500 17px var(--mono); fill: var(--dim); text-anchor: middle; transition: fill .35s; }
+.gates.g-on .body { fill: #22d3ee1f; stroke: var(--led); filter: drop-shadow(0 0 10px #22d3ee88); }
+.gates.g-on .extra, .gates.g-on .bub { stroke: var(--led); filter: drop-shadow(0 0 8px #22d3ee88); }
+.gates.g-on .eq { fill: var(--led); }
+.gates .led { fill: #0d3440; stroke: #164e5c; stroke-width: 2; transition: fill .25s, stroke .25s; }
+.gates .halo { fill: url(#gHalo); opacity: 0; transform-box: fill-box; transform-origin: center; transform: scale(.4); transition: opacity .35s, transform .5s cubic-bezier(.2,.8,.2,1); }
+.gates.l-on .led { fill: #67e8f9; stroke: #cffafe; }
+.gates.l-on .halo { opacity: 1; transform: scale(1); }
+
+/* Courant du défilement, sous la barre de navigation */
+.flow { position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; pointer-events: none; }
+.flow i { position: absolute; left: 0; top: 0; height: 2px; width: 100%; transform-origin: 0 50%; transform: scaleX(0); background: linear-gradient(90deg, #3b82f600, var(--accent) 40%, var(--led)); }
+.flow i::after { content: ""; position: absolute; right: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: #ecfeff; box-shadow: 0 0 10px var(--led), 0 0 20px var(--led); }
+
+/* LED de chaque carte : elle s'allume quand la carte arrive */
+.card::after { content: ""; position: absolute; top: 22px; right: 22px; width: 8px; height: 8px; border-radius: 50%; background: #0d3440; box-shadow: inset 0 0 0 1px #164e5c; transition: background .3s .35s, box-shadow .3s .35s; }
+.card.in::after, .card:not(.rise)::after { background: var(--led); box-shadow: 0 0 0 3px #22d3ee1f, 0 0 12px var(--led); }
+.card.big::after { display: none; }
+
+/* Courant qui circule dans les pistes de l'accroche */
+.traces .spark { stroke: #a5f3fc; stroke-width: 2.6; stroke-dasharray: 14 986; stroke-dashoffset: 1000; filter: drop-shadow(0 0 4px var(--led)); opacity: 0; animation: run 3.2s linear infinite; animation-delay: var(--d, 2s); }
+@keyframes run { 0% { stroke-dashoffset: 1000; opacity: 0; } 8% { opacity: 1; } 70% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 0; } }
+
 /* Apparition au défilement */
 .rise { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s cubic-bezier(.2,.7,.2,1); }
 .rise.in { opacity: 1; transform: none; }
@@ -176,7 +246,8 @@ section { padding: 110px 0; position: relative; }
   .links a { padding: 12px 4px; font-size: 16px; border-bottom: 1px solid var(--line); }
   .menu { display: flex; }
   .navIn { justify-content: space-between; }
-  .two, .row, .row.rev, .labs .two, .cols { grid-template-columns: 1fr; gap: 36px; }
+  .two, .row, .row.rev, .labs .two, .cols, .os { grid-template-columns: 1fr; gap: 36px; }
+  .os { gap: 18px; }
   .row.rev .txt { order: 0; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .stats > div:last-child { grid-column: 1 / -1; }
@@ -193,6 +264,8 @@ section { padding: 110px 0; position: relative; }
   .row { padding: 36px 0; }
   .card.big { padding: 26px; }
   .fcols { gap: 36px; }
+  .gates, .gates svg { height: 110px; }
+  .osCard { padding: 28px 22px 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
@@ -200,4 +273,5 @@ section { padding: 110px 0; position: relative; }
   .traces circle { animation: none; opacity: 1; }
   .led { animation: none; }
   .btn, .card { transition: none; }
+  .traces .spark { display: none; }
 }

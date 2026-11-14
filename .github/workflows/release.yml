@@ -1,0 +1,168 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright (C) 2026 Mamadou Sarr
+#
+# Installateurs de l'édition gratuite, bilingue (scripts/release.mjs --edition free --lang auto), pour Windows et
+# Linux, publiés dans une version GitHub « v<version> ». Les fichiers gardent toujours le même nom, ce qui permet au
+# site (site/) de pointer vers https://github.com/xelaktechsn/jollof-studio/releases/latest/download/<nom> :
+#
+#   Jollof-Studio-Windows-x64-setup.exe   installateur NSIS (il demande le français ou l'anglais)
+#   Jollof-Studio-Linux-x86_64.AppImage   toutes distributions (rendre exécutable, puis lancer)
+#   Jollof-Studio-Linux-amd64.deb         Debian, Ubuntu
+#   Jollof-Studio-Linux-x86_64.rpm        Fedora, openSUSE
+#   SHA256SUMS.txt                        empreintes
+#
+# Lancement : pousser une étiquette « v0.1.0 » (égale à la version de src-tauri/tauri.conf.json), ou Actions →
+# Release → Run workflow. macOS viendra plus tard (signature et notarisation Apple).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Marquer comme préversion
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Version
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.v.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        name: Version de l'application et étiquette
+        run: |
+          set -e
+          V=$(node -p "require('./src-tauri/tauri.conf.json').version")
+          P=$(node -p "require('./package.json').version")
+          [ "$V" = "$P" ] || { echo "::error::tauri.conf.json ($V) et package.json ($P) n'ont pas la même version"; exit 1; }
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$V" ]; then
+            echo "::error::L'étiquette $GITHUB_REF_NAME ne correspond pas à la version v$V"; exit 1
+          fi
+          echo "tag=v$V" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: ${{ matrix.name }}
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows x64
+            runs-on: windows-2022
+          # Ubuntu 22.04 : glibc 2.35, l'AppImage et le .deb tournent sur les distributions de 2022 et après.
+          - name: Linux x86_64
+            runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.runs-on }}
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prérequis (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential pkg-config file patchelf xdg-utils \
+            libwebkit2gtk-4.1-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev libudev-dev libfuse2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Dépendances JavaScript
+        run: npm ci --no-audit --no-fund
+
+      - name: Construction (édition gratuite, bilingue)
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: '1'
+        run: node scripts/release.mjs --edition free --lang auto
+
+      - name: Noms stables
+        shell: bash
+        run: |
+          set -e
+          mkdir -p out
+          shopt -s nullglob
+          cd release/free-auto
+          ls -la
+          if [ "$RUNNER_OS" = Windows ]; then
+            f=( *-setup_auto.exe ); [ ${#f[@]} -eq 1 ] || { echo "::error::installateur NSIS introuvable"; exit 1; }
+            cp "${f[0]}" ../../out/Jollof-Studio-Windows-x64-setup.exe
+          else
+            a=( *.AppImage ); d=( *.deb ); r=( *.rpm )
+            [ ${#a[@]} -eq 1 ] && [ ${#d[@]} -eq 1 ] || { echo "::error::AppImage ou .deb introuvable"; exit 1; }
+            cp "${a[0]}" ../../out/Jollof-Studio-Linux-x86_64.AppImage
+            cp "${d[0]}" ../../out/Jollof-Studio-Linux-amd64.deb
+            [ ${#r[@]} -eq 1 ] && cp "${r[0]}" ../../out/Jollof-Studio-Linux-x86_64.rpm
+          fi
+          ls -la ../../out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jollof-studio-${{ runner.os }}
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    name: Publication
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Empreintes
+        run: |
+          cd out
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+      - name: Version GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          PRE: ${{ inputs.prerelease && '--prerelease' || '' }}
+        run: |
+          set -e
+          cat > notes.md <<'EOF'
+          **Jollof Studio, édition gratuite et open source** · *free and open-source edition*
+
+          | | Fichier · File |
+          |---|---|
+          | Windows 10 / 11 (64 bits) | `Jollof-Studio-Windows-x64-setup.exe` |
+          | Linux (toutes distributions · any distro) | `Jollof-Studio-Linux-x86_64.AppImage` |
+          | Debian, Ubuntu | `Jollof-Studio-Linux-amd64.deb` |
+          | Fedora, openSUSE | `Jollof-Studio-Linux-x86_64.rpm` |
+
+          macOS : bientôt · *coming soon*.
+
+          - **Windows** : l'installateur n'est pas encore signé ; si SmartScreen s'affiche, « Informations complémentaires » puis « Exécuter quand même ». L'installateur demande la langue. · *The installer is not signed yet: on the SmartScreen prompt choose "More info" then "Run anyway". The installer asks for the language.*
+          - **AppImage** : `chmod +x Jollof-Studio-Linux-x86_64.AppImage` puis lancez-le · *then run it*.
+          - Empreintes · *Checksums*: `SHA256SUMS.txt`.
+
+          Site : https://xelaktechsn.github.io/jollof-studio/
+          EOF
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/* --clobber
+          else
+            gh release create "$TAG" out/* --target "$GITHUB_SHA" --title "Jollof Studio $TAG" --notes-file notes.md --latest $PRE
+          fi

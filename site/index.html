@@ -25,6 +25,7 @@
   <a class="skip" href="#main" data-i18n="skip">Aller au contenu</a>
 
   <header class="nav" id="top">
+    <div class="flow" aria-hidden="true"><i></i></div>
     <div class="wrap navIn">
       <a class="brand" href="#top" aria-label="Jollof Studio">
         <img src="assets/img/icon.svg" alt="" width="34" height="34">
@@ -34,7 +35,7 @@
         <a href="#features" data-i18n="nav.features">Fonctions</a>
         <a href="#video" data-i18n="nav.video">Vidéo</a>
         <a href="#labs" data-i18n="nav.labs">TP</a>
-        <a href="#start" data-i18n="nav.start">Démarrer</a>
+        <a href="#download" data-i18n="nav.start">Télécharger</a>
         <a href="#open" data-i18n="nav.open">Open source</a>
       </nav>
       <div class="navEnd">
@@ -63,7 +64,7 @@
         <h1><span data-i18n="hero.h1a">Un labo d’électronique.</span> <em data-i18n="hero.h1b">Sans labo.</em></h1>
         <p class="lead" data-i18n="hero.lead">Câblez, programmez et simulez l’électronique, la logique, la pneumatique et l’électropneumatique en 3D. Un vérificateur prouve que rien ne grille avant de passer à une vraie carte.</p>
         <div class="ctas">
-          <a class="btn primary" href="#start" data-i18n="hero.cta1">Démarrer</a>
+          <a class="btn primary" href="#download" data-i18n="hero.cta1">Télécharger</a>
           <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio" data-i18n="hero.cta2">Code source</a>
         </div>
         <div class="term" aria-label="Terminal">
@@ -88,6 +89,8 @@
       </div>
     </section>
 
+    <div class="gates" data-gate="and" aria-hidden="true"></div>
+
     <!-- Pourquoi -->
     <section class="why">
       <div class="wrap two">
@@ -108,6 +111,8 @@
         <div><b>FR · EN</b><span data-i18n="stats.langs">interface bilingue</span></div>
       </div>
     </section>
+
+    <div class="gates" data-gate="or" aria-hidden="true"></div>
 
     <!-- Fonctions -->
     <section class="features" id="features">
@@ -179,6 +184,8 @@
       </div>
     </section>
 
+    <div class="gates" data-gate="xor" aria-hidden="true"></div>
+
     <!-- Démonstrations -->
     <section class="show">
       <div class="wrap">
@@ -238,6 +245,8 @@
       </div>
     </section>
 
+    <div class="gates" data-gate="nand" aria-hidden="true"></div>
+
     <!-- TP -->
     <section class="labs" id="labs">
       <div class="wrap two">
@@ -256,21 +265,69 @@
       </div>
     </section>
 
-    <!-- Démarrer -->
+    <div class="gates" data-gate="not" aria-hidden="true"></div>
+
+    <!-- Télécharger -->
+    <section class="download" id="download">
+      <div class="wrap">
+        <p class="kicker center" data-i18n="dl.k">Télécharger</p>
+        <h2 class="center" data-i18n="dl.h">Choisissez votre système</h2>
+        <p class="center dlVer" data-ver hidden><span data-i18n="dl.ver">Dernière version :</span> <b data-ver-tag></b></p>
+        <div class="os">
+          <article class="osCard" data-os="windows">
+            <span class="mine" data-i18n="dl.mine">Votre système</span>
+            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>
+            <h3>Windows</h3>
+            <p data-i18n="dl.win.p">Windows 10 et 11, 64 bits. L’installateur demande le français ou l’anglais.</p>
+            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Windows-x64-setup.exe" data-asset="Jollof-Studio-Windows-x64-setup.exe"><span data-i18n="dl.win.b">Télécharger pour Windows</span><small data-size></small></a>
+            <p class="hint" data-i18n="dl.win.n">Installateur pas encore signé : si SmartScreen s’affiche, « Informations complémentaires » puis « Exécuter quand même ».</p>
+          </article>
+          <article class="osCard" data-os="linux">
+            <span class="mine" data-i18n="dl.mine">Votre système</span>
+            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.6 1.9-3.6 4.6 0 1.5.3 2.6-.6 4-1.1 1.6-2.8 3.6-2.8 6.1 0 .8.2 1.5.6 2.1-.8.4-1.6.9-1.6 1.6 0 1 2 1.1 3.6.6 1.2-.4 2.4-.5 4.4-.5s3.2.1 4.4.5c1.6.5 3.6.4 3.6-.6 0-.7-.8-1.2-1.6-1.6.4-.6.6-1.3.6-2.1 0-2.5-1.7-4.5-2.8-6.1-.9-1.4-.6-2.5-.6-4 0-2.7-1.4-4.6-3.6-4.6z"/><circle cx="10.4" cy="7.4" r=".9"/><circle cx="13.6" cy="7.4" r=".9"/><path d="M10.6 9.6 12 10.6l1.4-1"/></svg>
+            <h3>Linux</h3>
+            <p data-i18n="dl.lin.p">AppImage pour toutes les distributions récentes (2022 et après), ou paquet de votre système.</p>
+            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.AppImage" data-asset="Jollof-Studio-Linux-x86_64.AppImage"><span data-i18n="dl.lin.b">Télécharger l’AppImage</span><small data-size></small></a>
+            <div class="alt">
+              <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-amd64.deb" data-asset="Jollof-Studio-Linux-amd64.deb">.deb <span>Debian, Ubuntu</span></a>
+              <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.rpm" data-asset="Jollof-Studio-Linux-x86_64.rpm">.rpm <span>Fedora, openSUSE</span></a>
+            </div>
+            <p class="hint" data-i18n="dl.lin.n">AppImage : rendez le fichier exécutable (chmod +x), puis lancez-le.</p>
+          </article>
+          <article class="osCard soon" data-os="mac">
+            <span class="mine" data-i18n="dl.mine">Votre système</span>
+            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8s-1.8-.8-3-.8c-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.6zM14.1 5.6c.6-.8 1.1-1.8 1-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1 .1 2.1-.5 2.7-1.3z"/></svg>
+            <h3>macOS</h3>
+            <p data-i18n="dl.mac.p">En préparation : l’application doit d’abord être signée et notarisée par Apple.</p>
+            <button type="button" class="btn ghost" disabled><span data-i18n="dl.mac.b">Bientôt disponible</span></button>
+            <p class="hint" data-i18n="dl.mac.n">En attendant, elle se construit depuis les sources (ci-dessous).</p>
+          </article>
+        </div>
+        <p class="center all"><a href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="dl.all">Toutes les versions et leurs empreintes SHA-256 →</a></p>
+      </div>
+    </section>
+
+    <!-- Depuis les sources -->
     <section class="start" id="start">
       <div class="wrap">
-        <p class="kicker center" data-i18n="start.k">Démarrer</p>
-        <h2 class="center" data-i18n="start.h">Installez-le, ou construisez-le</h2>
+        <p class="kicker center" data-i18n="start.k">Pour les développeurs</p>
+        <h2 class="center" data-i18n="start.h">Ou construisez-le vous-même</h2>
         <div class="cols">
           <div class="card big">
-            <h3 data-i18n="start.d.h">Télécharger</h3>
-            <p data-i18n="start.d.p">Les installateurs de Windows, macOS et Linux sont publiés sur la page des versions du dépôt. L’installateur Windows demande la langue.</p>
-            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="start.d.b">Voir les versions</a>
+            <h3 data-i18n="start.d.h">Prérequis</h3>
+            <ul class="ticks">
+              <li data-i18n="start.d.l1">Node.js 20 ou plus récent, et Rust</li>
+              <li data-i18n="start.d.l2">Windows : Microsoft C++ Build Tools et WebView2</li>
+              <li data-i18n="start.d.l3">macOS : outils Xcode (xcode-select --install)</li>
+              <li data-i18n="start.d.l4">Linux : WebKitGTK 4.1, libssl, librsvg, libudev</li>
+            </ul>
+            <a class="btn ghost" href="https://tauri.app/start/prerequisites/" data-i18n="start.d.b">Détail des prérequis</a>
           </div>
           <div class="card big">
             <h3 data-i18n="start.s.h">Depuis les sources</h3>
-            <p data-i18n="start.s.p">Il faut Node.js 20 ou plus récent et Rust. Sous Linux, les bibliothèques de WebKitGTK ; sous macOS, les outils Xcode.</p>
-            <pre class="code"><code>npm install
+            <p data-i18n="start.s.p">Cloner le dépôt, installer les dépendances, lancer.</p>
+            <pre class="code"><code>git clone https://github.com/xelaktechsn/jollof-studio
+cd jollof-studio &amp;&amp; npm install
 npm run tauri dev    <span class="c" data-i18n="start.s.c1"># lancer l’application</span>
 npm run tauri build  <span class="c" data-i18n="start.s.c2"># installateurs</span></code></pre>
           </div>
