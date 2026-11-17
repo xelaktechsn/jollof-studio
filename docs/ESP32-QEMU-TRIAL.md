@@ -379,7 +379,7 @@ The decision was **GO**, and the MVP is built. The trial's conditions map onto t
   - No `/usr/local` or `/opt/homebrew` reference is left.
   - Homebrew has no Intel bottle for the current libgcrypt, so this local build used the 1.12.3 bottle in a scratch
     prefix (`EXTRA_PKG_CONFIG_PATH`). CI uses `brew install libgcrypt`.
-- CI (not run yet): macOS x86_64 (`macos-15-intel`) and arm64 (`macos-14`), Linux x86_64 and arm64
+- CI (not run yet): macOS x86_64 (`macos-15-intel`) and arm64 (`macos-15`; GitHub retired the `macos-14` label), Linux x86_64 and arm64
   (`ubuntu-22.04`, `ubuntu-22.04-arm`), Windows (`windows-2022` + MSYS2). Each job smoke-tests the binary with a
   clean environment. Publishing is a manual dispatch with `publish` checked. Caveats:
   - The macOS packages link Homebrew bottles, so they require the runner's macOS version (15 on Intel, 14 on

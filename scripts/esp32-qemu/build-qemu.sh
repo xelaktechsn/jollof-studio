@@ -94,6 +94,11 @@ PY
 fi
 
 # ---------- 2. Configuration ----------
+if [[ "$PLATFORM" == *mingw32 ]]; then
+  # Le pip de Python 3.14 (MSYS2) ignore l'URL « file://D:/… » que mkvenv lui donne pour python/wheels : on installe
+  # les mêmes roues livrées avec QEMU (meson, pycotap) par leur chemin ; l'environnement de configure, non isolé, les voit.
+  "$PYTHON" -m pip install -q --break-system-packages --no-index --no-deps "$SRC"/python/wheels/meson-*.whl "$SRC"/python/wheels/pycotap-*.whl
+fi
 log "Configuration ($PLATFORM)"
 CONF=(
   --prefix="$STAGE" --bindir=bin --datadir=share/qemu --with-suffix=""

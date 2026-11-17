@@ -38,7 +38,7 @@ jobs:
           - platform: x86_64-apple-darwin
             runs-on: macos-15-intel
           - platform: aarch64-apple-darwin
-            runs-on: macos-14
+            runs-on: macos-15
           - platform: x86_64-linux-gnu
             runs-on: ubuntu-22.04
             source: '1'
@@ -79,6 +79,7 @@ jobs:
             mingw-w64-x86_64-pixman
             mingw-w64-x86_64-pkg-config
             mingw-w64-x86_64-python
+            mingw-w64-x86_64-python-pip
 
       - name: Construction (macOS, Linux)
         if: runner.os != 'Windows'
