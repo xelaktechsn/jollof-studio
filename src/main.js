@@ -3944,14 +3944,14 @@ function registerCommands() {
   const C = (cat, list) => list.map(([id, label, ic, run, extra]) => ({ id: `${cat}:${id}`, cat: CATS[cat], label, icon: ic, run, ...(extra || {}) }));
   palette.register([
     ...C('proj', [
-      ['home', tl('Accueil'), 'sparkle', () => showHome()],
+      ['home', tl('Accueil'), 'home', () => showHome()],
       ['new', tl('Nouveau projet'), 'filePlus', () => newProject(), { keys: shortcut('N') }],
       ['open', tl('Ouvrir…'), 'folder', () => openProjectFile(), { keys: shortcut('O') }],
       ['save', tl('Enregistrer'), 'save', () => saveProjectFile(false), { keys: shortcut('S') }],
       ['saveAs', tl('Enregistrer sous…'), 'save', () => saveProjectFile(true), { keys: shortcut('S', true) }],
       ['import', tl('Importer un projet Wokwi…'), 'upload', () => click('#importBtn'), { when: () => shown('#importBtn') }],
       ['kind', tl('Changer le type de projet…'), 'swap', () => click('#kindBtn')],
-      ['update', tl('Rechercher les mises à jour…'), 'sparkle', () => click('#updBtn'), { when: () => shown('#updBtn') }],
+      ['update', tl('Rechercher les mises à jour…'), 'download', () => click('#updBtn'), { when: () => shown('#updBtn') }],
       ['logs', tl('Ouvrir le dossier des journaux'), 'folder', () => click('#logBtn'), { when: () => shown('#logBtn') }]
     ]),
     ...C('view', [

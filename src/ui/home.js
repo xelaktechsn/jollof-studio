@@ -19,7 +19,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 
 /** Étapes de la présentation : icône, titre, texte, et trois points concrets. */
 const STEPS = () => [
-  { icon: 'sparkle', title: tl('Un labo d’électronique. Sans labo.'), text: tl('Jollof Studio est une paillasse complète sur votre ordinateur : on câble, on programme, on simule et on mesure, sans matériel et sans rien casser.'),
+  { icon: 'flask', title: tl('Un labo d’électronique. Sans labo.'), text: tl('Jollof Studio est une paillasse complète sur votre ordinateur : on câble, on programme, on simule et on mesure, sans matériel et sans rien casser.'),
     points: [['cpu', tl('Arduino, ESP32, Pico')], ['zap', tl('Simulation en direct')], ['graduation', tl('57 TP guidés')]] },
   { icon: 'cable', title: tl('Câblez et programmez en 3D'), text: tl('Posez les composants, tirez les fils broche à broche ou laissez le câblage automatique le faire. Programmez par règles, par blocs ou en vrai code Arduino.'),
     points: [['wand', tl('Câblage automatique')], ['puzzle', tl('Règles, blocs, code')], ['schematic', tl('Schéma en direct')]] },

@@ -19,7 +19,7 @@
       <div class="project">
         <button type="button" class="projBtn" id="projBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="projMenu" data-tip="Projet : nouveau, ouvrir, enregistrer sous, importer"><i data-icon="file"></i><span id="projectName">Sans titre</span><i data-icon="chevDown" class="chev"></i></button>
         <div class="abMenu" id="projMenu" role="menu" aria-label="Projet" hidden>
-          <button type="button" role="menuitem" id="homeBtn"><i data-icon="sparkle"></i><span>Accueil</span></button>
+          <button type="button" role="menuitem" id="homeBtn"><i data-icon="home"></i><span>Accueil</span></button>
           <hr>
           <button type="button" role="menuitem" id="newBtn"><i data-icon="filePlus"></i><span>Nouveau projet</span><kbd data-key="N"></kbd></button>
           <button type="button" role="menuitem" id="openBtn"><i data-icon="folder"></i><span>Ouvrir…</span><kbd data-key="O"></kbd></button>
@@ -29,7 +29,7 @@
           <hr class="abImportSep">
           <button type="button" role="menuitem" id="importBtn"><i data-icon="upload"></i><span>Importer un projet Wokwi…</span></button>
           <hr id="updSep" hidden>
-          <button type="button" role="menuitem" id="updBtn" hidden><i data-icon="sparkle"></i><span>Rechercher les mises à jour…</span></button>
+          <button type="button" role="menuitem" id="updBtn" hidden><i data-icon="download"></i><span>Rechercher les mises à jour…</span></button>
           <button type="button" role="menuitem" id="logBtn" hidden><i data-icon="folder"></i><span>Ouvrir le dossier des journaux</span></button>
         </div>
       </div>
@@ -286,7 +286,7 @@
             <div class="seg mini" role="group" aria-label="Affichage du port série"><button type="button" class="segBtn" id="serialMon" aria-pressed="true">Moniteur</button><button type="button" class="segBtn" id="serialPlot" aria-pressed="false"><i data-icon="chart"></i>Traceur</button></div>
             <button type="button" class="tb" id="serialClear" data-tip="Effacer le moniteur" aria-label="Effacer le moniteur"><i data-icon="trash"></i></button></div>
           <div class="seg serialSrc" id="serialSrc" role="group" aria-label="Source du moniteur série">
-            <button type="button" class="segBtn" data-src="sim" aria-pressed="true" data-tip="Ce qu’écrit la carte simulée"><i data-icon="cpu"></i><span>Simulation</span></button>
+            <button type="button" class="segBtn" data-src="sim" aria-pressed="true" data-tip="Ce qu’écrit la carte simulée"><i data-icon="zap"></i><span>Simulation</span></button>
             <button type="button" class="segBtn" data-src="real" aria-pressed="false" data-tip="Une vraie carte branchée en USB : ce qu’elle écrit, ce que vous lui envoyez"><i data-icon="usb"></i><span>Carte réelle</span></button>
           </div>
           <div class="realBox" id="realBox" hidden>

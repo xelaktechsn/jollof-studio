@@ -2351,7 +2351,7 @@ dependencies = [
 
 [[package]]
 name = "jollof-studio"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "espflash",
  "ffmpeg-sidecar",

@@ -64,7 +64,22 @@ export function installShell(host) {
   const act = installActivityBar(host, dock);
   const tabs = installEditorTabs(host);
   installKeys(host, dock);
+  releaseTabFocus();
   return { act, tabs, dock };
+}
+
+/**
+ * Onglets et boutons de barre cliqués à la souris : ils rendent le focus aussitôt. Sinon WebKit, à la première touche
+ * (raccourci S, Échap…), passe le bouton cliqué en :focus-visible et l'entoure du cadre bleu du clavier, resté sur un
+ * onglet qui n'est plus forcément le bon. Au clavier (Tab, flèches), le cadre reste : detail vaut 0.
+ */
+const TAB_LIKE = '.edTab, .tab, .dkTab, .actBtn, .segBtn, [role="tab"], .wsSwitch button, #stageView button';
+function releaseTabFocus() {
+  document.addEventListener('click', e => {
+    if (!e.detail) return;
+    const b = e.target instanceof Element && e.target.closest(TAB_LIKE);
+    if (b && document.activeElement === b) b.blur();
+  });
 }
 
 /* ---------- Barre d'activité ---------- */
@@ -80,7 +95,7 @@ function installActivityBar(host, dock) {
   const grow = el('span', 'grow');
   const cmdBtn = act('keyboard', `${tl('Palette de commandes')} · ${shortcut('P', true)} · F1`, () => host.openPalette());
   bar.append(libBtn, searchBtn, sepA, sepB, probBtn, grow);
-  const homeSrc = $('#homeBtn'), homeM = homeSrc ? mirror(homeSrc, 'actBtn', { icon: 'sparkle' }) : null;
+  const homeSrc = $('#homeBtn'), homeM = homeSrc ? mirror(homeSrc, 'actBtn', { icon: 'home' }) : null;
   if (homeM) bar.append(homeM.el);
   // Thème : soleil sur le thème sombre (passer au clair), lune sur le clair.
   const themeBtn = act('sun', tl('Thème clair'), toggleTheme);

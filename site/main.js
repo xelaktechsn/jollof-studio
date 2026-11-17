@@ -219,7 +219,7 @@
 
   // Apparition douce des rangées (désactivée si l'on réduit les animations).
   if ('IntersectionObserver' in window && !reduce) {
-    const els = document.querySelectorAll('.card, .row, .stats > div, .labs .two > *, .start .cols > *, .osCard');
+    const els = document.querySelectorAll('.card, .row, .stats > div, .labs .two > *, .start .cols > *, .osCard, .newsItem, .board');
     els.forEach(el => el.classList.add('rise'));
     const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }), { rootMargin: '0px 0px -8% 0px' });
     els.forEach(el => io.observe(el));

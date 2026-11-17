@@ -7,7 +7,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jollof Studio — un labo d’électronique, sans labo</title>
-  <meta name="description" content="Jollof Studio : application gratuite et open source pour câbler, programmer et simuler l’électronique, la logique, la pneumatique et l’électropneumatique en 3D, avec un vérificateur qui prouve que rien ne grille et 57 TP guidés.">
+  <meta name="description" content="Jollof Studio : application gratuite et open source pour câbler, programmer et simuler l’électronique, la logique, la pneumatique et l’électropneumatique en 3D, avec un vérificateur qui prouve que rien ne grille et 62 TP guidés.">
   <meta name="theme-color" content="#0b0e11">
   <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="fr" href="https://xelaktechsn.github.io/jollof-studio/?lang=fr">
@@ -32,7 +32,9 @@
         <img class="wm" src="assets/img/logo-dark.svg" alt="Jollof Studio" width="150" height="25">
       </a>
       <nav class="links" aria-label="Sections" id="links">
+        <a href="#news" data-i18n="nav.news">Nouveautés</a>
         <a href="#features" data-i18n="nav.features">Fonctions</a>
+        <a href="#boards" data-i18n="nav.boards">Cartes</a>
         <a href="#video" data-i18n="nav.video">Vidéo</a>
         <a href="#labs" data-i18n="nav.labs">TP</a>
         <a href="#download" data-i18n="nav.start">Télécharger</a>
@@ -104,8 +106,8 @@
         </div>
       </div>
       <div class="wrap stats">
-        <div><b>111</b><span data-i18n="stats.parts">composants</span></div>
-        <div><b>57</b><span data-i18n="stats.labs">TP guidés et vérifiés</span></div>
+        <div><b>154</b><span data-i18n="stats.parts">composants</span></div>
+        <div><b>62</b><span data-i18n="stats.labs">TP guidés et vérifiés</span></div>
         <div><b>5</b><span data-i18n="stats.kinds">types de projet</span></div>
         <div><b>10</b><span data-i18n="stats.boards">cartes : Arduino, ESP32, Pico…</span></div>
         <div><b>FR · EN</b><span data-i18n="stats.langs">interface bilingue</span></div>
@@ -114,6 +116,22 @@
 
     <div class="gates" data-gate="or" aria-hidden="true"></div>
 
+    <!-- Nouveautés -->
+    <section class="news" id="news">
+      <div class="wrap">
+        <p class="kicker center" data-i18n="news.k">Nouveautés · version 0.3</p>
+        <h2 class="center" data-i18n="news.h">Plus juste, plus complet, plus proche du vrai matériel</h2>
+        <ol class="newsList">
+          <li class="newsItem"><b data-i18n="n1.h">L’ESP32 fait tourner le vrai programme</b><p data-i18n="n1.p">Compilé puis exécuté dans QEMU, l’émulateur d’Espressif : écrans, capteurs I2C et SPI, DHT, DS18B20, LoRa, GPS, SD lui répondent. ESP32-S3 et ESP32-C3 aussi.</p></li>
+          <li class="newsItem"><b data-i18n="n2.h">Un vérificateur adossé aux fiches techniques</b><p data-i18n="n2.p">Chaque composant a ses valeurs limites, vérifiées chez le fabricant et citées. Nouveaux contrôles : 5 V sur une broche 3,3 V, résistances de tirage I2C, courant total de l’USB, broches interdites de l’ESP32, transistor mal saturé.</p></li>
+          <li class="newsItem"><b data-i18n="n3.h">Des règles qui font tout</b><p data-i18n="n3.p">Conditions combinées, fronts, durées, hystérésis, minuteries, heure de l’horloge, messages reçus, variables gardées hors tension, séquences d’étapes. Toujours une phrase en français.</p></li>
+          <li class="newsItem"><b data-i18n="n4.h">Un code généré robuste</b><p data-i18n="n4.p">Pas d’allocation dynamique, rien de bloquant, capteur en panne détecté, sorties écrites seulement quand elles changent. Compilé sans un avertissement sur Uno, Nano, Mega, Pico et ESP32.</p></li>
+          <li class="newsItem"><b data-i18n="n5.h">L’interface de VS Code</b><p data-i18n="n5.p">Barre d’activité, onglets Montage 3D, Schéma et Code, code côte à côte, panneau Problèmes, Sortie et moniteur série, palette de commandes, thème clair.</p></li>
+          <li class="newsItem"><b data-i18n="n6.h">Une simulation plus fidèle</b><p data-i18n="n6.p">Moteurs avec force contre-électromotrice, PNP, Zener et MOSFET canal P, condensateurs plus précis, schéma qui tourne et se retourne, Arduino Mega émulé.</p></li>
+        </ol>
+      </div>
+    </section>
+    <div class="gates" data-gate="and" aria-hidden="true"></div>
     <!-- Fonctions -->
     <section class="features" id="features">
       <div class="wrap">
@@ -128,12 +146,12 @@
           <article class="card">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
             <h3 data-i18n="f2.h">Vérificateur</h3>
-            <p data-i18n="f2.p">Chaque état atteignable est essayé et comparé aux fiches techniques. Diagnostics à la manière de rustc, avec code, cause et correction en un clic.</p>
+            <p data-i18n="f2.p">Valeurs nominales vérifiées sur les fiches des fabricants pour chaque composant, normes I2C et règles de déclassement. Chaque état atteignable est essayé ; diagnostics à la manière de rustc, avec code, cause et correction.</p>
           </article>
           <article class="card">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 4l-4 16"/></svg>
             <h3 data-i18n="f3.h">Programmation</h3>
-            <p data-i18n="f3.p">Règles « quand… alors… », blocs ou C++ Arduino ; MicroPython sur le Pico ; débogueur pas à pas, traceur et moniteur série.</p>
+            <p data-i18n="f3.p">Des règles en français, complètes : et, ou, dès que, depuis 2 s, minuteries, variables, séquences. Ou des blocs, ou du C++ Arduino ; MicroPython sur le Pico ; débogueur pas à pas, traceur et moniteur série.</p>
           </article>
           <article class="card">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5a5 5 0 0 1 0 10H3zM8 13h3M14 9h3M14 17h3M17 9v8M17 13h4"/></svg>
@@ -157,7 +175,7 @@
           </article>
           <article class="card">
             <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="m9 9 2 2 4-4"/></svg>
-            <h3 data-i18n="f8.h">57 TP guidés</h3>
+            <h3 data-i18n="f8.h">62 TP guidés</h3>
             <p data-i18n="f8.p">Électronique, pneumatique et logique, avec étapes vérifiées automatiquement, quiz, mesures et un tutoriel qui part de zéro.</p>
           </article>
           <article class="card">
@@ -180,10 +198,161 @@
             <h3 data-i18n="f12.h">Vieux ordinateurs</h3>
             <p data-i18n="f12.p">Mode léger automatique, rendu à la demande, démarrage rapide. Windows, macOS et Linux.</p>
           </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M8 9h13"/></svg>
+            <h3 data-i18n="f13.h">Interface familière</h3>
+            <p data-i18n="f13.p">Barre d’activité, onglets, panneau Problèmes et Sortie, palette de commandes (Ctrl+Maj+P) : la disposition de VS Code. Thème clair ou sombre.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3l2 4 2-4h4l2 4 2-4h3M3 17h18"/><path d="M7 14v6M12 14v6M17 14v6"/></svg>
+            <h3 data-i18n="f14.h">Analyseur de bus</h3>
+            <p data-i18n="f14.p">Chaque échange I2C, SPI et série décodé octet par octet, adresses sans réponse en rouge, filtres et export CSV.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>
+            <h3 data-i18n="f15.h">154 composants</h3>
+            <p data-i18n="f15.p">Capteurs, écrans TFT et OLED, LoRa, GPS, RFID, pilotes pas à pas, registres à décalage, horloges, régulateurs… Valeurs des résistances et condensateurs au choix.</p>
+          </article>
+          <article class="card">
+            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/><path d="m10 12 1.5 1.5L14 10.5"/></svg>
+            <h3 data-i18n="f16.h">Vrai programme</h3>
+            <p data-i18n="f16.p">Le code est compilé par arduino-cli et tourne sur un processeur émulé : AVR, RP2040, ESP32, ESP32-S3 et ESP32-C3. Les modules lui répondent comme en vrai.</p>
+          </article>
         </div>
       </div>
     </section>
 
+    <div class="gates" data-gate="or" aria-hidden="true"></div>
+    <!-- Cartes -->
+    <section class="boards" id="boards">
+      <div class="wrap">
+        <p class="kicker center" data-i18n="boards.k">Cartes</p>
+        <h2 class="center" data-i18n="boards.h">10 cartes, et leur vrai programme</h2>
+        <p class="center sub" data-i18n="boards.p">Choisissez une carte dans la bibliothèque : l’application connaît ses broches, ses tensions et ses limites. Sur huit d’entre elles, le programme compilé tourne sur un processeur émulé, instruction par instruction.</p>
+        <div class="legend">
+          <span><i class="eng real"></i><b data-i18n="boards.lr">Vrai programme</b> <span data-i18n="boards.lr2">émulé dans l’application</span></span>
+          <span><i class="eng qemu"></i><b data-i18n="boards.lq">Vrai programme · QEMU</b> <span data-i18n="boards.lq2">émulateur téléchargé à la première utilisation (environ 15 Mo)</span></span>
+          <span><i class="eng sim"></i><b data-i18n="boards.ls">Simulateur intégré</b> <span data-i18n="boards.ls2">le programme est interprété, Wi-Fi compris</span></span>
+        </div>
+        <div class="boardGrid">
+          <article class="board" data-engine="real">
+            <div class="bHead"><h3>Arduino Uno R3</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.uno.chip">ATmega328P · AVR 8 bits · 16 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.uno.mem">32 Ko flash · 2 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.uno.io">14 numériques (6 PWM) · 6 analogiques</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.uno.v">5 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.uno.r">—</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.uno.how">Émulateur AVR (avr8js)</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="real">
+            <div class="bHead"><h3>Arduino Nano</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.nano.chip">ATmega328P · AVR 8 bits · 16 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.nano.mem">32 Ko flash · 2 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.nano.io">14 numériques (6 PWM) · 8 analogiques</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.nano.v">5 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.nano.r">—</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.nano.how">Émulateur AVR (avr8js)</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="real">
+            <div class="bHead"><h3>Arduino Mega 2560</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.mega.chip">ATmega2560 · AVR 8 bits · 16 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.mega.mem">256 Ko flash · 8 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.mega.io">54 numériques (15 PWM) · 16 analogiques · 4 ports série</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.mega.v">5 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.mega.r">—</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.mega.how">Émulateur AVR (avr8js)</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="real">
+            <div class="bHead"><h3>Raspberry Pi Pico</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.pico.chip">RP2040 · 2 × Cortex-M0+ · 133 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.pico.mem">2 Mo flash · 264 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.pico.io">26 GPIO · 3 analogiques 12 bits</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.pico.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.pico.r">—</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.pico.how">Émulateur RP2040 (rp2040js) · C++ ou MicroPython</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="qemu">
+            <div class="bHead"><h3>ESP32 DevKit V1</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32.chip">ESP32 · 2 × Xtensa LX6 · 240 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32.mem">4 Mo flash · 520 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32.io">30 broches · ADC 12 bits</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32.r">Wi-Fi · Bluetooth</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32.how">QEMU d’Espressif</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="qemu">
+            <div class="bHead"><h3 data-i18n="b.esp3238.name">ESP32 DevKitC (38 broches)</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp3238.chip">ESP32 · 2 × Xtensa LX6 · 240 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp3238.mem">4 Mo flash · 520 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp3238.io">38 broches · ADC 12 bits</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp3238.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp3238.r">Wi-Fi · Bluetooth</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp3238.how">QEMU d’Espressif</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="qemu">
+            <div class="bHead"><h3>ESP32-S3 DevKitC-1</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32s3.chip">ESP32-S3 · 2 × Xtensa LX7 · 240 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32s3.mem">8 Mo flash · 512 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32s3.io">44 broches · USB natif</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32s3.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32s3.r">Wi-Fi · Bluetooth LE</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32s3.how">QEMU d’Espressif</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="qemu">
+            <div class="bHead"><h3>ESP32-C3 SuperMini</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32c3.chip">ESP32-C3 · RISC-V · 160 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32c3.mem">4 Mo flash · 400 Ko RAM</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32c3.io">16 broches · USB natif</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32c3.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32c3.r">Wi-Fi · Bluetooth LE</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32c3.how">QEMU d’Espressif (RISC-V)</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="sim">
+            <div class="bHead"><h3>ESP8266 NodeMCU</h3><span class="eng sim" data-i18n="boards.eng.sim">Simulateur intégré</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.nodemcu.chip">ESP8266 · Tensilica L106 · 80 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.nodemcu.mem">4 Mo flash</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.nodemcu.io">D0 à D8 · 1 analogique</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.nodemcu.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.nodemcu.r">Wi-Fi</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.nodemcu.how">Wi-Fi simulé</dd></div>
+            </dl>
+          </article>
+          <article class="board" data-engine="sim">
+            <div class="bHead"><h3>Wemos D1 mini</h3><span class="eng sim" data-i18n="boards.eng.sim">Simulateur intégré</span></div>
+            <dl>
+              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.d1mini.chip">ESP8266 · Tensilica L106 · 80 MHz</dd></div>
+              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.d1mini.mem">4 Mo flash</dd></div>
+              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.d1mini.io">D0 à D8 · 1 analogique</dd></div>
+              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.d1mini.v">3,3 V</dd></div>
+              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.d1mini.r">Wi-Fi</dd></div>
+              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.d1mini.how">Wi-Fi simulé</dd></div>
+            </dl>
+          </article>
+        </div>
+        <ul class="ticks boardNotes">
+          <li data-i18n="boards.n1">Écrans OLED, LCD et TFT, capteurs I2C et SPI, DHT, DS18B20, ultrasons, LoRa, GPS, carte SD, registres à décalage, pilotes pas à pas : ils répondent au vrai programme comme le ferait le module réel.</li>
+          <li data-i18n="boards.n2">Wi-Fi et Bluetooth : l’émulateur n’a pas de radio. Un programme qui s’en sert tourne sur le simulateur intégré, avec un réseau simulé.</li>
+          <li data-i18n="boards.n3">Le vérificateur connaît chaque carte : courant par broche et par port, tension admise, broches réservées de l’ESP32, consommation totale sur l’USB.</li>
+        </ul>
+      </div>
+    </section>
     <div class="gates" data-gate="xor" aria-hidden="true"></div>
 
     <!-- Démonstrations -->
@@ -194,7 +363,7 @@
             <p class="kicker" data-i18n="s1.k">Électronique</p>
             <h2 data-i18n="s1.h">Câblez et programmez en 3D</h2>
             <p data-i18n="s1.p">Posez un ESP32, un capteur et un écran, reliez les broches : l’application choisit la bonne broche, écrit le code et fait tourner le programme en temps virtuel. Les mesures s’affichent en direct.</p>
-            <ul class="ticks"><li data-i18n="s1.l1">Arduino Uno, Nano, Mega, ESP32, ESP8266, Pico</li><li data-i18n="s1.l2">Mode « Fidèle » : le vrai programme compilé</li><li data-i18n="s1.l3">Export vidéo pédagogique image par image</li></ul>
+            <ul class="ticks"><li data-i18n="s1.l1">10 cartes : Arduino Uno, Nano, Mega, ESP32, ESP32-S3, ESP32-C3, ESP8266, Pico</li><li data-i18n="s1.l2">Le vrai programme compilé tourne sur un processeur émulé</li><li data-i18n="s1.l3">Export vidéo pédagogique image par image</li></ul>
           </div>
           <figure class="shot"><img data-img="bench" src="assets/img/bench-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
         </div>
@@ -252,11 +421,11 @@
       <div class="wrap two">
         <div class="txt">
           <p class="kicker" data-i18n="labs.k">Travaux pratiques</p>
-          <h2 data-i18n="labs.h">57 TP guidés, vérifiés pas à pas</h2>
+          <h2 data-i18n="labs.h">62 TP guidés, vérifiés pas à pas</h2>
           <p data-i18n="labs.p">Chaque étape est validée par l’application : un fil posé, une mesure juste, une sortie qui s’allume. Les TP « À retenir » résument l’essentiel, et un tutoriel monte un premier projet électropneumatique à partir de zéro.</p>
           <div class="pills">
             <span><b>28</b> <span data-i18n="labs.e">électronique</span></span>
-            <span><b>15</b> <span data-i18n="labs.n">pneumatique, avec machine 3D</span></span>
+            <span><b>20</b> <span data-i18n="labs.n">pneumatique, avec machine 3D</span></span>
             <span><b>14</b> <span data-i18n="labs.l">logique</span></span>
           </div>
           <p class="note" data-i18n="labs.t">Des TP tirés du transport : pantographe du TER, porte de bus du BRT, passage à niveau, feu prioritaire, compteur de voyageurs.</p>

@@ -15,12 +15,12 @@ Jollof Studio est une application de bureau, gratuite et open source, pour **câ
 
 ## Ce qu’on peut faire
 
-- **Câbler en 3D** : 111 composants, cartes Arduino (Uno, Nano, Mega), ESP32, ESP8266 et Raspberry Pi Pico ; câblage automatique.
+- **Câbler en 3D** : 154 composants, cartes Arduino (Uno, Nano, Mega), ESP32, ESP32-S3, ESP32-C3, ESP8266 et Raspberry Pi Pico, avec le vrai programme émulé sur 8 d’entre elles ; câblage automatique.
 - **Programmer** : par règles (« quand… alors… »), par blocs ou en vrai code Arduino ; le programme tourne dans le simulateur.
 - **Vérifier** : le vérificateur essaie chaque état possible du montage et prouve que rien ne grille avant de toucher une vraie carte.
 - **Pneumatique et GRAFCET** : vérins, distributeurs, GRAFCET, machines animées en 3D, couplées au montage électronique.
 - **Logique numérique** : portes, bascules, compteurs, tables de vérité, Karnaugh.
-- **57 TP guidés**, vérifiés pas à pas, avec compte rendu PDF.
+- **62 TP guidés**, vérifiés pas à pas, avec compte rendu PDF.
 - **Passer au réel** : téléversement sur une vraie carte, moniteur série, guide de montage imprimable, export KiCad.
 - En **français et en anglais**.
 
@@ -55,7 +55,7 @@ npm run tauri build    # construire l’installateur
 
 ## English
 
-Jollof Studio is a free, open-source desktop app to wire, code and simulate electronics, pneumatics and digital logic, with no hardware. Arduino, ESP32 and Pico in 3D; a checker that proves nothing burns; GRAFCET and 3D machines; 57 guided labs; English and French. [Download](https://github.com/xelaktechsn/jollof-studio/releases/latest) · [Website](https://xelaktechsn.github.io/jollof-studio/).
+Jollof Studio is a free, open-source desktop app to wire, code and simulate electronics, pneumatics and digital logic, with no hardware. Arduino, ESP32 and Pico in 3D; a checker that proves nothing burns; GRAFCET and 3D machines; 62 guided labs; English and French. [Download](https://github.com/xelaktechsn/jollof-studio/releases/latest) · [Website](https://xelaktechsn.github.io/jollof-studio/).
 
 ## Licence
 

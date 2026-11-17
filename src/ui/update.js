@@ -93,7 +93,7 @@ function showCard({ title, text = '', actions = [], pct, spin = false, ok = fals
   }
   card.replaceChildren();
   const head = document.createElement('div'); head.className = 'updHead';
-  head.innerHTML = icon(ok ? 'check' : 'sparkle', 'updIcon' + (spin ? ' updSpin' : ''));
+  head.innerHTML = icon(ok ? 'check' : spin ? 'rotate' : 'download', 'updIcon' + (spin ? ' updSpin' : ''));
   const h = document.createElement('b'); h.textContent = title; head.appendChild(h);
   card.appendChild(head);
   if (text) { const p = document.createElement('p'); p.textContent = text; card.appendChild(p); }

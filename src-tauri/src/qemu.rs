@@ -557,6 +557,8 @@ fn pump(mut s: TcpStream, ch: Channel<Vec<u8>>, t0: Instant) {
 /// Lance l'émulateur d'une carte sur l'image écrite par `qemu_flash`. Messages vers l'interface : `on_uart` (Serial)
 /// et `on_side` (cale), 4 octets d'horodatage puis les octets reçus ; `on_trace`, des enregistrements de 12 octets
 /// (adresse, valeur, horodatage, en u32 petit-boutistes) ; `on_exit`, une fois, à l'arrêt de QEMU.
+/// Les arguments sont l'interface IPC appelée par src/emu/esp32.js : ils restent séparés.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub async fn qemu_start(
     app: AppHandle,

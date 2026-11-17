@@ -54,7 +54,7 @@ const num = v => (Math.round(v * 100) / 100).toString().replace('.', DEC);
 const unitOf = c => (c.unit === 'mA' ? 'mA' : c.unit === 's' ? 's' : 'V');
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /** Icône du contrôle d'une étape (repère dans la frise des étapes). */
-const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ladder: 'cpu', ui: 'eye', scene: 'box', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sparkle', 'table-fill': 'edit', info: 'info' };
+const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ladder: 'cpu', ui: 'eye', scene: 'box', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sigma', 'table-fill': 'edit', info: 'info' };
 const status = st => (st && st.finishedAt ? 'done' : st && st.done && st.done.some(Boolean) ? 'doing' : 'new');
 const typeName = t => (LOGIC_DEFS[t] ? LOGIC_DEFS[t].name() : t);
 /** Composant demandé par une étape « parts », en clair : « électrovanne 24 V Y1 », « une carte ». */
@@ -317,7 +317,7 @@ export function installLab(app) {
       if (c.type === 'pneu-tube') return `<p class="muted small">${icon('pneu')} ${tp.tutorial ? tl('Tirez les tuyaux dans le plan de travail Pneumatique : l’étape se valide dès qu’ils sont justes.') : tl('Tirez les tuyaux dans le plan de travail Pneumatique (sélecteur en haut à gauche), puis cliquez sur « Vérifier ».')}</p>`;
       if (c.type === 'parts') return `<ul class="labNeed">${c.require.map(n => `<li data-need="${esc(needText(n))}">${icon(n.board ? 'cpu' : 'plus')}<span>${esc(needText(n))}</span></li>`).join('')}</ul>`;
       if (c.type === 'pneu-parts') return `<ul class="labNeed">${c.require.map(n => `<li>${icon('pneu')}<span>${esc(pneuNeedText(n))}</span></li>`).join('')}</ul>`;
-      if (AUTO_CHECKS.has(c.type) && tp.tutorial) return `<p class="muted small labAuto">${icon('sparkle')} ${tl('Cette étape se valide toute seule dès que c’est juste ; « Vérifier » dit ce qui manque.')}</p>`;
+      if (AUTO_CHECKS.has(c.type) && tp.tutorial) return `<p class="muted small labAuto">${icon('check')} ${tl('Cette étape se valide toute seule dès que c’est juste ; « Vérifier » dit ce qui manque.')}</p>`;
       if (c.type === 'pneu-seq') return `<p class="muted small">${icon('activity')} ${tl('Cliquez sur « Observer », puis lancez le cycle : les courses des vérins sont relevées et comparées au cycle attendu.')}</p><div class="watchState" hidden></div>`;
       if (c.type === 'watch') return `<p class="muted small">${icon('zap')} ${tl('Cliquez sur « Observer », lancez la simulation et faites l’action demandée : la vérification se fait en direct.')}</p><div class="watchState" hidden></div>`;
       if (c.type === 'table-fill') return fillTable(c, i);
