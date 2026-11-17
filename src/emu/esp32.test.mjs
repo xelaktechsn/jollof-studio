@@ -5,12 +5,14 @@
 // l'application) et le cœur esp32 d'arduino-cli : un vrai programme, de bout en bout.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { createDecoder, classify, createEsp32Runtime } from './esp32.js';
 import { esp32Refusal, netInclude, UNBRIDGED, unbridgedWarning } from './esp32-limits.js';
 import { MODELS } from './devices/index.js';
 import { compileFirmware, FQBN, EMULATED } from './compile.js';
 import { setQemuReady, QEMU_KINDS } from './boards.js';
 import { qemuPath, nodeTransport } from './esp32-node.mjs';
+import { ESP32_LINK_PROPERTY } from './esp32-wraps.js';
 import { fakeBoard, compileSketch, hasCli, hasEsp32Core } from './testkit.mjs';
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -21,12 +23,18 @@ test('Wi-Fi et Bluetooth : le programme reste sur l’interpréteur, avec un mes
   assert.equal(netInclude('  #include "BluetoothSerial.h"'), 'BluetoothSerial.h');
   assert.equal(netInclude('#include <WebServer.h>'), 'WebServer.h');
   assert.equal(netInclude('#include <Wire.h>\n// #include <WiFi.h> en commentaire'), null);
-  assert.match(esp32Refusal('#include <WiFi.h>'), /Wi-Fi.*WiFi\.h.*Débutant/);
+  assert.match(esp32Refusal('#include <WiFi.h>'), /Wi-Fi.*WiFi\.h.*simulateur intégré/);
   assert.equal(esp32Refusal('#include <Arduino.h>\nvoid setup(){}'), null);
 });
 
-test('les modules pas encore reliés à QEMU sont ceux des modèles du mode fidèle', () => {
-  assert.deepEqual([...UNBRIDGED].sort(), MODELS.flatMap(m => m.types).sort());
+test('chaque module du mode fidèle répond sur l’ESP32 : un programme du corpus ESP32 le prouve (ou il est dans UNBRIDGED)', () => {
+  const covered = new Set();
+  for (const f of fs.readdirSync(new URL('./corpus-esp32/', import.meta.url))) {
+    for (const m of fs.readFileSync(new URL(`./corpus-esp32/${f}`, import.meta.url), 'utf8').matchAll(/^\/\/\s*module:\s*(.*)$/gm)) covered.add(JSON.parse(m[1]).type);
+  }
+  for (const m of fs.readFileSync(new URL('./esp32-boards.test.mjs', import.meta.url), 'utf8').matchAll(/type: '(\w+)'/g)) covered.add(m[1]);
+  const missing = MODELS.flatMap(m => m.types).filter(t => !covered.has(t) && !UNBRIDGED.includes(t));
+  assert.deepEqual(missing, []);
   assert.equal(unbridgedWarning([]), null);
   assert.match(unbridgedWarning([{ name: 'LCD1', type: 'lcd1602' }, { name: 'DHT1', type: 'dht22' }]), /LCD1, DHT1/);
 });
@@ -151,7 +159,7 @@ test('compilation : ESP32 en flash DIO, avec la cale, image fusionnée ; Wi-Fi r
     const r = await compileFirmware('void setup(){}\nvoid loop(){}', 'esp32', () => {}, cli);
     assert.ok(r.ok && r.image.length === img.length && r.format === 'merged');
     assert.ok(calls.includes('write shim=true'));
-    assert.ok(calls.includes('compile --fqbn esp32:esp32:esp32:FlashMode=dio --output-dir /b/jollof_sketch /s/jollof_sketch'));
+    assert.ok(calls.includes(`compile --fqbn esp32:esp32:esp32:FlashMode=dio --build-property ${ESP32_LINK_PROPERTY} --output-dir /b/jollof_sketch /s/jollof_sketch`));
     assert.ok(calls.includes('read merged.bin'));
     const w = await compileFirmware('#include <WiFi.h>\nvoid setup(){}\nvoid loop(){}', 'esp32', () => {}, cli);
     assert.equal(w.ok, false);

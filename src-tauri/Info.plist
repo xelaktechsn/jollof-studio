@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Ajouts au Info.plist de l'application macOS (fusionnés par Tauri) : raison affichée quand la voix off demande le micro. -->
+<plist version="1.0">
+<dict>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Jollof Studio enregistre votre voix off pour les vidéos de vos circuits. / Jollof Studio records your voice-over for your circuit videos.</string>
+</dict>
+</plist>

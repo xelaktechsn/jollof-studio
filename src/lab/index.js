@@ -12,7 +12,7 @@ import { tl, LANG, DEC, isEn } from '../i18n/index.js';
 import { icon, esc, toast, dialog, ask } from '../school/ui.js';
 import { hydrateIcons } from '../ui/icons.js';
 import { compile } from '../prog/lang.js';
-import { checkWire, checkCode, checkWatch, checkMeasure, checkQuiz, checkPneuTube, checkPneuSeq, checkParts, checkWired, checkPneuParts, checkGrafcet, checkUiState, AUTO_CHECKS, allNets } from './engine.js';
+import { checkWire, checkCode, checkWatch, checkMeasure, checkQuiz, checkPneuTube, checkPneuSeq, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkUiState, checkScene, sceneNeedText, AUTO_CHECKS, allNets } from './engine.js';
 import { DEFS as PNEU_DEFS } from '../pneu/elements.js';
 import { expectOf } from '../pneu/seq.js';
 import { checkLogicTable, checkLogicSeq, checkLogicParts, checkExpr, checkTableFill } from '../logic/check.js';
@@ -41,7 +41,8 @@ const L = o => (o == null ? '' : typeof o === 'string' ? o : o[LANG] || o.fr || 
  */
 const SERIES = {
   tuto: { icon: 'graduation', tag: () => tl('Tutoriel'), name: () => tl('Tutoriels pas à pas'), intro: () => tl('Partir de zéro et construire un projet complet, guidé à chaque clic : l’étape en cours reste affichée sur le plan de travail, montre où cliquer et se valide toute seule.') },
-  dakar: { icon: 'train', tag: () => 'TER · BRT', name: () => tl('TER et BRT de Dakar'), intro: () => tl('Des TP inspirés du Train Express Régional et du Bus Rapid Transit de Dakar : signalisation, portes, validation des titres de transport, information des voyageurs, énergie des bus électriques.') }
+  dakar: { icon: 'train', tag: () => 'TER · BRT', name: () => tl('TER et BRT de Dakar'), intro: () => tl('Des TP inspirés du Train Express Régional et du Bus Rapid Transit de Dakar : signalisation, portes, validation des titres de transport, information des voyageurs, énergie des bus électriques.') },
+  usine: { icon: 'gear', tag: () => tl('Usine'), name: () => tl('Machines industrielles'), intro: () => tl('Des postes d’atelier en 3D dont le procédé est simulé : pièces, bouteilles, colis et capteurs réagissent au programme. On écrit la partie commande (GRAFCET ou Ladder d’automate), on la voit tourner sur la machine, et les erreurs se voient : bourrage, jus renversé, pièce non serrée.') }
 };
 const LEVELS = { college: () => tl('Collège'), lycee: () => tl('Lycée'), pro: () => tl('Formation professionnelle') };
 const KEY = id => 'jollof-lab-' + id, TAB_KEY = 'jollof-lab-tab';
@@ -53,7 +54,7 @@ const num = v => (Math.round(v * 100) / 100).toString().replace('.', DEC);
 const unitOf = c => (c.unit === 'mA' ? 'mA' : c.unit === 's' ? 's' : 'V');
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /** Icône du contrôle d'une étape (repère dans la frise des étapes). */
-const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ui: 'eye', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sparkle', 'table-fill': 'edit', info: 'info' };
+const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ladder: 'cpu', ui: 'eye', scene: 'box', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sparkle', 'table-fill': 'edit', info: 'info' };
 const status = st => (st && st.finishedAt ? 'done' : st && st.done && st.done.some(Boolean) ? 'doing' : 'new');
 const typeName = t => (LOGIC_DEFS[t] ? LOGIC_DEFS[t].name() : t);
 /** Composant demandé par une étape « parts », en clair : « électrovanne 24 V Y1 », « une carte ». */
@@ -65,7 +66,7 @@ const PROP_NAME = { label: () => tl('Repère'), s0: () => tl('Capteur tige rentr
 /** Orifice d'un contrôle de tuyaux : « ~v52:4 » → « Distributeur 5/2, orifice 4 ». */
 const portText = k => { if (!k.startsWith('~')) return k; const i = k.lastIndexOf(':'), t = k.slice(1, i); return tl('{0}, orifice {1}', PNEU_DEFS[t] ? PNEU_DEFS[t].name() : t, k.slice(i + 1)); };
 /** Ce qu'il reste à faire pour un état d'interface demandé (étape « ui »). */
-const UI_TODO = { sim: () => tl('Lancez la simulation (« Simuler »).'), split: () => tl('Ouvrez la vue partagée (bouton « Vue partagée », à côté du sélecteur).'), pneu: () => tl('Passez au plan Pneumatique.'), elec: () => tl('Passez au plan Électronique.'), grafcet: () => tl('Ouvrez le panneau GRAFCET.'), '3d': () => tl('Ouvrez la vue 3D du plan pneumatique.') };
+const UI_TODO = { sim: () => tl('Lancez la simulation (« Simuler »).'), split: () => tl('Ouvrez la vue partagée (bouton « Vue partagée », à côté du sélecteur).'), pneu: () => tl('Passez au plan Pneumatique.'), elec: () => tl('Passez au plan Électronique.'), grafcet: () => tl('Ouvrez le panneau GRAFCET.'), plc: () => tl('Ouvrez le panneau Automate (bouton « Automate » du plan pneumatique).'), '3d': () => tl('Ouvrez la vue 3D du plan pneumatique.'), build: () => tl('Dans la vue 3D, choisissez la scène « Machine construite (jumeau 3D) » : le mode Construire s’ouvre (bouton « Construire » de la fenêtre).') };
 /** Équation juste mais pas sous la forme demandée (expr.form). */
 const FORM_MSG = {
   sop: () => tl('Équation juste, mais écrivez-la comme une somme de produits : des termes reliés par +, chacun fait de lettres (barrées ou non) reliées par « . ».'),
@@ -91,10 +92,11 @@ export function installLab(app) {
     compile: (code, kind) => compile(code, { board: kind }),
     dc: state => (app.dc ? app.dc(state) : null),
     pneu: () => (app.pneu ? app.pneu.circuit() : null), pneuState: () => (app.pneu ? app.pneu.state() : null), pneuPushed: k => !!(app.pneu && app.pneu.isPushed(k)), pneuInput: k => !!(app.pneu && app.pneu.isGrafcetInput(k)),
+    plcProblems: () => (app.pneu ? app.pneu.check().filter(i => /^Automate/.test(i.text)) : []),
     /** État de l'interface demandé par une étape « ui » : simulation, vue partagée, plan affiché, GRAFCET, vue 3D. */
     ui: n => {
       const P = app.pneu, onP = !!(P && P.isOn()), onL = !!(logic() && logic().isOn());
-      return n === 'sim' ? app.simOn() : n === 'split' ? !!(P && P.isSplit()) : n === 'pneu' ? onP : n === 'elec' ? !onP && !onL : n === 'grafcet' ? !!(P && P.grafcetOpen()) : n === '3d' ? !!(P && P.is3dOpen()) : false;
+      return n === 'sim' ? app.simOn() : n === 'split' ? !!(P && P.isSplit()) : n === 'pneu' ? onP : n === 'elec' ? !onP && !onL : n === 'grafcet' ? !!(P && P.grafcetOpen()) : n === 'plc' ? !!(P && P.plcOpen()) : n === '3d' ? !!(P && P.is3dOpen()) : n === 'build' ? !!(P && P.isBuilding && P.isBuilding()) : false;
     }
   };
   const btn = app.toolbar(`<button type="button" class="tb label" id="labBtn" data-tip="${tl('Travaux pratiques guidés, vérifiés pas à pas')}">${icon('checklist')}<span>${tl('TP')}</span></button>`);
@@ -102,6 +104,8 @@ export function installLab(app) {
   app.openLabs = domain => openLibrary(domain);
   /** Ouvre un TP ou un tutoriel par son identifiant (bouton « Tutoriel » du plan pneumatique…). */
   app.openTutorial = async id => { await loadTps(); const tp = TPS.find(t => t.id === id); if (tp) run(tp); else toast(tl('Tutoriel introuvable.'), 'err'); };
+  // Palette de commandes : « TP : Feu tricolore » ouvre le TP (le contenu des TP se charge à la première ouverture de la palette).
+  if (app.commands) app.commands.provide(async () => { await loadTps(); return TPS.map(tp => ({ id: 'tp:' + tp.id, cat: tl('TP'), icon: 'checklist', label: L(tp.title), run: () => run(tp) })); });
 
   /* ---------- Bibliothèque ---------- */
   async function openLibrary(domain = null) {
@@ -181,7 +185,9 @@ export function installLab(app) {
         if (c.type === 'pneu-parts') return checkPneuParts(c, env).ok;
         if (c.type === 'pneu-tube') return checkPneuTube(c, env).ok;
         if (c.type === 'grafcet') return checkGrafcet(c, env).ok;
+        if (c.type === 'ladder') return checkLadder(c, env).ok;
         if (c.type === 'ui') return checkUiState(c, env).ok;
+        if (c.type === 'scene') return checkScene(c, env).ok;
         if (c.type === 'wire') return checkWire(c, env).ok;
         if (c.type === 'code') { const p = env.program(), key = p ? p.code : ''; if (!codeMemo || codeMemo[0] !== key) codeMemo = [key, !!key.trim() && checkCode(c, env).ok]; return codeMemo[1]; } // compilé une fois par version du programme
       } catch (e) { console.error(e); }
@@ -359,8 +365,14 @@ export function installLab(app) {
       }
       const sh = e.target.closest('[data-show]'); if (sh && logic()) logic().showTab(sh.dataset.show);
       // Étape « watch » de pneumatique : maintenir un bouton de distributeur (les deux mains d'une presse…).
+      const wa = e.target.closest('[data-wact]'); if (wa && app.pneu && app.pneu.act) { app.pneu.act(wa.dataset.wact); return; } // action du procédé (une voiture, une bouteille)
       const wp = e.target.closest('[data-wpush]'), box = wp && wp.closest('.watchState');
-      if (wp && app.pneu && box && box.pushBtn) { const k = wp.dataset.wpush; app.pneu.press(k, !app.pneu.isPushed(k)); wp.outerHTML = box.pushBtn(k); if (app.pneu.refresh) app.pneu.refresh(); }
+      if (wp && app.pneu && box && box.pushBtn) {
+        const k = wp.dataset.wpush;
+        // Impulsion : appuyé 300 ms puis relâché (un bouton qu'on ne maintient pas) ; sinon, appuyé tant qu'on ne reclique pas.
+        if (wp.dataset.pulse) { app.pneu.press(k, true); if (app.pneu.refresh) app.pneu.refresh(); setTimeout(() => { app.pneu.press(k, false); if (app.pneu.refresh) app.pneu.refresh(); }, 300); return; }
+        app.pneu.press(k, !app.pneu.isPushed(k)); wp.outerHTML = box.pushBtn(k); if (app.pneu.refresh) app.pneu.refresh();
+      }
     });
     function go(i) { if (i < 0 || i >= total) return; st.step = i; save(); render(); }
     function pass(i, msg, detail = '') {
@@ -409,9 +421,24 @@ export function installLab(app) {
         if (r.why === 'errors') return fail(i, r.errors[0]);
         return fail(i, r.why === 'outputs' ? tl('Le GRAFCET ne commande pas encore {0} : écrivez-le dans les actions d’une étape.', r.names.join(', ')) : tl('Le GRAFCET ne lit pas encore {0} : écrivez-le dans une réceptivité.', r.names.join(', ')));
       }
+      if (c.type === 'ladder') {
+        const r = checkLadder(c, env);
+        if (r.ok) return pass(i, tl('Programme correct : l’automate écrit et lit ce qu’il faut.'));
+        if (r.why === 'empty') return fail(i, tl('Écrivez le programme de l’automate : au moins {0} réseau{1} (bouton Automate du plan pneumatique).', c.minRungs || 1, (c.minRungs || 1) > 1 ? 'x' : ''));
+        if (r.why === 'errors') return fail(i, r.errors[0]);
+        return fail(i, r.why === 'outputs' ? tl('L’automate n’écrit pas encore {0} : mettez une bobine de ce nom à droite d’un réseau.', r.names.join(', ')) : tl('L’automate ne lit pas encore {0} : mettez un contact de ce nom dans un réseau.', r.names.join(', ')));
+      }
       if (c.type === 'ui') {
         const r = checkUiState(c, env);
         return r.ok ? pass(i, tl('C’est bien ça.')) : fail(i, r.missing.map(n => (UI_TODO[n] ? UI_TODO[n]() : n)).join(' '));
+      }
+      if (c.type === 'scene') {
+        const r = checkScene(c, env);
+        if (r.ok) return pass(i, tl('Machine 3D correcte : les composants demandés sont posés et liés.'));
+        if (r.why === 'noscene') return fail(i, tl('Choisissez la scène « Machine construite (jumeau 3D) » dans la liste de la vue 3D, puis « Construire ».'));
+        if (r.why === 'few') return fail(i, tl('La machine n’a que {0} composant{1} : il en faut au moins {2}.', r.n, r.n > 1 ? 's' : '', c.minParts));
+        if (r.wrong.length) { const w = r.wrong[0]; return fail(i, tl('{0} ({1}) : réglez {2} dans l’inspecteur de la machine.', sceneNeedText({ type: w.need.type }), w.part, w.diff.join(', '))); }
+        return fail(i, tl('Il manque dans la machine 3D : {0}. Posez le composant depuis la palette, puis réglez ses liaisons dans l’inspecteur.', r.missing.map(sceneNeedText).join(', ')));
       }
       if (c.type === 'pneu-tube') {
         const r = checkPneuTube(c, env);
@@ -442,10 +469,11 @@ export function installLab(app) {
         const nameOf = n => { const e = pEl(n); return e ? (e.p && e.p.label) || n : n; };
         const STATE = { pressed: tl('appuyé'), released: tl('relâché'), on: tl('allumé'), off: tl('éteint') };
         const names = [...Object.keys(c.when || {}), ...(c.type === 'watch' ? Object.keys(c.expect || {}) : [])], pneuOnly = c.type === 'pneu-seq' || (names.length && names.every(n => pEl(n)));
-        const expectTxt = Object.entries(c.when || {}).map(([n, v]) => `${nameOf(n)} ${STATE[v] || v}`).join(', ');
+        const actLabel = n => (app.pneu && app.pneu.actLabel ? app.pneu.actLabel(n) : null); // action du procédé de la machine (une voiture…)
+        const expectTxt = Object.entries(c.when || {}).map(([n, v]) => (v === 'click' && actLabel(n) ? actLabel(n) : `${nameOf(n)} ${STATE[v] || v}`)).join(', ');
         // Boutons à maintenir (deux mains…) : un interrupteur par bouton de distributeur ou du pupitre nommé dans « when ».
-        const pushKeys = Object.entries(c.when || {}).filter(([n, v]) => { const e = pEl(n); return v === 'pressed' && e && (/^v/.test(e.type) || e.type === 'input'); }).map(([n]) => n);
-        const pushBtn = k => { const on = app.pneu && app.pneu.isPushed(k); return `<button type="button" class="btn small${on ? ' primary' : ''}" data-wpush="${esc(k)}" aria-pressed="${!!on}">${icon('pneu')}<span>${esc(on ? tl('Relâcher {0}', nameOf(k)) : tl('Appuyer sur {0}', nameOf(k)))}</span></button>`; };
+        const pushKeys = Object.entries(c.when || {}).filter(([n, v]) => { const e = pEl(n); return (v === 'click' && !!actLabel(n)) || ((v === 'pressed' || v === 'pulse') && e && (/^v/.test(e.type) || e.type === 'input')); }).map(([n]) => n);
+        const pushBtn = k => { if ((c.when || {})[k] === 'click') return `<button type="button" class="btn small" data-wact="${esc(k)}">${icon('pneu')}<span>${esc(actLabel(k))}</span></button>`; const pulse = (c.when || {})[k] === 'pulse', on = app.pneu && app.pneu.isPushed(k); return pulse ? `<button type="button" class="btn small" data-wpush="${esc(k)}" data-pulse="1">${icon('pneu')}<span>${esc(tl('Impulsion sur {0}', nameOf(k)))}</span></button>` : `<button type="button" class="btn small${on ? ' primary' : ''}" data-wpush="${esc(k)}" aria-pressed="${!!on}">${icon('pneu')}<span>${esc(on ? tl('Relâcher {0}', nameOf(k)) : tl('Appuyer sur {0}', nameOf(k)))}</span></button>`; };
         const want = c.type === 'pneu-seq' ? expectOf(c.expect).map(m => m.replace('-', '−')).join(' ') : '';
         const intro = c.type === 'pneu-seq' ? tl('En observation : lancez le cycle{0}. Cycle attendu : {1}.', expectTxt ? ` (${esc(expectTxt)})` : '', esc(want)) : expectTxt ? tl('En observation : faites en sorte que {0}…', esc(expectTxt)) : tl('En observation…');
         box.innerHTML = `<div class="wsMsg"><span class="dotsAnim"><i></i><i></i><i></i></span>${intro}</div>${pushKeys.length && app.pneu ? `<div class="watchPush">${pushKeys.map(pushBtn).join('')}</div>` : ''}${c.type === 'pneu-seq' ? '<div class="seqSeen"></div>' : ''}`;

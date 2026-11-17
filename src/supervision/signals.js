@@ -70,7 +70,7 @@ export function thingsOf(app) {
     else if (c && BOARDS[c.type]) {
       // Ce qui est câblé à la broche : une broche d'entrée ou de commande change de tension en fonctionnement normal.
       const peers = app.wires().flatMap(w => [[w.a, w.b], [w.b, w.a]]).filter(([x]) => x.comp === c && x.key === what).map(([, y]) => y.comp).filter(o => !/^breadboard/.test(o.type));
-      const switching = peers.find(o => ['button', 'cylsensor', 'pressostat'].includes(o.type) || /^(res-|npn|pn2222|led)/.test(o.type));
+      const switching = peers.find(o => ['button', 'cylsensor', 'pressostat'].includes(o.type) || /^(res-|npn|pn2222|pnp|pn2907|led)/.test(o.type));
       out.push({ key: s.id, kind: 'pin', icon: 'cpu', name: tl('Tension {0} {1}', who, what) + (peers.length ? ` (${peers.map(o => o.name).join(', ')})` : ''), signal: s.id, value: s.value, switching: switching ? switching.name : null });
     }
     else out.push({ key: s.id, kind: 'analog', icon: 'gauge', name: labelOf(s.id), signal: s.id, value: s.value });

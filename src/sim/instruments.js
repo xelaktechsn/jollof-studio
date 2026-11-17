@@ -15,7 +15,7 @@ import { GEN_DEFAULT, WAVES, genRange } from './analog-parts.js';
 const TDIV = [1e-5, 2e-5, 5e-5, 1e-4, 2e-4, 5e-4, 1e-3, 2e-3, 5e-3, 1e-2, 2e-2, 5e-2, 0.1, 0.2, 0.5, 1]; // s par division
 const VDIV = [0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2, 5]; // V par division
 const CAP = 1 << 15; // points gardés par voie en direct
-const AMP_TYPES = /^(ind-|irlz44n$|dcmotor$|fan$|pump$|vibro$)/;
+const AMP_TYPES = /^(ind-|irlz44n$|irf9540n$|dcmotor$|fan$|pump$|vibro$)/;
 const WAVE_NAME = { sine: () => tl('Sinus'), square: () => tl('Carré'), triangle: () => tl('Triangle'), dc: () => tl('Continu') };
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const tText = s => (s >= 1 ? `${fmt(s, s < 10 ? 1 : 0)} s` : s >= 1e-3 ? `${fmt(s * 1e3, s < 1e-2 ? 1 : 0).replace(/[,.]0$/, '')} ms` : `${fmt(s * 1e6, 0)} µs`);
@@ -380,7 +380,7 @@ export function installInstruments(app) {
     b.addTab({ id: 'scope2', label: tl('Oscilloscope 2 voies'), icon: 'activity', el: panel, onShow: on => { visible = on; if (on) { optsSig = ''; paintNodes(); scope.stale = true; } retap(); }, draw });
     b.setAc(ac);
     // Ampèremètre : bobines, MOSFET (courant de drain) et moteurs s'ajoutent aux composants mesurables.
-    b.extraParts = () => comps().filter(c => AMP_TYPES.test(c.type)).map(c => ({ id: c.id, label: `${c.name} · ${c.type === 'irlz44n' ? tl('courant de drain') : c.type === 'ind-10m' ? tl('bobine') : tl('moteur')}`, comp: c }));
+    b.extraParts = () => comps().filter(c => AMP_TYPES.test(c.type)).map(c => ({ id: c.id, label: `${c.name} · ${c.type === 'irlz44n' || c.type === 'irf9540n' ? tl('courant de drain') : c.type === 'ind-10m' ? tl('bobine') : tl('moteur')}`, comp: c }));
   };
   hook();
   setInterval(() => { refreshGens(); if (visible && sig() !== scope.sig) { scope.sig = sig(); optsSig = ''; scope.stale = true; acCache.clear(); } }, 500);

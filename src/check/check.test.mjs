@@ -200,3 +200,37 @@ test('Pico sous MicroPython : programme Python jugé par la carte, broches suppo
   // Sans le moteur MicroPython, le même texte n'est pas lu comme un programme Python.
   assert.ok(!loadProject(data(undefined)).firmware.has('P'));
 });
+
+test('Modules d’alimentation : chute de l’AMS1117, chaleur, élévateur surchargé, chargeur sur 24 V', () => {
+  const build = (parts, links, inp = {}) => loadProject({ comps: parts.map(([type, id]) => ({ id, type, name: id, inp: inp[id] })), wires: links.map(([a, ka, b, kb]) => ({ a: [a, ka], b: [b, kb] })) });
+  const reg = (src, r) => [[[src, 'P'], ['ams1117', 'A'], ['res-' + r, 'R']], [['P', '+', 'A', 'IN'], ['P', '-', 'A', 'GND'], ['A', 'OUT', 'R', '1'], ['R', '2', 'A', 'GND']]];
+  // AMS1117 sur un accu de 3,7 V : sous sa plage d'entrée.
+  assert.ok(codes(checkProject(build(...reg('bat18650', '330')))).includes('E:J0105'));
+  // AMS1117 de 9 V à 3,3 V sous 150 mA : ≈ 0,8 W dans le SOT-223.
+  const hot = find(checkProject(build(...reg('bat9v', '22'))), 'J0317');
+  assert.ok(hot && hot.level === 'warning', 'AMS1117 chaud');
+  // LM2596 de 24 V à 5 V : rien à redire.
+  assert.deepEqual(codes(checkProject(build([['psu24', 'P'], ['lm2596', 'B'], ['res-220', 'R']], [['P', '+', 'B', 'IN+'], ['P', '-', 'B', 'IN-'], ['B', 'OUT+', 'R', '1'], ['R', '2', 'B', 'OUT-']]))), []);
+  // MT3608 réglé à 24 V sur 22 Ω depuis un accu : ≈ 8 A demandés à l'entrée.
+  const mt = build([['bat18650', 'P'], ['mt3608', 'M'], ['res-22', 'R']], [['P', '+', 'M', 'IN+'], ['P', '-', 'M', 'IN-'], ['M', 'OUT+', 'R', '1'], ['R', '2', 'M', 'OUT-']], { M: { vout: 24 } });
+  const over = checkProject(mt).diags.find(d => d.code === 'J0109' && d.loc.comp && d.loc.comp.id === 'M');
+  assert.ok(over && over.level === 'error' && over.loc.key === 'IN+', 'MT3608 surchargé');
+  // TP4056 alimenté en 24 V.
+  const tp = build([['psu24', 'P'], ['tp4056', 'T'], ['bat18650', 'L']], [['P', '+', 'T', 'IN+'], ['P', '-', 'T', 'IN-'], ['T', 'B+', 'L', '+'], ['T', 'B-', 'L', '-']]);
+  assert.ok(codes(checkProject(tp)).includes('E:J0306'));
+});
+
+test('LoRa (Sandeep Mistry) : broches de setPins() et broches par défaut de begin() confiées à la bibliothèque', () => {
+  const facts = src => pinFacts(`#include <SPI.h>\n#include <LoRa.h>\nvoid setup() { ${src} }\nvoid loop() {}`, 'uno', BOARDS.uno);
+  const set = facts('LoRa.setPins(8, 4, 3); LoRa.begin(433E6);');
+  assert.equal(set.ok, true);
+  for (const k of ['D8', 'D4', 'D3']) assert.ok(set.pins.has(k), k);
+  assert.ok(!set.pins.has('D10') && !set.pins.has('D9'));
+  assert.equal(set.pins.get('D3').lib, true, 'DIO0 lue par la bibliothèque');
+  const def = facts('LoRa.begin(433E6);');
+  for (const k of ['D10', 'D9', 'D2']) assert.ok(def.pins.has(k), k);
+  // -1 : pas de broche de reset, aucune broche inconnue signalée.
+  const none = facts('LoRa.setPins(10, -1, 2); LoRa.begin(433E6);');
+  assert.ok(!none.pins.has('D9'));
+  assert.ok(!none.uses.some(u => u.key === null && !u.dyn), JSON.stringify(none.uses));
+});

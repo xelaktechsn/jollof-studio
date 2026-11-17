@@ -1,14 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
 //
-// Mode fidèle de l'ESP32 : le vrai programme tourne dans QEMU (fork d'Espressif, GPL-2.0). QEMU reste un programme à
+// Mode fidèle de l'ESP32, de l'ESP32-S3 et de l'ESP32-C3 : le vrai programme tourne dans QEMU (fork d'Espressif,
+// GPL-2.0 ; qemu-system-xtensa pour l'ESP32 et l'ESP32-S3, qemu-system-riscv32 pour l'ESP32-C3). QEMU reste un programme à
 // part : téléchargé à la première utilisation dans le dossier de données de l'application (archive vérifiée par
 // son empreinte SHA-256, figée ici), puis lancé avec des arguments fixes. Jamais lié à l'application, il ne lui
 // parle que par des sockets locales (ports série de la carte) et par sa sortie d'erreur (trace des écritures de
 // registres GPIO et LEDC). L'interface ne choisit ni le programme lancé ni ses arguments : seulement l'image de la
 // flash (validée) et les octets envoyés aux ports série.
 //
-// Pour le développement : JOLLOF_QEMU=/chemin/qemu-system-xtensa remplace l'émulateur installé (sans vérification).
+// Pour le développement : JOLLOF_QEMU=/chemin/qemu-system-xtensa remplace l'émulateur installé (sans vérification) ;
+// qemu-system-riscv32 est cherché à côté, ou dans JOLLOF_QEMU_RISCV32.
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
@@ -23,45 +25,63 @@ use std::time::{Duration, Instant};
 use tauri::ipc::{Channel, InvokeBody, Request};
 use tauri::{AppHandle, Manager, State};
 
-/// Version de l'émulateur : fork d'Espressif esp-develop-9.2.2-20250817, révision j1 de scripts/esp32-qemu/build-qemu.sh.
-pub const VERSION: &str = "9.2.2-20250817-j1";
+/// Version de l'émulateur : fork d'Espressif esp-develop-9.2.2-20250817, révision j2 de scripts/esp32-qemu/build-qemu.sh
+/// (j2 : qemu-system-riscv32 pour l'ESP32-C3 et les ROM de l'ESP32-S3 et de l'ESP32-C3 dans le même paquet).
+pub const VERSION: &str = "9.2.2-20250817-j2";
 /// Page de la publication (GitHub Releases), remplie par .github/workflows/qemu-esp32.yml.
 const RELEASE_URL: &str =
-    "https://github.com/xelaktechsn/jollof-studio/releases/download/qemu-esp32-9.2.2-20250817-j1";
+    "https://github.com/xelaktechsn/jollof-studio/releases/download/qemu-esp32-9.2.2-20250817-j2";
 /// Paquet de chaque plateforme : (plateforme, archive, SHA-256). Empreinte vide : pas encore publié, installation
 /// refusée. Les empreintes viennent du fichier SHA256SUMS.txt de la publication.
 const PACKAGES: &[(&str, &str, &str)] = &[
     (
         "x86_64-apple-darwin",
-        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-apple-darwin.zip",
+        "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-apple-darwin.zip",
         "",
     ),
     (
         "aarch64-apple-darwin",
-        "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-apple-darwin.zip",
+        "jollof-qemu-esp32-9.2.2-20250817-j2-aarch64-apple-darwin.zip",
         "",
     ),
     (
         "x86_64-linux-gnu",
-        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-linux-gnu.zip",
+        "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-linux-gnu.zip",
         "",
     ),
     (
         "aarch64-linux-gnu",
-        "jollof-qemu-esp32-9.2.2-20250817-j1-aarch64-linux-gnu.zip",
+        "jollof-qemu-esp32-9.2.2-20250817-j2-aarch64-linux-gnu.zip",
         "",
     ),
     (
         "x86_64-w64-mingw32",
-        "jollof-qemu-esp32-9.2.2-20250817-j1-x86_64-w64-mingw32.zip",
+        "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-w64-mingw32.zip",
         "",
     ),
 ];
-const EXE: &str = if cfg!(windows) {
-    "qemu-system-xtensa.exe"
-} else {
-    "qemu-system-xtensa"
-};
+/// Programme de QEMU d'une architecture (xtensa : ESP32 et ESP32-S3 ; riscv32 : ESP32-C3).
+fn exe(arch: &str) -> String {
+    format!(
+        "qemu-system-{arch}{}",
+        if cfg!(windows) { ".exe" } else { "" }
+    )
+}
+/// Puces émulées : (nom, architecture de QEMU, minuterie dont les chiens de garde sont coupés, offset du chargeur
+/// d'amorçage dans la flash).
+const CHIPS: &[(&str, &str, &str, usize)] = &[
+    ("esp32", "xtensa", "timer.esp32.timg", 0x1000),
+    ("esp32s3", "xtensa", "timer.esp32s3.timg", 0),
+    ("esp32c3", "riscv32", "timer.esp32c3.timg", 0),
+];
+fn chip_of(
+    name: &str,
+) -> Result<&'static (&'static str, &'static str, &'static str, usize), String> {
+    CHIPS
+        .iter()
+        .find(|c| c.0 == name)
+        .ok_or_else(|| "Puce inconnue".to_string())
+}
 const MAX_ZIP: u64 = 100 * 1024 * 1024;
 /// Image de la flash : 1 à 16 Mo, par blocs de 64 Kio, chargeur d'amorçage de l'ESP32 à 0x1000 (octet magique 0xE9).
 const MAX_FLASH: usize = 16 * 1024 * 1024;
@@ -157,8 +177,26 @@ pub fn extract(bytes: &[u8], dest: &Path) -> Result<(), String> {
 
 struct Installed {
     exe: PathBuf,
+    /// qemu-system-riscv32 (ESP32-C3), s'il est là.
+    riscv: Option<PathBuf>,
     share: Option<PathBuf>,
     dev: bool,
+}
+impl Installed {
+    fn exe_for(&self, arch: &str) -> Option<&Path> {
+        if arch == "riscv32" {
+            self.riscv.as_deref()
+        } else {
+            Some(&self.exe)
+        }
+    }
+    fn chips(&self) -> Vec<&'static str> {
+        CHIPS
+            .iter()
+            .filter(|c| self.exe_for(c.1).is_some())
+            .map(|c| c.0)
+            .collect()
+    }
 }
 /// L'émulateur à lancer : celui de JOLLOF_QEMU, sinon celui installé, dont l'exécutable a toujours l'empreinte notée
 /// à l'installation (un fichier remplacé depuis n'est pas lancé).
@@ -172,18 +210,27 @@ fn installed(app: &AppHandle) -> Option<Installed> {
             .and_then(|b| b.parent())
             .map(|r| r.join("share").join("qemu"))
             .filter(|s| s.is_dir());
+        let riscv = std::env::var_os("JOLLOF_QEMU_RISCV32")
+            .map(PathBuf::from)
+            .or_else(|| p.parent().map(|b| b.join(exe("riscv32"))))
+            .filter(|r| r.is_file());
         return Some(Installed {
             exe: p,
+            riscv,
             share,
             dev: true,
         });
     }
     let root = install_root(app).ok()?.join("qemu");
-    let exe = root.join("bin").join(EXE);
-    let want = fs::read_to_string(root.join("installed.sha256")).ok()?;
-    let bytes = fs::read(&exe).ok()?;
-    (sha256_hex(&bytes) == want.trim()).then(|| Installed {
-        exe,
+    let verified = |arch: &str, file: &str| -> Option<PathBuf> {
+        let exe = root.join("bin").join(exe(arch));
+        let want = fs::read_to_string(root.join(file)).ok()?;
+        let bytes = fs::read(&exe).ok()?;
+        (sha256_hex(&bytes) == want.trim()).then_some(exe)
+    };
+    Some(Installed {
+        exe: verified("xtensa", "installed.sha256")?,
+        riscv: verified("riscv32", "installed-riscv32.sha256"),
         share: Some(root.join("share").join("qemu")),
         dev: false,
     })
@@ -197,6 +244,8 @@ pub struct QemuStatus {
     dev: bool,
     version: &'static str,
     platform: Option<&'static str>,
+    /// Puces que l'émulateur installé fait tourner.
+    chips: Vec<&'static str>,
 }
 
 #[tauri::command]
@@ -207,9 +256,10 @@ pub async fn qemu_status(app: AppHandle) -> Result<QemuStatus, String> {
         Ok(QemuStatus {
             installed: i.is_some(),
             available: p.and_then(package).is_some_and(|x| !x.1.is_empty()),
-            dev: i.is_some_and(|x| x.dev),
+            dev: i.as_ref().is_some_and(|x| x.dev),
             version: VERSION,
             platform: p,
+            chips: i.as_ref().map(|x| x.chips()).unwrap_or_default(),
         })
     })
     .await
@@ -241,21 +291,32 @@ pub async fn qemu_install(
         let tmp = root.with_extension("part");
         let _ = fs::remove_dir_all(&tmp);
         extract(&bytes, &tmp)?;
-        let exe = tmp.join("qemu").join("bin").join(EXE);
-        if !exe.is_file()
-            || !tmp
-                .join("qemu")
-                .join("share")
-                .join("qemu")
-                .join("esp32-v3-rom.bin")
-                .is_file()
+        let q = tmp.join("qemu");
+        let exe_x = q.join("bin").join(exe("xtensa"));
+        let roms = [
+            "esp32-v3-rom.bin",
+            "esp32s3_rev0_rom.bin",
+            "esp32c3-rom.bin",
+        ];
+        if !exe_x.is_file()
+            || roms
+                .iter()
+                .any(|r| !q.join("share").join("qemu").join(r).is_file())
         {
             let _ = fs::remove_dir_all(&tmp);
             return Err("Archive de l’émulateur incomplète.".into());
         }
-        let exe_hash = sha256_hex(&fs::read(&exe).map_err(|e| e.to_string())?);
-        fs::write(tmp.join("qemu").join("installed.sha256"), exe_hash)
-            .map_err(|e| e.to_string())?;
+        // Empreinte de chaque programme : un fichier remplacé depuis ne sera pas lancé.
+        for (arch, file) in [
+            ("xtensa", "installed.sha256"),
+            ("riscv32", "installed-riscv32.sha256"),
+        ] {
+            let e = q.join("bin").join(exe(arch));
+            if e.is_file() {
+                let h = sha256_hex(&fs::read(&e).map_err(|e| e.to_string())?);
+                fs::write(q.join(file), h).map_err(|e| e.to_string())?;
+            }
+        }
         let _ = fs::remove_dir_all(&root);
         fs::rename(&tmp, &root).map_err(|e| format!("Installation impossible : {e}"))?;
         Ok(())
@@ -296,12 +357,13 @@ fn download(url: &str, progress: &dyn Fn(u64, u64)) -> Result<Vec<u8>, String> {
 
 /* ---------- Lancement d'une carte ---------- */
 
-/// L'image doit ressembler à une flash d'ESP32 : taille, alignement, chargeur d'amorçage à 0x1000.
-pub fn check_flash(bytes: &[u8]) -> Result<(), String> {
+/// L'image doit ressembler à une flash de la puce : taille, alignement, chargeur d'amorçage (octet magique 0xE9) à
+/// 0x1000 (ESP32) ou au début (ESP32-S3, ESP32-C3).
+pub fn check_flash(bytes: &[u8], boot: usize) -> Result<(), String> {
     let ok = bytes.len() >= 0x10000
         && bytes.len() <= MAX_FLASH
         && bytes.len().is_multiple_of(0x10000)
-        && bytes[0x1000] == 0xE9;
+        && bytes[boot] == 0xE9;
     if ok {
         Ok(())
     } else {
@@ -309,31 +371,33 @@ pub fn check_flash(bytes: &[u8]) -> Result<(), String> {
     }
 }
 
-/// Arguments de QEMU, toujours les mêmes : machine ESP32 sans affichage ni moniteur, chiens de garde des groupes de
+/// Arguments de QEMU, toujours les mêmes : machine de la puce sans affichage ni moniteur, chiens de garde des groupes de
 /// minuteries désactivés (le temps de la carte suit l'horloge de l'ordinateur : un à-coup de celui-ci les ferait
 /// redémarrer la carte sans faute du programme), flash de la carte, UART0 (Serial) et UART1 (cale du mode fidèle)
 /// sur des sockets locales où QEMU se connecte, trace des écritures de registres (GPIO, LEDC) sur la sortie
 /// d'erreur. Dans -drive, une virgule du chemin se double.
 pub fn qemu_args(
+    chip_name: &str,
     share: Option<&Path>,
     flash: &Path,
     uart_port: u16,
     side_port: u16,
 ) -> Vec<OsString> {
+    let c = chip_of(chip_name).unwrap_or(&CHIPS[0]);
     let mut a: Vec<OsString> = [
         "-machine",
-        "esp32",
+        c.0,
         "-display",
         "none",
         "-monitor",
         "none",
         "-nodefaults",
         "-global",
-        "driver=timer.esp32.timg,property=wdt_disable,value=true",
     ]
     .iter()
     .map(OsString::from)
     .collect();
+    a.push(format!("driver={},property=wdt_disable,value=true", c.2).into());
     if let Some(s) = share {
         a.push("-L".into());
         a.push(s.as_os_str().to_owned());
@@ -354,18 +418,25 @@ pub fn qemu_args(
     a
 }
 
-/// Ligne de trace de QEMU → (adresse, valeur) pour les registres GPIO et LEDC de l'ESP32 ; None pour le reste.
+/// LEDC de l'ESP32-S3 et de l'ESP32-C3 : pas de modèle dans QEMU, ses écritures tombent dans la zone générique.
+const LEDC_LS: u32 = 0x6001_9000;
+/// Ligne de trace de QEMU → (adresse, valeur) pour les registres GPIO et LEDC ; None pour le reste.
 pub fn parse_trace(line: &str) -> Option<(u32, u32)> {
     let rest = line.split("memory_region_ops_write ").nth(1)?;
     let name = rest.split(" name '").nth(1)?.split('\'').next()?;
-    if name != "esp32.gpio" && name != "misc.esp32.ledc" {
+    let generic = name == "esp32s3.iomem" || name == "esp32c3.iomem";
+    if name != "esp32.gpio" && name != "misc.esp32.ledc" && !generic {
         return None;
     }
     let hex = |key: &str| -> Option<u64> {
         let s = rest.split(key).nth(1)?.split(' ').next()?;
         u64::from_str_radix(s.trim_start_matches("0x"), 16).ok()
     };
-    Some((hex(" addr ")? as u32, hex(" value ")? as u32))
+    let addr = hex(" addr ")? as u32;
+    if generic && addr.wrapping_sub(LEDC_LS) >= 0x200 {
+        return None;
+    }
+    Some((addr, hex(" value ")? as u32))
 }
 
 struct Instance {
@@ -403,7 +474,8 @@ pub struct QemuExit {
     log: String,
 }
 
-/// Image de la flash d'une carte (corps binaire, carte dans l'en-tête x-board), écrite avant `qemu_start`.
+/// Image de la flash d'une carte (corps binaire, carte dans l'en-tête x-board, puce dans x-chip), écrite avant
+/// `qemu_start`.
 #[tauri::command]
 pub async fn qemu_flash(app: AppHandle, request: Request<'_>) -> Result<(), String> {
     let board = request
@@ -412,10 +484,17 @@ pub async fn qemu_flash(app: AppHandle, request: Request<'_>) -> Result<(), Stri
         .and_then(|v| v.to_str().ok())
         .ok_or("En-tête x-board manquant")?;
     let board = crate::safe_id(board)?;
+    let c = chip_of(
+        request
+            .headers()
+            .get("x-chip")
+            .and_then(|v| v.to_str().ok())
+            .unwrap_or("esp32"),
+    )?;
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Le corps de la requête doit être binaire".into());
     };
-    check_flash(bytes)?;
+    check_flash(bytes, c.3)?;
     let dir = run_dir(&app)?;
     let bytes = bytes.clone();
     crate::blocking(move || {
@@ -483,12 +562,14 @@ pub async fn qemu_start(
     app: AppHandle,
     state: State<'_, Qemu>,
     board: String,
+    chip: Option<String>,
     on_uart: Channel<Vec<u8>>,
     on_side: Channel<Vec<u8>>,
     on_trace: Channel<Vec<u8>>,
     on_exit: Channel<QemuExit>,
 ) -> Result<(), String> {
     let board = crate::safe_id(&board)?;
+    let c = chip_of(chip.as_deref().unwrap_or("esp32"))?;
     if let Ok(mut m) = state.runs.lock() {
         m.remove(&board); // une seule instance par carte : l'ancienne s'arrête
     }
@@ -507,12 +588,16 @@ pub async fn qemu_start(
         let lu = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
         let ls = TcpListener::bind("127.0.0.1:0").map_err(|e| e.to_string())?;
         let args = qemu_args(
+            c.0,
             inst.share.as_deref(),
             &flash,
             lu.local_addr().map_err(|e| e.to_string())?.port(),
             ls.local_addr().map_err(|e| e.to_string())?.port(),
         );
-        let mut cmd = Command::new(&inst.exe);
+        let program = inst
+            .exe_for(c.1)
+            .ok_or("L’émulateur installé ne connaît pas cette puce : réinstallez-le.")?;
+        let mut cmd = Command::new(program);
         cmd.args(&args)
             .stdin(Stdio::null())
             .stdout(Stdio::null())
@@ -639,6 +724,7 @@ mod tests {
     #[test]
     fn arguments_are_fixed() {
         let a = qemu_args(
+            "esp32",
             Some(Path::new("/app/qemu/share/qemu")),
             Path::new("/cache/qemu-run/esp,32.bin"),
             40001,
@@ -667,9 +753,29 @@ mod tests {
         assert!(s
             .windows(2)
             .any(|w| w == ["-trace", "memory_region_ops_write"]));
-        assert!(!qemu_args(None, Path::new("/f.bin"), 1, 2)
+        assert!(!qemu_args("esp32", None, Path::new("/f.bin"), 1, 2)
             .iter()
             .any(|x| x == "-L"));
+        // ESP32-S3 et ESP32-C3 : leur machine et leur minuterie.
+        for (c, m, t) in [
+            (
+                "esp32s3",
+                "esp32s3",
+                "driver=timer.esp32s3.timg,property=wdt_disable,value=true",
+            ),
+            (
+                "esp32c3",
+                "esp32c3",
+                "driver=timer.esp32c3.timg,property=wdt_disable,value=true",
+            ),
+        ] {
+            let s: Vec<String> = qemu_args(c, None, Path::new("/f.bin"), 1, 2)
+                .iter()
+                .map(|x| x.to_string_lossy().into_owned())
+                .collect();
+            assert_eq!((s[1].as_str(), s[8].as_str()), (m, t));
+        }
+        assert!(chip_of("esp32s2").is_err());
     }
 
     #[test]
@@ -680,16 +786,26 @@ mod tests {
         assert_eq!(parse_trace(p), Some((0x3ff59008, 0x400)));
         assert_eq!(parse_trace("memory_region_ops_write cpu 0 mr 0x1 addr 0x3ff5f048 value 0x0 size 4 name 'timer.esp32.timg'"), None);
         assert_eq!(parse_trace("qemu-system-xtensa: warning"), None);
+        // ESP32-S3 / C3 : LEDC dans la zone générique, le reste de la zone ignoré.
+        let s3 = "memory_region_ops_write cpu 0 mr 0x1 addr 0x600190a0 value 0x2804 size 4 name 'esp32s3.iomem'";
+        assert_eq!(parse_trace(s3), Some((0x600190a0, 0x2804)));
+        assert_eq!(parse_trace("memory_region_ops_write cpu 0 mr 0x1 addr 0x60008000 value 0x1 size 4 name 'esp32c3.iomem'"), None);
     }
 
     #[test]
     fn flash_images() {
         let mut img = vec![0xffu8; 4 * 1024 * 1024];
         img[0x1000] = 0xE9;
-        assert!(check_flash(&img).is_ok());
-        assert!(check_flash(&img[..0x10001]).is_err());
-        assert!(check_flash(&vec![0u8; 0x10000]).is_err());
-        assert!(check_flash(&vec![0u8; 32 * 1024 * 1024]).is_err());
+        assert!(check_flash(&img, 0x1000).is_ok());
+        assert!(
+            check_flash(&img, 0).is_err(),
+            "ESP32-S3 / C3 : chargeur au début"
+        );
+        assert!(check_flash(&img[..0x10001], 0x1000).is_err());
+        assert!(check_flash(&vec![0u8; 0x10000], 0x1000).is_err());
+        assert!(check_flash(&vec![0u8; 32 * 1024 * 1024], 0x1000).is_err());
+        img[0] = 0xE9;
+        assert!(check_flash(&img, 0).is_ok());
     }
 
     #[test]
@@ -738,11 +854,12 @@ mod tests {
         fs::create_dir_all(&dir).unwrap();
         let flash = dir.join("flash,1.bin"); // virgule dans le chemin : doublée dans -drive
         let bytes = fs::read(&img).unwrap();
-        check_flash(&bytes).unwrap();
+        check_flash(&bytes, 0x1000).unwrap();
         fs::write(&flash, &bytes).unwrap();
         let lu = TcpListener::bind("127.0.0.1:0").unwrap();
         let ls = TcpListener::bind("127.0.0.1:0").unwrap();
         let args = qemu_args(
+            "esp32",
             share.as_deref(),
             &flash,
             lu.local_addr().unwrap().port(),
@@ -794,10 +911,13 @@ mod tests {
         let d = std::env::temp_dir().join(format!("jollof-qemu-pkg-{}", std::process::id()));
         let _ = fs::remove_dir_all(&d);
         extract(&bytes, &d).unwrap();
-        let exe = d.join("qemu").join("bin").join(EXE);
+        let exe = d.join("qemu").join("bin").join(super::exe("xtensa"));
         for f in [
             exe.clone(),
+            d.join("qemu").join("bin").join(super::exe("riscv32")),
             d.join("qemu/share/qemu/esp32-v3-rom.bin"),
+            d.join("qemu/share/qemu/esp32s3_rev0_rom.bin"),
+            d.join("qemu/share/qemu/esp32c3-rom.bin"),
             d.join("qemu/SOURCE.md"),
             d.join("qemu/COPYING"),
         ] {

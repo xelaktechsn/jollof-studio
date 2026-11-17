@@ -1,0 +1,406 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Compteur de visiteurs",
+ "description": "Chaque passage devant le capteur infrarouge (« dès que ») ajoute 1 à une variable gardée dans l’EEPROM : le compte survit à une coupure. L’écran LCD ne réécrit que ce qui change ; un appui de 2 s sur BTN1, ou « zero » envoyé par le moniteur série, remet à zéro.",
+ "en": {
+  "name": "Visitor counter",
+  "description": "Each pass in front of the infrared sensor (\"as soon as\") adds 1 to a variable kept in EEPROM: the count survives a power cut. The LCD only rewrites what changes; holding BTN1 for 2 s, or sending \"zero\" from the serial monitor, resets it."
+ },
+ "comps": [
+  {
+   "id": "uno_0",
+   "type": "uno",
+   "name": "UNO1",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "irobst_1",
+   "type": "irobst",
+   "name": "OBS1",
+   "x": 9,
+   "z": -47,
+   "r": 0
+  },
+  {
+   "id": "button_2",
+   "type": "button",
+   "name": "BTN1",
+   "x": -22,
+   "z": -38,
+   "r": 0,
+   "inp": {
+    "pressed": false
+   }
+  },
+  {
+   "id": "lcd1602_3",
+   "type": "lcd1602",
+   "name": "LCD1",
+   "x": 10,
+   "z": 63,
+   "r": 0
+  },
+  {
+   "id": "breadboard_4",
+   "type": "breadboard",
+   "name": "BB1",
+   "x": 6,
+   "z": 126,
+   "r": 0
+  },
+  {
+   "id": "led-green_5",
+   "type": "led-green",
+   "name": "LED1",
+   "x": 56,
+   "z": 1,
+   "r": 0
+  },
+  {
+   "id": "res-220_6",
+   "type": "res-220",
+   "name": "R1",
+   "x": 52,
+   "z": -12,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "irobst_1",
+    "GND"
+   ],
+   "b": [
+    "uno_0",
+    "GND"
+   ]
+  },
+  {
+   "a": [
+    "irobst_1",
+    "OUT"
+   ],
+   "b": [
+    "uno_0",
+    "D7"
+   ]
+  },
+  {
+   "a": [
+    "button_2",
+    "2"
+   ],
+   "b": [
+    "uno_0",
+    "GND (2)"
+   ]
+  },
+  {
+   "a": [
+    "button_2",
+    "1"
+   ],
+   "b": [
+    "uno_0",
+    "D8"
+   ]
+  },
+  {
+   "a": [
+    "uno_0",
+    "5V"
+   ],
+   "b": [
+    "breadboard_4",
+    "T+10"
+   ]
+  },
+  {
+   "a": [
+    "irobst_1",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_4",
+    "T+15"
+   ]
+  },
+  {
+   "a": [
+    "lcd1602_3",
+    "VCC"
+   ],
+   "b": [
+    "breadboard_4",
+    "T+1"
+   ]
+  },
+  {
+   "a": [
+    "uno_0",
+    "GND (3)"
+   ],
+   "b": [
+    "breadboard_4",
+    "T-12"
+   ]
+  },
+  {
+   "a": [
+    "lcd1602_3",
+    "GND"
+   ],
+   "b": [
+    "breadboard_4",
+    "T-1"
+   ]
+  },
+  {
+   "a": [
+    "lcd1602_3",
+    "SDA"
+   ],
+   "b": [
+    "uno_0",
+    "SDA"
+   ]
+  },
+  {
+   "a": [
+    "lcd1602_3",
+    "SCL"
+   ],
+   "b": [
+    "uno_0",
+    "SCL"
+   ]
+  },
+  {
+   "a": [
+    "led-green_5",
+    "K"
+   ],
+   "b": [
+    "breadboard_4",
+    "T-25"
+   ]
+  },
+  {
+   "a": [
+    "led-green_5",
+    "A"
+   ],
+   "b": [
+    "res-220_6",
+    "2"
+   ]
+  },
+  {
+   "a": [
+    "res-220_6",
+    "1"
+   ],
+   "b": [
+    "uno_0",
+    "D2"
+   ]
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "kind": "var",
+     "id": "vn",
+     "name": "visiteurs",
+     "type": "int",
+     "init": 0,
+     "persist": true
+    },
+    {
+     "kind": "rule",
+     "id": "rs",
+     "src": {
+      "comp": "irobst_1",
+      "sig": "obstacle"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "set",
+       "id": "so",
+       "var": "vn",
+       "op": "+",
+       "v": 1
+      },
+      {
+       "kind": "act",
+       "id": "ap",
+       "comp": "led-green_5",
+       "act": "on",
+       "arg": null
+      },
+      {
+       "kind": "wait",
+       "id": "wq",
+       "ms": 300
+      },
+      {
+       "kind": "act",
+       "id": "ar",
+       "comp": "led-green_5",
+       "act": "off",
+       "arg": null
+      }
+     ],
+     "else": [],
+     "edge": true
+    },
+    {
+     "kind": "rule",
+     "id": "rv",
+     "src": {
+      "comp": "button_2",
+      "sig": "pressed"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "set",
+       "id": "st",
+       "var": "vn",
+       "op": "=",
+       "v": 0
+      },
+      {
+       "kind": "act",
+       "id": "au",
+       "comp": "@serial",
+       "act": "print",
+       "arg": "Compteur remis a zero"
+      }
+     ],
+     "else": [],
+     "hold": 2000
+    },
+    {
+     "kind": "rule",
+     "id": "rx",
+     "src": {
+      "comp": "@serial",
+      "sig": "line"
+     },
+     "op": "==",
+     "v": "zero",
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "set",
+       "id": "sw",
+       "var": "vn",
+       "op": "=",
+       "v": 0
+      }
+     ],
+     "else": []
+    },
+    {
+     "kind": "rule",
+     "id": "r10",
+     "src": null,
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "act",
+       "id": "ay",
+       "comp": "lcd1602_3",
+       "act": "text",
+       "arg": "Visiteurs",
+       "line": 1
+      },
+      {
+       "kind": "act",
+       "id": "az",
+       "comp": "lcd1602_3",
+       "act": "value",
+       "arg": null,
+       "what": {
+        "var": "vn"
+       },
+       "line": 2
+      }
+     ],
+     "else": []
+    },
+    {
+     "kind": "rule",
+     "id": "r12",
+     "src": {
+      "every": 10000
+     },
+     "op": ">",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "act",
+       "id": "a11",
+       "comp": "@serial",
+       "act": "show",
+       "arg": null,
+       "what": {
+        "var": "vn"
+       }
+      }
+     ],
+     "else": []
+    }
+   ],
+   "boards": {
+    "uno_0": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {}
+  }
+ }
+}

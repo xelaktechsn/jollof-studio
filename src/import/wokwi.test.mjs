@@ -110,7 +110,7 @@ test('Un fil par broche : alimentation et bus partagés passent par une breadboa
   assert.ok(W.filter(w => w.a[1].startsWith('T-') || w.b[1].startsWith('T-')).every(w => w.color === '#3a3f45'));
 });
 
-test('Programme hors interpréteur : mode fidèle sur Uno ; composants inconnus et broches perdues listés', () => {
+test('Programme hors du simulateur intégré sur Uno (le vrai compilateur le prend) ; composants inconnus et broches perdues listés', () => {
   const code = '#include <avr/io.h>\nvolatile uint8_t *p = &PORTB;\ntemplate<typename T> T twice(T x){ return x * 2; }\nvoid setup(){ DDRB |= _BV(5); }\nvoid loop(){ *p ^= _BV(5); }\n';
   const diagram = {
     parts: [
@@ -127,8 +127,8 @@ test('Programme hors interpréteur : mode fidèle sur Uno ; composants inconnus 
   assert.deepEqual(report.unknown.map(u => u.type), ['wokwi-ili9341', 'wokwi-lcd1602']);
   assert.ok(report.unknown[1].why); // LCD parallèle : la raison est donnée
   assert.equal(report.dropped.length, 1); // led1:X
-  assert.equal(project.settings.prog.boards.uno_1.engine, 'firmware');
-  assert.equal(report.engine, 'firmware');
+  assert.equal(project.settings.prog.boards.uno_1.engine, undefined); // plus de mode à choisir : le moteur se choisit seul
+  assert.ok(!report.notes.some(n => /simulateur intégré/.test(n)), 'carte à processeur émulé : rien à signaler');
   assert.ok(report.notes.some(n => /LiquidCrystal I2C/.test(n)));
 });
 

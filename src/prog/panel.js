@@ -8,8 +8,10 @@ import { driveBoard } from '../sim/drive.js';
 import { compile } from './lang.js';
 import { createRuntime } from './runtime.js';
 import { EMULATED, QEMU_KINDS, setQemuReady } from '../emu/boards.js';
-import { esp32Refusal } from '../emu/esp32-limits.js';
-import { generate, skeleton, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs } from './rules.js';
+import { esp32Refusal, UNBRIDGED } from '../emu/esp32-limits.js';
+import { generate, skeleton, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, TEXT_OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs,
+  SERIAL, SERIAL_ACTS, SHOWS, termsOf, termDefaults, srcSignal, varSignal, fmtTime, VAR_TYPE_LABELS, varText, seqText, uid, ident } from './rules.js';
+import './rules.css';
 import { QUANT, ENV, MODELS, NET_DEFAULT, envOf } from '../sim/models.js';
 import { createEditor, highlight } from './editor.js';
 import { createPlotter } from './plotter.js';
@@ -28,6 +30,10 @@ import { pkgI2c, pkgTypes } from '../sim/pkgparts.js';
 import { i2cAddress } from '../sim/pkgbus.js';
 import { analyze, inspect, firstMsg } from '../sim/circuit.js';
 import { partOf, isMotor } from '../sim/parts.js';
+import { I2C_CHIPS, chipAddr, netLevel } from '../sim/chips.js';
+import { STORE_I2C, storeAddr } from '../sim/storage.js';
+import { SENSOR_I2C, sensorAddr } from '../sim/i2csensors.js';
+import { syncCard } from '../emu/devices/sdcard.js';
 import { icon } from '../ui/icons.js';
 import * as audio from '../sim/audio.js';
 import { CANCEL, tl, COLON } from '../i18n/index.js';
@@ -87,14 +93,49 @@ export function createProgram(app) {
   const boards = () => comps().filter(c => boardOf(c));
   const board = () => { const bs = boards(); let b = bs.find(x => x.id === cur); if (!b) { b = bs[0] || null; cur = b && b.id; } return b; };
   /**
-   * Moteur d'exécution d'une carte : 'interp' (interpréteur, instantané, pas à pas), 'firmware' (vrai programme émulé)
-   * ou 'micropython' (Pico : le micrologiciel MicroPython émulé exécute les fichiers Python de la carte).
+   * Moteur d'exécution d'une carte, choisi seul (il n'y a plus de « mode » à choisir) :
+   * - 'micropython' : Pico programmé en Python (choix du langage) ;
+   * - 'firmware' : le vrai programme, compilé par arduino-cli, sur le processeur émulé, dès que la carte en a un et que
+   *   l'application installée trouve arduino-cli ;
+   * - 'interp' : le simulateur intégré, seulement là où le vrai n'existe pas (carte sans émulateur, version web,
+   *   arduino-cli absent, ESP32 avec Wi-Fi ou modules pas encore reliés à QEMU) et pour le débogueur pas à pas.
    */
+  const relaunchT = new Map(); // relance différée d'un programme compilé après une retouche du montage
+  let cliMissing = false; // arduino-cli introuvable pendant cette session : dit une fois, puis simulateur intégré
   const engineOf = b => {
     const e = b && P.boards[b.id];
     if (e && e.engine === 'micropython' && boardKind(b) === 'pico') return 'micropython';
-    return e && e.engine === 'firmware' && EMULATED.has(boardKind(b)) ? 'firmware' : 'interp';
+    return realOk(b) && !wantsDebug(b) ? 'firmware' : 'interp';
   };
+  /** Le vrai programme peut tourner sur cette carte (processeur émulé, compilateur ; ESP32 : ni Wi-Fi ni Bluetooth). */
+  function realOk(b) {
+    const kind = b && boardKind(b);
+    if (!kind || !EMULATED.has(kind) || !isTauri() || cliMissing) return false;
+    if (!QEMU_KINDS.has(kind)) return true;
+    const e = P.boards[b.id];
+    if (esp32Refusal(typeof (e && e.code) === 'string' ? e.code : '')) return false; // Wi-Fi, Bluetooth : pas de radio émulée
+    return !espModules(b).length; // modules que l'émulateur ne ferait pas répondre (aucun aujourd'hui)
+  }
+  /** Modules reliés à cet ESP32 que son émulateur ne fait pas répondre. */
+  function espModules(b) {
+    if (!UNBRIDGED.length) return [];
+    try { const sn = snapshot(); return comps().filter(c => UNBRIDGED.includes(c.type) && sn.inspect(c).board === b); } catch (e) { return []; }
+  }
+  /** Pourquoi cette carte tourne sur le simulateur intégré (texte pour le journal), ou null. */
+  function whyInterp(b) {
+    const kind = boardKind(b);
+    if (pyOf(b)) return null;
+    if (realOk(b)) return wantsDebug(b) ? tl('débogueur pas à pas') : null;
+    if (!EMULATED.has(kind) && !QEMU_KINDS.has(kind)) return tl('pas encore de processeur émulé pour cette carte');
+    if (!isTauri()) return tl('la version web ne peut pas compiler : installez l’application');
+    if (cliMissing) return tl('arduino-cli introuvable');
+    const esp = QEMU_KINDS.has(kind);
+    if (esp && !EMULATED.has(kind)) return tl('émulateur de l’ESP32 non installé');
+    const e = P.boards[b.id];
+    if (esp && esp32Refusal(typeof (e && e.code) === 'string' ? e.code : '')) return tl('Wi-Fi et Bluetooth : l’émulateur n’a pas de radio');
+    if (esp && espModules(b).length) return tl('modules {0} non reliés à l’émulateur de l’ESP32', [...new Set(espModules(b).map(c => c.name))].join(', '));
+    return null;
+  }
   const pyOf = b => !!b && engineOf(b) === 'micropython';
   /** Moteur provisoire d'une carte dont le vrai programme se compile. */
   const compilingStub = (logic, firmware = null) => ({
@@ -108,7 +149,8 @@ export function createProgram(app) {
   }
   /** Carte qui exécute la règle : celle de ses effecteurs, sinon celle de sa mesure. strict : sans repli sur la carte unique. */
   function ruleBoard(r, sn, strict) {
-    const cands = [...actsOf(r).map(a => byId(a.comp)), r.src && byId(r.src.comp)];
+    if (r.board) { const b = boards().find(x => x.id === r.board); if (b) return b; }
+    const cands = [...actsOf(r).map(a => byId(a.comp)), ...termsOf(r).map(t => t.src && t.src.comp && byId(t.src.comp))];
     for (const c of cands) {
       if (!c) continue;
       if (isMotor(c)) { const b = driveBoard(c, sn.A, sn.inspect); if (b) return b; continue; } // par son pilote, transistor ou relais
@@ -153,22 +195,30 @@ export function createProgram(app) {
 
   /* ---------- Pont vers le montage simulé ---------- */
   // Modules I2C et leur adresse. L'écran LCD répond à 0x27 et l'OLED à 0x3C, sauf adresse réglée sur le composant (c.inp.addr).
-  const I2C = ['bmp280', 'bme280', 'bh1750', 'oled', 'lcd1602', 'mpu6050'];
+  const I2C = ['bmp280', 'bme280', 'bh1750', 'oled', 'lcd1602', 'lcd2004', 'mpu6050', ...I2C_CHIPS, ...STORE_I2C, ...SENSOR_I2C];
   const i2cAddr = (c, def) => { const a = c.inp ? Math.trunc(+c.inp.addr) : 0; return a > 0 && a < 128 ? a : def; };
   /** Le projet a changé pendant la simulation (mémoire, journal) : enregistrement au plus toutes les 2 s. */
   let dirtyT = 0;
   const softDirty = () => { if (dirtyT) return; dirtyT = setTimeout(() => { dirtyT = 0; app.markDirty(); }, 2000); };
   const netData = () => P.net || (P.net = NET_DEFAULT());
+  const busProbes = new Map(); // carte → sonde de l'analyseur de bus (src/sim/buslog.js)
+  const probeOf = b => {
+    if (!app.busLog) return null;
+    if (!busProbes.has(b.id)) busProbes.set(b.id, app.busLog.probe(b.id, () => { const rt = rts.get(b.id); return rt && rt.clock ? rt.clock() : 0; }));
+    return busProbes.get(b.id);
+  };
   function makeHw(b) {
     const prof = boardOf(b), sim = () => app.sim();
     // Module I2C en paquet : son adresse, ou l'autre si sa broche d'adresse reçoit l'alimentation.
     const pkgAddr = c => { const I = pkgI2c(c.type); return I ? [i2cAddress(I, !!I.addressPin && sim().A.net({ comp: c, key: I.addressPin }).src.length > 0)] : null; };
-    const addr = c => pkgAddr(c) || (c.type === 'bmp280' || c.type === 'bme280' ? [sim().A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : 0x77] : c.type === 'bh1750' ? [sim().A.net({ comp: c, key: 'ADDR' }).src.length ? 0x5c : 0x23] : c.type === 'oled' ? [i2cAddr(c, 0x3c)] : c.type === 'lcd1602' ? [i2cAddr(c, 0x27)] : c.type === 'mpu6050' ? [0x68] : []);
+    const addr = c => pkgAddr(c) || (c.type === 'bmp280' || c.type === 'bme280' ? [sim().A.net({ comp: c, key: 'SDO' }).gnd.length ? 0x76 : 0x77] : c.type === 'bh1750' ? [sim().A.net({ comp: c, key: 'ADDR' }).src.length ? 0x5c : 0x23] : c.type === 'oled' ? [i2cAddr(c, 0x3c)] : c.type === 'lcd1602' || c.type === 'lcd2004' ? [i2cAddr(c, 0x27)] : STORE_I2C.includes(c.type) ? storeAddr(c, sim().A) : SENSOR_I2C.includes(c.type) ? sensorAddr(c, sim().A) : c.type === 'mpu6050' ? [0x68] : I2C_CHIPS.includes(c.type) ? chipAddr(c, sim().A) : []);
     const at = key => (sim().pinComps && sim().pinComps.get(b.id + '|' + key)) || [];
     /** Module câblé et alimenté (sinon le premier défaut de câblage). */
     const status = c => { const ins = sim().ins && sim().ins.get(c), ok = !!ins && ins.level !== 'err'; return { ok, msg: ok || !ins ? '' : firstMsg(ins) }; };
     return {
       kind: boardKind(b), label: `${b.name} (${prof.label})`, prof,
+      /** Sonde de l'analyseur de bus : I2C, SPI et série de cette carte (src/sim/buslog.js). */
+      probe: probeOf(b),
       /** Niveau imposé à une entrée : sortie d'un capteur, alimentation, masse, tirage externe, autre sortie. */
       read(key) {
         const s = sim(); if (!s.A) return null;
@@ -213,6 +263,10 @@ export function createProgram(app) {
       /** Mémoire de la carte qui survit au redémarrage : { ee : EEPROM en hexadécimal, prefs : Preferences }. */
       mem() { const m = P.mem || (P.mem = {}); return m[b.id] || (m[b.id] = { ee: '', prefs: {} }); },
       memChanged: softDirty,
+      /** Mémoire d'un module gardée avec le projet (EEPROM AT24C256, carte SD…) : un objet propre au composant. */
+      compMem(c) { const m = P.mem || (P.mem = {}); return m[c.id] || (m[c.id] = {}); },
+      /** Broches d'autres composants sur le même nœud que la broche key du module c : [{ comp, key }] (chaîne de MAX7219…). */
+      linked(c, key) { const s = sim(); if (!s.A || !c.pins || !c.pins[key]) return []; return s.A.members({ comp: c, key }).filter(m => m.comp !== c).map(m => ({ comp: m.comp, key: m.key })); },
       /** Réseaux Wi-Fi et journal du projet. */
       net: netData, netChanged: softDirty,
       /** Niveau d'une broche d'un module : 1 (alimentation ou sortie HIGH d'une carte), 0 (masse ou sortie LOW), null (en l'air). */
@@ -223,6 +277,14 @@ export function createProgram(app) {
         if (n.gnd.length) return 0;
         for (const g of n.gpio) { const rt = rts.get(g.comp.id), p = rt && rt.pins.get(g.key); if (p && p.mode === 1) return p.d ? 1 : 0; }
         return null;
+      },
+      /**
+       * Niveau du nœud d'une broche de module (entrées des puces logiques, sim/chips.js) : alimentation, masse, sortie
+       * d'une puce ou d'une carte, tirage par une résistance ; null : en l'air.
+       */
+      node(c, key) {
+        const s = sim(); if (!s.A) return null;
+        return netLevel(s.A, { comp: c, key }, g => { const rt = rts.get(g.comp.id), p = rt && rt.pins.get(g.key); return p && p.mode === 1 ? (p.d ? 1 : 0) : null; });
       },
       /** Broche de la carte reliée au TRIG du HC-SR04 dont ECHO est sur key : null si TRIG n'est pas sur cette carte. */
       trig(key) {
@@ -250,10 +312,8 @@ export function createProgram(app) {
   function launch(b, sn = snapshot()) {
     if (engineOf(b) === 'micropython') return launchPython(b);
     if (engineOf(b) === 'firmware') {
-      const fw = codeOf(b, sn), why = boardKind(b) === 'esp32' ? esp32Refusal(fw) : null;
+      const fw = codeOf(b, sn), why = QEMU_KINDS.has(boardKind(b)) ? esp32Refusal(fw) : null;
       if (!why) return launchFirmware(b, fw);
-      // Wi-Fi ou Bluetooth sur l'ESP32 : pas de radio dans l'émulateur, le programme tourne sur l'interpréteur.
-      log(b, `\n! ${why}\n`); app.status(`${b.name} : ${why}`, 'warn');
     }
     const code = codeOf(b, sn), res = compile(code, { ...ctxOf(b), debug: wantsDebug(b) });
     diag.set(b.id, { errors: res.errors, warnings: res.warnings });
@@ -263,12 +323,13 @@ export function createProgram(app) {
       const e = res.errors[0];
       app.status(tl('{0} : le programme ne compile pas, ligne {1} : {2}', b.name, e.line, e.msg), 'err');
       log(b, tl('\n✕ Erreur de compilation, ligne {0} : {1}\n', e.line, e.msg));
-      if (EMULATED.has(boardKind(b))) log(b, tl('Astuce : le mode d’exécution « Fidèle » compile le vrai C++ d’Arduino (pointeurs, classes, toutes les bibliothèques) et le fait tourner sur un processeur émulé.\n'));
+      if (EMULATED.has(boardKind(b)) && !isTauri()) log(b, tl('La version web ne connaît qu’une partie du C++ d’Arduino. L’application installée compile le vrai programme (pointeurs, classes, toutes les bibliothèques) et le fait tourner sur un processeur émulé.\n'));
       return false;
     }
     rts.set(b.id, attach(b, createRuntime(res.js, makeHw(b), res.debug || { globals: res.globals })));
     uploaded.set(b.id, code);
-    log(b, tl('{0}— {1} démarre —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
+    const why = whyInterp(b);
+    log(b, why ? tl('{0}— {1} démarre (simulateur intégré : {2}) —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name, why) : tl('{0}— {1} démarre —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
     return true;
   }
   /**
@@ -281,15 +342,22 @@ export function createProgram(app) {
     rts.delete(b.id); clearScreens(b);
     rts.set(b.id, compilingStub(boardOf(b).logic));
     fwDiag.set(b.id, { errors: [], warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
-    log(b, tl('{0}— {1} : compilation du vrai programme (mode fidèle)… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
-    // Compilateur et processeur émulé chargés à la demande : ils ne pèsent rien tant que le mode fidèle ne sert pas.
-    // Pico : RP2040 (rp2040js) ; Uno, Nano : ATmega328P (avr8js) ; ESP32 : QEMU, programme à part (esp32.js).
-    const pico = boardKind(b) === 'pico', esp = boardKind(b) === 'esp32';
+    log(b, tl('{0}— {1} : compilation du programme… —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
+    // Compilateur et processeur émulé chargés à la demande : ils ne pèsent rien tant qu'aucune carte ne tourne.
+    // Pico : RP2040 (rp2040js) ; Uno, Nano : ATmega328P, Mega : ATmega2560 (avr8js) ; ESP32 : QEMU, programme à part (esp32.js).
+    const pico = boardKind(b) === 'pico', esp = QEMU_KINDS.has(boardKind(b));
     Promise.all([import('../emu/compile.js'), pico ? import('../emu/rp2040.js') : esp ? import('../emu/esp32.js') : import('../emu/avr.js')]).then(([C, E]) => C.compileFirmware(code, boardKind(b), m => log(b, m + '\n')).then(res => [res, E])).then(([res, E]) => {
       if (fwJobs.get(b.id) !== token) return; // relancé ou arrêté entre-temps
       fwJobs.delete(b.id);
       if (!res.ok) {
         rts.delete(b.id);
+        // arduino-cli absent : dit une fois, puis la carte tourne sur le simulateur intégré (la simulation continue).
+        if (res.errors[0] && res.errors[0].cli) {
+          cliMissing = true; fwDiag.delete(b.id);
+          log(b, `\n! ${res.errors[0].msg}\n`); app.status(res.errors[0].msg, 'warn');
+          if (app.simOn()) launch(b);
+          render(); return;
+        }
         fwDiag.set(b.id, { errors: res.errors, warnings: [] }); diag.set(b.id, fwDiag.get(b.id));
         const e = res.errors[0];
         app.status(tl('{0} : le programme ne compile pas, ligne {1} : {2}', b.name, e.line, e.msg), 'err');
@@ -300,11 +368,11 @@ export function createProgram(app) {
       }
       let rt;
       try {
-        rt = pico ? E.createRp2040Runtime(res.image, makeHw(b)) : esp ? E.createEsp32Runtime(res.image, makeHw(b), { transport: qemuTransport(b.id) }) : E.createAvrRuntime(res.hex, makeHw(b));
+        rt = pico ? E.createRp2040Runtime(res.image, makeHw(b)) : esp ? E.createEsp32Runtime(res.image, makeHw(b), { transport: qemuTransport(b.id) }) : E.createAvrRuntime(res.hex, makeHw(b), { mcu: boardKind(b) === 'mega' ? 'atmega2560' : 'atmega328p' });
       } catch (e) { rts.delete(b.id); log(b, `\n✕ ${e.message}\n`); return; }
       rts.set(b.id, attach(b, rt));
       uploaded.set(b.id, code);
-      log(b, esp ? tl('— {0} démarre : vrai programme dans l’émulateur de l’ESP32 (QEMU, bêta) —\n', b.name) : tl('— {0} démarre : vrai programme sur processeur émulé —\n', b.name));
+      log(b, esp ? tl('— {0} démarre : programme compilé, dans l’émulateur de l’ESP32 (QEMU) —\n', b.name) : tl('— {0} démarre : programme compilé, sur processeur émulé —\n', b.name));
       // Serial du Pico : l'USB, que le PC n'ouvre qu'après le démarrage ; ce qui est écrit avant est perdu.
       if (pico && /\bSerial\s*\.\s*print/.test(code) && !/!\s*Serial\b/.test(code)) log(b, tl('Pico : Serial passe par l’USB, que le PC n’ouvre qu’une vingtaine de millisecondes après le démarrage ; ce qui est écrit avant est perdu, comme sur la vraie carte. Ajoutez while (!Serial) delay(10); après Serial.begin().\n'));
       if (b.id === cur) renderDiag();
@@ -372,7 +440,10 @@ export function createProgram(app) {
     render();
     return { n, bad };
   }
-  function stopAll() { fwJobs.clear(); pyRunNext.clear(); rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
+  function stopAll() {
+    // Cartes microSD du mode fidèle : les dernières écritures du programme rejoignent les fichiers du projet.
+    for (const c of comps()) if (c.type === 'sdcard' && syncCard(c, (P.mem || (P.mem = {}))[c.id] || (P.mem[c.id] = {}))) app.markDirty();
+    fwJobs.clear(); pyRunNext.clear(); rts.clear(); comps().forEach(c => { c.progScreen = null; }); uploaded.clear(); pendingPause = null; liveUi(true); }
   function frame(dt) {
     for (const [id, rt] of rts) {
       const b = byId(id);
@@ -409,17 +480,19 @@ export function createProgram(app) {
     if (atEnd) out.scrollTop = out.scrollHeight;
   }
   let paintQueued = false;
-  const schedulePaint = () => { if (paintQueued) return; paintQueued = true; requestAnimationFrame(() => { paintQueued = false; if (!$('#pane-prog').hidden) paintLog(); if (plot && serialView === 'plot') plot.kick(); }); };
+  /** Moniteur série affiché (il vit dans le panneau du bas, src/ui/shell.js : visible quand son onglet l'est). */
+  const serialShown = () => { const sec = document.querySelector('.serialSec'); return !!sec && sec.offsetParent !== null; };
+  const schedulePaint = () => { if (paintQueued) return; paintQueued = true; requestAnimationFrame(() => { paintQueued = false; if (serialShown()) paintLog(); if (plot && serialView === 'plot') plot.kick(); }); };
   function liveUi(force) {
     const b = board(), rt = b && rts.get(b.id);
     if ($('#progLive').hidden !== !rts.size) $('#progLive').hidden = !rts.size; // pastille d'onglet : pas d'écriture inutile
-    if ($('#pane-prog').hidden && !force) return;
+    if ($('#pane-prog').hidden && !serialShown() && !force) return;
     const st = $('#progState');
     let kind = 'off', text = app.simOn() ? tl('Pas de programme en cours') : tl('Simulation arrêtée');
     if (rt) {
       if (rt.state === 'compiling') { kind = 'pause'; text = rt.firmware === 'micropython' ? tl('Démarrage de MicroPython…') : tl('Compilation du vrai programme…'); }
       else if (rt.state === 'run' && rt.firmware === 'micropython') { kind = 'on'; text = rt.mpy && rt.mpy.busy ? tl('Envoi des fichiers à la carte…') : tl('En cours · MicroPython'); }
-      else if (rt.state === 'run') { kind = 'on'; text = rt.line == null ? tl('En cours · vrai programme (mode fidèle)') : tl('En cours · ligne {0}', rt.line); }
+      else if (rt.state === 'run') { kind = 'on'; text = rt.line == null ? tl('En cours · programme compilé') : tl('En cours · ligne {0}', rt.line); }
       else if (rt.state === 'paused') { const at = rt.debug.at; kind = 'pause'; text = at.fn ? tl('En pause · ligne {0} · {1}()', at.line, at.fn) : tl('En pause · ligne {0}', at.line); }
       else if (rt.state === 'error') { kind = 'err'; text = tl('Arrêté par une erreur, ligne {0}', rt.error.line); }
       else { kind = 'off'; text = tl('Terminé'); }
@@ -456,7 +529,7 @@ export function createProgram(app) {
     const b = board(); if (!b || !editor) return;
     // MicroPython : la carte juge le programme ; ses erreurs (Traceback) arrivent quand il s'exécute.
     if (pyOf(b)) { hookLines = null; diag.set(b.id, { errors: pyDiag.get(b.id) || [], warnings: [] }); renderDiag(); editor.setBreakpoints([], null); return; }
-    // Mode fidèle : c'est arduino-cli qui juge le programme (erreurs affichées après la compilation).
+    // Programme compilé : c'est arduino-cli qui le juge (erreurs affichées après la compilation).
     if (engineOf(b) === 'firmware') { hookLines = null; diag.set(b.id, fwDiag.get(b.id) || { errors: [], warnings: [] }); renderDiag(); applyBps(b); return; }
     // Compilé en mode débogage : on connaît aussi les lignes où un point d'arrêt peut arrêter le programme.
     const res = compile(editor.value, { ...ctxOf(b), debug: true });
@@ -484,13 +557,9 @@ export function createProgram(app) {
     const sel = $('#progBoard');
     sel.hidden = bs.length < 2;
     sel.innerHTML = bs.map(x => `<option value="${esc(x.id)}"${x === b ? ' selected' : ''}>${esc(x.name)} · ${esc(boardOf(x).label)}</option>`).join('');
-    const eng = $('#progEngine'), kind = boardKind(b), wantFw = !!(entry(b) && entry(b).engine === 'firmware');
-    if (eng) {
-      eng.hidden = !EMULATED.has(kind) && !QEMU_KINDS.has(kind);
-      const mp = eng.querySelector('option[value="micropython"]'); if (mp) mp.hidden = mp.disabled = kind !== 'pico';
-      // ESP32 en mode fidèle sans émulateur installé : le choix reste affiché, la note explique (et propose de l'installer).
-      eng.value = wantFw && QEMU_KINDS.has(kind) ? 'firmware' : engineOf(b);
-    }
+    // Langage du programme : le Pico se programme en C++ d'Arduino ou en MicroPython ; les autres cartes en C++ seulement.
+    const eng = $('#progEngine'), kind = boardKind(b);
+    if (eng) { eng.hidden = kind !== 'pico'; eng.value = pyOf(b) ? 'micropython' : 'cpp'; }
     qemuNote(b);
     renderRules();
     if (!editor) editor = createEditor($('#editor'), { onChange: onEdit, onRun: upload, onGutter: toggleBp });
@@ -786,13 +855,22 @@ export function createProgram(app) {
   }
 
   /* ---------- Règles : un arbre de conditions et d'actions ---------- */
+  // Une règle reste une ligne : « Quand [mesure] [compare] [valeur] ». Les options (« dès que », « depuis », marge,
+  // comparer à une autre mesure) sont derrière le petit bouton « ⋯ » ; « + et / ou » ajoute une condition. Les variables
+  // et les séquences sont des cartes à part, au même niveau que les règles.
+  const decl = id => P.rules.find(r => (r.kind === 'var' || r.kind === 'seq') && r.id === id) || null;
+  /** Composants, variables et séquences : ce que les phrases des règles nomment. */
+  const byAny = id => byId(id) || decl(id);
+  const varsAll = () => P.rules.filter(r => r.kind === 'var'), seqsAll = () => P.rules.filter(r => r.kind === 'seq');
+  const openAdv = new Set(); // conditions dont les options sont dépliées (règle:condition)
   const modeOf = (r, hasSrc) => (r.src && r.op === 'follow' ? 'follow' : r.src || hasSrc ? 'cond' : 'always');
   /** Chaque action redevient cohérente avec sa place (« suit la mesure » n'existe que sous « fait varier »). */
   function fixTree(r, hasSrc = false) {
     const inner = hasSrc || !!r.src;
-    for (const b of ['then', 'else']) for (const it of r[b]) {
+    for (const b of ['then', 'else']) for (const it of r[b] || []) {
       if (it.kind === 'rule') { fixTree(it, inner); continue; }
-      const d = byId(it.comp); if (!d) continue;
+      if (it.kind !== 'act' || it.comp === SERIAL) continue;
+      const d = byId(it.comp); if (!d || !ACTIONS[d.type]) continue;
       const ok = actsFor(d.type, b === 'then' ? modeOf(r, hasSrc) : 'cond').map(([k]) => k);
       if (!ok.includes(it.act)) { it.act = ok[0] || null; it.arg = defArg(d.type, it.act); }
       if (ACTIONS[d.type][it.act] && ACTIONS[d.type][it.act].follow && !Array.isArray(it.arg) && !ACTIONS[d.type][it.act].arg) it.arg = defArg(d.type, it.act);
@@ -803,64 +881,179 @@ export function createProgram(app) {
     const a = A.arg;
     if (a.kind === 'color') return `<input type="color" data-${f.startsWith('s:') ? 'sf' : 'f'}="${f.replace('s:', '')}" value="${esc(val || a.def)}" aria-label="${tl('Couleur')}">`;
     const attr = f.startsWith('s:') ? `data-sf="${f.slice(2)}"` : `data-f="${f}"`;
-    if (a.kind === 'text') return `<input type="text" ${attr} value="${esc(val ?? a.def)}" maxlength="21" aria-label="${tl('Texte affiché')}">`;
+    if (a.kind === 'text') return `<input type="text" ${attr} value="${esc(val ?? a.def)}" maxlength="${a.max || 21}" aria-label="${tl('Texte affiché')}">`;
     return `<span class="num"><input type="number" ${attr} value="${esc(val ?? a.def)}" min="${a.min}" max="${a.max}" step="${a.step || 1}" aria-label="${tl('Réglage')}">${a.unit ? `<small>${esc(a.unit)}</small>` : ''}</span>`;
   }
-  function condHtml(r, prof) {
-    const s = r.src && byId(r.src.comp), sig = s && signalOf(s.type, r.src.sig, prof);
-    const src = `<select data-f="src" aria-label="${tl('Déclencheur')}"><option value="">${tl('Toujours (à chaque tour de loop)')}</option>${comps().filter(isSensor).map(c => `<optgroup label="${esc(c.name)}">${Object.entries(SIGNALS[c.type]).map(([k, g]) => `<option value="${esc(c.id)}|${k}"${s === c && r.src.sig === k ? ' selected' : ''}>${esc(c.name)} · ${esc(g.kind === 'bool' ? (g.short || g.label).toLowerCase() : g.label)}</option>`).join('')}</optgroup>`).join('')}</select>`;
-    let cond = '';
-    if (sig && sig.kind === 'bool') cond = `<select data-f="v" aria-label="${tl('État')}"><option value="1"${r.v ? ' selected' : ''}>${esc(sig.label)}</option><option value="0"${r.v ? '' : ' selected'}>${esc(sig.neg)}</option></select>`;
-    else if (sig) {
-      cond = `<select data-f="op" aria-label="${tl('Comparaison')}">${Object.entries(OPS).map(([k, l]) => `<option value="${k}"${r.op === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
-      cond += r.op === 'follow'
-        ? `<span class="range">de <input type="number" step="any" data-f="from0" value="${r.from[0]}" aria-label="${tl('Mesure minimale')}"> ${tl('à')} <input type="number" step="any" data-f="from1" value="${r.from[1]}" aria-label="${tl('Mesure maximale')}">${sig.unit ? `<small>${esc(sig.unit)}</small>` : ''}</span>`
-        : `<span class="num"><input type="number" step="any" data-f="v" value="${r.v}" aria-label="${tl('Seuil')}">${sig.unit ? `<small>${esc(sig.unit)}</small>` : ''}</span>`;
-    }
-    return src + cond;
+  /* --- Sources : mesures, ligne reçue, variables, étapes, temps --- */
+  const srcKey = s => (!s ? '' : s.every ? 't:every' : s.start ? 't:start' : s.var ? `v:${s.var}` : s.seq ? `q:${s.seq}:${s.step || ''}` : s.comp === SERIAL ? `s:${s.sig || 'line'}` : `c:${s.comp}:${s.sig}`);
+  function srcDecode(v, old) {
+    if (!v) return null;
+    const [k, a, b] = v.split(':');
+    if (k === 't') return a === 'every' ? { every: (old && old.every) || 1000 } : { start: true };
+    if (k === 'v') return { var: a };
+    if (k === 'q') return { seq: a, step: b || null };
+    if (k === 's') return { comp: SERIAL, sig: a };
+    return { comp: a, sig: b };
   }
+  /** Liste des sources : { always: « Toujours », timed: minuteries et démarrage, values: seulement ce qui a une valeur }. */
+  function srcSelect(cur, f, { always = false, timed = true, values = false, none = null, kinds = null } = {}) {
+    const key = srcKey(cur), opt = (v, l) => `<option value="${esc(v)}"${v === key ? ' selected' : ''}>${esc(l)}</option>`;
+    const okKind = sig => !kinds || kinds.includes(sig.kind);
+    let html = always ? opt('', tl('Toujours (à chaque tour de loop)')) : none ? opt('', none) : '';
+    if (timed && !values) html += `<optgroup label="${tl('Temps')}">${opt('t:every', tl('Toutes les…'))}${opt('t:start', tl('Au démarrage'))}</optgroup>`;
+    html += comps().filter(isSensor).map(c => {
+      const sigs = Object.entries(SIGNALS[c.type]).filter(([k, g]) => (!values || k !== 'fault') && okKind(signalOf(c.type, k, null) || g));
+      return sigs.length ? `<optgroup label="${esc(c.name)}">${sigs.map(([k, g]) => opt(`c:${c.id}:${k}`, `${c.name} · ${g.kind === 'bool' ? (g.short || g.label).toLowerCase() : g.label}`)).join('')}</optgroup>` : '';
+    }).join('');
+    if (!kinds || kinds.includes('text')) html += `<optgroup label="${tl('Moniteur série')}">${opt('s:line', values ? tl('la ligne reçue') : tl('reçoit une ligne'))}</optgroup>`;
+    const vs = varsAll().filter(d => okKind(varSignal(d)));
+    if (vs.length) html += `<optgroup label="${tl('Variables')}">${vs.map(d => opt(`v:${d.id}`, d.name)).join('')}</optgroup>`;
+    if (!values) for (const q of seqsAll()) if (q.steps.length) html += `<optgroup label="${esc(tl('Séquence {0}', q.name))}">${q.steps.map(s => opt(`q:${q.id}:${s.id}`, tl('étape {0} active', s.name))).join('')}</optgroup>`;
+    return `<select data-f="${f}" aria-label="${tl('Mesure')}">${html}</select>`;
+  }
+  const sigOfSrc = (src, prof) => srcSignal(src, byAny, prof);
+  /** Une condition : source, comparaison, valeur ; options dépliables (⋯). first : première condition d'une règle de premier niveau. */
+  function termHtml(t, prof, { first = false, top = false, key = '' } = {}) {
+    const src = t.src, sig = src && !src.every && !src.start && !src.seq ? sigOfSrc(src, prof) : null;
+    let html = srcSelect(src, 'src', { always: first });
+    if (src && src.every) html += `<span class="num"><input type="number" step="any" min="0.01" data-f="every" value="${(src.every || 1000) / 1000}" aria-label="${tl('Période')}"><small>s</small></span>`;
+    else if (sig && sig.kind === 'bool') html += `<select data-f="v" aria-label="${tl('État')}"><option value="1"${t.v ? ' selected' : ''}>${esc(src.var ? tl('est vraie') : sig.label)}</option><option value="0"${t.v ? '' : ' selected'}>${esc(src.var ? tl('est fausse') : sig.neg)}</option></select>`;
+    else if (sig && sig.kind === 'text') {
+      const ops = Object.entries(TEXT_OPS).filter(([k]) => k !== 'any' || sig.event);
+      html += `<select data-f="op" aria-label="${tl('Comparaison')}">${ops.map(([k, l]) => `<option value="${k}"${t.op === k ? ' selected' : ''}>${esc(sig.event && k === '==' ? tl('reçoit') : l)}</option>`).join('')}</select>`;
+      if (t.op !== 'any') html += t.vs ? srcSelect(t.vs, 'vs', { values: true, kinds: ['text'] }) : `<input type="text" data-f="v" value="${esc(t.v ?? '')}" maxlength="32" aria-label="${tl('Texte')}">`;
+    } else if (sig) {
+      const ops = Object.entries(OPS).filter(([k]) => (k !== 'follow' || (first && top && !(t.more && t.more.length))) && (!sig.event || k === '=='));
+      if (sig.event) ops.unshift(['any', tl('reçoit n’importe quoi')]);
+      html += `<select data-f="op" aria-label="${tl('Comparaison')}">${ops.map(([k, l]) => `<option value="${k}"${t.op === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+      if (t.op === 'follow') html += `<span class="range">de <input type="number" step="any" data-f="from0" value="${t.from[0]}" aria-label="${tl('Mesure minimale')}"> ${tl('à')} <input type="number" step="any" data-f="from1" value="${t.from[1]}" aria-label="${tl('Mesure maximale')}">${sig.unit ? `<small>${esc(sig.unit)}</small>` : ''}</span>`;
+      else if (t.op !== 'any') html += t.vs ? srcSelect(t.vs, 'vs', { values: true, kinds: ['num', 'time'] })
+        : sig.kind === 'time' ? `<input type="time" data-f="v" value="${fmtTime(t.v)}" aria-label="${tl('Heure')}">`
+          : `<span class="num"><input type="number" step="any" data-f="v" value="${esc(t.v)}" aria-label="${tl('Seuil')}">${sig.unit ? `<small>${esc(sig.unit)}</small>` : ''}</span>`;
+    }
+    // Options : une fois (front), depuis (durée), marge (hystérésis), comparer à une autre mesure.
+    const can = src && !src.every && !src.start && t.op !== 'follow', open = openAdv.has(key) || !!(t.edge || t.hold || t.hyst || t.vs);
+    if (can) {
+      html += `<button type="button" class="tb mini rl-more" data-adv="${esc(key)}" aria-expanded="${open}" aria-label="${tl('Options de la condition')}" data-tip="${tl('Options : dès que, depuis, marge, comparer à une autre mesure')}">⋯</button>`;
+      if (open) {
+        const num = sig && sig.kind === 'num';
+        html += `<span class="rl-adv">${!(sig && sig.event) ? `<label><input type="checkbox" data-f="edge"${t.edge ? ' checked' : ''}>${tl('dès que (une seule fois)')}</label>` : ''}`
+          + `<label>${tl('depuis')} <input type="number" step="any" min="0" data-f="hold" value="${t.hold ? t.hold / 1000 : ''}" placeholder="0" aria-label="${tl('Durée')}"><small>s</small></label>`
+          + (num && /[<>]/.test(t.op || '') && !t.vs ? `<label>${tl('marge')} <input type="number" step="any" min="0" data-f="hyst" value="${t.hyst || ''}" placeholder="0" aria-label="${tl('Hystérésis')}">${sig.unit ? `<small>${esc(sig.unit)}</small>` : ''}</label>` : '')
+          + (sig && (sig.kind === 'num' || sig.kind === 'text') && !sig.event && t.op !== 'any' ? `<label><input type="checkbox" data-f="cmpsrc"${t.vs ? ' checked' : ''}>${tl('comparer à une autre valeur')}</label>` : '')
+          + '</span>';
+      }
+    }
+    return html;
+  }
+  const LINKS = { and: tl('et'), or: tl('ou'), andnot: tl('sauf si'), ornot: tl('ou si pas') };
+  function condHtml(r, prof, top) {
+    let html = `<div class="rrow" data-t=""><em>${tl('Quand')}</em>${termHtml(r, prof, { first: true, top, key: `${r.id}:` })}</div>`;
+    (r.src ? r.more || [] : []).forEach((t, i) => {
+      const link = (t.link === 'or' ? 'or' : 'and') + (t.not ? 'not' : '');
+      html += `<div class="rrow rl-term" data-t="${i}"><select data-f="link" class="rl-link" aria-label="${tl('Lien')}">${Object.entries(LINKS).map(([k, l]) => `<option value="${k}"${k === link ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>${termHtml(t, prof, { key: `${r.id}:${i}` })}<button type="button" class="tb mini" data-del="term" aria-label="${tl('Retirer cette condition')}">${icon('x')}</button></div>`;
+    });
+    if (r.src && r.op !== 'follow') html += `<div class="rl-addterm"><button type="button" class="add" data-add="term">${icon('plus')}${tl('et / ou…')}</button></div>`;
+    return html;
+  }
+  /* --- Éléments : action, variable, attente, étape --- */
+  const SCREEN_ROWS = { lcd1602: 2, lcd2004: 4, oled: 8, st7735: 8, ili9341: 15 };
   function actRow(it, mode) {
-    const d = byId(it.comp);
-    let html = `<select data-f="comp" aria-label="${tl('Effecteur')}"><option value="">${tl('— choisir —')}</option>${comps().filter(isActuator).map(c => `<option value="${esc(c.id)}"${d === c ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}</select>`;
-    if (d) {
-      const A = ACTIONS[d.type][it.act];
-      html += `<select data-f="act" aria-label="${tl('Action')}">${actsFor(d.type, mode).map(([k, a]) => `<option value="${k}"${it.act === k ? ' selected' : ''}>${esc(a.label)}</option>`).join('')}</select>${argHtml(A, it.arg, 'arg')}`;
+    const ser = it.comp === SERIAL, d = ser ? null : byId(it.comp);
+    let html = `<select data-f="comp" aria-label="${tl('Effecteur')}"><option value="">${tl('— choisir —')}</option>${comps().filter(isActuator).map(c => `<option value="${esc(c.id)}"${d === c ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="${SERIAL}"${ser ? ' selected' : ''}>${tl('Moniteur série')}</option></select>`;
+    const acts = ser ? Object.entries(SERIAL_ACTS) : d ? actsFor(d.type, mode === 'cond' ? 'any' : mode) : null;
+    if (acts) {
+      const A = ser ? SERIAL_ACTS[it.act] : ACTIONS[d.type][it.act];
+      html += `<select data-f="act" aria-label="${tl('Action')}">${acts.map(([k, a]) => `<option value="${k}"${it.act === k ? ' selected' : ''}>${esc(a.label)}</option>`).join('')}</select>${argHtml(A, it.arg, 'arg')}`;
       if (A && A.follow && Array.isArray(it.arg)) html += `<span class="range">de <input type="number" step="any" data-f="out0" value="${it.arg[0]}" aria-label="${tl('Sortie minimale')}"> ${tl('à')} <input type="number" step="any" data-f="out1" value="${it.arg[1]}" aria-label="${tl('Sortie maximale')}"></span>`;
+      if (A && (SHOWS.has(it.act) || A.what) && mode !== 'follow') html += srcSelect(it.what, 'what', { values: true, none: ser || A.what ? tl('— valeur —') : tl('la mesure de la règle') });
+      const rows = d && SCREEN_ROWS[d.type];
+      if (rows && it.act !== 'clear') html += `<select data-f="line" aria-label="${tl('Ligne')}"><option value="">${tl('ligne auto')}</option>${Array.from({ length: rows }, (_, i) => `<option value="${i + 1}"${+it.line === i + 1 ? ' selected' : ''}>${tl('ligne {0}', i + 1)}</option>`).join('')}</select>`;
     }
     return `<div class="act" data-aid="${esc(it.id)}">${html}<button type="button" class="tb mini" data-del="act" aria-label="${tl('Retirer cette action')}">${icon('x')}</button></div>`;
   }
+  function setRow(it) {
+    const d = decl(it.var);
+    let html = `<em class="rl-k">${tl('variable')}</em><select data-f="var" aria-label="${tl('Variable')}"><option value="">${tl('— choisir —')}</option>${varsAll().map(v => `<option value="${esc(v.id)}"${d === v ? ' selected' : ''}>${esc(v.name)}</option>`).join('')}</select>`;
+    if (d) {
+      const ops = d.type === 'bool' ? [['=', tl('prend la valeur')], ['toggle', tl('s’inverse')]] : d.type === 'text' ? [['=', tl('prend la valeur')]] : [['=', tl('prend la valeur')], ['+', tl('augmente de')], ['-', tl('diminue de')]];
+      html += `<select data-f="op" aria-label="${tl('Opération')}">${ops.map(([k, l]) => `<option value="${k}"${it.op === k ? ' selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+      if (it.op !== 'toggle') {
+        if (it.op === '=') html += srcSelect(it.src, 'setsrc', { values: true, none: tl('valeur fixe :') });
+        if (!it.src) html += d.type === 'bool' ? `<select data-f="v"><option value="1"${it.v ? ' selected' : ''}>${tl('vrai')}</option><option value="0"${it.v ? '' : ' selected'}>${tl('faux')}</option></select>`
+          : d.type === 'text' ? `<input type="text" data-f="v" maxlength="${d.len || 16}" value="${esc(it.v ?? '')}" aria-label="${tl('Texte')}">` : `<input type="number" step="any" data-f="v" value="${esc(it.v ?? 0)}" aria-label="${tl('Valeur')}">`;
+      }
+    }
+    return `<div class="act rl-set" data-aid="${esc(it.id)}">${html}<button type="button" class="tb mini" data-del="act" aria-label="${tl('Retirer')}">${icon('x')}</button></div>`;
+  }
+  const waitRow = it => `<div class="act rl-wait" data-aid="${esc(it.id)}"><em class="rl-k">${tl('puis attendre')}</em><span class="num"><input type="number" step="any" min="0.001" data-f="ms" value="${it.ms / 1000}" aria-label="${tl('Durée')}"><small>s</small></span><button type="button" class="tb mini" data-del="act" aria-label="${tl('Retirer')}">${icon('x')}</button></div>`;
+  function gotoRow(it) {
+    const key = it.seq ? `${it.seq}:${it.step || ''}` : '';
+    const opts = seqsAll().map(q => `<optgroup label="${esc(tl('Séquence {0}', q.name))}">${q.steps.map(s => `<option value="${esc(q.id)}:${esc(s.id)}"${key === `${q.id}:${s.id}` ? ' selected' : ''}>${esc(tl('passe à l’étape {0}', s.name))}</option>`).join('')}<option value="${esc(q.id)}:"${key === `${q.id}:` ? ' selected' : ''}>${tl('arrête la séquence')}</option></optgroup>`).join('');
+    return `<div class="act rl-goto" data-aid="${esc(it.id)}"><em class="rl-k">${tl('séquence')}</em><select data-f="goto" aria-label="${tl('Étape')}"><option value="">${tl('— choisir —')}</option>${opts}</select><button type="button" class="tb mini" data-del="act" aria-label="${tl('Retirer')}">${icon('x')}</button></div>`;
+  }
+  function itemHtml(it, mode, cx, inner) {
+    if (it.kind === 'rule') return ruleCard(it, cx, inner, false);
+    if (it.kind === 'set') return setRow(it);
+    if (it.kind === 'wait') return waitRow(it);
+    if (it.kind === 'goto') return gotoRow(it);
+    return actRow(it, mode);
+  }
+  const addsHtml = (b, follow) => `<div class="adds"><button type="button" class="add" data-add="act">${icon('plus')}action</button>${follow ? '' : `<button type="button" class="add" data-add="rule">${icon('plus')}condition${b === 'else' ? tl(' (sinon si)') : ''}</button>
+    <select class="rl-addsel" data-addsel aria-label="${tl('Ajouter')}"><option value="">${tl('+ autre…')}</option><option value="wait">${tl('puis attendre…')}</option><option value="set">${tl('changer une variable')}</option><option value="goto">${tl('passer à une étape')}</option><option value="serial">${tl('écrire sur le moniteur série')}</option></select>`}</div>`;
   function ruleCard(r, cx, hasSrc, top) {
     const mode = modeOf(r, hasSrc), inner = hasSrc || !!r.src;
     const branch = (b, label) => {
       const m = b === 'then' ? mode : 'cond', items = r[b].filter(it => mode !== 'follow' || it.kind === 'act');
-      return `<div class="branch" data-branch="${b}"><em>${label}</em><div class="items">${items.map(it => (it.kind === 'act' ? actRow(it, m) : ruleCard(it, cx, inner, false))).join('')}</div>
-        <div class="adds"><button type="button" class="add" data-add="act">${icon('plus')}action</button>${mode !== 'follow' ? `<button type="button" class="add" data-add="rule">${icon('plus')}condition${b === 'else' ? tl(' (sinon si)') : ''}</button>` : ''}</div></div>`;
+      return `<div class="branch" data-branch="${b}"><em>${label}</em><div class="items">${items.map(it => itemHtml(it, m, cx, inner)).join('')}</div>${addsHtml(b, mode === 'follow')}</div>`;
     };
-    const s = r.src && byId(r.src.comp), warn = [];
-    if (r.src && !s) warn.push(tl('la mesure choisie a été retirée du montage'));
-    else if (s && !cx.sn.inspect(s).board) warn.push(tl('{0} n’est relié à aucune carte', s.name));
-    r.then.concat(r.else).forEach(it => { if (it.kind !== 'act') return; const d = byId(it.comp); if (it.comp && !d) warn.push(tl('un effecteur a été retiré du montage')); else if (d && !ruleBoard({ src: null, then: [it], else: [] }, cx.sn, true)) warn.push(tl('{0} n’est relié à aucune carte', d.name)); });
+    const warn = [];
+    for (const t of termsOf(r)) {
+      if (!t.src || !t.src.comp || t.src.comp === SERIAL) continue;
+      const s = byId(t.src.comp);
+      if (!s) warn.push(tl('la mesure choisie a été retirée du montage'));
+      else if (!cx.sn.inspect(s).board) warn.push(tl('{0} n’est relié à aucune carte', s.name));
+    }
+    r.then.concat(r.else).forEach(it => { if (it.kind !== 'act' || it.comp === SERIAL) return; const d = byId(it.comp); if (it.comp && !d) warn.push(tl('un effecteur a été retiré du montage')); else if (d && !ruleBoard({ src: null, then: [it], else: [] }, cx.sn, true)) warn.push(tl('{0} n’est relié à aucune carte', d.name)); });
     const tag = top ? 'li' : 'div';
     return `<${tag} class="rule${top ? '' : ' nested'}" data-rid="${esc(r.id)}">
-      <div class="rh"><span class="rn">${cx.nums.get(r.id)}</span><p title="${esc(ruleText(r, byId, cx.prof))}">${esc(condText(r, byId, cx.prof))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer cette {0}', top ? tl('règle') : 'condition')}">${icon('trash')}</button></div>
-      <div class="rrow"><em>${tl('Quand')}</em>${condHtml(r, cx.prof)}</div>
+      <div class="rh"><span class="rn">${cx.nums.get(r.id) || ''}</span><p title="${esc(ruleText(r, byAny, cx.prof))}">${esc(condText(r, byAny, cx.prof))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer cette {0}', top ? tl('règle') : 'condition')}">${icon('trash')}</button></div>
+      ${condHtml(r, cx.prof, top)}
       ${branch('then', !r.src ? tl('Faire') : mode === 'follow' ? tl('Agit sur') : tl('Alors'))}
       ${r.src && mode !== 'follow' ? branch('else', tl('Sinon')) : ''}
       ${warn.length ? `<p class="rwarn">${tl('⚠ {0} : la règle ne s’applique pas tant que ce n’est pas réglé.', esc([...new Set(warn)].join(' · ')))}</p>` : ''}
     </${tag}>`;
   }
+  function varCard(d) {
+    const types = Object.entries(VAR_TYPE_LABELS).map(([k, l]) => `<option value="${k}"${d.type === k ? ' selected' : ''}>${esc(l)}</option>`).join('');
+    const init = d.type === 'bool' ? `<select data-f="init"><option value="1"${d.init ? ' selected' : ''}>${tl('vrai')}</option><option value="0"${d.init ? '' : ' selected'}>${tl('faux')}</option></select>`
+      : `<input type="${d.type === 'text' ? 'text' : 'number'}" step="any" data-f="init" value="${esc(d.init ?? '')}" aria-label="${tl('Valeur de départ')}"${d.type === 'text' ? ` maxlength="${d.len}"` : ''}>`;
+    return `<li class="rule rl-var" data-rid="${esc(d.id)}"><div class="rh"><span class="rn rl-badge">x</span><p>${esc(varText(d))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer cette variable')}">${icon('trash')}</button></div>
+      <div class="rrow"><em>${tl('Nom')}</em><input type="text" data-f="name" value="${esc(d.name)}" maxlength="24" aria-label="${tl('Nom de la variable')}"><select data-f="type" aria-label="${tl('Type')}">${types}</select></div>
+      <div class="rrow"><em>${tl('Départ')}</em>${init}${d.type === 'text' ? `<span class="num">${tl('au plus')} <input type="number" min="1" max="64" data-f="len" value="${d.len}"><small>${tl('caractères')}</small></span>` : ''}<label class="rl-chk"><input type="checkbox" data-f="persist"${d.persist ? ' checked' : ''}>${tl('gardée hors tension (EEPROM)')}</label></div></li>`;
+  }
+  function seqCard(q, cx) {
+    const stepOpt = cur => `<option value=""${cur ? '' : ' selected'}>${tl('fin (arrêt)')}</option>${q.steps.map(s => `<option value="${esc(s.id)}"${cur === s.id ? ' selected' : ''}>${esc(s.name)}</option>`).join('')}`;
+    const steps = q.steps.map((s, i) => `<div class="rl-step" data-sid="${esc(s.id)}"><div class="rrow"><em>${i ? tl('Étape') : tl('1re étape')}</em><input type="text" data-f="sname" value="${esc(s.name)}" maxlength="24" aria-label="${tl('Nom de l’étape')}"><button type="button" class="tb mini" data-del="step" aria-label="${tl('Supprimer cette étape')}">${icon('x')}</button></div>
+      <div class="branch" data-branch="do"><em>${tl('En entrant')}</em><div class="items">${s.do.map(it => itemHtml(it, 'cond', cx, true)).join('')}</div>${addsHtml('do', false)}</div>
+      ${(s.go || []).map(gg => `<div class="rrow rl-go" data-gid="${esc(gg.id)}"><em>${tl('Puis')}</em><span class="num">${tl('après')} <input type="number" step="any" min="0" data-f="after" value="${gg.after ? gg.after / 1000 : ''}" placeholder="0"><small>s</small></span><span class="rl-when" data-t="when">${srcSelect(gg.when && gg.when.src, 'src', { none: tl('sans condition') })}${gg.when && gg.when.src ? termHtml(gg.when, cx.prof, { key: `${gg.id}:w` }).replace(/^<select[^]*?<\/select>/, '') : ''}</span><span>→</span><select data-f="to" aria-label="${tl('Étape suivante')}">${stepOpt(gg.to)}</select><button type="button" class="tb mini" data-del="go" aria-label="${tl('Retirer cette transition')}">${icon('x')}</button></div>`).join('')}
+      <div class="adds"><button type="button" class="add" data-add="go">${icon('plus')}${tl('transition')}</button></div></div>`).join('');
+    return `<li class="rule rl-seq" data-rid="${esc(q.id)}"><div class="rh"><span class="rn rl-badge">⇢</span><p title="${esc(seqText(q, byAny, cx.prof))}">${esc(tl('Séquence {0} : {1} étape(s), une seule active à la fois', q.name, q.steps.length))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer cette séquence')}">${icon('trash')}</button></div>
+      <div class="rrow"><em>${tl('Nom')}</em><input type="text" data-f="name" value="${esc(q.name)}" maxlength="24" aria-label="${tl('Nom de la séquence')}"><select data-f="start" aria-label="${tl('Départ')}"><option value="boot"${q.start !== 'stopped' ? ' selected' : ''}>${tl('démarre avec la carte')}</option><option value="stopped"${q.start === 'stopped' ? ' selected' : ''}>${tl('attend qu’une règle la lance')}</option></select></div>
+      ${steps}<div class="adds"><button type="button" class="add" data-add="step">${icon('plus')}${tl('étape')}</button></div></li>`;
+  }
   function renderRules() {
     const b = board(); if (!b) return;
     const sn = snapshot(), list = rulesOf(b, sn), cx = { sn, prof: boardOf(b), nums: numberRules(list) };
-    $('#ruleCount').textContent = list.length || '';
-    $('#rules').innerHTML = list.map(r => ruleCard(r, cx, false, true)).join('');
+    $('#ruleCount').textContent = list.filter(r => r.kind === 'rule').length || '';
+    $('#rules').innerHTML = list.map(r => (r.kind === 'var' ? varCard(r) : r.kind === 'seq' ? seqCard(r, cx) : ruleCard(r, cx, false, true))).join('');
     $('#rulesHint').hidden = !!list.length;
     $('#ruleAdd').disabled = !comps().some(isActuator);
     renderStates(sn);
   }
   /** Règles ou états changés : code régénéré, et relancé tout de suite si la simulation tourne. */
   function rulesChanged() {
-    P.rules.forEach(r => fixTree(r));
+    P.rules.forEach(r => { if (r.kind === 'rule') fixTree(r); });
     const sn = snapshot();
     for (const b of boards()) {
       if (!P.rules.some(r => ruleBoard(r, sn) === b) && !Object.keys(P.states).some(id => { const c = byId(id); return c && sn.inspect(c).board === b; })) continue;
@@ -873,56 +1066,129 @@ export function createProgram(app) {
     if (b && editor) { const e = entry(b); if (!e || e.auto) { editor.value = codeOf(b, sn); check(); } }
     renderCodeMode(); app.refreshSel();
   }
-  const flash = sel => requestAnimationFrame(() => { const el = $(sel); if (!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); const f = el.querySelector('select'); if (f) f.focus({ preventScroll: true }); });
+  const flash = sel => requestAnimationFrame(() => { const el = $(sel); if (!el) return; el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash'); el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); const f = el.querySelector('select, input'); if (f) f.focus({ preventScroll: true }); });
+  /** Condition éditée : la règle elle-même, une de ses conditions ajoutées, ou la condition d'une transition. */
+  function termOf(el, owner) {
+    const tEl = el.closest('[data-t]'), k = tEl ? tEl.dataset.t : '';
+    if (k === 'when') return owner.when || (owner.when = { src: null, op: '>', v: 0 });
+    if (k !== '' && owner.more) return owner.more[+k] || owner;
+    return owner;
+  }
+  function onTermField(t, f, el, prof, isGo) {
+    const v = el.value;
+    if (f === 'src') {
+      const src = srcDecode(v, t.src);
+      if (isGo && !src) { t.src = null; return; }
+      t.src = src; delete t.vs; delete t.hyst;
+      if (src && !src.every && !src.start && !src.seq) { const sg = sigOfSrc(src, prof); Object.assign(t, termDefaults(sg)); if (sg && sg.kind === 'num' && sg.range) t.from = [...sg.range]; }
+      else { t.op = '=='; t.v = 1; }
+      if (!src) { delete t.more; delete t.edge; delete t.hold; }
+    }
+    if (f === 'every' && t.src) t.src.every = Math.max(1, Math.round((+v || 1) * 1000));
+    if (f === 'op') { t.op = v; if (v === 'follow') { delete t.more; delete t.edge; delete t.hold; } }
+    if (f === 'v') { const sg = t.src && sigOfSrc(t.src, prof); t.v = sg && sg.kind === 'text' ? v : sg && sg.kind === 'time' ? ((+v.split(':')[0] || 0) * 60 + (+v.split(':')[1] || 0)) : +v || 0; }
+    if (f === 'from0' || f === 'from1') t.from[f === 'from0' ? 0 : 1] = +v || 0;
+    if (f === 'edge') { if (el.checked) t.edge = true; else delete t.edge; }
+    if (f === 'hold') { const ms = Math.round((+v || 0) * 1000); if (ms > 0) t.hold = ms; else delete t.hold; }
+    if (f === 'hyst') { const h = Math.abs(+v || 0); if (h) t.hyst = h; else delete t.hyst; }
+    if (f === 'cmpsrc') { if (el.checked) { const sg = sigOfSrc(t.src, prof); t.vs = sg && sg.kind === 'text' ? { comp: SERIAL, sig: 'line' } : (() => { const c = comps().find(x => isSensor(x) && x.id !== (t.src && t.src.comp)); return c ? { comp: c.id, sig: Object.keys(SIGNALS[c.type])[0] } : null; })(); if (!t.vs) delete t.vs; else delete t.hyst; } else delete t.vs; }
+    if (f === 'vs') t.vs = srcDecode(v);
+    if (f === 'link') { t.link = v.startsWith('or') ? 'or' : 'and'; if (v.endsWith('not')) t.not = true; else delete t.not; }
+  }
   function onRuleField(el) {
     const prof = board() && boardOf(board()), f = el.dataset.f, v = el.value;
-    const aEl = el.closest('[data-aid]');
-    if (aEl) {
-      const hit = findById(P.rules, aEl.dataset.aid); if (!hit) return;
-      const it = hit.it, d = byId(it.comp);
-      if (f === 'comp') { it.comp = v || null; it.act = null; it.arg = null; }
-      if (f === 'act' && d) { it.act = v; it.arg = defArg(d.type, v); }
-      if (f === 'arg') it.arg = el.type === 'number' ? +v || 0 : v;
-      if ((f === 'out0' || f === 'out1') && Array.isArray(it.arg)) it.arg[f === 'out0' ? 0 : 1] = +v || 0;
-    } else {
-      const rEl = el.closest('[data-rid]'), hit = rEl && findById(P.rules, rEl.dataset.rid); if (!hit) return;
-      const r = hit.it;
-      if (f === 'src') {
-        if (!v) r.src = null;
-        else {
-          const [id, key] = v.split('|'), c = byId(id), sg = c && signalOf(c.type, key, prof);
-          if (sg) { r.src = { comp: id, sig: key }; if (sg.kind === 'bool') { r.op = '=='; r.v = 1; } else { if (r.op === '==') r.op = '>'; r.v = sg.def; r.from = [...(sg.range || [0, 100])]; } }
-        }
+    const holder = el.closest('[data-aid],[data-gid],[data-sid],[data-rid]'); if (!holder) return;
+    const id = holder.dataset.aid || holder.dataset.gid || holder.dataset.sid || holder.dataset.rid, hit = findById(P.rules, id); if (!hit) return;
+    const it = hit.it;
+    if (holder.dataset.aid) {
+      if (it.kind === 'set') {
+        if (f === 'var') { it.var = v || null; it.op = '='; it.v = 0; delete it.src; }
+        if (f === 'op') it.op = v;
+        if (f === 'setsrc') { if (v) it.src = srcDecode(v); else delete it.src; }
+        if (f === 'v') { const d = decl(it.var); it.v = d && d.type === 'text' ? v : d && d.type === 'bool' ? v === '1' : +v || 0; }
+      } else if (it.kind === 'wait') { if (f === 'ms') it.ms = Math.max(1, Math.round((+v || 0) * 1000)); }
+      else if (it.kind === 'goto') { const [q, s] = v.split(':'); it.seq = q || null; it.step = s || null; }
+      else {
+        const d = it.comp === SERIAL ? null : byId(it.comp), type = it.comp === SERIAL ? SERIAL : d && d.type;
+        if (f === 'comp') { it.comp = v || null; it.act = v === SERIAL ? 'print' : null; it.arg = v === SERIAL ? defArg(SERIAL, 'print') : null; delete it.what; delete it.line; }
+        if (f === 'act' && type) { it.act = v; it.arg = defArg(type, v); }
+        if (f === 'arg') it.arg = el.type === 'number' ? +v || 0 : v;
+        if ((f === 'out0' || f === 'out1') && Array.isArray(it.arg)) it.arg[f === 'out0' ? 0 : 1] = +v || 0;
+        if (f === 'what') { if (v) it.what = srcDecode(v); else delete it.what; }
+        if (f === 'line') { if (v) it.line = +v; else delete it.line; }
       }
-      if (f === 'op') r.op = v;
-      if (f === 'v') r.v = +v || 0;
-      if (f === 'from0' || f === 'from1') r.from[f === 'from0' ? 0 : 1] = +v || 0;
-    }
+    } else if (holder.dataset.gid) {
+      if (f === 'after') it.after = Math.max(0, Math.round((+v || 0) * 1000));
+      else if (f === 'to') it.to = v || null;
+      else { const t = termOf(el, it); onTermField(t, f, el, prof, true); if (!t.src) it.when = null; }
+    } else if (holder.dataset.sid) {
+      if (f === 'sname') it.name = ident(v.trim()) || it.name;
+    } else if (it.kind === 'var') {
+      if (f === 'name') { const n = ident(v.trim()); if (n && !P.rules.some(x => x !== it && x.kind === 'var' && x.name === n)) it.name = n; }
+      if (f === 'type') { it.type = v; migrate(it); }
+      if (f === 'init') it.init = it.type === 'text' ? v.slice(0, it.len) : it.type === 'bool' ? v === '1' : +v || 0;
+      if (f === 'len') { it.len = Math.max(1, Math.min(64, +v | 0 || 16)); migrate(it); }
+      if (f === 'persist') it.persist = el.checked;
+    } else if (it.kind === 'seq') {
+      if (f === 'name') it.name = ident(v.trim()) || it.name;
+      if (f === 'start') it.start = v;
+    } else onTermField(termOf(el, it), f, el, prof, false);
     rulesChanged();
-    const again = el.closest('[data-aid]') ? $(`[data-aid="${el.closest('[data-aid]').dataset.aid}"] [data-f="${f}"]`) : null;
+    const again = holder.dataset.aid ? $(`[data-aid="${holder.dataset.aid}"] [data-f="${f}"]`) : null;
     if (again && el.tagName !== 'SELECT') again.focus();
   }
-  /** + action / + condition dans une branche. */
-  function addItem(btn) {
-    const rEl = btn.closest('[data-rid]'), hit = rEl && findById(P.rules, rEl.dataset.rid); if (!hit) return;
-    const r = hit.it, b = btn.closest('[data-branch]').dataset.branch, sn = snapshot(), home = board();
+  /** + action / + condition / + autre… dans une branche ; + condition (et / ou), + étape, + transition. */
+  function addItem(btn, kind = btn.dataset.add) {
+    const holder = btn.closest('[data-sid],[data-rid]'), hit = holder && findById(P.rules, holder.dataset.sid || holder.dataset.rid); if (!hit) return;
+    const r = hit.it, sn = snapshot(), home = board();
+    if (kind === 'term') {
+      const sensors = comps().filter(c => isSensor(c) && (!home || sn.inspect(c).board === home));
+      const c = sensors.find(x => !termsOf(r).some(t => t.src && t.src.comp === x.id)) || sensors[0];
+      const src = c ? { comp: c.id, sig: Object.keys(SIGNALS[c.type])[0] } : { every: 1000 };
+      const t = { src, link: 'and', ...(c ? termDefaults(signalOf(c.type, src.sig, home ? boardOf(home) : null)) : { op: '==', v: 1 }) };
+      (r.more || (r.more = [])).push(t); rulesChanged(); return;
+    }
+    if (kind === 'step') { r.steps.push({ kind: 'step', id: uid('e'), name: tl('Etape{0}', r.steps.length + 1).replace(/\W/g, ''), do: [], go: [] }); rulesChanged(); return; }
+    if (kind === 'go') { const i = hit.list.indexOf(r), nx = hit.list[i + 1] || hit.list[0]; r.go.push({ kind: 'go', id: uid('g'), after: 1000, when: null, to: nx ? nx.id : null }); rulesChanged(); return; }
+    const b = btn.closest('[data-branch]').dataset.branch, list = r[b];
     const onHome = c => !home || sn.inspect(c).board === home || isMotor(c);
-    const lastAct = [...r[b]].reverse().find(it => it.kind === 'act' && byId(it.comp)) || actsOf(r).find(it => byId(it.comp));
+    const lastAct = [...list].reverse().find(it => it.kind === 'act' && byId(it.comp)) || actsOf(r).find(it => byId(it.comp));
     const eff = (lastAct && byId(lastAct.comp)) || comps().find(c => isActuator(c) && onHome(c)) || comps().find(isActuator) || null;
     let item;
-    if (btn.dataset.add === 'act') item = actItem(eff, null);
-    else {
+    if (kind === 'act') item = actItem(eff, null);
+    else if (kind === 'wait') item = { kind: 'wait', id: uid('a'), ms: 1000 };
+    else if (kind === 'serial') item = { kind: 'act', id: uid('a'), comp: SERIAL, act: 'print', arg: defArg(SERIAL, 'print') };
+    else if (kind === 'set') {
+      let d = varsAll()[0];
+      if (!d) { d = migrate({ kind: 'var', id: uid('v'), name: tl('compteur'), type: 'int', init: 0 }); P.rules.unshift(d); }
+      item = { kind: 'set', id: uid('a'), var: d.id, op: d.type === 'int' ? '+' : '=', v: d.type === 'int' ? 1 : d.init };
+    } else if (kind === 'goto') {
+      let q = seqsAll()[0];
+      if (!q) { q = newSeq(); P.rules.push(q); }
+      item = { kind: 'goto', id: uid('a'), seq: q.id, step: q.steps[0] ? q.steps[0].id : null };
+    } else {
       const sensors = comps().filter(c => isSensor(c) && onHome(c));
       const src = sensors.find(c => !r.src || c.id !== r.src.comp) || sensors[0] || null;
       item = newRule(src, eff, home ? boardOf(home) : null);
     }
-    r[b].push(item);
+    list.push(item);
     rulesChanged();
-    flash(`[data-${item.kind === 'act' ? 'aid' : 'rid'}="${item.id}"]`);
+    flash(`[data-${item.kind === 'rule' ? 'rid' : 'aid'}="${item.id}"]`);
+  }
+  function newSeq() {
+    const n = seqsAll().length + 1, a = { kind: 'step', id: uid('e'), name: 'Etape1', do: [], go: [] }, b = { kind: 'step', id: uid('e'), name: 'Etape2', do: [], go: [] };
+    a.go.push({ kind: 'go', id: uid('g'), after: 1000, when: null, to: b.id }); b.go.push({ kind: 'go', id: uid('g'), after: 1000, when: null, to: a.id });
+    return migrate({ kind: 'seq', id: uid('s'), name: n > 1 ? `sequence${n}` : 'sequence', start: 'boot', steps: [a, b] });
   }
   function removeItem(btn) {
-    const el = btn.dataset.del === 'act' ? btn.closest('[data-aid]') : btn.closest('[data-rid]');
-    const hit = el && findById(P.rules, el.dataset.aid || el.dataset.rid); if (!hit) return;
+    const k = btn.dataset.del;
+    if (k === 'term') {
+      const rEl = btn.closest('[data-rid],[data-gid]'), hit = rEl && findById(P.rules, rEl.dataset.rid || rEl.dataset.gid), i = +btn.closest('[data-t]').dataset.t;
+      if (hit && hit.it.more) { hit.it.more.splice(i, 1); if (!hit.it.more.length) delete hit.it.more; }
+      rulesChanged(); return;
+    }
+    const el = k === 'act' ? btn.closest('[data-aid]') : k === 'step' ? btn.closest('[data-sid]') : k === 'go' ? btn.closest('[data-gid]') : btn.closest('[data-rid]');
+    const hit = el && findById(P.rules, el.dataset.aid || el.dataset.sid || el.dataset.gid || el.dataset.rid); if (!hit) return;
     hit.list.splice(hit.list.indexOf(hit.it), 1);
     rulesChanged();
   }
@@ -941,6 +1207,14 @@ export function createProgram(app) {
     } else if (mode === 'code') app.status(tl('Règle enregistrée, mais le programme de {0} est écrit à la main : choisissez « Règles » pour qu’elle s’applique.', b.name), 'warn');
     else if (flashIt) flash(`#rules [data-rid="${r.id}"]`);
     return r;
+  }
+  /** + Variable, + Séquence (boutons à côté de « + Règle »). */
+  function addDecl(kind) {
+    const b = board();
+    const d = kind === 'var' ? migrate({ kind: 'var', id: uid('v'), name: (() => { let n = 1; while (varsAll().some(v => v.name === `variable${n}`)) n++; return `variable${n}`; })(), type: 'int', init: 0 }) : newSeq();
+    if (b && boards().length > 1) d.board = b.id;
+    if (kind === 'var') P.rules.unshift(d); else P.rules.push(d);
+    rulesChanged(); flash(`#rules [data-rid="${d.id}"]`);
   }
 
   /* ---------- États par défaut ---------- */
@@ -1019,7 +1293,7 @@ export function createProgram(app) {
     const prof = boardOf(board() || c) || null, mine = P.rules.filter(r => involves(r, c.id)), st = stateHtml(c, false);
     return `<div class="behav"><h4>${tl('{0}Comportement', icon('workflow'))}</h4>
       ${st ? `<div class="bstate"><small>${isActuator(c) ? tl('État par défaut') : tl('Au lancement de la simulation')}</small>${st}</div>` : ''}
-      ${mine.length ? `<ul>${mine.map(r => `<li data-rule="${esc(r.id)}" title="${tl('Modifier cette règle')}">${esc(ruleText(r, byId, prof))}</li>`).join('')}</ul>` : `<p class="note">${isActuator(c) ? tl('Dites ce que doit faire {0} : s’allumer quand on appuie sur un bouton, tourner selon un potentiomètre…', esc(c.name)) : tl('Dites ce qui doit se passer selon {0} : allumer une LED, déclencher un relais…', esc(c.name))}</p>`}
+      ${mine.length ? `<ul>${mine.map(r => `<li data-rule="${esc(r.id)}" title="${tl('Modifier cette règle')}">${esc(ruleText(r, byAny, prof))}</li>`).join('')}</ul>` : `<p class="note">${isActuator(c) ? tl('Dites ce que doit faire {0} : s’allumer quand on appuie sur un bouton, tourner selon un potentiomètre…', esc(c.name)) : tl('Dites ce qui doit se passer selon {0} : allumer une LED, déclencher un relais…', esc(c.name))}</p>`}
       <button type="button" class="btn wide${mine.length ? '' : ' primary'}" data-prog="rule">${icon('plus')}<span>${tl('Programmer {0}', esc(c.name))}</span></button></div>`;
   }
   function onBehavior(e, c) {
@@ -1033,7 +1307,7 @@ export function createProgram(app) {
     const dst = isActuator(c) ? c : comps().find(x => isActuator(x) && sameBoard(x)) || null;
     app.setTab('prog');
     addRule(src, dst);
-    const rb = board(), text = ruleText(P.rules[P.rules.length - 1], byId, boardOf(rb || c)), m = rb ? progMode(rb) : 'rules';
+    const rb = board(), text = ruleText(P.rules[P.rules.length - 1], byAny, boardOf(rb || c)), m = rb ? progMode(rb) : 'rules';
     if (m === 'blocks') app.status(tl('Règle ajoutée en blocs, à la fin de « en boucle » : {0}', text), 'ok');
     else if (m === 'rules') app.status(tl('Règle ajoutée : {0} Réglez-la dans l’onglet Code.', text), 'ok'); // en mode Code, addRule a déjà prévenu
   }
@@ -1201,7 +1475,7 @@ export function createProgram(app) {
     if (plot) { const b = board(); plot.select(src === 'real' ? REAL : b && b.id); }
     logDirty = true; paintLog();
     clearInterval(portPoll); portPoll = 0;
-    if (src === 'real') { refreshPorts(); portPoll = setInterval(() => { if (!$('#pane-prog').hidden && !real.connected()) refreshPorts(); }, 1500); }
+    if (src === 'real') { refreshPorts(); portPoll = setInterval(() => { if (serialShown() && !real.connected()) refreshPorts(); }, 1500); }
     paintReal();
   }
   /** Ports de la carte : les cartes USB d'abord ; une carte qui vient d'être branchée est choisie d'elle-même. */
@@ -1282,7 +1556,7 @@ export function createProgram(app) {
     plot = createPlotter({
       canvas: $('#plotCv'), legend: $('#plotLegend'), win: $('#plotWin'), hold: $('#plotHold'), clear: $('#plotClear'), csv: $('#plotCsv'),
       fps: Q.simFps, light: LIGHT,
-      shown: () => serialView === 'plot' && !$('#pane-prog').hidden && !$('#progMain').hidden,
+      shown: () => serialView === 'plot' && serialShown(),
       clock: id => { if (id === REAL) return real.clock(); const rt = rts.get(id); return rt ? rt.clock() : null; },
       name: id => { if (id === REAL) return tl('Carte réelle'); const b = byId(id); return b ? b.name : id; },
       save: (blob, name) => saveFile(blob, name, tl('Mesures (tableur)'), 'csv').catch(e => app.status(tl('Enregistrement impossible : ') + (e.message || e), 'err'))
@@ -1301,25 +1575,24 @@ export function createProgram(app) {
       <button type="button" class="btn small" id="qemuInstall" hidden>${icon('upload')}<span>${tl('Installer')}</span></button></p>`);
     $('#qemuInstall').onclick = installQemu;
   }
-  /** Note sous la barre : ESP32 en mode fidèle, émulateur absent (installer) ou présent (limites de la bêta). */
+  /** Note sous la barre (ESP32) : pourquoi il tourne sur le simulateur intégré, et l'émulateur à installer s'il manque. */
   function qemuNote(b) {
     qemuUi();
     const el = $('#qemuNote'), btn = $('#qemuInstall'), kind = b ? boardKind(b) : '';
-    const want = !!b && QEMU_KINDS.has(kind) && !!entry(b) && entry(b).engine === 'firmware';
+    const want = !!b && QEMU_KINDS.has(kind) && !pyOf(b) && !realOk(b) && isTauri();
     el.hidden = !want; btn.hidden = true;
     if (!want) return;
     let text;
-    if (EMULATED.has(kind)) text = tl('Mode fidèle de l’ESP32 (bêta) : le vrai programme tourne dans QEMU, l’émulateur d’Espressif. Pas de Wi-Fi ni de Bluetooth ; les modules I2C, SPI et 1-Wire ne répondent pas encore.');
-    else if (qemuJob) text = qemuJob.text;
+    if (qemuJob) text = qemuJob.text;
     else if (!qemu) text = tl('Recherche de l’émulateur de l’ESP32…');
-    else if (!qemu.desktop) text = tl('Le mode fidèle de l’ESP32 fait tourner le vrai programme dans un émulateur (QEMU) : il demande l’application installée. La carte tourne en mode Débutant.');
-    else if (!qemu.available) text = tl('L’émulateur de l’ESP32 (QEMU) n’est pas encore disponible pour cet ordinateur. La carte tourne en mode Débutant.');
-    else { text = tl('Le mode fidèle de l’ESP32 (bêta) fait tourner le vrai programme dans QEMU, l’émulateur d’Espressif : un programme à part d’environ 7 Mo, téléchargé une seule fois. En attendant, la carte tourne en mode Débutant.'); btn.hidden = false; }
+    else if (!EMULATED.has(kind) && !qemu.available) text = tl('L’émulateur de l’ESP32 (QEMU) n’est pas encore publié pour cet ordinateur : l’ESP32 tourne sur le simulateur intégré.');
+    else if (!EMULATED.has(kind)) { text = tl('Pour faire tourner le programme compilé, l’ESP32 a besoin de son émulateur (QEMU, environ 15 Mo, téléchargé une seule fois). En attendant, il tourne sur le simulateur intégré.'); btn.hidden = false; }
+    else text = tl('ESP32 sur le simulateur intégré : {0}.', whyInterp(b) || '');
     el.querySelector('span').textContent = text;
   }
   async function checkQemu() {
     qemu = await qemuStatus();
-    setQemuReady(!!qemu.installed);
+    setQemuReady(!!qemu.installed, qemu.chips || null);
     if (!$('#pane-prog').hidden) render();
   }
   async function installQemu() {
@@ -1328,8 +1601,8 @@ export function createProgram(app) {
     render();
     try {
       qemu = await qemuInstall((got, total) => { if (!qemuJob) return; qemuJob.text = total ? tl('Téléchargement de l’émulateur de l’ESP32… {0} %', Math.round(got / total * 100)) : tl('Téléchargement de l’émulateur de l’ESP32… {0} Mo', (got / 1e6).toFixed(1)); qemuNote(board()); });
-      setQemuReady(!!qemu.installed);
-      app.status(tl('Émulateur de l’ESP32 installé : le mode fidèle est prêt.'), 'ok');
+      setQemuReady(!!qemu.installed, qemu.chips || null);
+      app.status(tl('Émulateur de l’ESP32 installé : les programmes compilés y tournent.'), 'ok');
       qemuJob = null;
       const b = board();
       if (b && app.simOn() && engineOf(b) === 'firmware') launch(b);
@@ -1348,7 +1621,7 @@ export function createProgram(app) {
     if ($('#progEngine')) $('#progEngine').onchange = e => {
       const b = board(); if (!b) return;
       const en = ensure(b);
-      if (e.target.value === 'firmware' || e.target.value === 'micropython') en.engine = e.target.value; else delete en.engine;
+      if (e.target.value === 'micropython') en.engine = 'micropython'; else delete en.engine;
       if (en.engine === 'micropython') pyFiles(b);
       else if (typeof en.code !== 'string') { en.code = ''; en.auto = true; } // carte créée en Python (import Wokwi) : code Arduino généré
       app.markDirty();
@@ -1356,8 +1629,15 @@ export function createProgram(app) {
       if (app.simOn()) { launch(b); render(); }
     };
     $('#ruleAdd').onclick = () => { const sn = snapshot(), b = board(); const dst = comps().find(x => isActuator(x) && (!b || sn.inspect(x).board === b)) || comps().find(isActuator); addRule(null, dst || null); };
-    $('#rules').addEventListener('change', e => { if (e.target.dataset.f) onRuleField(e.target); });
+    $('#ruleAdd').insertAdjacentHTML('afterend', `<button type="button" class="btn small rl-decl" id="varAdd" data-tip="${tl('Un nombre, un texte ou un oui / non que les règles retiennent : compteur, consigne, code…')}">${icon('plus')}<span>${tl('Variable')}</span></button><button type="button" class="btn small rl-decl" id="seqAdd" data-tip="${tl('Des étapes l’une après l’autre, avec des attentes : feu tricolore, cycle de machine…')}">${icon('plus')}<span>${tl('Séquence')}</span></button>`);
+    $('#varAdd').onclick = () => addDecl('var');
+    $('#seqAdd').onclick = () => addDecl('seq');
+    $('#rules').addEventListener('change', e => {
+      if (e.target.dataset.addsel !== undefined) { const k = e.target.value; e.target.value = ''; if (k) addItem(e.target, k); return; }
+      if (e.target.dataset.f) onRuleField(e.target);
+    });
     $('#rules').addEventListener('click', e => {
+      const adv = e.target.closest('[data-adv]'); if (adv) { const k = adv.dataset.adv; if (openAdv.has(k)) openAdv.delete(k); else openAdv.add(k); renderRules(); return; }
       const add = e.target.closest('[data-add]'); if (add) { addItem(add); return; }
       const del = e.target.closest('[data-del]'); if (del) removeItem(del);
     });
@@ -1418,8 +1698,9 @@ export function createProgram(app) {
       state: () => real.state(),
       release: port => real.release(port),
       async open({ port = '', baud } = {}) {
-        app.setTab('prog'); setSrc('real');
-        const sec = document.querySelector('#pane-prog .serialSec');
+        if (app.showSerial) app.showSerial(); else app.setTab('prog');
+        setSrc('real');
+        const sec = document.querySelector('.serialSec');
         if (sec && sec.classList.contains('folded')) { const h = sec.querySelector('.foldHead'); if (h) h.click(); }
         await refreshPorts();
         const b = baud || baudOf(shownCode()) || +$('#realBaud').value || 9600;
@@ -1450,9 +1731,9 @@ export function createProgram(app) {
         app.markDirty(); render(); check();
       },
       rules: () => P.rules,
-      addRule(r) { P.rules.push(r); rulesChanged(); },
+      addRule(r) { if (r) P.rules.push(r); rulesChanged(); },
       removeRules(test) { const n = P.rules.length; P.rules = P.rules.filter(r => !test(r)); rulesChanged(); return n - P.rules.length; },
-      ruleText: (r, b) => ruleText(r, byId, b ? boardOf(b) : null),
+      ruleText: (r, b) => ruleText(r, byAny, b ? boardOf(b) : null),
       serial: b => logs.get(b.id) || '',
       send(b, text) { const rt = rts.get(b.id); if (!rt) return false; rt.send(text + (rt.firmware === 'micropython' ? '\r' : '\n')); return true; },
       show(b) { if (b) { cur = b.id; render(); } }
@@ -1483,6 +1764,8 @@ export function createProgram(app) {
     applyInits() { if (comps().map(applyInit).some(Boolean)) app.envChanged(); },
     onStateField(el) { if (el.dataset.sf) onStateField(el); },
     get data() { return JSON.parse(JSON.stringify(P)); },
+    /** Mémoire d'un module gardée avec le projet (fichiers d'une carte SD…), vivante : celle que lisent les programmes. */
+    compMem(c) { const m = P.mem || (P.mem = {}); return m[c.id] || (m[c.id] = {}); },
     /** Réseaux Wi-Fi simulés et journal (carte « Réseau Wi-Fi » du panneau Périphériques). */
     net: netData,
     netChanged() { app.markDirty(); },
@@ -1508,7 +1791,10 @@ export function createProgram(app) {
         for (const b of boards()) {
           const e = entry(b);
           if (!e || !(e.auto || e.mode === 'visual') || !rts.has(b.id)) continue;
-          if (codeOf(b, sn) !== uploaded.get(b.id)) launch(b, sn);
+          if (codeOf(b, sn) === uploaded.get(b.id)) continue;
+          // Programme compilé : on attend la fin des retouches (chaque compilation prend quelques secondes).
+          if (engineOf(b) === 'firmware') { clearTimeout(relaunchT.get(b.id)); relaunchT.set(b.id, setTimeout(() => { relaunchT.delete(b.id); if (app.simOn() && rts.has(b.id)) launch(b); }, 900)); }
+          else launch(b, sn);
         }
       }
       if (vis && vis.h) { const b = comps().find(c => c.id === vis.boardId); if (b) vis.h.refreshToolbox(visCtx(b)); }

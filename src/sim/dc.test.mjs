@@ -14,7 +14,7 @@ import { elecFaults } from './faults.js';
 
 const EX = new URL('../../exemples/', import.meta.url);
 // Broches des composants sans fiche de câblage (parts.js ne décrit pas leurs pattes).
-const LEGS = { diode: ['A', 'K'], 'cap-100n': ['1', '2'], 'cap-100u': ['+', '-'], npn: ['C', 'B', 'E'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'] };
+const LEGS = { pnp: ['C', 'B', 'E'], pn2907: ['E', 'B', 'C'], 'zener-5v1': ['A', 'K'], 'zener-3v3': ['A', 'K'], irf9540n: ['G', 'D', 'S'], diode: ['A', 'K'], 'cap-100n': ['1', '2'], 'cap-100u': ['+', '-'], npn: ['C', 'B', 'E'], lm7805: ['IN', 'GND', 'OUT'], mb102: ['+5V', 'GND', '+3V3'], bat9v: ['+', '-'], bat18650: ['+', '-'], psu24: ['+', '-'] };
 const keys = type => {
   const prof = BOARDS[type];
   if (prof) return [...Object.keys(prof.gpio), ...Object.keys(prof.power), 'GND', ...[2, 3, 4, 5, 6, 7, 8].map(n => `GND (${n})`), 'VIN', 'EN', 'RST', 'AREF', 'IOREF', 'VSYS', 'VBUS', '3V3_EN', 'RUN'];
@@ -238,7 +238,7 @@ test('Tous les exemples se résolvent sans erreur, en continu comme pas à pas',
     const ctx = ctxOf(Object.fromEntries(['D2', 'D4', 'D7', 'D13', 'GP15', 'D9'].map(k => [k, OUT(1)])));
     const s = solveDC(comps, A, ctx), t = solveDC(comps, A, { ...ctx, dt: 0.1, commit: true });
     assert.equal(s.ok, true, f);
-    assert.equal(s.dyn, comps.some(c => /^(cap-|npn$|pn2222$)/.test(c.type)), f); // « dynamique » : un condensateur ou un transistor
+    assert.equal(s.dyn, comps.some(c => /^(cap-|npn$|pn2222$|dcmotor$|fan$|pump$|vibro$)/.test(c.type)), f); // « dynamique » : condensateur, transistor, moteur (f.c.é.m.)
     assert.ok(s.iterations < 20, `${f} : ${s.iterations} itérations`);
     for (const c of comps) for (const k in c.pins) {
       const r = { comp: c, key: k }, v = s.volts(r);
@@ -464,6 +464,65 @@ import { inspect } from './circuit.js';
 import { partOf } from './parts.js';
 const codesOf = (b, c) => { const i = inspect(c, analyze(b.comps, b.wires), partOf(c)); return Object.values(i.pins).flatMap(p => p.msgs.map(m => m.code)); };
 
+test('PNP côté + : base tirée vers la masse, la charge s’allume ; base au +, bloqué', () => {
+  const b = bench(), p = b.add('bat9v'), q = b.add('pnp'), rb = b.add('res-10k'), rl = b.add('res-1k');
+  b.wire(p, '+', q, 'E'); b.wire(q, 'C', rl, '1'); b.wire(rl, '2', p, '-');
+  b.wire(q, 'B', rb, '1');
+  b.wire(rb, '2', p, '-'); // base vers la masse par 10 kΩ : Ib ≈ 0,8 mA, saturé
+  const on = b.solve(ctxOf()).across(q);
+  assert.equal(on.kind, 'pnp'); assert.equal(on.extra.state, 'sat');
+  near(Math.abs(on.extra.ic), (9 - 0.2) / 1001.5 * 1000, 0.6, 'courant de la charge, transistor saturé');
+  near(b.solve(ctxOf()).across(rl).v, 9 - 0.2, 0.15, 'tension sur la charge');
+  const off = bench(), p2 = off.add('bat9v'), q2 = off.add('pnp'), rb2 = off.add('res-10k'), rl2 = off.add('res-1k');
+  off.wire(p2, '+', q2, 'E'); off.wire(q2, 'C', rl2, '1'); off.wire(rl2, '2', p2, '-'); off.wire(q2, 'B', rb2, '1'); off.wire(rb2, '2', p2, '+');
+  assert.ok(Math.abs(off.solve(ctxOf()).across(rl2).mA) < 0.01, 'base au + : bloqué');
+});
+
+test('Zener 5,1 V : régule la tension en inverse, conduit comme une diode en direct', () => {
+  const b = bench(), p = b.add('bat9v'), r = b.add('res-1k'), z = b.add('zener-5v1');
+  b.wire(p, '+', r, '1'); b.wire(r, '2', z, 'K'); b.wire(z, 'A', p, '-');
+  const a = b.solve(ctxOf()).across(z);
+  assert.equal(a.kind, 'zener');
+  near(-a.v, 5.1 + 3.8 * 10 / 1000, 0.1, 'tension aux bornes : Vz plus rz × I'); // (9 − 5,1) / 1 kΩ ≈ 3,8 mA
+  near(-a.mA, (9 - 5.14) / 1001.5 * 1000, 0.3, 'courant inverse');
+  const f = bench(), p2 = f.add('bat9v'), r2 = f.add('res-1k'), z2 = f.add('zener-5v1');
+  f.wire(p2, '+', r2, '1'); f.wire(r2, '2', z2, 'A'); f.wire(z2, 'K', p2, '-');
+  near(f.solve(ctxOf()).across(z2).v, 0.7, 0.05, 'en direct : seuil d’une diode');
+});
+
+test('MOSFET canal P côté + : grille à la masse, conduit ; grille au +, bloqué', () => {
+  const mk = gate => {
+    const b = bench(), p = b.add('bat9v'), m = b.add('irf9540n'), rl = b.add('res-220');
+    b.wire(p, '+', m, 'S'); b.wire(m, 'D', rl, '1'); b.wire(rl, '2', p, '-'); b.wire(m, 'G', p, gate);
+    return b.solve(ctxOf()).across(rl);
+  };
+  near(mk('-').mA, 9 / (220 + 1.5 + 0.13) * 1000, 1.5, 'grille à 0 V (VGS = −9 V) : passant');
+  assert.ok(Math.abs(mk('+').mA) < 0.01, 'grille au + (VGS = 0) : bloqué');
+});
+
+test('Moteur : pointe de démarrage V/R, puis le courant retombe quand la f.c.é.m. monte avec la vitesse', () => {
+  const b = bench(), p = b.add('bat9v'), m = b.add('dcmotor');
+  b.wire(p, '+', m, 'M+'); b.wire(m, 'M-', p, '-');
+  const A = analyze(b.comps, b.wires), step = () => solveDC(b.comps, A, { ...ctxOf(), dt: 0.016 }).across(m);
+  m.motorV = 0;
+  const start = step();
+  near(start.mA, 9 / 31.5 * 1000, 2, 'à l’arrêt : V / (R + r interne)');
+  m.motorV = 1; // vitesse nominale : f.c.é.m. = 0,85 × 6 V
+  const run = step();
+  assert.ok(run.mA < start.mA * 0.6, `en marche, le courant baisse : ${run.mA.toFixed(0)} mA contre ${start.mA.toFixed(0)} mA au démarrage`);
+  near(run.mA, (9 - 0.85 * 6) / 31.5 * 1000, 3, 'courant en marche : (V − E) / R');
+  // En continu (vérificateur) : moteur jugé calé, quelle que soit sa vitesse affichée.
+  near(b.solve(ctxOf()).across(m).mA, 9 / 31.5 * 1000, 2, 'vérificateur : courant de calage');
+});
+
+test('Valeur réglée d’une résistance : le solveur prend la valeur du composant, pas celle de son type', () => {
+  const b = bench(), p = b.add('bat9v'), r = b.add('res-220', { val: 1000 });
+  b.wire(p, '+', r, '1'); b.wire(r, '2', p, '-');
+  near(b.solve(ctxOf()).across(r).mA, 9 / 1001.5 * 1000, 0.2, '1 kΩ réglé sur une résistance « 220 Ω »');
+  r.inp.val = 100; // modifiée en cours de route : relue à chaque calcul
+  near(b.solve(ctxOf()).across(r).mA, 9 / 101.5 * 1000, 1, '100 Ω');
+});
+
 test('Moteur sur une pile 9 V : courant d’une charge de 30 Ω, vitesse au-delà du nominal, câblage accepté', () => {
   const b = bench(), p = b.add('bat9v'), m = b.add('dcmotor');
   b.wire(p, '+', m, 'M+'); b.wire(m, 'M-', p, '-');
@@ -506,7 +565,7 @@ test('Pilote L298N : IN1/IN2 donnent le sens, la PWM sur ENA la tension moyenne,
   near(half.across(bat).mA, h.mA, 3, 'la pile fournit le courant du moteur');
   assert.ok(run({ D2: OUT(0), D4: OUT(1), D3: OUT(1) }).across(m).v < -5, 'sens inverse');
   assert.ok(Math.abs(run({ D2: OUT(1), D4: OUT(0), D3: OUT(0) }).across(m).mA) < 0.01, 'ENA à LOW : roue libre');
-  assert.equal(half.dyn, false);
+  assert.equal(half.dyn, true); // moteur : sa f.c.é.m. suit sa vitesse
   assert.ok(byId);
 });
 
@@ -544,4 +603,98 @@ test('Servo : l’impulsion se lit en tension moyenne sur SIG ; buzzer et pompe 
   assert.ok(sz.across(bz).v > 2.5, 'le buzzer sonne');
   assert.deepEqual(codesOf(z, bz), []);
   assert.ok(elecFaults(sz, z.comps, analyze(z.comps, z.wires)).some(x => x.code === 'motorover' && x.comp === pm), 'pompe 5 V sur 9 V');
+});
+
+test('AMS1117-3.3 : 3,3 V depuis 5 V ; sur un accu de 3,7 V, la sortie suit l’entrée moins 1,1 V de chute', () => {
+  const b = bench(), m = b.add('mb102'), u = b.add('ams1117'), r = b.add('res-330');
+  b.wire(m, '+5V', u, 'IN'); b.wire(m, 'GND', u, 'GND'); b.wire(u, 'OUT', r, '1'); b.wire(r, '2', u, 'GND');
+  const s = b.solve(ctxOf());
+  near(s.volts({ comp: u, key: 'OUT' }), 3.3, 0.01, 'sortie sur 5 V');
+  assert.equal(s.across(u).extra.mode, 'reg');
+  near(s.across(u).extra.iin, s.across(u).mA, 1e-6, 'régulateur linéaire : courant d’entrée = courant de sortie');
+  near(s.across(u).mA, 3.3 / 330 * 1000, 0.1, 'courant de la charge');
+  const q = bench(), li = q.add('bat18650'), u2 = q.add('ams1117'), r2 = q.add('res-330');
+  q.wire(li, '+', u2, 'IN'); q.wire(li, '-', u2, 'GND'); q.wire(u2, 'OUT', r2, '1'); q.wire(r2, '2', u2, 'GND');
+  const s2 = q.solve(ctxOf()), a = s2.across(u2);
+  assert.equal(a.extra.mode, 'track');
+  near(s2.volts({ comp: u2, key: 'OUT' }), 3.7 - 1.1, 0.02, 'sortie saturée');
+});
+
+test('LM2596 : sortie réglée par composant, courant d’entrée bien plus faible que celui de la sortie', () => {
+  const b = bench(), p = b.add('psu24'), u = b.add('lm2596', { vout: 5 }), r = b.add('res-22');
+  b.wire(p, '+', u, 'IN+'); b.wire(p, '-', u, 'IN-'); b.wire(u, 'OUT+', r, '1'); b.wire(r, '2', u, 'OUT-');
+  let s = b.solve(ctxOf());
+  near(s.volts({ comp: u, key: 'OUT+' }), 5, 0.05, 'sortie 5 V');
+  const iout = s.across(u).mA, iin = s.current(p);
+  near(iin, 5 * iout / (0.85 * 24), 1, 'Vout·Iout ÷ (η·Vin)');
+  assert.ok(iin < iout / 3, `${iin} mA pris sur 24 V pour ${iout} mA en sortie`);
+  // Pile 12 V → 5 V, consigne changée sur le composant.
+  const k = bench(), p12 = k.add('bat9v'), u2 = k.add('lm2596', { vout: 3.3 }), r2 = k.add('res-22');
+  k.wire(p12, '+', u2, 'IN+'); k.wire(p12, '-', u2, 'IN-'); k.wire(u2, 'OUT+', r2, '1'); k.wire(r2, '2', u2, 'OUT-');
+  s = k.solve(ctxOf());
+  near(s.volts({ comp: u2, key: 'OUT+' }), 3.3, 0.05, 'sortie 3,3 V');
+  assert.ok(s.current(p12) < s.across(u2).mA, 'abaisseur : moins de courant à l’entrée');
+  u2.inp.vout = 12; // au-dessus de l’entrée : la sortie suit l’entrée moins la saturation de l’interrupteur
+  s = k.solve(ctxOf());
+  assert.equal(s.across(u2).extra.mode, 'track');
+  assert.ok(s.volts({ comp: u2, key: 'OUT+' }) < 9 - 1.4, 'un abaisseur ne monte jamais');
+});
+
+test('MT3608 : 9 V depuis un accu 3,7 V, l’accu fournit plus de courant que la sortie', () => {
+  const b = bench(), li = b.add('bat18650'), u = b.add('mt3608'), r = b.add('res-220');
+  b.wire(li, '+', u, 'IN+'); b.wire(li, '-', u, 'IN-'); b.wire(u, 'OUT+', r, '1'); b.wire(r, '2', u, 'OUT-');
+  let s = b.solve(ctxOf());
+  const vo = s.volts({ comp: u, key: 'OUT+' }), vin = s.volts({ comp: u, key: 'IN+' });
+  near(vo, 9, 0.05, 'sortie 9 V par défaut');
+  assert.ok(vo > vin, 'la sortie dépasse l’entrée');
+  const iout = s.across(u).mA, iin = s.current(li);
+  near(iin, vo * iout / (0.9 * vin), 0.5, 'Vout·Iout ÷ (η·Vin)');
+  assert.ok(iin > 2 * iout, `${iin} mA pris à l’accu pour ${iout} mA en sortie`);
+  u.inp.vout = 3; // sous l’entrée : l’élévateur laisse passer l’entrée moins sa diode
+  s = b.solve(ctxOf());
+  near(s.volts({ comp: u, key: 'OUT+' }), 3.7 - 0.4, 0.05, 'entrée moins la Schottky');
+});
+
+test('TP4056 : un accu 18650 se charge à 1 A au plus sous 4,2 V ; sans entrée, OUT+ suit l’accu', () => {
+  const b = bench(), m = b.add('mb102'), t = b.add('tp4056'), li = b.add('bat18650'), r = b.add('res-220');
+  b.wire(m, '+5V', t, 'IN+'); b.wire(m, 'GND', t, 'IN-'); b.wire(t, 'B+', li, '+'); b.wire(t, 'B-', li, '-');
+  b.wire(t, 'OUT+', r, '1'); b.wire(r, '2', t, 'OUT-');
+  let s = b.solve(ctxOf());
+  const a = s.across(t);
+  assert.equal(a.extra.mode, 'cc');
+  near(a.mA, 1000, 0.5, 'courant de charge limité');
+  near(-s.current(li), 1000 - s.across(r).mA, 0.5, 'l’accu reçoit ce que la charge ne prend pas');
+  assert.ok(s.volts({ comp: t, key: 'B+' }) <= 4.2 + 1e-6, 'jamais plus de 4,2 V');
+  near(s.volts({ comp: t, key: 'OUT+' }), s.volts({ comp: t, key: 'B+' }), 1e-6, 'OUT+ = B+');
+  // Sans accu : le chargeur tient 4,2 V sur sa sortie.
+  const k = bench(), m2 = k.add('mb102'), t2 = k.add('tp4056'), r2 = k.add('res-1k');
+  k.wire(m2, '+5V', t2, 'IN+'); k.wire(m2, 'GND', t2, 'IN-'); k.wire(t2, 'OUT+', r2, '1'); k.wire(r2, '2', t2, 'OUT-');
+  s = k.solve(ctxOf());
+  near(s.volts({ comp: t2, key: 'OUT+' }), 4.2, 0.01, 'tension de fin de charge');
+  assert.equal(s.across(t2).extra.mode, 'reg');
+  // Entrée débranchée : le chargeur est coupé, l’accu alimente seul la sortie.
+  const q = bench(), t3 = q.add('tp4056'), li3 = q.add('bat18650'), r3 = q.add('res-220');
+  q.wire(t3, 'B+', li3, '+'); q.wire(t3, 'B-', li3, '-'); q.wire(t3, 'OUT+', r3, '1'); q.wire(r3, '2', t3, 'OUT-');
+  s = q.solve(ctxOf());
+  near(s.volts({ comp: t3, key: 'OUT+' }), 3.7, 0.01, 'accu seul');
+  near(s.current(li3), 3.7 / 220 * 1000, 0.1, 'l’accu débite dans la charge');
+});
+
+test('Panneau solaire : courant de court-circuit proportionnel à la lumière, tension à vide qui baisse peu', () => {
+  const isc = lux => {
+    const b = bench(), pv = b.add('solar6v'); pv.env = { lux };
+    b.wire(pv, '+', pv, '-');
+    return b.solve(ctxOf()).current(pv);
+  };
+  near(isc(100000), 190, 0.5, 'plein soleil');
+  near(isc(50000), 95, 0.5, 'demi-soleil');
+  near(isc(1000), 1.9, 0.01, 'intérieur');
+  assert.equal(isc(0), 0);
+  const voc = lux => {
+    const b = bench(), pv = b.add('solar6v'), r = b.add('res-10k'); pv.env = { lux };
+    b.wire(pv, '+', r, '1'); b.wire(r, '2', pv, '-');
+    return b.solve(ctxOf()).volts({ comp: pv, key: '+' });
+  };
+  near(voc(100000), 7.7 * 10e3 / (10e3 + 7.7 / 0.19), 0.01, 'presque à vide au soleil');
+  assert.ok(voc(20000) > 6.5 * 0.99 * 10e3 / (10e3 + 7.7 / 0.19 / 0.2) , 'à 20 % du soleil, la tension tient encore');
 });

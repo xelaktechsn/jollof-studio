@@ -4,13 +4,13 @@
  * rectangle de sélection ou de loupe, aide des raccourcis. Préfixe « nd » : rien d'autre ne s'appelle ainsi. */
 .ndDock { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); z-index: 7; display: flex; flex-direction: column; gap: 6px; animation: fadeIn .18s ease-out; }
 .ndDock[hidden], .ndMini[hidden] { display: none; }
-.ndG { display: flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 10px; background: #11151ae6; border: 1px solid var(--line); box-shadow: 0 6px 20px #0006; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ndG { display: flex; flex-direction: column; gap: 2px; padding: 3px; border-radius: 10px; background: var(--glass); border: 1px solid var(--line); box-shadow: 0 6px 20px #0006; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .ndG:empty { display: none; }
 .ndB { all: unset; box-sizing: border-box; position: relative; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; color: var(--fg-2); cursor: pointer; transition: background .12s, color .12s; }
 .ndB .ic { width: 17px; height: 17px; }
 .ndB:hover { background: var(--raise-2); color: var(--fg); }
 .ndB:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.ndB[aria-pressed="true"] { background: var(--accent-fill); color: #fff; box-shadow: inset 0 0 0 1px #ffffff1f; }
+.ndB[aria-pressed="true"] { background: var(--accent-fill); color: #fff; box-shadow: inset 0 0 0 1px var(--hi-2); }
 .ndB:disabled { opacity: .32; cursor: default; background: none; color: var(--fg-2); }
 .ndB[hidden] { display: none; }
 .ndPct { font: 600 10px/1 var(--mono); letter-spacing: -.03em; color: var(--fg); }
@@ -20,7 +20,7 @@
 
 /* Mini-carte : en bas à droite, à côté de la barre */
 .ndMini { position: absolute; right: 56px; bottom: 64px; z-index: 7; padding: 4px; border-radius: 11px; background: #0d1115f2; border: 1px solid var(--line-2); box-shadow: var(--shadow); cursor: crosshair; touch-action: none; animation: fadeIn .15s ease-out; }
-.ndMini canvas { display: block; border-radius: 7px; background: #0a0d10; }
+.ndMini canvas { display: block; border-radius: 7px; background: var(--bg); }
 
 /* Rectangle tracé : sélection (plein) ou loupe (pointillé) */
 .ndRect { position: fixed; z-index: 90; pointer-events: none; border: 1px solid var(--accent-hi); background: #3b82f61a; border-radius: 2px; }

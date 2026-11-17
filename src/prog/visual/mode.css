@@ -9,7 +9,7 @@
 .visLoading.err { color: var(--danger); padding: 12px; text-align: center; }
 .visBanner { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; padding: 6px 8px 6px 10px; border-radius: var(--r-sm); background: #5b9cf51a; border: 1px solid #5b9cf544; color: var(--fg-2); font-size: 12px; }
 .visBanner > span { flex: 1; }
-.visBanner .ic { width: 14px; height: 14px; color: #8dbaf8; }
+.visBanner .ic { width: 14px; height: 14px; color: var(--accent-hi); }
 .codeMode[data-kind="visual"] { color: #b9a2ec; }
 /* Les calques de Blockly (catégories, volet des blocs) restent dans la zone des blocs : jamais au-dessus des boîtes de dialogue. */
 .visualHost { isolation: isolate; }
@@ -68,4 +68,4 @@
 .visFull.noCode .visFullCode { display: none; }
 .visFullBlocks { min-height: 0; padding: 10px; }
 .visFullBlocks > #visualHost { height: 100%; margin: 0; }
-.visFullCode { margin: 0; overflow: auto; padding: 12px 14px; border-left: 1px solid var(--line); background: #0a0d10; color: #c9d1d6; font: 12px/18px var(--mono); white-space: pre; -webkit-user-select: text; user-select: text; }
+.visFullCode { margin: 0; overflow: auto; padding: 12px 14px; border-left: 1px solid var(--line); background: var(--bg); color: var(--fg); font: 12px/18px var(--mono); white-space: pre; -webkit-user-select: text; user-select: text; }

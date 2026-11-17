@@ -4,20 +4,56 @@
 // Une même liste d'ordres sert à l'aperçu (SVG) et au fichier PDF, écrit ici sans
 // bibliothèque : le PDF reste vectoriel, net à toutes les échelles et à l'impression.
 
-/** Liste d'ordres de dessin, avec une transformation courante (échelle puis translation). */
+/**
+ * Liste d'ordres de dessin, avec une transformation courante (échelle puis translation). m (facultatif) :
+ * transformation du symbole avant l'échelle, [a, b, c, d, e, f] : x' = a·x + b·y + e, y' = c·x + d·y + f
+ * (quarts de tour et miroir d'un symbole pivoté) ; ses textes restent lisibles (voir orientText).
+ * refName : textes en gras de ce nom = repère du composant ; skipLab : repères et valeurs ne sont pas dessinés
+ * (le symbole pivoté les écrit lui-même, à l'endroit, à côté de son corps).
+ */
 import { tl } from '../i18n/index.js';
 export class Draw {
-  constructor() { this.ops = []; this.k = 1; this.tx = 0; this.ty = 0; }
+  constructor() { this.ops = []; this.k = 1; this.tx = 0; this.ty = 0; this.m = null; this.refName = null; this.skipLab = false; }
   setTransform(k, tx, ty) { this.k = k; this.tx = tx; this.ty = ty; }
-  P(x, y) { return [this.tx + x * this.k, this.ty + y * this.k]; }
+  P(x, y) { const m = this.m; if (m) [x, y] = [m[0] * x + m[1] * y + m[4], m[2] * x + m[3] * y + m[5]]; return [this.tx + x * this.k, this.ty + y * this.k]; }
   W(w) { return w * this.k; }
   line(pts, o = {}) { this.ops.push({ t: 'path', pts: pts.map(p => this.P(p[0], p[1])), w: this.W(o.w ?? 0.25), close: !!o.close, fill: o.fill || null, dash: o.dash || null, stroke: o.stroke !== false }); }
   rect(x, y, w, h, o = {}) { this.line([[x, y], [x + w, y], [x + w, y + h], [x, y + h]], { ...o, close: true }); }
   circle(cx, cy, r, o = {}) { const [X, Y] = this.P(cx, cy); this.ops.push({ t: 'circle', x: X, y: Y, r: this.W(r), w: this.W(o.w ?? 0.25), fill: o.fill || null, stroke: o.stroke !== false }); }
   /** Arc de cercle approché par des segments (a0 → a1 en radians). */
   arc(cx, cy, r, a0, a1, o = {}) { const n = Math.max(6, Math.ceil(Math.abs(a1 - a0) / 0.2)), pts = []; for (let i = 0; i <= n; i++) { const a = a0 + (a1 - a0) * i / n; pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); } this.line(pts, o); }
-  /** Texte : y est la ligne de base ; a = l | m | r ; rot = 0 ou -90 (vertical, de bas en haut). */
-  text(x, y, str, o = {}) { const [X, Y] = this.P(x, y); this.ops.push({ t: 'text', x: X, y: Y, s: Math.max(this.W(o.s ?? 2), 1.1), str: String(str), a: o.a || 'l', b: !!o.b, rot: o.rot || 0, color: o.color || '#000' }); }
+  /** Texte : y est la ligne de base ; a = l | m | r ; rot = 0 ou -90 (vertical, de bas en haut). o.lab : repère ou valeur d'un symbole. */
+  text(x, y, str, o = {}) {
+    const lab = o.lab || (this.refName != null && o.b && String(str) === this.refName ? 'ref' : null);
+    if (lab && this.skipLab) return;
+    let a = o.a || 'l', rot = o.rot || 0;
+    if (this.m) { const t = orientText(this.m, x, y, String(str), o.s ?? 2, a, rot); ({ x, y, a, rot } = t); }
+    const X = this.tx + x * this.k, Y = this.ty + y * this.k;
+    const op = { t: 'text', x: X, y: Y, s: Math.max(this.W(o.s ?? 2), 1.1), str: String(str), a, b: !!o.b, rot, color: o.color || '#000' };
+    if (lab) op.lab = lab;
+    this.ops.push(op);
+  }
+}
+/**
+ * Texte d'un symbole transformé par m : sa place suit le dessin, mais il reste lisible, de gauche à droite ou
+ * de bas en haut (un texte qui se lirait à l'envers ou de haut en bas est retourné autour de sa ligne médiane).
+ * Un repère court centré (« + », « M », « A ») reste à l'horizontale. Rend { x, y, a, rot } dans le repère transformé.
+ */
+export function orientText(m, x, y, str, s, a, rot) {
+  const lin = (vx, vy) => [m[0] * vx + m[1] * vy, m[2] * vx + m[3] * vy];
+  const r = rot * Math.PI / 180, u = [Math.round(Math.cos(r)), Math.round(Math.sin(r))], v = [u[1], -u[0]]; // sens de lecture, haut des lettres
+  const p = lin(x, y), vv = lin(v[0], v[1]), h = 0.35 * s; // h : de la ligne de base à la ligne médiane
+  const c = [p[0] + m[4] + h * vv[0], p[1] + m[5] + h * vv[1]];
+  let uo = lin(u[0], u[1]);
+  if (a === 'm' && !rot && [...str].length <= 2) uo = [1, 0];
+  else if (!(uo[0] > 0.5 || uo[1] < -0.5)) { uo = [-uo[0], -uo[1]]; a = a === 'l' ? 'r' : a === 'r' ? 'l' : a; }
+  const vo = [uo[1], -uo[0]];
+  return { x: c[0] - h * vo[0], y: c[1] - h * vo[1], a, rot: uo[1] < -0.5 ? -90 : 0 };
+}
+/** Rectangle [x0, y0, x1, y1] approché d'un texte (ligne de base en y, a, rot 0 ou -90). */
+export function textBox(x, y, str, s, a = 'l', rot = 0, b = false) {
+  const w = textWidth(str, s, b), lo = a === 'm' ? -w / 2 : a === 'r' ? -w : 0;
+  return rot ? [x - 0.75 * s, y - lo - w, x + 0.22 * s, y - lo] : [x + lo, y - 0.75 * s, x + lo + w, y + 0.22 * s];
 }
 // Chasses de Helvetica (millièmes de cadratin, caractères 32 à 126), d'après ses métriques AFM.
 const HELV = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556,

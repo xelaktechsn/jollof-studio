@@ -87,3 +87,9 @@
 .periphs .jrnCharts figcaption small { color: var(--muted); }
 .periphs .jrnCharts svg { display: block; width: 100%; height: 56px; }
 .periphs [data-jclear] { align-self: flex-start; }
+/* GPS NEO-6M : réglages de la position simulée */
+.periphs .gpsForm { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px 10px; margin: 2px 0 6px; }
+.periphs .gpsF { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2px 4px; font-size: 11.5px; color: var(--fg-2); }
+.periphs .gpsF span { grid-column: 1 / -1; }
+.periphs .gpsF input { width: 100%; min-width: 0; font-family: var(--mono); font-size: 12px; }
+.periphs .gpsF small { color: var(--fg-3, var(--fg-2)); }

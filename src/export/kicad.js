@@ -12,6 +12,11 @@ import { buildNets } from '../schematic/sheet.js';
 const PH = n => `Connector_PinHeader_2.54mm:PinHeader_1x${String(n).padStart(2, '0')}_P2.54mm_Vertical`;
 const RES = { lib: 'Device', part: 'R', fp: 'Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal', pads: { 1: '1', 2: '2' } };
 const LED = { lib: 'Device', part: 'LED', fp: 'LED_THT:LED_D5.0mm', pads: { K: '1', A: '2' } };
+/** Pastilles d'un boîtier ou d'une barrette : broches dans l'ordre des numéros. */
+const padsOf = keys => Object.fromEntries(keys.map((k, i) => [k, String(i + 1)]));
+const conn = (keys, value) => ({ lib: 'Connector', part: `Conn_01x${String(keys.length).padStart(2, '0')}`, fp: PH(keys.length), pads: padsOf(keys), value, connector: true });
+const DIP16 = 'Package_DIP:DIP-16_W7.62mm';
+const range = (p, n) => Array.from({ length: n }, (_, i) => p + i);
 /**
  * Empreintes : bibliothèque et symbole de KiCad, empreinte, et broche → numéro de pastille (convention des
  * symboles de KiCad : cathode 1 pour LED et diode, + en 1 pour un condensateur chimique, E-B-C pour un TO-92).
@@ -27,17 +32,67 @@ export const FOOTPRINTS = {
   diode: { lib: 'Diode', part: '1N4007', fp: 'Diode_THT:D_DO-41_SOD81_P10.16mm_Horizontal', pads: { K: '1', A: '2' }, value: '1N4007' },
   npn: { lib: 'Transistor_BJT', part: '2N3904', fp: 'Package_TO_SOT_THT:TO-92_Inline', pads: { E: '1', B: '2', C: '3' }, value: '2N3904' },
   pn2222: { lib: 'Transistor_BJT', part: 'PN2222A', fp: 'Package_TO_SOT_THT:TO-92_Inline', pads: { E: '1', B: '2', C: '3' }, value: 'PN2222A' },
+  // PNP : symbole 2N3906 (E-B-C, comme le 2N3904 du BC547), valeur du composant posé.
+  pnp: { lib: 'Transistor_BJT', part: '2N3906', fp: 'Package_TO_SOT_THT:TO-92_Inline', pads: { E: '1', B: '2', C: '3' }, value: 'BC557' },
+  pn2907: { lib: 'Transistor_BJT', part: '2N3906', fp: 'Package_TO_SOT_THT:TO-92_Inline', pads: { E: '1', B: '2', C: '3' }, value: 'PN2907A' },
+  'zener-3v3': { lib: 'Device', part: 'D_Zener', fp: 'Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal', pads: { K: '1', A: '2' }, value: 'BZX55C3V3' },
+  'zener-5v1': { lib: 'Device', part: 'D_Zener', fp: 'Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal', pads: { K: '1', A: '2' }, value: 'BZX55C5V1' },
+  'zener-12v': { lib: 'Device', part: 'D_Zener', fp: 'Diode_THT:D_DO-35_SOD27_P7.62mm_Horizontal', pads: { K: '1', A: '2' }, value: 'BZX55C12' },
   button: { lib: 'Switch', part: 'SW_Push', fp: 'Button_Switch_THT:SW_PUSH_6mm', pads: { 1: '1', 2: '2' }, value: 'Bouton' },
+  // Encodeur KY-040 : module en barrette, dans l'ordre de son connecteur (la télécommande infrarouge n'a rien à câbler).
+  ky040: conn(['CLK', 'DT', 'SW', '+', 'GND'], 'KY-040 rotary encoder'),
   pot: { lib: 'Device', part: 'R_Potentiometer', fp: 'Potentiometer_THT:Potentiometer_Bourns_3386P_Vertical', pads: { 1: '1', W: '2', 3: '3' }, value: '10k' },
   buzzer: { lib: 'Device', part: 'Buzzer', fp: 'Buzzer_Beeper:Buzzer_12x9.5RM7.6', pads: { '+': '1', '-': '2' }, value: 'Buzzer' },
   speaker: { lib: 'Device', part: 'Speaker', fp: PH(2), pads: { '+': '1', '-': '2' }, value: 'HP 8 Ω' },
   lm7805: { lib: 'Regulator_Linear', part: 'L7805', fp: 'Package_TO_SOT_THT:TO-220-3_Vertical', pads: { IN: '1', GND: '2', OUT: '3' }, value: 'LM7805' },
   bat9v: { lib: 'Device', part: 'Battery', fp: PH(2), pads: { '+': '1', '-': '2' }, value: '9V' },
   bat18650: { lib: 'Device', part: 'Battery_Cell', fp: PH(2), pads: { '+': '1', '-': '2' }, value: '18650' },
+  // Modules d'alimentation : un connecteur (le module s'enfiche ou se soude par ses pastilles), dans l'ordre entrée, sortie.
+  ams1117: { lib: 'Connector', part: 'Conn_01x03', fp: PH(3), pads: { IN: '1', GND: '2', OUT: '3' }, value: 'AMS1117-3.3 module', connector: true },
+  lm2596: { lib: 'Connector', part: 'Conn_01x04', fp: PH(4), pads: { 'IN+': '1', 'IN-': '2', 'OUT+': '3', 'OUT-': '4' }, value: 'LM2596 module', connector: true },
+  mt3608: { lib: 'Connector', part: 'Conn_01x04', fp: PH(4), pads: { 'IN+': '1', 'IN-': '2', 'OUT+': '3', 'OUT-': '4' }, value: 'MT3608 module', connector: true },
+  tp4056: { lib: 'Connector', part: 'Conn_01x06', fp: PH(6), pads: { 'IN+': '1', 'IN-': '2', 'B+': '3', 'B-': '4', 'OUT+': '5', 'OUT-': '6' }, value: 'TP4056 module', connector: true },
+  solar6v: { lib: 'Device', part: 'Solar_Cell', fp: PH(2), pads: { '+': '1', '-': '2' }, value: 'Solar 6V 1W' },
   // Lab analogique : brochage des boîtiers (DIP-8 du NE555 et du LM358, TO-220 G-D-S de l'IRLZ44N).
   ne555: { lib: 'Timer', part: 'NE555P', fp: 'Package_DIP:DIP-8_W7.62mm', pads: { GND: '1', TRIG: '2', OUT: '3', RESET: '4', CV: '5', THR: '6', DIS: '7', VCC: '8' }, value: 'NE555' },
   lm358: { lib: 'Amplifier_Operational', part: 'LM358', fp: 'Package_DIP:DIP-8_W7.62mm', pads: { '1OUT': '1', '1IN-': '2', '1IN+': '3', GND: '4', '2IN+': '5', '2IN-': '6', '2OUT': '7', VCC: '8' }, value: 'LM358' },
   irlz44n: { lib: 'Transistor_FET', part: 'IRLZ44N', fp: 'Package_TO_SOT_THT:TO-220-3_Vertical', pads: { G: '1', D: '2', S: '3' }, value: 'IRLZ44N' },
+  irf9540n: { lib: 'Transistor_FET', part: 'IRF9540N', fp: 'Package_TO_SOT_THT:TO-220-3_Vertical', pads: { G: '1', D: '2', S: '3' }, value: 'IRF9540N' },
+  // Circuits logiques : DIP-16 (symboles 74xx de KiCad, brochage standard) ; modules en barrette, dans l'ordre du module.
+  hc595: { lib: '74xx', part: '74HC595', fp: DIP16, pads: padsOf(['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'GND', 'Q7S', 'MR', 'SHCP', 'STCP', 'OE', 'DS', 'Q0', 'VCC']), value: '74HC595' },
+  hc165: { lib: '74xx', part: '74HC165', fp: DIP16, pads: padsOf(['PL', 'CP', 'D4', 'D5', 'D6', 'D7', 'Q7N', 'GND', 'Q7', 'DS', 'D0', 'D1', 'D2', 'D3', 'CE', 'VCC']), value: '74HC165' },
+  mcp23017: conn(['VCC', 'GND', 'SCL', 'SDA', 'RST', 'INTA', 'INTB', 'A0', 'A1', 'A2', ...range('GPA', 8), ...range('GPB', 8)], 'MCP23017 module'),
+  pcf8574: conn(['GND', 'VCC', 'SDA', 'SCL', 'INT', 'A0', 'A1', 'A2', ...range('P', 8)], 'PCF8574 module'),
+  pca9685: conn(['GND', 'OE', 'SCL', 'SDA', 'VCC', 'V+', ...range('PWM', 16)], 'PCA9685 module'),
+  // Pilotes de moteurs : L293D en DIP-16 (symbole Driver_Motor de KiCad, brochage TI) ; cartes et moteur en barrette.
+  l293d: { lib: 'Driver_Motor', part: 'L293D', fp: DIP16, pads: padsOf(['EN12', 'IN1', 'OUT1', 'GND', 'GND (2)', 'OUT2', 'IN2', 'VCC2', 'EN34', 'IN3', 'OUT3', 'GND (3)', 'GND (4)', 'OUT4', 'IN4', 'VCC1']), value: 'L293D' },
+  tb6612: conn(['PWMA', 'AIN2', 'AIN1', 'STBY', 'BIN1', 'BIN2', 'PWMB', 'GND', 'VM', 'VCC', 'GND (2)', 'AO1', 'AO2', 'BO2', 'BO1', 'GND (3)'], 'TB6612FNG module'),
+  a4988: conn(['ENABLE', 'MS1', 'MS2', 'MS3', 'RESET', 'SLEEP', 'STEP', 'DIR', 'VMOT', 'GND', '2B', '2A', '1A', '1B', 'VDD', 'GND (2)'], 'A4988 Pololu'),
+  drv8825: conn(['ENABLE', 'M0', 'M1', 'M2', 'RESET', 'SLEEP', 'STEP', 'DIR', 'VMOT', 'GND', 'B2', 'B1', 'A1', 'A2', 'FAULT', 'GND (2)'], 'DRV8825 Pololu'),
+  nema17: conn(['A+', 'A-', 'B+', 'B-'], 'NEMA17 17HS4401'),
+  // Afficheurs, écrans, horloges et mémoires : modules en barrette, dans l'ordre de leurs connecteurs.
+  max7219m: conn(['VCC', 'GND', 'DIN', 'CS', 'CLK', 'VCC (2)', 'GND (2)', 'DOUT', 'CS (2)', 'CLK (2)'], 'MAX7219 8x8 matrix module'),
+  max7219s: conn(['VCC', 'GND', 'DIN', 'CS', 'CLK', 'VCC (2)', 'GND (2)', 'DOUT', 'CS (2)', 'CLK (2)'], 'MAX7219 8-digit module'),
+  tm1637: conn(['CLK', 'DIO', 'VCC', 'GND'], 'TM1637 4-digit module'),
+  lcd2004: conn(['GND', 'VCC', 'SDA', 'SCL'], 'LCD 2004 I2C'),
+  st7735: conn(['VCC', 'GND', 'CS', 'RESET', 'DC', 'SDA', 'SCK', 'LED'], 'ST7735 1.8in TFT'),
+  ili9341: conn(['VCC', 'GND', 'CS', 'RESET', 'DC', 'MOSI', 'SCK', 'LED', 'MISO'], 'ILI9341 2.8in TFT'),
+  ds3231: conn(['32K', 'SQW', 'SCL', 'SDA', 'VCC', 'GND'], 'DS3231 ZS-042'),
+  ds1307: conn(['SQW', 'DS', 'SCL', 'SDA', 'VCC', 'GND'], 'DS1307 Tiny RTC'),
+  at24c256: conn(['VCC', 'GND', 'SCL', 'SDA', 'WP', 'A0', 'A1', 'A2'], 'AT24C256 module'),
+  sdcard: conn(['GND', 'VCC', 'MISO', 'MOSI', 'SCK', 'CS'], 'MicroSD SPI module'),
+  // Capteurs I2C : modules en barrette, dans l'ordre de leurs connecteurs.
+  vl53l0x: conn(['VIN', 'GND', 'SCL', 'SDA', 'GPIO1', 'XSHUT'], 'VL53L0X GY-VL53L0XV2'),
+  max30102: conn(['VIN', 'SDA', 'SCL', 'INT', 'IRD', 'RD', 'GND'], 'MAX30102 module'),
+  tcs34725: conn(['LED', 'INT', 'SDA', 'SCL', '3V3', 'GND', 'VIN'], 'TCS34725 module'),
+  ccs811: conn(['VCC', 'GND', 'SCL', 'SDA', 'WAKE', 'INT', 'RST', 'ADDR'], 'CCS811 CJMCU-811'),
+  bme680: conn(['VCC', 'GND', 'SCL', 'SDA', 'SDO', 'CS'], 'BME680 GY-BME680'),
+  // Capteur de courant et modules série : connecteur dans l'ordre du module (bornier du primaire compris pour l'ACS712).
+  acs712: conn(['VCC', 'OUT', 'GND', 'IP+', 'IP-'], 'ACS712 current sensor module'),
+  neo6m: conn(['VCC', 'RX', 'TX', 'GND'], 'GY-NEO6MV2 GPS'),
+  hc12: conn(['VCC', 'GND', 'RXD', 'TXD', 'SET'], 'HC-12 433MHz'),
+  max485: conn(['RO', 'RE', 'DE', 'DI', 'VCC', 'B', 'A', 'GND'], 'MAX485 RS-485 module'),
+  sx1278: conn(['GND', '3.3V', 'RST', 'DIO0', 'NSS', 'MOSI', 'MISO', 'SCK', 'DIO1', 'DIO2'], 'SX1278 Ra-02 LoRa module'),
   'ind-10m': { lib: 'Device', part: 'L', fp: 'Inductor_THT:L_Axial_L9.5mm_D4.0mm_P15.24mm_Horizontal', pads: { 1: '1', 2: '2' }, value: '10m' }
 };
 

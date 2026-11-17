@@ -1,0 +1,815 @@
+{
+ "id": "pn19-construire-machine-3d",
+ "level": "lycee",
+ "minutes": 50,
+ "series": "usine",
+ "tutorial": true,
+ "title": {
+  "fr": "Construire sa machine 3D : convoyeur et éjecteur",
+  "en": "Build your own 3D machine: conveyor and ejector"
+ },
+ "summary": {
+  "fr": "Un jumeau numérique comme dans les ateliers de mise en service virtuelle : on assemble soi-même la machine en 3D à partir de composants (bâti, convoyeur, cellule, poussoir, bacs), on la lie au circuit pneumatique que l’on dessine à côté et à l’automate, puis on la fait tourner. À la fin, la machine s’exporte en glTF et en AutomationML.",
+  "en": "A digital twin as in virtual-commissioning workshops: you assemble the 3D machine yourself from components (frame, conveyor, photocell, pusher, bins), bind it to the pneumatic circuit you draw next to it and to the PLC, then run it. At the end the machine exports as glTF and AutomationML."
+ },
+ "objectives": [
+  {
+   "fr": "Dessiner le circuit pneumatique pendant que la machine 3D se construit à côté",
+   "en": "Draw the pneumatic circuit while the 3D machine is being built next to it"
+  },
+  {
+   "fr": "Poser des composants 3D et les lier aux éléments réels : vérin du circuit, sortie de l’automate, signal de capteur",
+   "en": "Place 3D components and bind them to real elements: circuit cylinder, PLC output, sensor signal"
+  },
+  {
+   "fr": "Écrire le Ladder qui pilote la machine construite et la voir réagir",
+   "en": "Write the ladder that drives the built machine and watch it react"
+  },
+  {
+   "fr": "Connaître les formats d’échange de l’industrie : glTF 2.0 et AutomationML",
+   "en": "Know the industry exchange formats: glTF 2.0 and AutomationML"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un jumeau numérique relie chaque composant 3D à un élément réel du projet : le poussoir suit le vérin A, le convoyeur obéit à la sortie KM1, la cellule produit le signal pe. La partie commande ne voit que des bits.",
+   "en": "A digital twin binds every 3D component to a real project element: the pusher follows cylinder A, the conveyor obeys output KM1, the photocell produces signal pe. The control part only sees bits."
+  },
+  {
+   "fr": "Un capteur de la machine (pe) se lit dans l’automate exactement comme une fin de course (a1) : même table des variables, même contact.",
+   "en": "A machine sensor (pe) is read by the PLC exactly like a limit switch (a1): same variable table, same contact."
+  },
+  {
+   "fr": "Les unités sont celles de l’industrie : mètres, secondes, degrés ; Y vers le haut, sol en y = 0. Les noms de signaux suivent IEC 61131-3.",
+   "en": "Units are those of industry: metres, seconds, degrees; Y up, floor at y = 0. Signal names follow IEC 61131-3."
+  },
+  {
+   "fr": "glTF 2.0 (ISO/IEC 12113) transporte la géométrie ; AutomationML (IEC 62714) transporte la machine entière : composants, poses, signaux, liens avec les vérins.",
+   "en": "glTF 2.0 (ISO/IEC 12113) carries the geometry; AutomationML (IEC 62714) carries the whole machine: components, poses, signals, links to the cylinders."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Construire sa machine 3D",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [],
+      "tubes": [],
+      "plc": {
+       "name": "API1",
+       "drive": true,
+       "cycle": 10,
+       "inputs": [
+        {
+         "name": "dcy",
+         "kind": "switch"
+        },
+        {
+         "name": "sel",
+         "kind": "switch"
+        }
+       ],
+       "rungs": []
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "TP – Construire sa machine 3D (solution)",
+   "comps": [],
+   "wires": [],
+   "settings": {
+    "kind": "pneu",
+    "modules": {
+     "pneu": {
+      "circuit": {
+       "elements": [
+        {
+         "id": "A",
+         "type": "cyl2",
+         "x": 0,
+         "y": 0,
+         "p": {
+          "s0": "A0",
+          "s1": "A1",
+          "label": "A"
+         }
+        },
+        {
+         "id": "v1",
+         "type": "v52",
+         "x": -8,
+         "y": 12,
+         "p": {
+          "left": "sol",
+          "right": "spring",
+          "coilL": "Y1",
+          "label": "1V1"
+         }
+        },
+        {
+         "id": "src",
+         "type": "supply",
+         "x": 1,
+         "y": 22,
+         "p": {}
+        }
+       ],
+       "tubes": [
+        {
+         "id": "t1",
+         "a": [
+          "src",
+          "1"
+         ],
+         "b": [
+          "v1",
+          "1"
+         ]
+        },
+        {
+         "id": "t2",
+         "a": [
+          "v1",
+          "4"
+         ],
+         "b": [
+          "A",
+          "1"
+         ]
+        },
+        {
+         "id": "t3",
+         "a": [
+          "v1",
+          "2"
+         ],
+         "b": [
+          "A",
+          "2"
+         ]
+        }
+       ],
+       "plc": {
+        "name": "API1",
+        "drive": true,
+        "cycle": 10,
+        "inputs": [
+         {
+          "name": "dcy",
+          "kind": "switch"
+         },
+         {
+          "name": "sel",
+          "kind": "switch"
+         }
+        ],
+        "rungs": [
+         {
+          "id": "r1",
+          "comment": "Colis devant le poussoir et tri demandé : mémoriser l’éjection",
+          "items": [
+           {
+            "t": "p",
+            "id": "k1",
+            "v": "pe"
+           },
+           {
+            "t": "no",
+            "id": "k2",
+            "v": "sel"
+           },
+           {
+            "t": "set",
+            "id": "k3",
+            "v": "M1"
+           }
+          ]
+         },
+         {
+          "id": "r2",
+          "comment": "Éjecter : le vérin A sort",
+          "items": [
+           {
+            "t": "no",
+            "id": "k4",
+            "v": "M1"
+           },
+           {
+            "t": "coil",
+            "id": "k5",
+            "v": "Y1"
+           }
+          ]
+         },
+         {
+          "id": "r3",
+          "comment": "Plaque en bout de course : éjection finie",
+          "items": [
+           {
+            "t": "no",
+            "id": "k6",
+            "v": "a1"
+           },
+           {
+            "t": "reset",
+            "id": "k7",
+            "v": "M1"
+           }
+          ]
+         },
+         {
+          "id": "r4",
+          "comment": "Tapis en marche, sauf pendant l’éjection (vérin rentré)",
+          "items": [
+           {
+            "t": "no",
+            "id": "k8",
+            "v": "dcy"
+           },
+           {
+            "t": "nc",
+            "id": "k9",
+            "v": "M1"
+           },
+           {
+            "t": "no",
+            "id": "k10",
+            "v": "a0"
+           },
+           {
+            "t": "coil",
+            "id": "k11",
+            "v": "KM1"
+           }
+          ]
+         }
+        ]
+       },
+       "scene": {
+        "kind": "twin",
+        "name": "Tri",
+        "parts": [
+         {
+          "id": "frame1",
+          "type": "frame",
+          "name": "",
+          "pos": [
+           0,
+           0,
+           0
+          ],
+          "rot": 0,
+          "props": {},
+          "bind": {},
+          "size": [
+           2.2,
+           0.8,
+           0.8
+          ]
+         },
+         {
+          "id": "conv1",
+          "type": "conveyor",
+          "name": "",
+          "pos": [
+           0,
+           0.8,
+           0
+          ],
+          "rot": 0,
+          "props": {
+           "speed": 0.25
+          },
+          "bind": {
+           "out": "KM1"
+          },
+          "size": [
+           2.2,
+           0.1,
+           0.4
+          ]
+         },
+         {
+          "id": "src1",
+          "type": "source",
+          "name": "Arrivée",
+          "pos": [
+           -1,
+           0.9,
+           0
+          ],
+          "rot": 0,
+          "props": {
+           "item": "box",
+           "every": 6,
+           "max": 8,
+           "color": ""
+          },
+          "bind": {}
+         },
+         {
+          "id": "pe",
+          "type": "photocell",
+          "name": "",
+          "pos": [
+           0.2,
+           0.97,
+           -0.3
+          ],
+          "rot": 0,
+          "props": {
+           "range": 0.6,
+           "dir": "z",
+           "nc": false
+          },
+          "bind": {
+           "signal": "pe"
+          }
+         },
+         {
+          "id": "push1",
+          "type": "pusher",
+          "name": "",
+          "pos": [
+           0.1,
+           0.9,
+           -0.25
+          ],
+          "rot": 0,
+          "props": {
+           "stroke": 0.6,
+           "dir": "z",
+           "width": 0.26,
+           "height": 0.12
+          },
+          "bind": {
+           "cyl": "A"
+          }
+         },
+         {
+          "id": "bac1",
+          "type": "sink",
+          "name": "Éjectés",
+          "pos": [
+           0.1,
+           0.4,
+           0.5
+          ],
+          "rot": 0,
+          "props": {
+           "accept": "any"
+          },
+          "bind": {},
+          "size": [
+           0.5,
+           0.4,
+           0.4
+          ]
+         },
+         {
+          "id": "bac2",
+          "type": "sink",
+          "name": "Fin de ligne",
+          "pos": [
+           1.3,
+           0.4,
+           0
+          ],
+          "rot": 0,
+          "props": {
+           "accept": "any"
+          },
+          "bind": {},
+          "size": [
+           0.4,
+           0.4,
+           0.5
+          ]
+         },
+         {
+          "id": "btn1",
+          "type": "button",
+          "name": "Départ",
+          "pos": [
+           -1,
+           0.8,
+           0.3
+          ],
+          "rot": 0,
+          "props": {
+           "mode": "toggle",
+           "color": "#15803d"
+          },
+          "bind": {
+           "input": "dcy"
+          }
+         },
+         {
+          "id": "btn2",
+          "type": "button",
+          "name": "Éjecter",
+          "pos": [
+           -0.8,
+           0.8,
+           0.3
+          ],
+          "rot": 0,
+          "props": {
+           "mode": "toggle",
+           "color": "#2563eb"
+          },
+          "bind": {
+           "input": "sel"
+          }
+         },
+         {
+          "id": "h1",
+          "type": "lamp",
+          "name": "Marche",
+          "pos": [
+           -0.6,
+           0.8,
+           0.3
+          ],
+          "rot": 0,
+          "props": {
+           "color": "#4ade80"
+          },
+          "bind": {
+           "out": "KM1"
+          }
+         },
+         {
+          "id": "lbl1",
+          "type": "label",
+          "name": "",
+          "pos": [
+           0,
+           1.5,
+           0
+          ],
+          "rot": 0,
+          "props": {
+           "text": "Tri des colis"
+          },
+          "bind": {}
+         }
+        ]
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Un jumeau numérique",
+    "en": "A digital twin"
+   },
+   "text": {
+    "fr": "Dans l’industrie, avant de câbler une vraie machine, on la fait tourner en **mise en service virtuelle** : un jumeau numérique en 3D, relié au programme de l’automate, réagit comme la future machine. Vous allez construire le vôtre : un convoyeur qui amène des colis, une cellule qui les voit, un poussoir pneumatique qui les éjecte dans un bac.\nLe plan pneumatique est à gauche ; la machine 3D se construira à sa droite, les deux restent visibles ensemble.",
+    "en": "In industry, before wiring a real machine, it is run in **virtual commissioning**: a 3D digital twin, bound to the PLC program, reacts like the future machine. You will build yours: a conveyor bringing parcels, a photocell seeing them, a pneumatic pusher ejecting them into a bin.\nThe pneumatic plan is on the left; the 3D machine will be built on its right, both stay visible together."
+   },
+   "check": {
+    "type": "ui",
+    "need": [
+     "pneu"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le circuit : un vérin et son distributeur",
+    "en": "The circuit: a cylinder and its valve"
+   },
+   "text": {
+    "fr": "Dessinez d’abord la partie pneumatique, dans le plan de gauche : une **source d’air**, un **distributeur 5/2 monostable à électroaimant** (bobine **Y1**) et un **vérin double effet** de repère **A** avec ses capteurs **a0** (tige rentrée) et **a1** (tige sortie). Ce vérin sera le poussoir de la machine.",
+    "en": "Draw the pneumatic part first, in the left plan: an **air supply**, a **monostable 5/2 solenoid valve** (coil **Y1**) and a **double-acting cylinder** labelled **A** with its sensors **a0** (rod in) and **a1** (rod out). This cylinder will be the machine’s pusher."
+   },
+   "hint": {
+    "fr": "Bibliothèque pneumatique (rail de gauche) : « 5/2 monostable, électroaimant » puis « Vérin double effet ». Cliquez le vérin et donnez-lui le repère A et les capteurs a0 et a1 dans l’onglet Pneumatique.",
+    "en": "Pneumatic library (left rail): “5/2 monostable, solenoid” then “Double-acting cylinder”. Click the cylinder and give it the label A and the sensors a0 and a1 in the Pneumatic tab."
+   },
+   "spot": [
+    ".pnLib .pnItem[data-t=\"supply\"]",
+    ".pnLib .pnItem[data-t=\"v52\"]",
+    ".pnLib .pnItem[data-t=\"cyl2\"]"
+   ],
+   "check": {
+    "type": "pneu-parts",
+    "require": [
+     {
+      "type": "supply"
+     },
+     {
+      "type": "v52",
+      "p": {
+       "left": "sol",
+       "right": "spring",
+       "coilL": "Y1"
+      }
+     },
+     {
+      "type": "cyl2",
+      "p": {
+       "label": "A",
+       "s0": "a0",
+       "s1": "a1"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez la source à l’orifice **1** du distributeur, l’orifice **4** à la chambre arrière du vérin (orifice 1) et l’orifice **2** à la chambre avant (orifice 2).",
+    "en": "Connect the supply to port **1** of the valve, port **4** to the rear chamber of the cylinder (port 1) and port **2** to the front chamber (port 2)."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "~supply:1",
+      "~v52:1"
+     ],
+     [
+      "~v52:4",
+      "~cyl2:1"
+     ],
+     [
+      "~v52:2",
+      "~cyl2:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Ouvrir l’atelier de construction",
+    "en": "Open the build workshop"
+   },
+   "text": {
+    "fr": "Ouvrez la **vue 3D** (bouton 3D du plan), puis choisissez dans sa liste de scènes **« Machine construite (jumeau 3D) »** : l’atelier s’ouvre à droite du plan, avec la palette des composants, et l’inspecteur de la machine dans l’onglet Pneumatique à droite. La scène de départ ne contient qu’un bâti.",
+    "en": "Open the **3D view** (3D button of the plan), then pick **“Built machine (3D twin)”** in its scene list: the workshop opens to the right of the plan, with the component palette, and the machine inspector in the Pneumatic tab on the right. The starting scene only holds a frame."
+   },
+   "spot": [
+    "[data-m3open][aria-pressed=\"false\"]",
+    ".pn3d [data-m3=\"kind\"]",
+    ".pn3d [data-m3=\"build\"][aria-pressed=\"false\"]"
+   ],
+   "check": {
+    "type": "ui",
+    "need": [
+     "3d",
+     "build"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le convoyeur, lié à la sortie KM1",
+    "en": "The conveyor, bound to output KM1"
+   },
+   "text": {
+    "fr": "Dans la palette, cliquez **Convoyeur à bande** puis cliquez sur le bâti pour le poser (il se pose sur le dessus de ce que vous visez). Dans l’inspecteur, donnez-lui la **sortie KM1** : il ne tournera que quand l’automate écrira KM1. Les flèches du manipulateur le déplacent ; W, E, R changent de mode.",
+    "en": "In the palette, click **Belt conveyor** then click the frame to place it (it lands on top of what you aim at). In the inspector, give it **output KM1**: it will only run when the PLC writes KM1. The gizmo arrows move it; W, E, R switch modes."
+   },
+   "hint": {
+    "fr": "Le champ « Sortie (bobine, électrovanne) » de l’inspecteur accepte un nom à taper : KM1. Le convoyeur emporte les pièces vers son +X local (la flèche rouge du manipulateur).",
+    "en": "The inspector field “Output (coil, solenoid valve)” takes a typed name: KM1. The conveyor carries items towards its local +X (the red gizmo arrow)."
+   },
+   "spot": [
+    ".twPal [data-add=\"conveyor\"]"
+   ],
+   "check": {
+    "type": "scene",
+    "require": [
+     {
+      "type": "frame"
+     },
+     {
+      "type": "conveyor",
+      "bind": {
+       "out": "KM1"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Source, bac et cellule pe",
+    "en": "Source, bin and photocell pe"
+   },
+   "text": {
+    "fr": "Posez une **source de pièces** au début du tapis (elle dépose un colis toutes les 6 s), un **bac** au bout (il compte les colis qui tombent dedans) et une **cellule photoélectrique** en travers du tapis, dont le **signal** s’appelle **pe**. Ce signal sera lu par l’automate comme n’importe quel capteur.",
+    "en": "Place an **item source** at the start of the belt (it drops a parcel every 6 s), a **bin** at the end (it counts the parcels falling in) and a **photoelectric sensor** across the belt, whose **signal** is called **pe**. This signal will be read by the PLC like any sensor."
+   },
+   "hint": {
+    "fr": "La cellule tire un faisceau dans sa direction (z par défaut) sur sa portée : posez-la au bord du tapis, à la hauteur des colis (y ≈ dessus du tapis + 0,07).",
+    "en": "The photocell casts a beam in its direction (z by default) over its range: place it at the belt edge, at parcel height (y ≈ belt top + 0.07)."
+   },
+   "spot": [
+    ".twPal [data-add=\"source\"]",
+    ".twPal [data-add=\"sink\"]",
+    ".twPal [data-add=\"photocell\"]"
+   ],
+   "check": {
+    "type": "scene",
+    "require": [
+     {
+      "type": "source"
+     },
+     {
+      "type": "sink"
+     },
+     {
+      "type": "photocell",
+      "bind": {
+       "signal": "pe"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le poussoir, lié au vérin A",
+    "en": "The pusher, bound to cylinder A"
+   },
+   "text": {
+    "fr": "Posez un **poussoir** sur le côté du tapis, à la hauteur de la cellule, et liez-le au **vérin A** du circuit. Réglez sa course pour que la plaque traverse tout le tapis (0,6 m pour un tapis de 0,4 m de large posé à 0,25 m) : quand la tige de A sortira, la plaque poussera le colis hors du tapis.",
+    "en": "Place a **pusher** at the side of the belt, level with the photocell, and bind it to **cylinder A** of the circuit. Set its stroke so the plate crosses the whole belt (0.6 m for a 0.4 m wide belt placed 0.25 m away): when rod A extends, the plate will push the parcel off the belt."
+   },
+   "hint": {
+    "fr": "Un deuxième bac de côté, là où tombent les colis poussés, compte les éjectés. Le champ « Vérin du circuit » liste les vérins du plan : A.",
+    "en": "A second bin at the side, where pushed parcels fall, counts the ejected ones. The “Circuit cylinder” field lists the plan’s cylinders: A."
+   },
+   "spot": [
+    ".twPal [data-add=\"pusher\"]"
+   ],
+   "check": {
+    "type": "scene",
+    "require": [
+     {
+      "type": "pusher",
+      "bind": {
+       "cyl": "A"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Qui voit le colis ?",
+    "en": "Who sees the parcel?"
+   },
+   "text": {
+    "fr": "Pour l’automate, que vaut le signal pe de la cellule ?",
+    "en": "For the PLC, what is the photocell signal pe?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une image de la caméra 3D",
+      "en": "An image from the 3D camera"
+     },
+     {
+      "fr": "Un bit, vrai quand un colis coupe le faisceau : il se lit comme un capteur a1",
+      "en": "A bit, true while a parcel breaks the beam: it is read like an a1 sensor"
+     },
+     {
+      "fr": "La position du colis en mètres",
+      "en": "The parcel position in metres"
+     },
+     {
+      "fr": "Rien tant que la vue 3D est fermée",
+      "en": "Nothing while the 3D view is closed"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le Ladder qui pilote la machine",
+    "en": "The ladder that drives the machine"
+   },
+   "text": {
+    "fr": "Ouvrez le panneau **Automate** et écrivez :\n- `pe` (front montant **P**) · `sel` → **S M1** (un colis devant le poussoir et le tri demandé : mémoriser l’éjection)\n- `M1` → **Y1** (éjecter : la tige de A sort)\n- `a1` → **R M1** (plaque en bout : fin de l’éjection)\n- `dcy` · `/M1` · `a0` → **KM1** (tapis en marche, sauf pendant l’éjection)\ndcy et sel sont deux interrupteurs du pupitre de l’automate.",
+    "en": "Open the **PLC** panel and write:\n- `pe` (rising edge **P**) · `sel` → **S M1** (a parcel in front of the pusher and sorting requested: latch the ejection)\n- `M1` → **Y1** (eject: rod A extends)\n- `a1` → **R M1** (plate at the end: ejection over)\n- `dcy` · `/M1` · `a0` → **KM1** (belt running, except during ejection)\ndcy and sel are two switches of the PLC panel."
+   },
+   "hint": {
+    "fr": "Le contact P se trouve dans la palette du panneau ; S et R sont les bobines à mémoire. KM1 est une bobine comme Y1 : l’automate ne sait pas qu’elle fait tourner un tapis.",
+    "en": "The P contact is in the panel palette; S and R are the latching coils. KM1 is a coil like Y1: the PLC does not know it runs a belt."
+   },
+   "spot": [
+    ".pnPlcBtn[aria-pressed=\"false\"]",
+    ".plPanel [data-pl=\"addrung\"]"
+   ],
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1",
+     "KM1"
+    ],
+    "reads": [
+     "dcy",
+     "pe",
+     "a0",
+     "a1"
+    ],
+    "minRungs": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : un colis éjecté",
+    "en": "Test: one parcel ejected"
+   },
+   "text": {
+    "fr": "Lancez la simulation, mettez **dcy** et **sel** à 1 (pupitre de l’automate, ou boutons de la vue 3D). Le tapis tourne, un colis arrive, la cellule le voit : le poussoir sort, le colis tombe dans le bac de côté, le poussoir rentre et le tapis repart. Le bandeau de la vue compte les colis de chaque bac.",
+    "en": "Run the simulation, set **dcy** and **sel** to 1 (PLC panel, or the 3D view buttons). The belt runs, a parcel arrives, the photocell sees it: the pusher extends, the parcel falls into the side bin, the pusher retracts and the belt restarts. The view strip counts the parcels of each bin."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pressed",
+     "sel": "pressed"
+    },
+    "expect": [
+     "A+",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi lier le tapis à KM1 ?",
+    "en": "Why bind the belt to KM1?"
+   },
+   "text": {
+    "fr": "Un convoyeur sans sortie liée tourne tout le temps. Pourquoi l’avoir lié à KM1 ?",
+    "en": "A conveyor with no bound output runs all the time. Why bind it to KM1?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Pour qu’il aille plus vite",
+      "en": "So that it runs faster"
+     },
+     {
+      "fr": "Pour que l’automate l’arrête pendant l’éjection, comme un vrai moteur commandé par un contacteur",
+      "en": "So that the PLC stops it during the ejection, like a real motor driven by a contactor"
+     },
+     {
+      "fr": "Parce qu’un tapis ne peut pas tourner sans vérin",
+      "en": "Because a belt cannot run without a cylinder"
+     },
+     {
+      "fr": "Pour que la cellule fonctionne",
+      "en": "So that the photocell works"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Exporter la machine",
+    "en": "Export the machine"
+   },
+   "text": {
+    "fr": "Votre machine est un vrai jumeau numérique : le menu **Fichier** de l’atelier l’exporte en **glTF 2.0** (ISO/IEC 12113, la géométrie, lisible par tous les outils 3D) et en **AutomationML** (IEC 62714, la machine entière : composants, poses, signaux, liens avec les vérins), le format d’échange des outils d’ingénierie d’usine. Le même menu réimporte un fichier AutomationML écrit par Jollof Studio, ou un modèle glTF comme décor.\nDéplacez la cellule, changez la course du poussoir, ajoutez une butée : la machine et le programme suivent.",
+    "en": "Your machine is a real digital twin: the workshop’s **File** menu exports it as **glTF 2.0** (ISO/IEC 12113, the geometry, readable by every 3D tool) and as **AutomationML** (IEC 62714, the whole machine: components, poses, signals, links to the cylinders), the exchange format of plant-engineering tools. The same menu re-imports an AutomationML file written by Jollof Studio, or a glTF model as decoration.\nMove the photocell, change the pusher stroke, add a stop blade: the machine and the program follow."
+   },
+   "spot": [
+    ".twBar [data-tw=\"file\"]"
+   ],
+   "check": {
+    "type": "info"
+   }
+  }
+ ]
+}

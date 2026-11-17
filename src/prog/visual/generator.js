@@ -70,7 +70,8 @@ export function visualContext(board, cx) {
   const comps = cx.comps.filter(c => (isSensor(c) || isActuator(c)) && compBoard(c, cx) === board).map(c => ({
     id: c.id, name: c.name, type: c.type,
     acts: isActuator(c) ? visualActs(c.type) : [],
-    sigs: isSensor(c) ? Object.keys(SIGNALS[c.type]).map(k => { const s = signalOf(c.type, k, prof); return { key: k, label: s.label, kind: s.kind, unit: s.unit || '' }; }) : []
+    // Mesures lisibles en blocs : ni « en panne » ni événements reçus (propres aux règles).
+    sigs: isSensor(c) ? Object.keys(SIGNALS[c.type]).filter(k => k !== 'fault').map(k => { const s = signalOf(c.type, k, prof); return { key: k, label: s.label, kind: s.kind, unit: s.unit || '', ev: !!s.event || s.kind === 'text' }; }).filter(s => !s.ev).map(({ ev, ...s }) => s) : []
   }));
   return { board: { id: board.id, name: board.name, label: prof.label, adcMax: 2 ** (prof.adcRead || prof.adcBits || 10) - 1 }, pins, comps, colors: COLORS };
 }

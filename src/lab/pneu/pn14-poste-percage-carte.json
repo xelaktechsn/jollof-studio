@@ -1,5 +1,6 @@
 {
  "id": "pn14-poste-percage-carte",
+ "series": "usine",
  "level": "pro",
  "minutes": 60,
  "title": {
@@ -149,7 +150,7 @@
    },
    {
     "id": "res-1k_xvfdrk",
-    "type": "res-1k",
+    "type": "res-220",
     "name": "R1",
     "x": 72,
     "z": 69,
@@ -173,7 +174,7 @@
    },
    {
     "id": "res-1k_r5wr1u",
-    "type": "res-1k",
+    "type": "res-220",
     "name": "R2",
     "x": 33,
     "z": 99,
@@ -197,7 +198,7 @@
    },
    {
     "id": "res-1k_pfvk8v",
-    "type": "res-1k",
+    "type": "res-220",
     "name": "R3",
     "x": -66,
     "z": 82,
@@ -408,7 +409,7 @@
     },
     {
      "id": "res-1k_xvfdrk",
-     "type": "res-1k",
+     "type": "res-220",
      "name": "R1",
      "x": 72,
      "z": 69,
@@ -432,7 +433,7 @@
     },
     {
      "id": "res-1k_r5wr1u",
-     "type": "res-1k",
+     "type": "res-220",
      "name": "R2",
      "x": 33,
      "z": 99,
@@ -456,7 +457,7 @@
     },
     {
      "id": "res-1k_pfvk8v",
-     "type": "res-1k",
+     "type": "res-220",
      "name": "R3",
      "x": -66,
      "z": 82,

@@ -11,6 +11,11 @@ const dec = v => String(Math.round(v * 10) / 10).replace('.', DEC);
 export const fmtMA = v => (Math.abs(v) >= 1000 ? `${dec(v / 1000)} A` : `${Math.round(v)} mA`);
 export const fmtV = v => `${dec(v)} V`;
 export const fmtW = v => (v >= 1 ? `${dec(v)} W` : `${Math.round(v * 1000)} mW`);
+/** Courant au dixième de mA (bases de transistor, bus I2C). */
+export const fmtMA1 = v => (Math.abs(v) >= 1000 ? fmtMA(v) : `${dec(v)} mA`);
+const fmtOhm = v => (v >= 1000 ? `${dec(v / 1000)} kΩ` : `${Math.round(v)} Ω`);
+const fmtHz = v => (v >= 1e6 ? `${dec(v / 1e6)} MHz` : `${Math.round(v / 1000)} kHz`);
+const fmtU = { mA: fmtMA, W: fmtW, V: fmtV };
 /** Limite citée dans un titre : « 40 mA au plus » (erreur) ou « 20 mA conseillés » (avertissement). */
 const lim = (m, f) => (m.soft ? tl('{0} conseillés', f(m.limit)) : tl('{0} au plus', f(m.limit)));
 
@@ -34,12 +39,15 @@ export const CODES = {
   J0204: { key: 'cap', level: 'error' },
   J0205: { key: 'flash', level: 'error' },
   J0206: { key: 'bus', level: 'error' },
-  J0207: { key: 'lv5', level: 'warning' },
-  J0208: { key: 'lv3', level: 'warning' },
+  J0207: { key: 'lv5', level: 'error' },
+  J0208: { key: 'lv3', level: 'error' },
   J0209: { key: 'pullup', level: 'warning' },
   J0210: { key: 'pulldown', level: 'warning' },
   J0211: { key: 'uart0', level: 'warning' },
   J0212: { key: 'nores', level: 'warning' },
+  J0213: { level: 'warning', title: m => tl('{0} reçoit {1} au niveau haut : il lui faut au moins {2}', m.name, fmtV(m.value), fmtV(m.limit)) },
+  J0214: { level: 'warning', title: m => tl('Bus I2C de {0} : ses tirages demandent {1} pour descendre à 0,4 V ({2} au plus)', m.name, fmtMA1(m.value), fmtMA1(m.limit)) },
+  J0215: { level: 'warning', title: m => tl('Bus I2C de {0} : tirage de {1}, trop faible à {2} (au plus {3})', m.name, fmtOhm(m.value), fmtHz(m.f), fmtOhm(m.limit)) },
   J0301: { level: 'error', title: m => tl('{0} traversée par {1} ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
   J0302: { key: 'gpioover', level: 'error', title: m => tl('{0} débite {1} ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
   J0303: { level: 'error', title: m => tl('{0} reçoit {1} : au-delà de sa tension ({2})', m.name, fmtV(m.value), lim(m, fmtV)) },
@@ -65,11 +73,21 @@ export const CODES = {
   J0323: { level: 'warning', title: m => tl('{0} à {1} : hors de la plage d’entrée de l’ampli (au plus {2})', m.name, fmtV(m.value), fmtV(m.limit)) },
   J0324: { level: 'error', title: m => tl('{0} à {1} : sous la masse ({2})', m.name, fmtV(m.value), lim(m, fmtV)) },
   J0325: { level: 'error', title: m => tl('{0} dissipe {1} sans radiateur ({2})', m.name, fmtW(m.value), lim(m, fmtW)) },
+  J0326: { level: 'error', title: m => tl('{0} : {1} sur cette sortie ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
+  J0327: { level: 'error', title: m => tl('{0} : {1} pour toute la puce ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
+  J0328: { level: 'error', title: m => tl('{0} réglé à {1} par phase ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
+  J0329: { level: 'error', title: m => tl('{0} : son pilote lui envoie {1} par phase ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
+  J0331: { level: 'error', title: m => tl('{0} : {1} dans le primaire ({2})', m.name, fmtMA(m.value), lim(m, fmtMA)) },
+  J0330: { level: 'warning', title: m => tl('{0} : chaîne de {1} MAX7219, jusqu’à {2} sur la broche 5V de la carte ({3})', m.name, m.n, fmtMA(m.value), lim(m, fmtMA)) },
+  J0332: { level: 'error', title: m => (m.low ? tl('{0} à {1} : sous la masse ({2} au moins)', m.name, fmtV(m.value), fmtV(m.limit)) : tl('{0} reçoit {1} : au-delà de ce que tolère cette entrée ({2} au plus)', m.name, fmtV(m.value), fmtV(m.limit))) },
+  J0333: { level: 'error', title: m => tl('{0} : {1} {2} par les broches {3} ({4} au plus)', m.name, fmtMA(m.value), m.dir === 'sink' ? tl('absorbés') : tl('fournis'), m.group, fmtMA(m.limit)) },
+  J0334: { level: 'error', title: m => tl('{0} : {1} demandés au port USB ({2} au plus)', m.name, fmtMA(m.value), fmtMA(m.limit)) },
   J0401: { key: 'reversed', level: 'error' },
   J0402: { key: 'capreversed', level: 'error', title: m => tl('{0} monté à l’envers : {1} entre + et −', m.name, fmtV(m.value)) },
   J0403: { key: 'fanrev', level: 'warning', title: m => tl('{0} branché à l’envers : {1} sur le fil rouge', m.name, fmtV(m.value)) },
   J0501: { key: 'drvdirect', level: 'error' },
   J0502: { key: 'drvmissing', level: 'error' },
+  J0503: { level: 'error', title: m => tl('{0} : bobines mal appariées sur {1}', m.name, m.b) },
   J0601: { level: 'error', title: m => tl('Deux sorties sur le même nœud : {0} et {1}', m.a, m.b) },
   J0602: { level: 'error', title: m => tl('{0} lue sans niveau défini', m.name) },
   J0603: { level: 'error', title: m => tl('analogWrite sur {0}, qui n’a pas de PWM', m.name) },
@@ -80,11 +98,25 @@ export const CODES = {
   J0608: { level: 'error', title: m => tl('{0} en sortie contre la sortie de {1}', m.name, m.b) },
   J0609: { level: 'error', title: m => tl('Broche {0} inconnue sur {1}', m.name, m.b) },
   J0610: { level: 'error', title: m => tl('{0} et {1} répondent à la même adresse I2C (0x{2})', m.a, m.b, m.addr) },
+  J0611: { level: 'error', title: m => tl('{0} est une entrée seulement : le programme ne peut pas la commander', m.name) },
+  J0612: { level: 'error', title: m => tl('GPIO {0} tient la mémoire flash de l’ESP32 : le programme ne doit pas s’en servir', m.name) },
+  J0613: { level: 'error', title: m => tl('{0} tirée au niveau haut : la flash passe à 1,8 V et la carte ne démarre pas', m.name) },
+  J0614: { level: 'error', title: m => tl('analogRead sur {0} (ADC2) alors que le programme utilise le Wi-Fi', m.name) },
+  J0615: { level: 'error', title: m => tl('Wire.setClock({0}) : {1} n’accepte que {2}', String(m.value), m.b, fmtHz(m.limit)) },
   // Plan pneumatique et électropneumatique : le titre vient du vérificateur du plan (src/pneu/check.js).
-  J0701: { level: 'error' }, J0702: { level: 'warning' }, J0703: { level: 'error' }, J0704: { level: 'warning' },
+  J0701: { level: 'error' }, J0702: { level: 'warning' }, J0703: { level: 'error' }, J0704: { level: 'warning' }, J0705: { level: 'error' }, J0706: { level: 'warning' },
+  // Circuit logique : le titre vient des vérifications du plan (src/logic/issues.js).
+  J0801: { level: 'error' }, J0802: { level: 'warning' }, J0803: { level: 'warning' },
   J0901: { level: 'warning', title: m => tl('{0} sans diode de roue libre', m.name) },
   J0902: { level: 'warning', title: m => tl('{0} : {1} demandés, la pile se videra vite', m.name, fmtMA(m.value)) },
   J0903: { level: 'warning', title: m => tl('{0} : broche de démarrage tirée au niveau {1}', m.name, m.high ? tl('haut') : tl('bas')) },
+  J0904: { level: 'warning', title: m => tl('{0} : {1}, plus de {2} % de sa limite ({3})', m.name, (fmtU[m.unit] || fmtV)(m.value), m.pct, (fmtU[m.unit] || fmtV)(m.limit)) },
+  J0905: { level: 'warning', title: m => tl('{0} à {1} : analogRead sature au-delà de {2}', m.name, fmtV(m.value), fmtV(m.limit)) },
+  J0906: { level: 'warning', title: m => tl('{0} : grille sans résistance de rappel', m.name) },
+  J0907: { level: 'warning', title: m => tl('{0} commandé sous {1} : sa résistance n’est garantie qu’à partir de {2}', m.name, fmtV(m.value), fmtV(m.limit)) },
+  J0908: { level: 'warning', title: m => tl('{0} pas saturé : {1} dans la base, il en faut {2} (IC ÷ {3})', m.name, fmtMA1(m.value), fmtMA1(m.limit), m.beta) },
+  J0909: { level: 'warning', title: m => tl('{0} sans condensateur {1}', m.name, m.which === 'in' ? tl('d’entrée') : tl('de sortie')) },
+  J0910: { level: 'warning', title: m => tl('{0} alimenté par la broche 5V de {1} : un SG90 peut tirer {2} ({3} pour toute la carte)', m.name, m.b, fmtMA(m.value), fmtMA(m.limit)) },
   J1001: { level: 'error' }, J1002: { level: 'error' }, J1101: { level: 'error' }, J1102: { level: 'error' },
   J1103: { level: 'error' }, J1104: { level: 'error' }, J1105: { level: 'error' }, J1106: { level: 'error' },
   J1107: { level: 'error' }, J1108: { level: 'error' }, J1109: { level: 'warning' }, J1110: { level: 'error' }, J1111: { level: 'error' }, J1199: { level: 'error' }
@@ -94,6 +126,6 @@ export const BY_KEY = Object.fromEntries(Object.entries(CODES).filter(([, c]) =>
 /** Famille d'un code, pour regrouper. */
 export const FAMILY = {
   J01: tl('Alimentation et courts-circuits'), J02: tl('Signaux et broches'), J03: tl('Valeurs nominales'), J04: tl('Polarité'),
-  J05: tl('Moteurs'), J06: tl('Programme et montage'), J07: tl('Pneumatique et électropneumatique'), J09: tl('Conseils'), J1: tl('Code du programme')
+  J05: tl('Moteurs'), J06: tl('Programme et montage'), J07: tl('Pneumatique et électropneumatique'), J08: tl('Circuit logique'), J09: tl('Conseils'), J1: tl('Code du programme')
 };
 export const familyOf = code => FAMILY[code.slice(0, 3)] || FAMILY[code.slice(0, 2)] || '';

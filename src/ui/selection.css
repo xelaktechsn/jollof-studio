@@ -20,5 +20,5 @@
 .mbChips button:hover { background: #3b82f640; }
 .multiBox .btn.wide kbd { margin-left: auto; font: 500 11px var(--sans); opacity: .75; }
 .mbRow { display: flex; gap: 6px; flex-wrap: wrap; }
-.mbRow .mbDel { color: #ff8a8d; }
+.mbRow .mbDel { color: var(--danger-ink); }
 .multiBox .note { margin: 0; font-size: 12px; color: var(--muted); }

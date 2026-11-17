@@ -12,7 +12,8 @@ The checker (`src/check/check.js`) runs three passes. Each finding has a stable 
 |---|---|---|
 | Wiring structure | Every pin, net and wire (`circuit.js`, `faults.js`) | Supply shorted to ground; a module with no ground; 5 V on a 3.3 V-only pin; a missing pull-up on a 1-Wire bus; a motor wired straight to a GPIO; two I2C modules at the same address |
 | Program ↔ circuit | The program's pin facts (`program.js`) against the wiring | `analogWrite` on a pin with no PWM; `analogRead` on a digital-only pin; an output driven against another output; an input read with no defined level; a pin driven but connected to nothing |
-| Electrical, in every state | The circuit solved by `dc.js` in each reachable state, against `limits.js` | LED or GPIO over its current; a resistor over 1/4 W; a regulator over its thermal budget; a part supplied outside its voltage range; a reversed electrolytic capacitor; a battery drained too fast |
+| Electrical, in every state | The circuit solved by `dc.js` in each reachable state, against `limits.js` and `ratings.js` | LED or GPIO over its current; a resistor over 1/4 W; a regulator over its thermal budget; a part supplied outside its voltage range; a reversed electrolytic capacitor; a battery drained too fast; a module input above its absolute maximum (J0332) or below its VIH threshold (J0213); an ATmega port group over its summed IOH/IOL limit (J0333); a board drawing more than 500 mA from USB, Wi-Fi radio included (J0334); a transistor not saturated (J0908) or a MOSFET under-driven (J0907); a part beyond its derated value (J0904) |
+| Datasheet rules | Bus, boot and pin rules taken from datasheets and standards | I2C pull-ups too strong or too weak for the clock (UM10204, J0214, J0215); `Wire.setClock()` above the slowest device (J0615); ESP32 input-only pins driven (J0611), flash pins used (J0612), flash-voltage strapping pin pulled high (J0613), ADC2 read while Wi-Fi is on (J0614); a floating MOSFET gate (J0906); an LM7805 without its capacitors (J0909); a servo on a board's 5V pin (J0910) |
 
 ## 2. What "every reachable state" means
 
@@ -88,6 +89,10 @@ Each limit has a datasheet source:
 - each supply range and current in `src/sim/parts.js`.
 
 Each source names the publisher, the document and the section or table where the number appears. The list is in `src/check/sources.js`, and `src/check/sources.test.mjs` fails if a limit has no source.
+
+`src/check/ratings.js` holds, for every library part and by family, the absolute-maximum and recommended values the checker needs: supply range and absolute maximum, voltage tolerated on signal pins (5 V tolerance), VIH threshold, output current, bus clock, transistor and MOSFET ratings, contact ratings, battery capacity. `src/check/ratings.test.mjs` fails when a part or a board lacks a value of its family. A value that the manufacturer does not publish is `null` with its reason (for example a generic module with no datasheet); never an invented number. The number of such gaps is capped by the test, so a new one has to be justified.
+
+Derating (J0904) follows NASA EEE-INST-002 Table 4 of each section: resistors 60 % of their power, ceramic capacitors 60 % of their voltage, diodes 50 % of their current, bipolar transistors 60 % of their power and 75 % of their current, MOSFETs 60 % of their power, 75 % of VDS and 60 % of VGS, ICs 80 % of their output current, switches 75 % of their current. Aluminium electrolytic capacitors use 80 % of their voltage, a design threshold, because EEE-INST-002 does not cover them.
 
 Two kinds of number are used:
 

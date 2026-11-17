@@ -134,7 +134,7 @@
    },
    {
     "id": "res-1k_82o3jd",
-    "type": "res-1k",
+    "type": "res-220",
     "name": "R1",
     "x": 7,
     "z": 79,
@@ -668,8 +668,8 @@
     "en": "The Y1 driver stage"
    },
    "text": {
-    "fr": "La bobine **Y1** demande 24 V et plus de 100 mA : une broche de la carte (5 V, 20 mA) ne peut que la **commander**, à travers le transistor **Q1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
-    "en": "Coil **Y1** needs 24 V and more than 100 mA: a board pin (5 V, 20 mA) can only **control** it, through transistor **Q1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
+    "fr": "La bobine **Y1** demande 24 V et plus de 100 mA : une broche de la carte (5 V, 20 mA) ne peut que la **commander**, à travers le transistor **Q1**. Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (220 Ω).\n« Câbler tout le circuit » sait le faire ; relisez alors chaque fil pour comprendre son rôle.",
+    "en": "Coil **Y1** needs 24 V and more than 100 mA: a board pin (5 V, 20 mA) can only **control** it, through transistor **Q1**. In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (220 Ω).\n“Wire the whole circuit” can do it; then read each wire again to understand its role."
    },
    "hint": {
     "fr": "Une broche ne reçoit qu’un fil : pour réunir trois broches (Y1 +, PS1 +, D1 K), passez par une rangée de la breadboard. La diode D1 protège Q1 de la pointe de tension que renvoie la bobine quand on la coupe.",

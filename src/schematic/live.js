@@ -8,7 +8,7 @@
 // par-dessus porte ce qui bouge. Rien n'est calculé tant que la vue est cachée.
 // On y câble aussi : glisser d'une broche à une autre ajoute le fil au montage (visible en 3D),
 // clic droit ou Suppr sur une broche ou un fil le retire.
-import { layoutSchematic, paintCircuit, drawSymbol, liveState, liveActive } from './sheet.js';
+import { layoutSchematic, paintCircuit, drawSymbol, liveState, liveActive, schOrient, turnSymbol } from './sheet.js';
 import { Draw, textWidth } from './draw.js';
 import { tl } from '../i18n/index.js';
 import { linkFlows, closedSwitches, voltRgb, dotSpeed, track, pointAt } from './flows.js';
@@ -94,7 +94,9 @@ export function createSchView(stage, app) {
   const shown = () => app.comps().filter(c => !c.dragging);
   const sigOf = () => {
     const ws = app.wires().filter(w => w.a && w.b && w.a.comp && w.b.comp && !w.a.comp.dragging && !w.b.comp.dragging);
-    return shown().map(c => `${uid(c)}:${c.id}:${c.type}:${c.name}:${Math.round(c.group.position.x)}:${Math.round(c.group.position.z)}`).join(';')
+    // Orientation du symbole : réglée sur le schéma (c.inp.schRot, schMir) ou suivant celle du composant sur le tapis.
+    const turn = c => `${c.inp ? `${c.inp.schRot ?? ''}${c.inp.schMir ? 'm' : ''}` : ''}@${Math.round(((c.group.rotation && c.group.rotation.y) || 0) * 100)}`;
+    return shown().map(c => `${uid(c)}:${c.id}:${c.type}:${c.name}:${Math.round(c.group.position.x)}:${Math.round(c.group.position.z)}:${turn(c)}`).join(';')
       + '|' + ws.map(w => `${w.a.comp.id}.${w.a.key}-${w.b.comp.id}.${w.b.key}`).join(';')
       + '|' + JSON.stringify(app.netNames() || {}) + '|' + app.blocks().map(b => b.name + ':' + b.comps.map(c => c.id).join(',')).join(';');
   };
@@ -131,7 +133,7 @@ export function createSchView(stage, app) {
         const body = R(s.body, 0.6), all = R(s.box, 0.4);
         hits.push({ c, body, all, area: (all[2] - all[0]) * (all[3] - all[1]) });
         if (c.led || c.rgb) leds.push({ c, x: (body[0] + body[2]) / 2, y: (body[1] + body[3]) / 2 });
-        if (s.anim) anims.push({ c, kind: s.anim.kind, x: s.ox + s.anim.x, y: s.oy + s.anim.y, r: s.anim.r });
+        if (s.anim) anims.push({ c, kind: s.anim.kind, x: s.ox + s.anim.x, y: s.oy + s.anim.y, r: s.anim.r, up: s.anim.up ? Math.atan2(s.anim.up[1], s.anim.up[0]) : -Math.PI / 2 });
         geo.push(...spokeGeo(c, s, liveState(c)));
         // Zone d'une broche : son bout, toute sa patte et, sur un bloc (carte, module), son nom écrit à l'intérieur.
         for (const k of Object.keys(s.pins)) {
@@ -383,7 +385,7 @@ export function createSchView(stage, app) {
         ctx.lineWidth = lw;
         for (let i = 0; i < 2; i++) {
           const t = ((now / 650) + i / 2) % 1;
-          ctx.strokeStyle = `rgba(240,138,60,${(1 - t).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, r + 0.6 + t * 3, -Math.PI / 2 - 0.6, -Math.PI / 2 + 0.6); ctx.stroke();
+          ctx.strokeStyle = `rgba(240,138,60,${(1 - t).toFixed(2)})`; ctx.beginPath(); ctx.arc(x, y, r + 0.6 + t * 3, m.up - 0.6, m.up + 0.6); ctx.stroke(); // vers le haut du symbole, même pivoté
         }
       }
     }
@@ -444,11 +446,11 @@ export function createSchView(stage, app) {
     for (const [c, s] of L.syms) {
       if (!s.spokes) continue;
       const a = c.type === 'button' || c.type === 'cylsensor' || c.type === 'pressostat' ? { kind: 'sw', mA: c.inp && c.inp.pressed ? lanes.inj.get(`${c.id}|1`) ?? null : null } : dc.across(c); if (!a) continue;
-      const mA = a.kind === 'npn' && a.extra ? a.extra.ic : a.mA;
+      const mA = (a.kind === 'npn' || a.kind === 'pnp') && a.extra ? a.extra.ic : a.mA;
       if (mA == null || Math.abs(mA) < 0.001) continue;
       const [x0, y0] = px(s.ox + s.box[0], s.oy + s.box[1]), [x1, y1] = px(s.ox + s.box[2], s.oy + s.box[3]), cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
       const spd = a.kind === 'motor' ? `${Math.round(Math.min(1, Math.abs(c.motorV || 0)) * 100)} % · ` : '';
-      const str = (a.kind === 'npn' ? 'Ic ' : '') + spd + app.fmtI(Math.abs(mA)), w = ctx.measureText(str).width + 8;
+      const str = (a.kind === 'npn' || a.kind === 'pnp' ? 'Ic ' : '') + spd + app.fmtI(Math.abs(mA)), w = ctx.measureText(str).width + 8;
       // Le symbole lui-même n'est pas un obstacle pour sa propre étiquette.
       const i = own.get(c), mine = taken[i]; taken[i] = [0, 0, 0, 0];
       pill([[cx, y1 + h / 2 + 1], [cx, y0 - h / 2 - 1], [x1 + w / 2 + 2, cy], [x0 - w / 2 - 2, cy], [cx, y1 + h * 1.6]], str, '#ffd76a');
@@ -744,6 +746,14 @@ export function createSchView(stage, app) {
     centerMm: () => [view.x + W / 2 / view.s, view.y + H / 2 / view.s],
     /** Redessin demandé (sélection changée ailleurs…). */
     redraw: () => request(),
+    /**
+     * Fait pivoter d'un quart de tour (sens horaire) les symboles de ces composants, ou les retourne en miroir
+     * (gauche-droite) : réglage enregistré dans c.inp ; à l'appelant d'enregistrer la modification (annulable).
+     */
+    rotate(list, mirror = false) {
+      for (const c of list) { const s = L && L.syms.get(c); turnSymbol(c, s ? { rot: s.rot || 0, mir: !!s.mir } : schOrient(c), mirror); }
+      dirty = true; request();
+    },
     /** Position à l'écran (fenêtre) d'une broche dessinée, ou null. */
     pinScreen(c, key) {
       const p = pinHits.find(h => !h.stub && h.r.comp === c && h.r.key === key); if (!p) return null;

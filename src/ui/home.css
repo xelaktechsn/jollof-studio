@@ -1,0 +1,73 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Accueil et présentation du premier lancement (src/ui/home.js). Classes préfixées hm* : rien en commun avec les
+   feuilles de l'édition Pro. Sous les boîtes de dialogue (.modal 20, .sDialogWrap 60) pour l'ouverture d'un fichier. */
+.homeScr { position: fixed; inset: 0; z-index: 15; overflow: auto; color: var(--fg); background:
+  radial-gradient(900px 520px at 85% -10%, #3b82f622, transparent 70%),
+  radial-gradient(700px 480px at -10% 110%, #22d3ee12, transparent 70%),
+  radial-gradient(circle at 1px 1px, var(--hi-1) 1px, transparent 1.2px) 0 0 / 22px 22px,
+  var(--bg); animation: hmFade .2s ease-out; }
+.homeScr[hidden] { display: none; }
+.hmWrap { max-width: 1080px; margin: 0 auto; padding: 44px 32px 32px; display: flex; flex-direction: column; gap: 30px; }
+
+.hmHead { display: grid; grid-template-columns: auto 1fr; align-items: center; column-gap: 16px; row-gap: 4px; }
+.hmLogo { grid-row: span 2; width: 58px; height: 58px; }
+.hmLogo svg { width: 100%; height: 100%; display: block; }
+.hmMark svg { height: 30px; width: auto; display: block; overflow: visible; }
+.hmHead p { margin: 0; color: var(--fg-2); font-size: 15px; }
+
+.hmSec { display: flex; flex-direction: column; gap: 12px; }
+.hmSec h2 { margin: 0; }
+.hmIc { flex: none; width: 40px; height: 40px; display: grid; place-items: center; border-radius: 11px; background: #3b82f61f; color: var(--accent-hi); }
+.hmIc .ic { width: 20px; height: 20px; }
+
+.hmResume, .hmKind, .hmLink { all: unset; box-sizing: border-box; cursor: pointer; border-radius: 14px; background: var(--raise); border: 1px solid var(--line-2); transition: border-color .12s, background .12s, transform .12s; }
+.hmResume:hover, .hmKind:hover, .hmLink:hover, .hmResume:focus-visible, .hmKind:focus-visible, .hmLink:focus-visible { border-color: var(--accent); background: #3b82f612; transform: translateY(-1px); }
+.hmResume:focus-visible, .hmKind:focus-visible, .hmLink:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hmResume { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-color: #3b82f666; background: linear-gradient(90deg, #3b82f614, var(--raise) 60%); }
+.hmTxt { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.hmTxt b { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hmTxt small { color: var(--fg-2); font-size: 12.5px; }
+.hmGo { display: inline-flex; align-items: center; gap: 6px; padding: 0 12px; height: var(--ctl); border-radius: var(--r-sm); background: var(--accent-fill); color: var(--accent-ink); font-weight: 600; }
+.hmGo .ic { width: 15px; height: 15px; }
+
+.hmKinds { display: grid; grid-template-columns: repeat(auto-fit, minmax(186px, 1fr)); gap: 12px; }
+.hmKind { display: flex; flex-direction: column; gap: 7px; padding: 16px; min-height: 168px; }
+.hmKind b { font-size: 15px; margin-top: 4px; }
+.hmKind small { font-size: 12.5px; line-height: 1.45; color: var(--fg-2); }
+
+.hmRow { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.hmLink { display: flex; align-items: center; gap: 12px; padding: 13px 14px; }
+.hmLink > .ic { width: 20px; height: 20px; flex: none; color: var(--accent-hi); }
+.hmLink span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hmLink b { font-weight: 600; }
+.hmLink small { color: var(--fg-2); font-size: 12px; }
+
+.hmFoot { display: flex; justify-content: center; }
+.hmText { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12.5px; padding: 6px 10px; border-radius: var(--r-sm); }
+.hmText:hover, .hmText:focus-visible { color: var(--fg); background: var(--raise); }
+.hmText .ic { width: 14px; height: 14px; }
+
+/* ---------- Présentation du premier lancement ---------- */
+.hmIntro { width: min(600px, calc(100vw - 32px)); margin: max(40px, calc(50vh - 290px)) auto 40px; padding: 30px 32px 22px; border-radius: 18px; background: var(--glass); border: 1px solid var(--line-2); box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; animation: hmUp .22s ease-out; }
+.hmArt { display: flex; align-items: center; justify-content: space-between; }
+.hmBig { width: 76px; height: 76px; display: grid; place-items: center; border-radius: 22px; color: #fff; background: linear-gradient(140deg, #3b82f6, #1d4ed8 60%, #22d3ee); box-shadow: 0 10px 30px #3b82f640; }
+.hmBig .ic { width: 36px; height: 36px; }
+.hmStep { font: 500 12px var(--mono); color: var(--muted); }
+.hmIntro h1 { margin: 6px 0 0; font-size: 24px; line-height: 1.25; font-weight: 600; letter-spacing: -.01em; }
+.hmIntro p { margin: 0; color: var(--fg-2); font-size: 14.5px; line-height: 1.6; }
+.hmPoints { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.hmPoints li { display: inline-flex; align-items: center; gap: 7px; padding: 6px 11px; border-radius: 999px; background: var(--raise); border: 1px solid var(--line-2); font-size: 12.5px; }
+.hmPoints .ic { width: 14px; height: 14px; color: var(--accent-hi); }
+.hmDots { display: flex; justify-content: center; gap: 8px; margin-top: 6px; }
+.hmDots button { all: unset; cursor: pointer; width: 8px; height: 8px; border-radius: 50%; background: var(--line-2); transition: width .15s, background .15s; }
+.hmDots button[aria-selected="true"] { width: 22px; border-radius: 4px; background: var(--accent); }
+.hmDots button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hmNav { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.hmNav .grow { flex: 1; }
+.hmNav .btn .ic { width: 15px; height: 15px; }
+
+@keyframes hmFade { from { opacity: 0; } }
+@keyframes hmUp { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .homeScr, .hmIntro { animation: none; } .hmResume, .hmKind, .hmLink { transition: none; } }

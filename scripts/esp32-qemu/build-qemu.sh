@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright (C) 2026 Mamadou Sarr
 #
-# Construit l'émulateur de l'ESP32 du mode fidèle : qemu-system-xtensa, tiré du fork de QEMU d'Espressif
+# Construit l'émulateur du mode fidèle : qemu-system-xtensa (ESP32, ESP32-S3) et qemu-system-riscv32 (ESP32-C3), tirés du fork de QEMU d'Espressif
 # (GPL-2.0), à un commit figé. Ce script ne fait que le compiler et l'empaqueter : QEMU reste un programme à part,
 # lancé par l'application, jamais lié à elle.
 #
@@ -29,7 +29,8 @@ set -euo pipefail
 QEMU_REPO="${QEMU_REPO:-https://github.com/espressif/qemu.git}"
 QEMU_TAG="esp-develop-9.2.2-20250817"
 QEMU_COMMIT="4f4148e2f68689eb8861bf9fce0b46ada9200fef"
-JOLLOF_REV="j1"   # révision de notre construction (ce script, ses options) ; à changer si l'un ou l'autre change
+JOLLOF_REV="j2"   # révision de notre construction (ce script, ses options) ; à changer si l'un ou l'autre change
+                  # j2 : qemu-system-riscv32 (ESP32-C3) et les ROM de l'ESP32-S3 et de l'ESP32-C3 dans le paquet
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 WORK="${WORK:-$PWD/qemu-build}"
@@ -47,9 +48,10 @@ detect_platform() {
   esac
 }
 PLATFORM="${PLATFORM:-$(detect_platform)}"
-VERSION="${QEMU_TAG#esp-develop-}-${JOLLOF_REV}"          # 9.2.2-20250817-j1
+VERSION="${QEMU_TAG#esp-develop-}-${JOLLOF_REV}"          # 9.2.2-20250817-j2
 NAME="jollof-qemu-esp32-${VERSION}-${PLATFORM}"
-EXE="qemu-system-xtensa"; [[ "$PLATFORM" == *mingw32 ]] && EXE="qemu-system-xtensa.exe"
+SUFFIX=""; [[ "$PLATFORM" == *mingw32 ]] && SUFFIX=".exe"
+EXES=("qemu-system-xtensa$SUFFIX" "qemu-system-riscv32$SUFFIX")
 SRC="$WORK/src"; BUILD="$SRC/build"; STAGE="$WORK/stage"; PKG="$WORK/pkg/qemu"; DIST="$WORK/dist"
 [ -n "${EXTRA_PKG_CONFIG_PATH:-}" ] && export PKG_CONFIG_PATH="${EXTRA_PKG_CONFIG_PATH}${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 log() { printf '\n== %s\n' "$*"; }
@@ -95,7 +97,7 @@ fi
 log "Configuration ($PLATFORM)"
 CONF=(
   --prefix="$STAGE" --bindir=bin --datadir=share/qemu --with-suffix=""
-  --target-list=xtensa-softmmu
+  --target-list=xtensa-softmmu,riscv32-softmmu
   --without-default-features
   --enable-gcrypt --enable-pixman --enable-stack-protector
   --with-pkgversion="jollof-$VERSION"
@@ -120,13 +122,14 @@ ninja -C "$BUILD" -j "$JOBS" install
 # ---------- 4. Paquet ----------
 log "Paquet $NAME"
 rm -rf "$WORK/pkg"; mkdir -p "$PKG/bin" "$PKG/share/qemu" "$PKG/lib" "$DIST"
-cp "$STAGE/bin/$EXE" "$PKG/bin/"
-cp "$STAGE/share/qemu/esp32-v3-rom.bin" "$STAGE/share/qemu/esp32-v3-rom-app.bin" "$PKG/share/qemu/"
+for e in "${EXES[@]}"; do cp "$STAGE/bin/$e" "$PKG/bin/"; done
+for r in esp32-v3-rom.bin esp32-v3-rom-app.bin esp32s3_rev0_rom.bin esp32c3-rom.bin; do cp "$STAGE/share/qemu/$r" "$PKG/share/qemu/"; done
 BUNDLED=()
 
 # Bibliothèques hors du système, copiées à côté et rendues relogeables.
 bundle_macos() {
-  local queue=("$PKG/bin/$EXE") f dep base id
+  local queue=() f dep base id e
+  for e in "${EXES[@]}"; do queue+=("$PKG/bin/$e"); done
   while [ ${#queue[@]} -gt 0 ]; do
     f="${queue[0]}"; queue=("${queue[@]:1}")
     id="$(otool -D "$f" 2>/dev/null | tail -n +2 | head -1 || true)"
@@ -141,8 +144,10 @@ bundle_macos() {
         install_name_tool -id "@loader_path/$base" "$PKG/lib/$base"
         queue+=("$PKG/lib/$base"); BUNDLED+=("$base")
       fi
-      if [ "$f" = "$PKG/bin/$EXE" ]; then install_name_tool -change "$dep" "@executable_path/../lib/$base" "$f"
-      else install_name_tool -change "$dep" "@loader_path/$base" "$f"; fi
+      case "$f" in
+        "$PKG"/bin/*) install_name_tool -change "$dep" "@executable_path/../lib/$base" "$f" ;;
+        *) install_name_tool -change "$dep" "@loader_path/$base" "$f" ;;
+      esac
     done < <(otool -L "$f" | tail -n +2 | awk '{print $1}')
   done
   # Signature (ad hoc par défaut : obligatoire sur Apple Silicon). Identité réelle : runtime renforcé, avec le droit
@@ -158,27 +163,28 @@ bundle_macos() {
 XML
   [ "$ident" != "-" ] && sign=(--options runtime --timestamp)
   for f in "$PKG"/lib/*.dylib; do [ -e "$f" ] && codesign --force --sign "$ident" ${sign[@]+"${sign[@]}"} "$f"; done
-  codesign --force --sign "$ident" ${sign[@]+"${sign[@]}"} --entitlements "$ent" "$PKG/bin/$EXE"
+  for e in "${EXES[@]}"; do codesign --force --sign "$ident" ${sign[@]+"${sign[@]}"} --entitlements "$ent" "$PKG/bin/$e"; done
 }
 bundle_linux() {
   command -v patchelf >/dev/null || { echo "patchelf est nécessaire (apt install patchelf)" >&2; exit 1; }
-  local so base
+  local so base e
   while read -r so; do
     base="$(basename "$so")"
     case "$base" in   # glibc et la bibliothèque d'exécution du compilateur viennent du système
       ld-linux* | libc.so* | libm.so* | libdl.so* | libpthread.so* | librt.so* | libresolv.so* | libutil.so* | libgcc_s.so* | libstdc++.so*) continue ;;
     esac
+    [ -f "$PKG/lib/$base" ] && continue
     cp -L "$so" "$PKG/lib/$base"; chmod u+w "$PKG/lib/$base"; BUNDLED+=("$base")
     patchelf --set-rpath '$ORIGIN' "$PKG/lib/$base"
-  done < <(ldd "$PKG/bin/$EXE" | awk '/=> \// {print $3}')
-  patchelf --set-rpath '$ORIGIN/../lib' "$PKG/bin/$EXE"
+  done < <(for e in "${EXES[@]}"; do ldd "$PKG/bin/$e"; done | awk '/=> \// {print $3}' | sort -u)
+  for e in "${EXES[@]}"; do patchelf --set-rpath '$ORIGIN/../lib' "$PKG/bin/$e"; done
 }
 bundle_windows() {
   # Construction statique : seules restent d'éventuelles DLL de MinGW, posées à côté du .exe.
-  local dll
+  local dll e
   while read -r dll; do
     cp "$dll" "$PKG/bin/"; BUNDLED+=("$(basename "$dll")")
-  done < <(ldd "$PKG/bin/$EXE" | awk '/=> \/mingw64\// {print $3}')
+  done < <(for e in "${EXES[@]}"; do ldd "$PKG/bin/$e"; done | awk '/=> \/mingw64\// {print $3}' | sort -u)
   rmdir "$PKG/lib" 2>/dev/null || true
 }
 case "$PLATFORM" in
@@ -237,7 +243,7 @@ libver() { pkg-config --modversion "$1" 2>/dev/null || echo "?"; }
   echo
   echo "## ESP32 ROM images"
   echo
-  echo "share/qemu/esp32-v3-rom.bin and esp32-v3-rom-app.bin are Espressif's ESP32 mask ROM, shipped by the fork in"
+  echo "share/qemu/esp32-v3-rom.bin, esp32-v3-rom-app.bin, esp32s3_rev0_rom.bin and esp32c3-rom.bin are Espressif's mask ROMs (ESP32, ESP32-S3, ESP32-C3), shipped by the fork in"
   echo "pc-bios/. Copyright (c) Espressif Systems (Shanghai) Co. Ltd. Espressif publishes the same ROMs (as ELF"
   echo "files, https://github.com/espressif/esp-rom-elfs) under the Apache License 2.0."
 } > "$PKG/SOURCE.md"
@@ -269,4 +275,4 @@ for f in sorted(os.listdir(d)):
 open(os.path.join(d, 'SHA256SUMS.txt'), 'w').write('\n'.join(lines) + '\n')
 print('\n'.join(lines))
 PY
-log "Terminé : $DIST/$NAME.zip"
+log "Terminé : $DIST/$NAME.zip ($(printf '%s ' "${EXES[@]}"))"

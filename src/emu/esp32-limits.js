@@ -1,10 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
-// Limites du mode fidèle de l'ESP32 (bêta, QEMU d'Espressif). Fichier léger : l'interface le lit sans charger
-// l'émulateur.
-//   Wi-Fi et Bluetooth : pas de radio émulée (le premier WiFi.mode() fait planter la carte) ; ces programmes restent
-//     sur l'interpréteur, qui simule le Wi-Fi.
-//   Modules I2C, SPI, 1-Wire et à signaux temporisés : pas encore reliés à l'émulateur ; ils ne répondent pas.
+// Limites du mode fidèle de l'ESP32 (QEMU d'Espressif). Fichier léger : l'interface le lit sans charger l'émulateur.
+//   Wi-Fi et Bluetooth : QEMU n'émule pas la radio de l'ESP32 (le premier WiFi.mode() fait planter la carte), et le
+//     cœur arduino-esp32 précompilé n'a pas le pilote Ethernet que QEMU sait émuler (open_eth) ; ces programmes
+//     restent sur l'interpréteur, qui simule le Wi-Fi (réseau du projet, serveur web, HTTPClient, ESP-NOW) et le
+//     Bluetooth (BluetoothSerial). Voir docs/ESP32-QEMU-TRIAL.md, « Wi-Fi ».
+//   Modules du montage : les modèles de src/emu/devices répondent par la cale (src/emu/esp32-bridge.js), sauf le
+//     récepteur infrarouge : IRremote échantillonne sa broche par une interruption de minuterie toutes les 50 µs, et les
+//     alarmes des minuteries matérielles (timerAlarm) ne déclenchent aucune interruption dans le QEMU d'Espressif
+//     (essai : aucune en 3 s). Avec un récepteur infrarouge, la carte reste sur l'interpréteur, qui le simule.
+//     MAX485 non plus : son modèle (src/emu/devices/uart.js) ne relie le bus RS-485 qu'à des liaisons SoftwareSerial,
+//     et l'ESP32 n'a que des ports série matériels. HX711 enfin : ses lectures brutes répondent, mais une suite de mesures
+//     (get_units) reste parfois bloquée en attendant « donnée prête » ; tant que ce n'est pas fiable, il reste aussi sur
+//     l'interpréteur.
 import { tl } from '../i18n/index.js';
 
 /** Bibliothèques réseau : Wi-Fi, Bluetooth, et ce qui en dépend (serveur web, HTTP, MQTT, ESP-NOW, OTA…). */
@@ -18,15 +26,15 @@ export function netInclude(code) {
 /** Raison de ne pas lancer ce programme en mode fidèle sur l'ESP32 (il reste sur l'interpréteur), sinon null. */
 export function esp32Refusal(code) {
   const inc = netInclude(code);
-  return inc ? tl('Wi-Fi et Bluetooth ne sont pas émulés en mode fidèle de l’ESP32 (bêta) : ce programme ({0}) tourne en mode Débutant, avec le Wi-Fi simulé.', inc) : null;
+  return inc ? tl('L’émulateur de l’ESP32 n’a pas de radio Wi-Fi ni Bluetooth : ce programme ({0}) tourne sur le simulateur intégré, avec le Wi-Fi simulé.', inc) : null;
 }
 
-/** Types de modules que les modèles de src/emu/devices font répondre, pas encore reliés à QEMU. */
-export const UNBRIDGED = ['lcd1602', 'oled', 'bmp280', 'bme280', 'bh1750', 'hx711', 'mpu6050', 'dht11', 'dht22', 'ds18b20', 'hcsr04', 'ws2812', 'keypad', 'ir', 'rc522', 'nrf24', 'hc05', 'sim800'];
+/** Types de modules que le mode fidèle de l'ESP32 ne fait pas répondre. */
+export const UNBRIDGED = ['ir', 'max485', 'hx711'];
 
 /** Message pour les modules branchés qui ne répondront pas (noms des composants), sinon null. */
 export function unbridgedWarning(comps) {
   if (!comps.length) return null;
   const names = [...new Set(comps.map(c => c.name || c.type))].join(', ');
-  return tl('Mode fidèle de l’ESP32 (bêta) : {0} ne répondront pas. Les modules I2C, SPI, 1-Wire et à signaux temporisés ne sont pas encore reliés à l’émulateur ; passez en mode Débutant pour les utiliser.', names);
+  return tl('Émulateur de l’ESP32 : {0} ne répondront pas.', names);
 }

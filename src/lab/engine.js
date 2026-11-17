@@ -16,7 +16,7 @@
 //   { type: 'quiz', options: [{fr,en}], answer: n | [n…] }
 //   { type: 'pneu-tube', tubes: [["src:1","v1:1"], …] }   tuyaux du plan pneumatique (orifices « élément:orifice » reliés)
 //   watch : « expect » peut aussi viser un vérin du plan pneumatique par son identifiant : { c1: 'out' | 'in' }
-//   { type: 'pneu-seq', when?: { dcy: 'pressed' }, expect: ["A+", "B+", "A-", "B-"] }  cycle des vérins observé
+//   { type: 'pneu-seq', when?: { dcy: 'pressed' | 'pulse' }, expect: ["A+", "B+", "A-", "B-"] }  cycle des vérins observé (pulse : appui bref)
 //     (repères des vérins ; « when » : boutons à maintenir, distributeurs du plan ou pupitre du GRAFCET)
 // Contrôles d'un TP qui part de rien (tutoriel) : rien n'y dépend des identifiants que l'application donne.
 //   { type: 'parts', require: [{ board: true }, { type: 'coil24', name: 'Y1' }, …] }   composants du montage
@@ -24,6 +24,7 @@
 //   { type: 'pneu-parts', require: [{ type: 'v52', p: { left: 'sol', coilL: 'Y1' } }, …] }   éléments du plan
 //   pneu-tube : un orifice « ~v52:4 » désigne l'orifice 4 de n'importe quel distributeur 5/2 du plan
 //   { type: 'grafcet', outputs: ['Y1'], reads: ['B2'], minSteps?: 2 }   GRAFCET lisible, qui commande et lit ces repères
+//   { type: 'ladder', outputs: ['Y1'], reads: ['dcy', 'a1'], minRungs?: 1 }   programme Ladder de l'automate sans erreur, qui écrit et lit ces noms
 //   { type: 'ui', need: ['sim', 'split'] }               état de l'interface (simulation lancée, vue partagée…)
 // Les noms (UNO, R1, LED1…) sont les repères des composants du montage de départ.
 
@@ -33,7 +34,11 @@ import { partOf } from '../sim/parts.js';
 import { inspect } from '../sim/circuit.js';
 import { needsWiring } from '../sim/autowire.js';
 import { props as pneuProps } from '../pneu/elements.js';
-import { compiled } from '../pneu/run.js';
+import { compiled, compiledPlc } from '../pneu/run.js';
+import { lintPlc } from '../plc/ladder.js';
+import { tagsOf } from '../pneu/links.js';
+import { processSensorNames, processOutputNames, processInputNames } from '../pneu/process.js';
+import { isTwin, CATALOG as TWIN } from '../twin/model.js';
 
 const low = v => String(v ?? '').trim().toLowerCase();
 
@@ -217,13 +222,52 @@ export function checkGrafcet(check, env) {
   if (reads.length) return { ok: false, why: 'reads', names: reads };
   return { ok: true };
 }
-/** État de l'interface : env.ui(nom) pour chaque nom demandé (sim, split, pneu, elec, grafcet, 3d). */
+/** Noms connus de l'automate d'après le plan seul : pupitres, capteurs, bobines, étapes (le montage s'y ajoute dans l'application). */
+function plcKnownOf(c) {
+  const tags = tagsOf(c), g = compiled(c.grafcet);
+  return { inputs: [...((c.plc && c.plc.inputs) || []).map(x => x.name), ...((c.grafcet && c.grafcet.inputs) || []).map(x => x.name), ...tags.filter(t => t.kind === 'sensor').map(t => t.name), ...processSensorNames(c.scene), ...processInputNames(c.scene)], outputs: [...tags.filter(t => t.kind === 'coil').map(t => t.name), ...processOutputNames(c.scene)], steps: g ? g.steps : null };
+}
+/** Automate du plan : au moins minRungs réseaux, sans erreur (compilation et noms), qui écrit « outputs » et lit « reads ». */
+export function checkLadder(check, env) {
+  const c = env.pneu ? env.pneu() : null, P = compiledPlc(c && c.plc);
+  if (!P || P.rungs.length < (check.minRungs || 1)) return { ok: false, why: 'empty' };
+  const lintErrs = env.plcProblems ? env.plcProblems().filter(d => d.level === 'error').map(d => d.text) : lintPlc(P, plcKnownOf(c)).diags.filter(d => d.level === 'error').map(d => d.text);
+  const errors = [...P.errors.map(e => e.text), ...lintErrs];
+  if (errors.length) return { ok: false, why: 'errors', errors };
+  const outputs = (check.outputs || []).filter(o => !P.written.has(low(o))), reads = (check.reads || []).filter(v => !P.reads.has(low(v)));
+  if (outputs.length) return { ok: false, why: 'outputs', names: outputs };
+  if (reads.length) return { ok: false, why: 'reads', names: reads };
+  return { ok: true };
+}
+/** État de l'interface : env.ui(nom) pour chaque nom demandé (sim, split, pneu, elec, grafcet, plc, 3d). */
 export function checkUiState(check, env) {
   const missing = (check.need || []).filter(n => !(env.ui && env.ui(n)));
   return { ok: !missing.length, missing };
 }
+/**
+ * Machine 3D construite (jumeau, circuit.scene « twin ») : chaque besoin { type, props, bind } trouve un composant
+ * différent du bon type dont les réglages et liaisons valent ceux demandés (sans la casse ; bind.cyl : repère du vérin).
+ * Rend { ok, why: 'noscene' | 'missing', missing, wrong } ; wrong : composants du bon type mais mal réglés ou mal liés.
+ */
+export function checkScene(check, env) {
+  const c = env.pneu ? env.pneu() : null, sc = c && c.scene;
+  if (!isTwin(sc)) return { ok: false, why: 'noscene', missing: check.require || [], wrong: [] };
+  const parts = sc.parts || [], used = new Set(), missing = [], wrong = [];
+  const need = [...(check.require || [])].sort((a, b) => Object.keys(b.bind || {}).length + Object.keys(b.props || {}).length - Object.keys(a.bind || {}).length - Object.keys(a.props || {}).length);
+  const diffOf = (p, n) => [...Object.entries(n.props || {}).filter(([k, v]) => low(p.props[k]) !== low(v)).map(([k]) => `${k}`), ...Object.entries(n.bind || {}).filter(([k, v]) => low(p.bind[k]) !== low(v)).map(([k, v]) => `${k} = ${v}`)];
+  for (const n of need) {
+    const of = parts.filter(p => !used.has(p) && p.type === n.type), hit = of.find(p => !diffOf(p, n).length);
+    if (hit) { used.add(hit); continue; }
+    missing.push(n);
+    if (of.length) wrong.push({ need: n, part: of[0].id, diff: diffOf(of[0], n) });
+  }
+  if ((check.minParts || 0) > parts.length) return { ok: false, why: 'few', missing, wrong, n: parts.length };
+  return { ok: !missing.length, why: missing.length ? 'missing' : null, missing, wrong };
+}
+/** Nom d'un composant du jumeau pour les messages. */
+export const sceneNeedText = n => (TWIN[n.type] ? TWIN[n.type].name() : n.type) + (n.bind && Object.keys(n.bind).length ? ` (${Object.entries(n.bind).map(([k, v]) => `${k} = ${v}`).join(', ')})` : '');
 /** Contrôles qui se vérifient seuls dans un tutoriel (sans rien observer ni répondre) : relus régulièrement. */
-export const AUTO_CHECKS = new Set(['parts', 'wired', 'pneu-parts', 'pneu-tube', 'grafcet', 'ui', 'code', 'wire']);
+export const AUTO_CHECKS = new Set(['parts', 'wired', 'pneu-parts', 'pneu-tube', 'grafcet', 'ladder', 'ui', 'code', 'wire', 'scene']);
 /** Cycle des vérins : moves (mouvements relevés depuis le début de l'observation) contient-il le cycle attendu ? */
 export function checkPneuSeq(check, moves) {
   return { ok: hasSequence(moves, check.expect), seen: moves.map(m => normMove(m.name + m.dir)), want: expectOf(check.expect) };

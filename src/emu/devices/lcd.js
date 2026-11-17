@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
-// Écran LCD 16×2 et son adaptateur I2C, vus par un vrai programme : l'extenseur PCF8574 reçoit un octet par
+// Écrans LCD 16×2 et 20×4 et leur adaptateur I2C, vus par un vrai programme : l'extenseur PCF8574 reçoit un octet par
 // écriture I2C (P0 = RS, P1 = RW, P2 = E, P3 = rétroéclairage, P4 à P7 = D4 à D7), et le contrôleur HD44780
 // lit ses quatre bits de données à chaque front descendant de E (mode 4 bits, après l'initialisation en 8 bits).
 // Le texte affiché est publié comme le fait la bibliothèque simulée : c.progScreen = { lines, ver }.
@@ -37,21 +37,22 @@ export function createHd44780() {
       const b = (s.half << 4) | nibble; s.half = null;
       if (rs) data(b); else command(b);
     },
-    lines(cols = 16) {
+    /** Lignes affichées : 16 × 2, ou 20 × 4 (lignes 3 et 4 à la suite des lignes 1 et 2 en mémoire : 0x14 et 0x54). */
+    lines(cols = 16, rows = 2) {
       const row = base => Array.from(s.ddram.subarray(base, base + cols), show).join('');
-      return [row(0x00), row(0x40)];
+      return rows > 2 ? [row(0x00), row(0x40), row(0x14), row(0x54)] : [row(0x00), row(0x40)];
     }
   };
 }
 
 export default {
-  types: ['lcd1602'],
+  types: ['lcd1602', 'lcd2004'],
   bus: 'i2c',
   create(comp) {
     const lcd = createHd44780();
     let last = 0, light = false, ver = (comp.progScreen && comp.progScreen.ver) || 0, shown = '';
     const publish = () => {
-      const lines = light && lcd.state.on ? lcd.lines() : [], sig = lines.join('\n');
+      const lines = light && lcd.state.on ? (comp.type === 'lcd2004' ? lcd.lines(20, 4) : lcd.lines()) : [], sig = lines.join('\n');
       if (sig === shown && comp.progScreen) return;
       shown = sig;
       comp.progScreen = { lines, ver: ++ver };

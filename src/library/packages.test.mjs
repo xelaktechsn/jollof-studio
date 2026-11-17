@@ -327,9 +327,9 @@ test('Règles : la LED en paquet a les actions d’une LED, le capteur en paquet
     return { src, r };
   };
   const a = code('led-red', 'ldr', 'light'), b = code('pk-led-red', 'pk-ldr', 'AO');
-  for (const x of [a, b]) for (const re of [/const int S_AO = A0;/, /const int L = 7;/, /= analogRead\(S_AO\);/, /digitalWrite\(L, HIGH\);/, /digitalWrite\(L, LOW\);/, /pinMode\(L, OUTPUT\);/]) assert.match(x.src, re);
+  for (const x of [a, b]) for (const re of [/constexpr uint8_t S_AO = A0;/, /constexpr uint8_t L = 7;/, /= analogRead\(S_AO\);/, /digitalWrite\(L, HIGH\);/, /digitalWrite\(L, LOW\);/, /pinMode\(L, OUTPUT\);/]) assert.match(x.src, re);
   // Même programme, au nom de la mesure près (s_lumiere / s_ao) et à son commentaire.
-  const norm = t => t.replace(/s_(lumiere|ao)\b/g, 'X').replace(/ \/\/ plus de lumière.*$/m, '').replace(/S · [^:]+ dépasse/g, 'S dépasse').replace(/"S [^"]+ : "/g, '"S"');
+  const norm = t => t.replace(/s_(lumiere|ao)\b/g, 'X').replace(/ \/\/ plus de lumière.*$/m, '').replace(/S · [^:]+ dépasse/g, 'S dépasse').replace(/"S [^"]+ : "/g, '"S"').replace(/F\("S [^"]+ : "\)/g, 'F("S")');
   assert.equal(norm(b.src), norm(a.src));
   assert.deepEqual(diags(b.r), diags(a.r), 'mêmes diagnostics pour le programme des règles');
   assert.equal(a.r.errors + a.r.warnings, 0, diags(a.r).join('\n'));

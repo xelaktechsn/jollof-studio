@@ -12,6 +12,7 @@ import { truthTable, signals } from './sim.js';
 import { busText } from './editor.js';
 import { simplify, canonical, karnaugh, kGroups } from './boolean.js';
 import { thumbSvg } from './render.js';
+import { logicIssues, elementName } from './issues.js'; // vérifications : mêmes lignes que le panneau Problèmes
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const LV = ['lv0', 'lv1', 'lvX', 'lvZ'];
@@ -92,23 +93,8 @@ export function createLogicPanels(ed, app) {
         <div class="lgActs"><button type="button" class="btn small" data-act="straight">${icon('route')}<span>${tl('Redresser')}</span></button><span class="grow"></span><button type="button" class="btn small danger" data-act="del">${icon('trash')}</button></div></section>`;
     } else {
       const Sg = signals(C), ins = C.elements.filter(isInput), outs = C.elements.filter(isOutput);
-      const issues = [];
-      const named = e => esc(String(propsOf(e).label || '') || (e.type === 'block' && e.p.io ? e.p.io.t : DEFS[e.type].name()));
-      const seen = new Set();
-      for (const f of sim.floating()) {
-        const e = C.elements.find(x => x.id === f.id); if (!e) continue;
-        // Bit d'une broche de bus : la broche entière (D pour D0…D3 en bus, A pour A#2 d'un bloc).
-        const q = layoutOf(e).pins.find(p => pinKeys(p).includes(f.pin)), pn = q ? q.name : f.pin;
-        if (seen.has(f.id + pn)) continue; seen.add(f.id + pn);
-        issues.push({ kind: 'warn', id: e.id, html: tl('{0} : l’entrée {1} n’est reliée à rien (niveau inconnu).', `<b>${named(e)}</b>`, `<b>${esc(pn)}</b>`) });
-      }
-      if (sim.badTunnels.size) issues.push({ kind: 'err', html: tl('Étiquettes de même nom mais de largeurs différentes : {0}. Seuls les premiers bits sont reliés.', [...sim.badTunnels].map(n => `<b>${esc(n)}</b>`).join(', ')) });
-      if (sim.truncated) issues.push({ kind: 'err', html: tl('Circuit trop grand une fois les blocs dépliés : certains blocs ne sont pas simulés.') });
-      if (sim.bad.size) issues.push({ kind: 'err', html: tl('{0} fil(s) entre des broches de largeurs différentes (un bus et un fil simple, ou deux bus) : ils ne transmettent rien.', sim.bad.size) });
-      if (sim.conflicts.size) issues.push({ kind: 'err', html: tl('{0} fil(s) reliant des sorties qui se contredisent (X, en rouge).', sim.conflicts.size) });
-      if (sim.osc) issues.push({ kind: 'err', html: tl('Le circuit oscille : une boucle ne trouve pas d’état stable.') });
-      const labels = new Map(); for (const e of C.elements) { const l = String((e.p && e.p.label) || '').trim(); if (l && e.type !== 'tunnel') labels.set(l, (labels.get(l) || 0) + 1); }
-      for (const [l, n] of labels) if (n > 1) issues.push({ kind: 'warn', html: tl('Le repère {0} est utilisé {1} fois : chaque entrée et sortie doit avoir un nom différent.', `<b>${esc(l)}</b>`, n) });
+      const issues = logicIssues(C, sim); // entrées en l'air, largeurs, conflits, oscillation, repères en double (src/logic/issues.js)
+      const named = e => esc(elementName(e));
       const io = (list, inp) => list.map(e => {
         const keys = layoutOf(e).pins.filter(q => q.dir === (inp ? 'out' : 'in') && q.name !== 'V').flatMap(pinKeys);
         let val = '';

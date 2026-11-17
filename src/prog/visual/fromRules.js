@@ -9,7 +9,7 @@
 // - écrans sans règle et mesures sur le moniteur série → « toutes les 1000 ms », comme le code des règles.
 // Sans Blockly : rend le JSON de l'espace de travail (Blockly.serialization).
 import { tl } from '../../i18n/index.js';
-import { ACTIONS, SIGNALS, signalOf, numberRules, ruleText, isSensor, isActuator, defaultActs, boardRules, TIMED, screenLabel } from '../rules.js';
+import { ACTIONS, SIGNALS, signalOf, numberRules, ruleText, isSensor, isActuator, defaultActs, boardRules, TIMED, screenLabel, termsOf, SERIAL } from '../rules.js';
 import { boardOf } from '../../sim/boards.js';
 import { B, F, emptyWorkspace } from './types.js';
 import { visualActs } from './generator.js';
@@ -26,8 +26,13 @@ const FOLLOW_AS = ['dim', 'note', 'angle', 'fwd', 'speed', 'digit'];
  */
 export function rulesToBlocks(board, cx, { extras = true } = {}) {
   const prof = boardOf(board), byId = id => cx.comps.find(c => c.id === id);
-  const { rules, mine, boardOfComp } = boardRules(board, cx);
-  const nums = numberRules(rules), skipped = [], variables = [];
+  const { rules: items, mine, boardOfComp } = boardRules(board, cx);
+  const nums = numberRules(items), skipped = [], variables = [];
+  // Variables et séquences des règles : pas d'équivalent direct en blocs (le programme des règles les garde).
+  const decls = new Map((cx.rules || []).filter(r => r && (r.kind === 'var' || r.kind === 'seq')).map(r => [r.id, r]));
+  const rules = items.filter(r => r.kind === 'rule' || !r.kind);
+  for (const d of items) if (d.kind === 'var') skipped.push(tl('Variable {0} : à recréer avec les blocs « variables »', d.name)); else if (d.kind === 'seq') skipped.push(tl('Séquence {0} : pas d’équivalent en blocs', d.name));
+  const byAny = id => byId(id) || decls.get(id) || null;
   let n = 0, count = 0;
   const tag = Math.random().toString(36).slice(2, 6); // identifiants uniques même ajoutés à des blocs existants
   const id = t => `${t.replace(/^jollof_/, '')}_${tag}${(++n).toString(36)}`;
@@ -82,6 +87,8 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
   /* ---------- Règles ---------- */
   /** Action d'une règle → blocs (plusieurs pour un écran) ; ctx : mesure de la règle (s, key, sig), « fait varier ». */
   function emitAct(it, ctx) {
+    if (it.kind && it.kind !== 'act') { skipped.push(tl('« {0} » : pas d’équivalent en blocs', ruleText({ kind: 'rule', src: null, then: [it], else: [] }, byAny, prof).replace(/^Toujours\s*:\s*|\.$/g, ''))); return []; }
+    if (it.comp === SERIAL) { skipped.push(tl('Moniteur série : action sans équivalent en blocs')); return []; }
     const d = byId(it.comp);
     if (!d) return [];
     const db = boardOfComp(d);
@@ -114,30 +121,44 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
   function emitItems(list, ctx) {
     const out = [];
     for (const it of list || []) {
-      if (it.kind === 'rule') { const bs = emitRule(it, ctx); if (bs.length) comment(bs[0], tl('Règle {0} : {1}', nums.get(it.id), ruleText(it, byId, prof))); out.push(...bs); }
+      if (it.kind === 'rule') { const bs = emitRule(it, ctx); if (bs.length) comment(bs[0], tl('Règle {0} : {1}', nums.get(it.id), ruleText(it, byAny, prof))); out.push(...bs); }
       else out.push(...emitAct(it, ctx));
     }
     return out;
   }
   /** Condition d'une règle (bloc booléen), ou null si sa mesure manque. */
+  /** Une condition en bloc, ou null : mesure retirée, ou condition sans équivalent (front, durée, marge, variable, temps…). */
+  function termOf(t) {
+    if (!t.src || !t.src.comp || t.src.comp === SERIAL || t.edge || t.hold || t.hyst || (t.vs && !t.vs.comp)) return null;
+    const s = byId(t.src.comp), sig = s && signalOf(s.type, t.src.sig, prof);
+    if (!sig || sig.kind === 'text' || sig.event) return null;
+    const m = sigBlock(s, t.src.sig, sig), vs = t.vs && byId(t.vs.comp), vsig = vs && signalOf(vs.type, t.vs.sig, prof);
+    if (t.vs && !vsig) return null;
+    let cond = sig.kind === 'bool' ? (t.v ? m : blk('logic_negate', null, { BOOL: m })) : blk('logic_compare', { OP: OP[t.op] || 'GT' }, { A: m, B: vsig ? sigBlock(vs, t.vs.sig, vsig) : shadowNum(+t.v || 0) });
+    if (t.not) cond = blk('logic_negate', null, { BOOL: cond });
+    return { cond, ctx: { s, key: t.src.sig, sig, from: t.from } };
+  }
   function condOf(r) {
-    const s = byId(r.src.comp), sig = s && signalOf(s.type, r.src.sig, prof);
-    if (!sig) return null;
-    const m = sigBlock(s, r.src.sig, sig);
-    const cond = sig.kind === 'bool' ? (r.v ? m : blk('logic_negate', null, { BOOL: m })) : blk('logic_compare', { OP: OP[r.op] || 'GT' }, { A: m, B: shadowNum(+r.v || 0) });
-    return { cond, ctx: { s, key: r.src.sig, sig, from: r.from } };
+    const terms = termsOf(r), first = termOf(r);
+    if (!first) { skipped.push(tl('Règle {0} : condition sans équivalent en blocs', nums.get(r.id))); return null; }
+    let cond = first.cond;
+    for (const t of terms.slice(1)) {
+      const x = termOf(t); if (!x) { skipped.push(tl('Règle {0} : condition sans équivalent en blocs', nums.get(r.id))); return null; }
+      cond = blk('logic_operation', { OP: t.link === 'or' ? 'OR' : 'AND' }, { A: cond, B: x.cond });
+    }
+    return { cond, ctx: first.ctx };
   }
   /** Règle → blocs : un « si » (avec ses « sinon si » enchaînés et son « sinon »), ou ses actions directement. */
   function emitRule(r, ctx) {
     if (!r.src) return emitItems(r.then, ctx);
     const c = condOf(r);
-    if (!c) { skipped.push(tl('Règle {0} : capteur retiré du montage', nums.get(r.id))); return []; }
+    if (!c) return [];
     if (r.op === 'follow') return emitItems((r.then || []).filter(it => it.kind === 'act'), { ...c.ctx, follow: true });
     const arms = [[c.cond, emitItems(r.then, c.ctx)]];
     let els = r.else || [], ectx = c.ctx;
     // « Sinon » qui ne contient qu'une autre règle conditionnelle : « sinon si », comme dans le code des règles.
     while (els.length === 1 && els[0].kind === 'rule' && els[0].src && els[0].op !== 'follow') {
-      const next = condOf(els[0]); if (!next) break;
+      const next = condOf(els[0]); if (!next) { skipped.pop(); break; }
       arms.push([next.cond, emitItems(els[0].then, next.ctx)]); ectx = next.ctx; els = els[0].else || [];
     }
     const elseBody = emitItems(els, ectx), inputs = {};
@@ -148,11 +169,11 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
   }
   const loop = [];
   if (flags.size) loop.push(...[...flags.values()].map((v, i) => { const b = vset(v, bool(false)); return i ? b : comment(b, tl('Aucun effecteur n’a encore été commandé dans ce tour de boucle')); }));
-  rules.forEach(r => { const bs = emitRule(r, {}); if (bs.length) comment(bs[0], tl('Règle {0} : {1}', nums.get(r.id), ruleText(r, byId, prof))); loop.push(...bs); });
+  rules.forEach(r => { const bs = emitRule(r, {}); if (bs.length) comment(bs[0], tl('Règle {0} : {1}', nums.get(r.id), ruleText(r, byAny, prof))); loop.push(...bs); });
   loop.push(...fallback);
 
   /* ---------- Toutes les secondes : écrans sans règle, mesures sur le moniteur série ---------- */
-  const measures = !extras ? [] : mine.filter(isSensor).flatMap(c => Object.keys(SIGNALS[c.type]).map(k => ({ c, k, sig: signalOf(c.type, k, prof) })).filter(x => x.sig));
+  const measures = !extras ? [] : mine.filter(isSensor).flatMap(c => Object.keys(SIGNALS[c.type]).filter(k => k !== 'fault').map(k => ({ c, k, sig: signalOf(c.type, k, prof) })).filter(x => x.sig && !x.sig.event && x.sig.kind !== 'text'));
   const every = [];
   mine.filter(c => extras && (c.type === 'lcd1602' || c.type === 'oled') && !ruled.has(c.id) && !(states[c.id] && states[c.id].act)).forEach(sc => {
     const list = measures.slice(0, sc.type === 'lcd1602' ? 2 : 6);
@@ -178,7 +199,8 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
 
 /** Chaque action d'une règle, imbriquées comprises. */
 function walkActs(r, fn) {
-  for (const k of ['then', 'else']) for (const it of r[k] || []) { if (it.kind === 'rule') walkActs(it, fn); else if (it.kind === 'act') fn(it); }
+  for (const k of ['then', 'else', 'do']) for (const it of r[k] || []) { if (it.kind === 'rule') walkActs(it, fn); else if (it.kind === 'act') fn(it); }
+  for (const s of r.steps || []) walkActs(s, fn);
 }
 
 /** Une règle ajoutée à un programme en blocs : ses blocs vont à la fin de « en boucle ». Rend le nouvel espace de travail. */

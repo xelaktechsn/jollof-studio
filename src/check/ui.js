@@ -37,7 +37,7 @@ export function installCheck(app) {
   document.body.appendChild(modal);
   const q = k => modal.querySelector(`[data-c="${k}"]`);
   let last = null, timer = 0, gen = 0, ctrl = null, accepting = null;
-  const opened = new Set();
+  const opened = new Set(), hooks = new Set(); // hooks : prévenus de chaque résultat (panneau Problèmes, src/ui/shell.js)
 
   /* ---------- Travailleur en arrière-plan : la preuve ne prend jamais de temps à l'interface ---------- */
   let worker = null, workerOk = typeof Worker !== 'undefined', reqId = 0;
@@ -136,6 +136,7 @@ export function installCheck(app) {
     }
     last = r; paintChip();
     if (!modal.hidden) render();
+    hooks.forEach(f => { try { f(r); } catch (e) { console.error(e); } });
     return r;
   }
   const schedule = () => { clearTimeout(timer); timer = setTimeout(run, 400); };
@@ -214,6 +215,10 @@ export function installCheck(app) {
   return {
     schedule, run, open, close,
     get result() { return last; },
+    /** Prévenu de chaque résultat : fn(résultat). Rend la fonction qui désabonne. */
+    onResult(fn) { hooks.add(fn); return () => hooks.delete(fn); },
+    /** Va au diagnostic : la ligne du programme, sinon le composant ou la faute dans le plan de travail. */
+    see(d) { if (d.loc && d.loc.line) app.goCode(d.loc.board, d.loc.line, d.loc.col); else app.focus(d); },
     /** Vérifie maintenant ; avec des erreurs, ouvre le rapport. Rend le résultat (pour bloquer une action réelle). */
     async verify(show = true) { const r = await run(); if (r && r.errors && show) open(); return r; }
   };

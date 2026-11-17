@@ -10,25 +10,39 @@ import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
 
-export const QEMU_VERSION = '9.2.2-20250817-j1';
-const EXE = process.platform === 'win32' ? 'qemu-system-xtensa.exe' : 'qemu-system-xtensa';
-const TRACE = /memory_region_ops_write .*? addr 0x([0-9a-f]+) value 0x([0-9a-f]+) size \d+ name '(esp32\.gpio|misc\.esp32\.ledc)'/;
+export const QEMU_VERSION = '9.2.2-20250817-j2';
+const exe = arch => `qemu-system-${arch}${process.platform === 'win32' ? '.exe' : ''}`;
+/** Machine de QEMU, programme et minuterie (chiens de garde) de chaque puce. */
+export const MACHINES = {
+  esp32: { arch: 'xtensa', timg: 'timer.esp32.timg' },
+  esp32s3: { arch: 'xtensa', timg: 'timer.esp32s3.timg' },
+  esp32c3: { arch: 'riscv32', timg: 'timer.esp32c3.timg' }
+};
+// Écritures tracées gardées : registres GPIO (modèle de QEMU), LEDC de l'ESP32 (modèle de QEMU) ; sur l'ESP32-S3 et
+// l'ESP32-C3, le LEDC n'a pas de modèle : ses écritures tombent dans la zone d'entrées-sorties générique (*.iomem).
+const TRACE = /memory_region_ops_write .*? addr 0x([0-9a-f]+) value 0x([0-9a-f]+) size \d+ name '(esp32\.gpio|misc\.esp32\.ledc|esp32s3\.iomem|esp32c3\.iomem)'/;
+const LEDC_LS = 0x60019000;
 
-/** QEMU de l'ESP32 : JOLLOF_QEMU, sinon celui que l'application a installé (dossier de données local), sinon null. */
-export function qemuPath() {
-  if (process.env.JOLLOF_QEMU && fs.existsSync(process.env.JOLLOF_QEMU)) return process.env.JOLLOF_QEMU;
+/**
+ * QEMU de l'ESP32 (arch : xtensa, ou riscv32 pour l'ESP32-C3) : JOLLOF_QEMU (xtensa ; riscv32 à côté, ou
+ * JOLLOF_QEMU_RISCV32), sinon celui que l'application a installé (dossier de données local), sinon null.
+ */
+export function qemuPath(arch = 'xtensa') {
+  const dev = arch === 'xtensa' ? process.env.JOLLOF_QEMU : process.env.JOLLOF_QEMU_RISCV32 || (process.env.JOLLOF_QEMU && path.join(path.dirname(process.env.JOLLOF_QEMU), exe(arch)));
+  if (dev && fs.existsSync(dev)) return dev;
   const id = 'sn.jollof.studio', home = os.homedir();
   const base = process.platform === 'darwin' ? path.join(home, 'Library', 'Application Support', id)
     : process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA || path.join(home, 'AppData', 'Local'), id)
       : path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), id);
-  const p = path.join(base, 'qemu-esp32', QEMU_VERSION, 'qemu', 'bin', EXE);
+  const p = path.join(base, 'qemu-esp32', QEMU_VERSION, 'qemu', 'bin', exe(arch));
   return fs.existsSync(p) ? p : null;
 }
 
 /** Arguments de QEMU (les mêmes que qemu_args de src-tauri/src/qemu.rs). */
-export function qemuArgs(share, flash, uartPort, sidePort) {
-  return ['-machine', 'esp32', '-display', 'none', '-monitor', 'none', '-nodefaults',
-    '-global', 'driver=timer.esp32.timg,property=wdt_disable,value=true',
+export function qemuArgs(share, flash, uartPort, sidePort, chip = 'esp32') {
+  const M = MACHINES[chip] || MACHINES.esp32;
+  return ['-machine', chip in MACHINES ? chip : 'esp32', '-display', 'none', '-monitor', 'none', '-nodefaults',
+    '-global', `driver=${M.timg},property=wdt_disable,value=true`,
     ...(share ? ['-L', share] : []),
     '-drive', `file=${flash.replace(/,/g, ',,')},if=mtd,format=raw`,
     '-chardev', `socket,id=uart0,host=127.0.0.1,port=${uartPort}`, '-serial', 'chardev:uart0',
@@ -41,20 +55,27 @@ const listen = () => new Promise((resolve, reject) => {
   srv.listen(0, '127.0.0.1', () => resolve({ srv, port: srv.address().port, conn: new Promise(r => srv.once('connection', s => { srv.close(); s.setNoDelay(true); r(s); })) }));
 });
 
-/** Transport { start, uart, side, stop } vers un QEMU lancé par Node (dossier de travail temporaire, retiré à l'arrêt). */
-export function nodeTransport({ qemu = qemuPath(), workDir = null } = {}) {
+/**
+ * Transport { start, uart, side, stop } vers un QEMU lancé par Node (dossier de travail temporaire, retiré à l'arrêt).
+ * qemu : programme à lancer (sinon celui de la puce, voir qemuPath).
+ */
+export function nodeTransport({ qemu = null, workDir = null } = {}) {
   const own = !workDir, dir = workDir || fs.mkdtempSync(path.join(os.tmpdir(), 'jollof-esp32-'));
   let proc = null, uart = null, side = null, stopped = false;
   const clean = () => { if (own) try { fs.rmSync(dir, { recursive: true, force: true }); } catch { /* Windows : fichier encore ouvert */ } };
   return {
-    async start({ image, onUart, onSide, onTrace, onExit }) {
-      if (!qemu) throw new Error('QEMU introuvable (JOLLOF_QEMU)');
+    async start({ image, chip = 'esp32', onUart, onSide, onTrace, onExit }) {
+      const M = MACHINES[chip] || MACHINES.esp32;
+      // Programme donné pour l'ESP32 (xtensa) : celui de la puce s'il est d'une autre architecture.
+      if (!qemu || (M.arch !== 'xtensa' && !path.basename(qemu).includes(M.arch))) qemu = qemuPath(M.arch);
+      if (!qemu) throw new Error(`QEMU introuvable (qemu-system-${M.arch})`);
       const flash = path.join(dir, 'flash.bin');
       fs.writeFileSync(flash, image);
       const share = path.join(path.dirname(path.dirname(qemu)), 'share', 'qemu');
       const [u, s] = [await listen(), await listen()];
+      if (stopped) { u.srv.close(); s.srv.close(); clean(); return; } // arrêté pendant le lancement : pas de QEMU orphelin
       const t0 = performance.now(), now = () => performance.now() - t0;
-      proc = spawn(qemu, qemuArgs(fs.existsSync(share) ? share : null, flash, u.port, s.port), { stdio: ['ignore', 'ignore', 'pipe'] });
+      proc = spawn(qemu, qemuArgs(fs.existsSync(share) ? share : null, flash, u.port, s.port, chip), { stdio: ['ignore', 'ignore', 'pipe'] });
       let buf = '', tail = '', batch = [], timer = null;
       const flush = () => { timer = null; if (batch.length) { const b = batch; batch = []; onTrace(b); } };
       proc.stderr.setEncoding('latin1');
@@ -64,6 +85,7 @@ export function nodeTransport({ qemu = qemuPath(), workDir = null } = {}) {
         while ((i = buf.indexOf('\n')) >= 0) {
           const line = buf.slice(0, i); buf = buf.slice(i + 1);
           const m = TRACE.exec(line);
+          if (m && m[3].endsWith('.iomem') && (parseInt(m[1], 16) - LEDC_LS) >>> 0 >= 0x200) continue;
           if (m) { batch.push([parseInt(m[1], 16) >>> 0, parseInt(m[2], 16) >>> 0, now()]); if (!timer) timer = setTimeout(flush, 5); }
           else if (!line.startsWith('memory_region_ops_write')) tail = (tail + line + '\n').slice(-3000);
         }

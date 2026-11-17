@@ -131,8 +131,9 @@ function expandList(list, macros, hide) {
 }
 
 /** Applique les directives : retourne les jetons du programme, les bibliothèques incluses et les avertissements. */
-export function preprocess(toks) {
+export function preprocess(toks, predef = {}) {
   const macros = new Map(), out = [], includes = [], warnings = [], cond = [], incAt = new Map();
+  for (const [k, v] of Object.entries(predef)) macros.set(k, { params: null, body: [{ t: 'num', v, raw: String(v), line: 0, col: 0 }] });
   let seg = [];
   const active = () => cond.every(c => c.on);
   const flush = () => { if (seg.length) { out.push(...expandList(seg, macros, new Set())); seg = []; } };
@@ -216,9 +217,16 @@ const TYPE_WORDS = new Set(['void', 'bool', 'boolean', 'char', 'short', 'int', '
   'uint8_t', 'int8_t', 'uint16_t', 'int16_t', 'uint32_t', 'int32_t', 'uint64_t', 'int64_t', 'unsigned', 'signed', 'auto']);
 const QUALS = new Set(['const', 'static', 'volatile', 'constexpr', 'inline', 'extern', 'register', 'PROGMEM']);
 const T = { void: { k: 'void' }, bool: { k: 'bool' }, float: { k: 'float' }, str: { k: 'str' }, any: { k: 'any' }, char: { k: 'int', b: 8, u: false, ch: true } };
+// const char * : du texte qui peut être nul (strstr() ne trouve rien, if (nom) teste le pointeur).
+T.cptr = { k: 'str', nul: true };
+/**
+ * Tableau de char (char ligne[17]) : un tampon d'octets de taille fixe, comme sur la carte (CBuf de runtime.js).
+ * el : type d'une case (char, ou uint8_t pour byte adresse[6] = "00001") ; nd : taille (expression), ptr : paramètre char *.
+ */
+const CBT = (el, nd, ptr) => ({ k: 'str', cb: { el, nd, ptr } });
 const I = (b, u) => ({ k: 'int', b, u });
 const isNum = t => t.k === 'int' || t.k === 'float' || t.k === 'bool' || t.k === 'any';
-const tname = t => (t.k === 'int' ? (t.ch ? 'char' : t.b === 8 && t.u ? 'byte' : t.b > 16 ? (t.u ? 'unsigned long' : 'long') : (t.u ? 'unsigned int' : 'int')) : t.k === 'obj' ? t.c : t.k === 'arr' ? tl('tableau de {0}', tname(t.of)) : { float: 'float', bool: 'bool', str: 'String', void: 'void', any: 'valeur' }[t.k]);
+const tname = t => (t.k === 'int' ? (t.ch ? 'char' : t.b === 8 && t.u ? 'byte' : t.b > 16 ? (t.u ? 'unsigned long' : 'long') : (t.u ? 'unsigned int' : 'int')) : t.k === 'obj' ? t.c : t.k === 'arr' ? tl('tableau de {0}', tname(t.of)) : t.cb ? 'char[]' : t.nul ? 'const char*' : { float: 'float', bool: 'bool', str: 'String', void: 'void', any: 'valeur' }[t.k]);
 /** Type écrit comme en C++ (int[], char[], auto), pour la fenêtre des variables du débogueur. */
 const ctype = (t, sym) => (sym && sym.charArr ? 'char[]' : t.k === 'arr' ? ctype(t.of) + '[]' : t.k === 'any' ? 'auto' : tname(t));
 
@@ -235,7 +243,8 @@ function baseType(words, intBits, at) {
     case 'int': case 'signed': return I(intBits, false);
     case 'unsigned': case 'unsigned int': return I(intBits, true);
     case 'long': case 'long int': case 'int32_t': return I(32, false);
-    case 'unsigned long': case 'unsigned long int': case 'uint32_t': case 'size_t': return I(32, true);
+    case 'unsigned long': case 'unsigned long int': case 'uint32_t': return I(32, true);
+    case 'size_t': return I(intBits, true); // size_t : unsigned int (16 bits sur les AVR)
     case 'long long': case 'long long int': case 'int64_t': return I(64, false);
     case 'unsigned long long': case 'uint64_t': return I(64, true);
     case 'float': case 'double': case 'long double': return T.float;
@@ -252,7 +261,7 @@ const KEYWORDS = new Set(['if', 'else', 'while', 'for', 'do', 'switch', 'case', 
 const show = t => (t.t === 'eof' ? tl('la fin du programme') : t.t === 'str' ? tl('une chaîne') : q(t.raw || t.v));
 
 class Parser {
-  constructor(toks, o) { this.toks = toks; this.i = 0; this.intBits = o.intBits; this.enums = o.types; this.classes = o.classes; }
+  constructor(toks, o) { this.toks = toks; this.i = 0; this.intBits = o.intBits; this.enums = o.types; this.classes = o.classes; this.enumTy = new Map(); }
   peek(k = 0) { return this.toks[Math.min(this.i + k, this.toks.length - 1)]; }
   next() { return this.toks[this.i++] || this.toks[this.toks.length - 1]; }
   is(v, k = 0) { const t = this.peek(k); return (t.t === 'op' || t.t === 'id') && t.v === v; }
@@ -294,17 +303,21 @@ class Parser {
       break;
     }
     if (!words.length && !cls && !alias) fail(tl('Type attendu avant {0}', show(this.peek())), at);
-    let ty = alias ? (alias.c ? { k: 'obj', c: alias.c } : RET(alias.t, this.intBits)) : cls ? (this.enums.has(cls) ? I(this.intBits, false) : { k: 'obj', c: cls }) : baseType(words, this.intBits, at);
-    let ptr8 = false, ptr = false;
+    let ty = alias ? (alias.c ? { k: 'obj', c: alias.c } : RET(alias.t, this.intBits)) : cls ? (this.enums.has(cls) ? this.enumTy.get(cls) || I(this.intBits, false) : { k: 'obj', c: cls }) : baseType(words, this.intBits, at);
+    let ptr8 = false, ptr = false, cst = quals.has('const'), mut = false;
     while (this.is('*') || this.is('const')) {
-      if (this.eat('const')) continue;
+      if (this.eat('const')) { if (!ptr) cst = true; continue; }
       this.next(); ptr = true;
+      // char *texte (sans const) : en paramètre, le tableau de char de l'appelant, que la fonction peut remplir.
+      if (ty === T.char) { mut = !cst; ty = T.cptr; }
       // byte *tampon : en paramètre, un tableau d'octets (printHex(rfid.uid.uidByte, rfid.uid.size)).
-      if (ty === T.char || (ty.k === 'int' && ty.b === 8)) { ptr8 = ty !== T.char; ty = T.str; }
+      else if (ty.k === 'int' && ty.b === 8) { ptr8 = true; ty = T.str; }
+      // const __FlashStringHelper *, PGM_P : du texte.
+      else if (ty.k === 'str') ty = T.cptr;
       // const esp_now_recv_info_t *info, TwoWire *bus : un objet de bibliothèque, désigné par l'objet lui-même.
       else if (ty.k !== 'obj') fail(tl('Les pointeurs ne sont pas pris en charge par le simulateur (sauf char* pour du texte)'), at);
     }
-    return { ty, quals, at, dims: alias && alias.dims, ptr8, ptr };
+    return { ty, quals, at, dims: alias && alias.dims, ptr8, ptr, mut, cst };
   }
   program() {
     const items = [];
@@ -329,9 +342,11 @@ class Parser {
   enumDecl() {
     const at = this.next();
     if (this.is('class') || this.is('struct')) fail(tl('enum class n’est pas pris en charge : utilisez un enum simple'), at);
-    let name = null;
+    let name = null, under = null;
     if (this.peek().t === 'id' && !this.is('{')) name = this.next().v;
-    if (name) this.enums.add(name);
+    // enum Etape : uint8_t { … } : type sous-jacent fixé (taille de la variable, comme sizeof).
+    if (this.eat(':')) { under = this.type().ty; if (under.k !== 'int') fail(tl('Le type d’un enum doit être un entier (uint8_t, int…)'), at); }
+    if (name) { this.enums.add(name); if (under) this.enumTy.set(name, under); }
     this.expect('{', tl('pour ouvrir la liste de l’enum'));
     const members = [];
     while (!this.is('}')) {
@@ -360,9 +375,12 @@ class Parser {
       let ref = false;
       if (this.eat('&')) ref = true;
       const pn = this.peek().t === 'id' && !KEYWORDS.has(this.peek().v) ? this.next() : null;
-      let pty = pt.ptr8 ? { k: 'arr', of: I(8, true) } : pt.ty;
+      let pty = pt.ptr8 ? { k: 'arr', of: I(8, true) } : pt.mut ? CBT(T.char, null, true) : pt.ty;
       if (pt.dims) pt.dims.forEach(() => { pty = { k: 'arr', of: pty }; });
-      while (this.eat('[')) { while (!this.is(']')) this.next(); this.expect(']'); pty = { k: 'arr', of: pty }; }
+      let nb = 0;
+      while (this.eat('[')) { while (!this.is(']')) this.next(); this.expect(']'); nb++; pty = { k: 'arr', of: pty }; }
+      // char texte[] : comme char *texte ; const char texte[] : du texte en lecture seule.
+      if (nb === 1 && pt.ty === T.char && !pt.ptr) pty = pt.cst ? T.cptr : CBT(T.char, null, true);
       if (ref && pty.k !== 'obj' && pty.k !== 'arr') fail(tl('Passage par référence (&) de {0} non pris en charge : renvoyez plutôt la valeur avec return', pn ? q(pn.v) : tl('ce paramètre')), pt.at);
       params.push({ ty: pty, name: pn && pn.v, def: this.eat('=') ? this.assign() : null, at: pn || pt.at });
       if (!this.eat(',')) break;
@@ -384,7 +402,7 @@ class Parser {
       decls.push({ ty: ty.ty, quals: ty.quals, name: name.v, dims, init, ctor, at: name });
       if (!this.eat(',')) break;
       let t2 = ty.ty;
-      while (this.eat('*')) t2 = t2 === T.char || (t2.k === 'int' && t2.b === 8) ? T.str : fail(tl('Les pointeurs ne sont pas pris en charge'), name);
+      while (this.eat('*')) t2 = t2 === T.char ? T.cptr : t2.k === 'int' && t2.b === 8 ? T.str : fail(tl('Les pointeurs ne sont pas pris en charge'), name);
       name = this.ident();
       ty = { ...ty, ty: t2 };
     }
@@ -550,11 +568,17 @@ class Parser {
   }
   primary() {
     const t = this.next(), p = pos(t);
-    if (t.t === 'num') return { e: 'num', v: t.v, float: t.float, long: t.long, unsigned: t.unsigned, ...p };
+    if (t.t === 'num') return { e: 'num', v: t.v, float: t.float, long: t.long, unsigned: t.unsigned, based: !t.float && /^0./.test(t.raw), ...p };
     if (t.t === 'str') { let v = t.v; while (this.peek().t === 'str') v += this.next().v; return { e: 'str', v, ...p }; }
     if (t.t === 'chr') return { e: 'chr', v: t.v, ...p };
     if (t.t === 'id') {
       if (t.v === 'true' || t.v === 'false') return { e: 'bool', v: t.v === 'true', ...p };
+      // static_cast<uint8_t>(x) : un transtypage, comme (uint8_t)x.
+      if (/^(static|reinterpret|const)_cast$/.test(t.v) && this.is('<')) {
+        this.next(); const ty = this.type(); this.expect('>', tl('pour fermer {0}<…>', t.v)); this.expect('(');
+        const a = this.expr(); this.expect(')', tl('pour fermer {0}<…>(…)', t.v));
+        return { e: 'cast', ty: ty.ty, ptr: ty.ptr, a, ...p };
+      }
       if (this.classes.has(t.v) && this.is('(')) { this.next(); const args = []; while (!this.is(')')) { args.push(this.assign()); if (!this.eat(',')) break; } this.expect(')'); return { e: 'new', cls: t.v, args, ...p }; }
       if (TYPE_WORDS.has(t.v) && t.v !== 'String' && this.is('(')) { this.i--; const ty = this.type(); this.expect('('); const a = this.expr(); this.expect(')'); return { e: 'cast', ty: ty.ty, a, ...p }; }
       if (['new', 'delete', 'this'].includes(t.v)) fail(tl('{0} n’est pas pris en charge par le simulateur', q(t.v)), t);
@@ -583,8 +607,11 @@ const pos = t => ({ line: t.line, col: t.col });
 /* ---------------- Génération du JavaScript ---------------- */
 const BUDGET = 'if(--$.b<0)yield -1;';
 const SIZE = t => (t.k === 'int' ? t.b / 8 : t.k === 'float' ? 4 : t.k === 'bool' ? 1 : t.k === 'str' ? 6 : 2);
+/** Type d'un argument de printf : int, long (32 bits sur un AVR), long long, flottant, texte, inconnu. */
+const ftag = (t, ib) => (t.k === 'float' ? 'f' : t.k === 'bool' ? 'i' : t.k === 'int' ? (t.b === 64 ? 'L' : t.b > ib ? 'l' : 'i') : t.k === 'str' ? 's' : '?');
 const RET = (s, bits) => (typeof s === 'string' && s.startsWith('obj:') ? { k: 'obj', c: s.slice(4) } : { void: T.void, bool: T.bool, char: T.char, float: T.float, str: T.str, any: T.any, int: I(bits, false),
-  i8: I(8, false), u8: I(8, true), i16: I(16, false), u16: I(16, true), i32: I(32, false), u32: I(32, true), i64: I(64, false) }[s] || T.any);
+  i8: I(8, false), u8: I(8, true), i16: I(16, false), u16: I(16, true), i32: I(32, false), u32: I(32, true), i64: I(64, false),
+  size: I(bits, true), uint: I(bits, true), cptr: T.cptr }[s] || T.any);
 /** Objet affichable par print() et convertible en texte (IPAddress : toString()). */
 const printable = t => t.k === 'obj' && !!CLASSES[t.c] && Object.prototype.hasOwnProperty.call(CLASSES[t.c], 'toString');
 // Méthodes de String : celles qui modifient la chaîne sont réécrites en affectation.
@@ -613,7 +640,7 @@ class Gen {
   constructor(ctx) {
     this.intBits = ctx.intBits; this.board = ctx.board; this.boardConsts = BOARD_CONSTS[ctx.board] || {};
     this.boardLabel = ctx.boardLabel || tl('cette carte'); this.statics = []; this.n = 0;
-    this.debug = !!ctx.debug; this.hooks = []; this.globals = [];
+    this.debug = !!ctx.debug; this.hooks = []; this.globals = []; this.includes = new Set(ctx.includes || []);
   }
   /**
    * Mode débogage : arrêt possible à cette ligne. $.D(ligne) décide (point d'arrêt, pas à pas) ;
@@ -658,6 +685,13 @@ class Gen {
   conv(x, to, at) {
     const from = x.t;
     if (to.k === 'any' || to.k === 'void') return x.js;
+    if (to.cb) {
+      // Paramètre char * : le tableau de l'appelant lui-même ; un texte constant passe par une copie.
+      if (x.cb) return x.cb.raw;
+      if (from.k === 'str' || from.k === 'any') return `$.cbuf(0,${x.js},"c")`;
+      this.err(tl('Un tableau de char est attendu ici, pas {0}', tname(from)), at, { code: 'J1104' });
+    }
+    if (to.nul && from.k === 'int' && x.js === '0') return 'null'; // const char *p = NULL
     if (to.k === 'int' || to.k === 'float' || to.k === 'bool') {
       if (from.k === 'str') this.err(tl('Impossible de mettre une String dans un {0}{1}', tname(to), to.k !== 'bool' ? tl(' : utilisez .toInt() ou .toFloat()') : ''), at, { code: 'J1104', help: to.k !== 'bool' ? tl('utilisez .toInt() ou .toFloat()') : null, title: tl('Impossible de mettre une String dans un {0}', tname(to)) });
       if (from.k === 'obj' || from.k === 'arr' || from.k === 'void') this.err(tl('Impossible de mettre {0} dans un {1}', from.k === 'void' ? tl('le résultat d’une fonction void') : tname(from), tname(to)), at);
@@ -676,7 +710,17 @@ class Gen {
     const v = sc.get(name);
     if (v) return v;
     if (this.boardConsts[name] != null) return { kind: 'const', js: String(this.boardConsts[name]), t: I(this.intBits, false) };
-    if (CONSTS[name] != null) return { kind: 'const', js: String(CONSTS[name]), t: CONST_TYPES[name] ? T.float : I(this.intBits, false) };
+    const ib = this.intBits, LIM = { INT_MAX: [2 ** (ib - 1) - 1, 'int'], INT_MIN: [-(2 ** (ib - 1)), 'int'], UINT_MAX: [2 ** ib - 1, 'uint'], LONG_MAX: [2147483647, 'i32'], LONG_MIN: [-2147483648, 'i32'], ULONG_MAX: [4294967295, 'u32'], SIZE_MAX: [2 ** ib - 1, 'uint'] };
+    if (LIM[name]) return { kind: 'const', js: String(LIM[name][0]), t: RET(LIM[name][1], ib) };
+    if (CONSTS[name] != null) return { kind: 'const', js: String(CONSTS[name]), t: CONST_TYPES[name] ? RET(CONST_TYPES[name], this.intBits) : I(this.intBits, false) };
+    // Constantes binaires d'Arduino (binary.h) : B0 à B11111111, très utilisées avec les matrices de LED.
+    if (/^B[01]{1,8}$/.test(name)) return { kind: 'const', js: String(parseInt(name.slice(1), 2)), t: I(this.intBits, false) };
+    // Date et heure de la compilation (RTClib : rtc.adjust(DateTime(F(__DATE__), F(__TIME__)))) : « Nov 17 2026 », « 08:30:00 ».
+    if (name === '__DATE__' || name === '__TIME__') {
+      const d = new Date(), p = n => String(n).padStart(2, '0');
+      const v = name === '__DATE__' ? `${['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][d.getMonth()]} ${String(d.getDate()).padStart(2, ' ')} ${d.getFullYear()}` : `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+      return { kind: 'const', js: JSON.stringify(v), t: T.str };
+    }
     if (OBJECTS[name]) { this.onBoard(BOARD_ONLY.object[name], name, at); return { kind: 'obj', js: `$.O.${name}`, t: { k: 'obj', c: OBJECTS[name] } }; }
     if (FN[name]) return { kind: 'builtin', name };
     let hint = '';
@@ -697,8 +741,12 @@ class Gen {
     switch (e.e) {
       case 'num': {
         if (e.float) return { js: numJs(e.v), t: T.float };
-        const max = this.intBits === 16 ? 32767 : 2147483647;
-        return { js: String(e.v), t: e.unsigned ? I(e.long || e.v > 65535 ? 32 : this.intBits, true) : e.long || e.v > max ? I(e.v > 2147483647 ? 64 : 32, false) : I(this.intBits, false) };
+        // Type d'un littéral entier comme en C++ : le premier qui le contient parmi int, unsigned int (hexadécimal,
+        // octal, binaire ou suffixe U), long, unsigned long, long long ; L écarte int, U les types signés.
+        const ib = this.intBits, v = e.v;
+        const list = [I(ib, false), I(ib, true), I(32, false), I(32, true), I(64, false), I(64, true)]
+          .filter((t, k) => !(e.long && k < 2) && !(e.unsigned && !t.u) && !(!e.unsigned && !e.based && t.u));
+        return { js: String(v), t: list.find(t => v <= 2 ** (t.u ? t.b : t.b - 1) - 1) || I(64, true), lit: true };
       }
       case 'str': return { js: JSON.stringify(e.v), t: T.str };
       case 'chr': return { js: String(e.v), t: T.char };
@@ -707,6 +755,8 @@ class Gen {
         const s = this.lookup(e.name, sc, e);
         if (s.kind === 'builtin') this.err(tl('{0} est une fonction : ajoutez les parenthèses, {1}(…)', q(e.name), e.name), e);
         if (s.kind === 'fn') return { js: s.js, t: { k: 'fn', sym: s } };
+        // Tableau de char : lu comme texte (jusqu'au premier 0) ; cb garde le tampon pour [ ], sizeof et strcpy().
+        if (s.t && s.t.cb) return { js: `$.cs(${s.js})`, t: s.t.cb.ptr ? T.cptr : T.str, sym: s, cb: { raw: s.js, ...s.t.cb }, ro: s.konst ? e.name : null };
         return { js: s.js, t: s.t, lv: s.kind === 'var' && !s.konst, sym: s };
       }
       case 'seq': { const xs = e.list.map(a => this.x(a, sc)); return { js: `(${xs.map(a => a.js).join(',')})`, t: xs[xs.length - 1].t }; }
@@ -720,8 +770,12 @@ class Gen {
         const a = this.x(e.a, sc);
         if (e.op === '!') return { js: `(!${this.truth(a, e)})`, t: T.bool };
         this.numeric(a, e, e.op);
-        if (e.op === '~') return { js: `(~${a.js})`, t: a.t.k === 'int' && a.t.u && a.t.b >= 32 ? I(32, true) : I(Math.max(this.intBits, a.t.b || 0), false) };
-        return { js: `(${e.op}${a.js})`, t: a.t.k === 'float' || a.t.k === 'any' ? a.t : I(Math.max(this.intBits, a.t.k === 'int' ? a.t.b : 0), a.t.k === 'int' && a.t.u && a.t.b >= this.intBits) };
+        // ~ et - sur un entier : promotion (au moins int), puis résultat ramené à ce type (-x d'un unsigned reste positif).
+        if (a.t.k === 'float' || a.t.k === 'any') return { js: `(${e.op}${a.js})`, t: a.t };
+        const t = promote(a.t.k === 'int' ? a.t : I(8, false), I(8, false), this.intBits);
+        if (e.op === '+') return { js: `(+${a.js})`, t };
+        if (e.op === '-' && a.lit && !t.u) return { js: `(-${a.js})`, t, lit: true };
+        return { js: t.b === 64 ? `(${e.op}${a.js})` : wrapInt(`${e.op}${a.js}`, t), t };
       }
       case 'addr': {
         const a = this.x(e.a, sc);
@@ -735,7 +789,7 @@ class Gen {
         this.lvalue(a, e.a, e.op);
         this.numeric(a, e, e.op);
         const d = e.op === '++' ? '+' : '-';
-        if (a.t.k === 'int' && (a.t.b < 32 || a.t.b === 64)) {
+        if (a.t.k === 'int') {
           const set = `${a.js}=${wrapInt(`${a.js}${d}1`, a.t)}`;
           return { js: e.e === 'pre' ? `(${set})` : `$.post(${a.js},${set})`, t: a.t };
         }
@@ -744,17 +798,26 @@ class Gen {
       }
       case 'cast': { const a = this.x(e.a, sc); return { js: this.conv(a, e.ty, e), t: e.ty }; }
       case 'sizeof': {
-        if (e.ty) return { js: String(SIZE(e.ty)), t: I(32, true) };
+        // sizeof rend un size_t (unsigned int : 16 bits sur les AVR).
+        const st = I(this.intBits, true);
+        if (e.ty) return { js: String(SIZE(e.ty)), t: st };
         const a = this.x(e.a, sc);
         let el = a.t; while (el.k === 'arr') el = el.of;
-        if (a.t.k === 'arr') return { js: `$.sizeof(${a.js},${el.k === 'str' && a.sym && a.sym.charArr ? 1 : SIZE(el)})`, t: I(32, true) };
-        if (a.t.k === 'str' && a.sym && a.sym.charArr) return { js: a.sym.charLen ? String(a.sym.charLen) : `(${a.js}.length+1)`, t: I(32, true) };
-        return { js: String(SIZE(a.t)), t: I(32, true) };
+        // Tableau de char : sa taille déclarée ; paramètre char * : la taille d'un pointeur (2 octets sur un AVR).
+        if (a.cb) return { js: a.cb.ptr ? String(this.intBits / 8) : `${a.cb.raw}.b.length`, t: st };
+        if (a.t.k === 'arr') return { js: `$.sizeof(${a.js},${el.cb || (el.k === 'str' && a.sym && a.sym.charArr) ? 1 : SIZE(el)})`, t: st };
+        if (a.t.k === 'str' && a.sym && a.sym.charArr) return { js: a.sym.charLen ? String(a.sym.charLen) : `(${a.js}.length+1)`, t: st };
+        return { js: String(SIZE(a.t)), t: st };
       }
       case 'idx': {
         const o = this.x(e.o, sc), i = this.x(e.i, sc);
         this.numeric(i, e.i, '[ ]');
-        if (o.t.k === 'arr') return { js: `${o.js}[$.ck(${o.js},${i.js})]`, t: o.t.of, lv: true, elem: true };
+        if (o.cb) return { js: `${o.cb.raw}.b[$.ck(${o.cb.raw}.b,${i.js})]`, t: o.cb.el, lv: true, elem: true, ro: o.ro };
+        if (o.t.k === 'arr') {
+          const js = `${o.js}[$.ck(${o.js},${i.js})]`, ro = o.ro || (o.sym && o.sym.konst ? e.o.name || '?' : null);
+          if (o.t.of.cb) return { js: `$.cs(${js})`, t: T.str, cb: { raw: js, ...o.t.of.cb }, ro };
+          return { js, t: o.t.of, lv: true, elem: true, ro };
+        }
         if (o.t.k === 'str') return { js: `$.charAt(${o.js},${i.js})`, t: T.char, strIdx: o };
         if (o.t.k === 'any') return { js: `${o.js}[${i.js}]`, t: T.any, lv: true };
         return this.err(tl('{0} n’est pas un tableau : impossible d’utiliser [ ]', tname(o.t)), e);
@@ -812,6 +875,7 @@ class Gen {
     if (inner.e === 'addr') inner = inner.a;
     const v = this.x(inner, sc), t = v.t;
     if (t.k === 'obj') return v;
+    if (v.cb) return { js: `$.ref(()=>${v.cb.raw},null,{k:"c"})`, t: T.any }; // tableau de char : ses octets, modifiés sur place
     if (t.k === 'void' || t.k === 'fn') this.err(tl('Une variable est attendue ici'), a);
     const set = v.lv && !(v.sym && v.sym.konst) && t.k !== 'arr'
       ? `v=>{${v.js}=${t.k === 'int' ? wrapInt('v', t) : t.k === 'float' ? '+v' : t.k === 'bool' ? '!!v' : t.k === 'str' ? 'String(v)' : 'v'}}` : 'null';
@@ -822,35 +886,68 @@ class Gen {
     if (t.k === 'int') return `{k:"i",b:${t.b},u:${!!t.u}}`;
     if (t.k === 'float') return '{k:"f"}';
     if (t.k === 'bool') return '{k:"b"}';
+    if (t.cb) return '{k:"c"}';
     // Tableau de char : taille déclarée (char texte[32]) ; une String (objet) n'est pas un tableau d'octets.
     if (t.k === 'str') return sym && sym.charArr ? `{k:"s",n:${sym.charLen || 0}}` : sym && sym.kind === 'var' && !inArr ? '{k:"S"}' : '{k:"s",n:0}';
     if (t.k === 'arr') return `{k:"a",of:${this.desc(t.of, sym, true)}}`;
     return '{k:"?"}';
   }
-  truth(x, at) { if (x.t.k === 'str') this.err(tl('Une String ne peut pas servir de condition : comparez-la, par exemple texte == "oui" ou texte.length() > 0'), at); if (x.t.k === 'void') this.err(tl('Une fonction void ne renvoie rien à tester'), at); return x.js; }
+  truth(x, at) { if (x.t.nul) return `(${x.js}!=null)`; if (x.t.k === 'str') this.err(tl('Une String ne peut pas servir de condition : comparez-la, par exemple texte == "oui" ou texte.length() > 0'), at); if (x.t.k === 'void') this.err(tl('Une fonction void ne renvoie rien à tester'), at); return x.t.k === 'obj' ? `$.bool(${x.js})` : x.js; }
   numeric(x, at, op) { if (x.t.k === 'str' || x.t.k === 'obj' || x.t.k === 'arr' || x.t.k === 'void') this.err(tl('L’opérateur {0} ne s’applique pas à {1}', q(op), x.t.k === 'void' ? tl('une fonction void') : tname(x.t)), at); }
   lvalue(x, at, op) {
+    if (x.cb) this.err(tl('Un tableau de char ne se copie pas avec = : utilisez strcpy(…) ou strlcpy(…)'), at, { code: 'J1104' });
     if (x.strIdx) this.err(tl('Pour changer un caractère d’une String, utilisez texte.setCharAt(i, c)'), at);
+    if (x.ro) this.err(tl('{0} est un tableau constant : ses cases ne se modifient pas', q(x.ro)), at, { code: 'J1107', len: 1 });
     if (x.sym && x.sym.konst) this.err(tl('{0} est une constante : on ne peut pas la modifier', q(at.name || '')), at, { code: 'J1107', len: String(at.name || ' ').length });
     if (x.sym && x.sym.kind === 'const') this.err(tl('{0} est une constante prédéfinie : on ne peut pas la modifier', q(at.name)), at, { code: 'J1107', len: String(at.name || ' ').length });
     if (!x.lv) this.err(tl('Le membre de gauche de {0} doit être une variable', q(op)), at);
   }
+  /**
+   * Opération arithmétique. Entre entiers, comme en C++ : promotion vers le type commun (au moins int), puis
+   * résultat ramené à ce type (débordement modulo 2^n : un int de 16 bits passe de 32767 à -32768 sur un Uno,
+   * millis() - debut reste juste quand millis() repasse par 0).
+   */
   arith(op, a, b, at) {
     const t = a.t.k === 'float' || b.t.k === 'float' ? T.float : a.t.k === 'any' || b.t.k === 'any' ? T.any : promote(a.t, b.t, this.intBits);
-    if (op === '/' && t.k === 'int') return { js: `$.div(${a.js},${b.js})`, t };
-    if (op === '%' && t.k === 'int') return { js: `$.mod(${a.js},${b.js})`, t };
-    if (op === '>>' && a.t.k === 'int' && a.t.u && a.t.b >= 32) return { js: `(${a.js}>>>${b.js})`, t: a.t };
-    if (op === '<<' || op === '>>') return { js: `(${a.js}${op}${b.js})`, t: a.t.k === 'int' ? promote(a.t, a.t, this.intBits) : I(this.intBits, false) };
-    if ('&|^'.includes(op)) return { js: `(${a.js}${op}${b.js})`, t: t.k === 'float' ? I(32, false) : t };
-    return { js: `(${a.js}${op}${b.js})`, t };
+    if (t.k !== 'int') {
+      if (op === '<<' || op === '>>' || '&|^'.includes(op)) return { js: `(${a.js}${op}${b.js})`, t: t.k === 'float' ? I(32, false) : t };
+      return { js: `(${a.js}${op}${b.js})`, t };
+    }
+    if (t.b === 64) {
+      if (op === '/') return { js: `$.div(${a.js},${b.js})`, t };
+      if (op === '%') return { js: `$.mod(${a.js},${b.js})`, t };
+      return { js: `$.i64(${a.js}${op}${b.js})`, t };
+    }
+    if (op === '/' || op === '%') return { js: `$.${op === '/' ? 'div' : 'mod'}(${this.cvt(a, t)},${this.cvt(b, t)})`, t };
+    if (op === '<<' || op === '>>') {
+      const lt = a.t.k === 'int' ? promote(a.t, a.t, this.intBits) : I(this.intBits, false);
+      if (op === '>>') return { js: `(${this.cvt(a, lt)}${lt.u && lt.b >= 32 ? '>>>' : '>>'}${b.js})`, t: lt };
+      return { js: wrapInt(`${a.js}<<${b.js}`, lt), t: lt };
+    }
+    if (op === '*' && t.b === 32) return { js: t.u ? `(Math.imul(${a.js},${b.js})>>>0)` : `Math.imul(${a.js},${b.js})`, t };
+    return { js: wrapInt(`${a.js}${op}${b.js}`, t), t };
+  }
+  /** Opérande entier converti vers le type commun t (un signé négatif devient grand dans un type non signé). */
+  cvt(x, t) {
+    const f = x.t;
+    if (f.k !== 'int' || (f.u === t.u ? f.b <= t.b : f.u && f.b < t.b)) return x.js;
+    if (x.lit && +x.js >= 0 && +x.js <= 2 ** (t.u ? t.b : t.b - 1) - 1) return x.js;
+    return wrapInt(x.js, t);
   }
   binary(e, sc) {
     const a = this.x(e.a, sc), b = this.x(e.b, sc), op = e.op;
     if (op === '&&' || op === '||') return { js: `(!!${this.truth(a, e.a)}${op}!!${this.truth(b, e.b)})`, t: T.bool };
     if (['==', '!=', '<', '>', '<=', '>='].includes(op)) {
       const js = op === '==' ? '===' : op === '!=' ? '!==' : op;
+      // strstr(texte, "ok") != nullptr, nom == NULL : un pointeur de texte comparé à 0.
+      const zero = y => y.t.k === 'int' && y.js === '0';
+      if ((op === '==' || op === '!=') && ((a.t.k === 'str' && zero(b)) || (b.t.k === 'str' && zero(a)))) return { js: `(${a.t.k === 'str' ? a.js : b.js}${op === '==' ? '==' : '!='}null)`, t: T.bool };
       if ((a.t.k === 'str') !== (b.t.k === 'str') && a.t.k !== 'any' && b.t.k !== 'any') this.err(tl('Comparaison entre une String et {0} : convertissez d’abord, par exemple String(x) ou texte.toInt()', tname(a.t.k === 'str' ? b.t : a.t)), e);
       if (a.t.k === 'obj' || b.t.k === 'obj') this.err(tl('Impossible de comparer des objets'), e);
+      // Booléen comparé à un nombre (capteur.available() == false) : en C++, false vaut 0 et true 1.
+      if ((op === '==' || op === '!=') && (a.t.k === 'bool' || b.t.k === 'bool')) return { js: `(+${a.js}${js}+${b.js})`, t: T.bool };
+      // Entiers de signes différents : comparés dans le type commun (int -1 < unsigned 1 est faux, comme en C++).
+      if (a.t.k === 'int' && b.t.k === 'int') { const t = promote(a.t, b.t, this.intBits); if (t.u) return { js: `(${this.cvt(a, t)}${js}${this.cvt(b, t)})`, t: T.bool }; }
       return { js: `(${a.js}${js}${b.js})`, t: T.bool };
     }
     if (op === '+' && (a.t.k === 'str' || b.t.k === 'str')) return { js: `(${this.toStr(a, e.a)}+${this.toStr(b, e.b)})`, t: T.str };
@@ -905,23 +1002,79 @@ class Gen {
     const spec = FN[name];
     if (!argCount(spec.args, e.args.length)) this.err(tl('{0}() attend {1}, {2} donné{3}', name, argWord(spec.args), e.args.length, e.args.length > 1 ? 's' : ''), e, { code: 'J1103', len: name.length });
     if (BOARD_ONLY.fn.test(name)) this.onBoard([...ESP32_KINDS, 'nodemcu'], name + '()', e);
+    if (spec.avr) this.onBoard(AVR_KINDS, name + '()', e);
+    if (spec.inc && !this.includes.has(spec.inc)) this.err(tl('{0}() est déclarée dans {1} : ajoutez #include <{1}> en haut du programme', name, spec.inc), e, { code: 'J1101', len: name.length });
+    if (spec.pgm) return this.pgmRead(spec, e, sc);
     if (spec.lvalue) {
       const v = this.x(e.args[0], sc); this.lvalue(v, e.args[0], name);
       const rest = e.args.slice(1).map(a => this.x(a, sc).js);
       return { js: `(${v.js}=${wrapInt(`$.${name}(${[v.js, ...rest].join(',')})`, v.t.k === 'int' ? v.t : I(32, false))})`, t: T.void };
     }
-    const args = e.args.map((a, i) => (spec.ref && spec.ref.includes(i) ? this.refArg(a, sc) : this.x(a, sc)));
+    const args = e.args.map((a, i) => (spec.buf && spec.buf.includes(i) ? this.bufArg(a, sc, name) : spec.ref && spec.ref.includes(i) ? this.refArg(a, sc) : this.x(a, sc)));
     args.forEach((a, i) => { if (name !== 'F' && name !== 'attachInterrupt' && !spec.raw && (a.t.k === 'str' || a.t.k === 'obj' || a.t.k === 'arr')) this.err(tl('{0}() attend un nombre en argument {1}, pas {2}', name, i + 1, tname(a.t)), e.args[i]); });
-    if (name === 'F') return args[0];
+    if (name === 'F' || name === 'PSTR') return args[0];
     if (name === 'delay') return { js: `(yield $.ms(${args[0].js}))`, t: T.void };
     if (name === 'delayMicroseconds') return { js: `(yield $.ms(${args[0].js}/1000))`, t: T.void };
-    if (name === 'yield') return { js: '(yield -1)', t: T.void };
+    // yield() : vide sur un AVR ; ici un tour de boucle de plus (la main revient au simulateur tous les 200 tours).
+    if (name === 'yield') return { js: `((--$.b<0)&&(yield -1),void 0)`, t: T.void };
+    // printf : chaque argument variable garde son type C (int, long, double, texte), pour lire le format comme la carte.
+    if (spec.fmt != null) {
+      const k = spec.fmt, rest = args.slice(k + 1);
+      if (args[k].t.k !== 'str') this.err(tl('{0}() attend le format (un texte entre guillemets) en argument {1}', name, k + 1), e.args[k]);
+      return { js: `$.${name}(${args.slice(0, k + 1).map(a => a.js).join(',')},[${rest.map(a => (printable(a.t) ? `${a.js}.toString()` : a.js)).join(',')}],"${rest.map(a => (printable(a.t) ? 's' : ftag(a.t, this.intBits))).join('')}")`, t: RET(spec.ret, this.intBits) };
+    }
     if (name === 'attachInterrupt' && args[1].t.k !== 'fn') this.err(tl('attachInterrupt() attend le nom d’une fonction en deuxième argument'), e.args[1]);
     let t = RET(spec.ret, this.intBits);
     if (spec.ret === 'arg0') t = args[0].t.k === 'bool' ? I(this.intBits, false) : args[0].t;
     if (spec.ret === 'num') t = args.some(a => a.t.k === 'float') ? T.float : promote(args[0].t, args[1].t, this.intBits);
     const call = `$.${name}(${args.map(a => a.js).join(',')})`;
     return { js: spec.wait ? `(yield* $.wait(${call}))` : call, t };
+  }
+  /** Tableau de char que la fonction remplit (strcpy, snprintf, itoa…) : le tampon lui-même. */
+  bufArg(a, sc, name) {
+    const v = this.x(a, sc);
+    if (!v.cb) this.err(tl('{0}() écrit dans un tableau de char : déclarez-en un, par exemple char texte[20];', name), a, { code: 'J1104' });
+    if (v.ro) this.err(tl('{0}() ne peut pas écrire dans {1}, qui est constant', name, q(v.ro)), a, { code: 'J1107' });
+    return { js: v.cb.raw, t: T.str, cb: v.cb };
+  }
+  /**
+   * pgm_read_byte(&TABLE[i]), pgm_read_word(TABLE + i) : la case elle-même (les constantes en mémoire flash se lisent
+   * comme les autres dans le simulateur), ramenée au type lu. Un tableau de textes rend le texte (strcpy_P(…, (PGM_P)pgm_read_word(&NOMS[i]))).
+   */
+  pgmRead(spec, e, sc) {
+    let a = e.args[0];
+    while (a.e === 'cast') a = a.a;
+    if (a.e === 'addr') a = a.a;
+    else if (a.e === 'bin' && a.op === '+') a = { e: 'idx', o: a.a, i: a.b, line: a.line, col: a.col };
+    else a = { e: 'idx', o: a, i: { e: 'num', v: 0, line: a.line, col: a.col }, line: a.line, col: a.col };
+    const v = this.x(a, sc), t = RET(spec.ret, this.intBits);
+    if (v.t.k === 'str') return { js: v.js, t: T.cptr };
+    if (t.k === 'any') return v;
+    return { js: this.conv(v, t, e), t };
+  }
+  /** Valeur entière connue à la compilation (taille d'un tableau), ou null. */
+  cnum(e, sc) {
+    if (!e) return null;
+    switch (e.e) {
+      case 'num': return e.float ? null : e.v;
+      case 'chr': return e.v;
+      case 'id': {
+        const s = sc.get(e.name);
+        if (s) return s.cv ?? null;
+        if (this.boardConsts[e.name] != null) return this.boardConsts[e.name];
+        return CONSTS[e.name] != null && !CONST_TYPES[e.name] ? CONSTS[e.name] : null;
+      }
+      case 'cast': return this.cnum(e.a, sc);
+      case 'un': { const a = this.cnum(e.a, sc); return a == null ? null : e.op === '-' ? -a : e.op === '~' ? ~a : e.op === '!' ? +!a : a; }
+      case 'bin': { const a = this.cnum(e.a, sc), b = this.cnum(e.b, sc); return a == null || b == null ? null : constEval({ e: 'bin', op: e.op, a: { e: 'num', v: a }, b: { e: 'num', v: b } }); }
+    }
+    return null;
+  }
+  /** Texte qui initialise un tableau de char : trop long pour la taille déclarée, c'est une erreur, comme en C++. */
+  cstr(lit, nd, name, sc) {
+    const L = this.cnum(nd, sc), n = clen(lit.v) + 1;
+    if (L != null && n > L) this.err(tl('Texte trop long pour {0}[{1}] : {2} caractères plus le \\0 final', q(name), L, n - 1), lit, { code: 'J1104' });
+    return JSON.stringify(lit.v);
   }
   method(e, f, sc) {
     const o = this.x(f.o, sc), name = f.name;
@@ -968,26 +1121,38 @@ class Gen {
   initValue(d, t, sc) {
     const at = d.at;
     if (t.k === 'arr') {
-      const base = baseOf(t);
-      // char nom[] = "texte" (ou byte adresse[6] = "00001") : une chaîne, qui garde sa taille déclarée pour sizeof.
-      const len = d.dims[0] && d.dims[0].e === 'num' ? d.dims[0].v : 0;
-      if ((d.ty === T.char || (d.ty.k === 'int' && d.ty.b === 8)) && d.dims.length === 1 && d.init && d.init.e === 'str') return { js: JSON.stringify(d.init.v), t: T.str, charArr: true, charLen: len };
-      if (d.ty === T.char && d.dims.length === 1 && !d.init) return { js: '""', t: T.str, charArr: true, charLen: len };
-      const fill = base.k === 'str' ? '""' : base.k === 'obj' ? 'null' : base.k === 'bool' ? 'false' : '0';
+      const base = baseOf(t), isC = d.ty === T.char, is8 = d.ty.k === 'int' && d.ty.b === 8;
+      // char ligne[17] = "", char nom[] = "BTN1", char t[4] = {'a', 'b'} (ou byte adresse[6] = "00001") : un tampon
+      // d'octets de la taille déclarée, comme sur la carte.
+      if (d.dims.length === 1 && is8 && (d.init ? d.init.e === 'str' || (isC && d.init.e === 'list') : isC)) {
+        const el = isC ? T.char : d.ty;
+        if (!d.dims[0] && !d.init) this.err(tl('Taille du tableau {0} manquante : indiquez-la entre [ ] ou donnez ses valeurs', q(d.name)), at);
+        const n = d.dims[0] ? this.conv(this.x(d.dims[0], sc), I(32, false), at) : '0';
+        let init = '""';
+        if (d.init) init = d.init.e === 'str' ? this.cstr(d.init, d.dims[0], d.name, sc) : `[${d.init.items.map(it => this.conv(this.x(it, sc), el, it)).join(',')}]`;
+        return { js: `$.cbuf(${n},${init},"${el.u ? 'u' : 'c'}")`, t: CBT(el, d.dims[0], false), charArr: true };
+      }
+      // Tableau de tableaux de char (char memo[2][17]) : un tampon neuf par case.
+      const cbf = base.cb ? `$.cbuf(${base.cb.nd ? this.conv(this.x(base.cb.nd, sc), I(32, false), at) : 0},"","${base.cb.el.u ? 'u' : 'c'}")` : null;
+      const fill = cbf || (base.k === 'str' ? '""' : base.k === 'obj' ? 'null' : base.k === 'bool' ? 'false' : '0');
       const dims = d.dims.map(x => (x ? this.conv(this.x(x, sc), I(32, false), at) : null));
       if (!d.init) {
         if (dims.some(x => x == null)) this.err(tl('Taille du tableau {0} manquante : indiquez-la entre [ ] ou donnez ses valeurs', q(d.name)), at);
         if (base.k === 'obj') this.err(tl('Les tableaux d’objets ne sont pas pris en charge'), at);
-        return { js: `$.arr([${dims.join(',')}],${fill})`, t };
+        return { js: `$.arr([${dims.join(',')}],${cbf ? `()=>${fill}` : fill})`, t };
       }
       if (d.init.e !== 'list') this.err(tl('Un tableau s’initialise avec une liste { … }'), d.init);
       const lit = (list, tt, depth) => {
         if (tt.k === 'arr') {
           if (list.e !== 'list') this.err('Liste { … } attendue', list);
           const items = list.items.map(it => lit(it, tt.of, depth + 1));
-          return dims[depth] ? `$.pad([${items.join(',')}],${dims[depth]},${tt.of.k === 'arr' ? `()=>$.arr([${dims.slice(depth + 1).join(',')}],${fill})` : `()=>${fill}`})` : `[${items.join(',')}]`;
+          return dims[depth] ? `$.pad([${items.join(',')}],${dims[depth]},${tt.of.k === 'arr' ? `()=>$.arr([${dims.slice(depth + 1).join(',')}],${cbf ? `()=>${fill}` : fill})` : `()=>${fill}`})` : `[${items.join(',')}]`;
         }
         if (list.e === 'list') this.err(tl('Trop d’accolades dans la liste de valeurs'), list);
+        if (tt.cb) {
+          if (list.e !== 'str') this.err(tl('Un texte entre guillemets est attendu ici'), list);
+          return `$.cbuf(${tt.cb.nd ? this.conv(this.x(tt.cb.nd, sc), I(32, false), at) : 0},${this.cstr(list, tt.cb.nd, d.name, sc)},"${tt.cb.el.u ? 'u' : 'c'}")`;
+        }
         return this.conv(this.x(list, sc), tt, list);
       };
       return { js: lit(d.init, t, 0), t };
@@ -1011,7 +1176,7 @@ class Gen {
       // char noms[3][8] = {"…"} : un tableau de chaînes (byte adresses[][6] = {"00001", …} aussi). Mais
       // char touches[4][4] = {{'1', '2', …}} reste un tableau de caractères (clavier matriciel).
       const leaf = it => (it && it.e === 'list' ? leaf(it.items[0]) : it), lf = leaf(d.init);
-      if (d.ty.k === 'int' && d.ty.b === 8 && d.dims.length >= 2 && (lf ? lf.e === 'str' : d.ty === T.char)) d = { ...d, ty: T.str, dims: d.dims.slice(0, -1) };
+      if (d.ty.k === 'int' && d.ty.b === 8 && d.dims.length >= 2 && (lf ? lf.e === 'str' : d.ty === T.char)) d = { ...d, ty: CBT(d.ty === T.char ? T.char : d.ty, d.dims[d.dims.length - 1]), dims: d.dims.slice(0, -1) };
       if (sc.vars.has(d.name)) this.err(tl('{0} est déjà déclaré {1}', q(d.name), sc.parent ? tl('dans ce bloc') : tl('plus haut')), d.at, { code: 'J1106', len: d.name.length });
       if (d.ty.k === 'void') this.err(tl('Une variable ne peut pas être de type void'), d.at);
       if (d.ty.k === 'obj') this.onBoard(BOARD_ONLY.class[d.ty.c], d.ty.c, d.at);
@@ -1019,6 +1184,8 @@ class Gen {
       const js = isStatic ? `s${++this.n}_${d.name}` : `v_${d.name}`;
       const v = this.initValue(d, t, sc);
       const sym = { kind: 'var', js, t: v.t, konst: d.quals.has('const') || d.quals.has('constexpr'), charArr: v.charArr, charLen: v.charLen };
+      // Constante entière connue à la compilation (taille d'un tableau : char ligne[LONGUEUR + 1]).
+      if (sym.konst && v.t.k === 'int' && !d.dims.length && d.init) sym.cv = this.cnum(d.init, sc);
       if (isStatic) { this.statics.push(`$.l=${d.at.line};${js}=${v.js};`); this.staticDecls.push(js); }
       else out.push(`${js}=${v.js}`);
       sc.vars.set(d.name, sym);
@@ -1056,6 +1223,11 @@ class Gen {
       }
       case 'forof': {
         const arr = this.x(st.arr, sc);
+        if (arr.cb) {
+          const fs = new Scope(sc, sc.fn), t = st.ty.k === 'any' ? arr.cb.el : st.ty;
+          fs.vars.set(st.name, { kind: 'var', js: `v_${st.name}`, t });
+          return `${L}${H()}for(let v_${st.name} of Array.from(${arr.cb.raw}.b)){${BUDGET}${top(fs)}${this.loopBody(st.body, fs)}}`;
+        }
         if (arr.t.k !== 'arr') this.err(tl('La boucle for ( : ) parcourt un tableau'), st.arr);
         const fs = new Scope(sc, sc.fn), t = st.ty.k === 'any' ? arr.t.of : st.ty;
         fs.vars.set(st.name, { kind: 'var', js: `v_${st.name}`, t });
@@ -1101,7 +1273,7 @@ class Gen {
         for (const mbr of it.members) {
           if (g.vars.has(mbr.name)) this.err(tl('{0} est déjà déclaré', q(mbr.name)), mbr.at);
           if (mbr.value) v = constEval(mbr.value);
-          g.vars.set(mbr.name, { kind: 'var', js: String(v), t: I(this.intBits, false), konst: true }); v++;
+          g.vars.set(mbr.name, { kind: 'var', js: String(v), t: I(this.intBits, false), konst: true, cv: v }); v++;
         }
       }
       if (it.kind === 'vars') {
@@ -1144,6 +1316,7 @@ function boardHelp(what, list, board) {
   const twin = INCLUDE_TWIN[what];
   if (twin && (BOARD_ONLY.include[twin] || []).includes(board)) return tl('sur cette carte, écrivez #include <{0}>', twin);
   if (/Bluetooth/.test(what)) return tl('seul l’ESP32 a le Bluetooth classique');
+  if (list.every(k => AVR_KINDS.includes(k))) return tl('réservé aux cartes AVR (Uno, Nano, Mega)');
   if (/Preferences/.test(what)) return tl('Preferences n’existe que sur l’ESP32 : utilisez EEPROM.h');
   if (list.length === 1 && list[0] === 'nodemcu') return tl('cette bibliothèque est celle de l’ESP8266 (NodeMCU)');
   if (list.includes('esp32') && list.every(k => isEsp32(k))) return board === 'nodemcu' ? tl('cette bibliothèque est celle de l’ESP32') : tl('cette carte n’a pas de Wi-Fi : choisissez un ESP32');
@@ -1163,6 +1336,9 @@ function nearName(name, list) {
 const near = nearName;
 const baseOf = t => (t.k === 'arr' ? baseOf(t.of) : t);
 const numJs = v => (Number.isFinite(v) ? String(v) : 'Infinity');
+/** Octets d'un texte dans un tableau de char : un par caractère jusqu'à 0xFF, l'UTF-8 au-delà (comme $.cbuf). */
+const clen = s => { let n = 0; for (const ch of s) { const c = ch.codePointAt(0); n += c < 0x100 ? 1 : c < 0x800 ? 2 : c < 0x10000 ? 3 : 4; } return n; };
+const AVR_KINDS = ['uno', 'nano', 'mega'];
 function promote(a, b, intBits) {
   const bits = Math.max(intBits, a.k === 'int' ? a.b : 0, b.k === 'int' ? b.b : 0);
   const u = (a.k === 'int' && a.u && a.b === bits) || (b.k === 'int' && b.u && b.b === bits);
@@ -1178,13 +1354,27 @@ function wrapInt(js, t) {
 }
 
 /**
+ * Macros prédéfinies par le compilateur de chaque carte : #ifdef __AVR__, #if defined(ESP32), ARDUINO_ARCH_RP2040…
+ * (le programme peut ainsi choisir F() et PROGMEM sur un AVR seulement).
+ */
+export function boardMacros(board) {
+  const m = { ARDUINO: 10819 };
+  const avr = { uno: ['ARDUINO_AVR_UNO', '__AVR_ATmega328P__'], nano: ['ARDUINO_AVR_NANO', '__AVR_ATmega328P__'], mega: ['ARDUINO_AVR_MEGA2560', '__AVR_ATmega2560__'] }[board];
+  if (avr) { m.__AVR__ = 1; m.__AVR = 1; m.ARDUINO_ARCH_AVR = 1; for (const k of avr) m[k] = 1; }
+  if (isEsp32(board)) { m.ESP32 = 1; m.ARDUINO_ARCH_ESP32 = 1; m[{ esp32: 'CONFIG_IDF_TARGET_ESP32', esp32s3: 'CONFIG_IDF_TARGET_ESP32S3', esp32c3: 'CONFIG_IDF_TARGET_ESP32C3' }[board]] = 1; }
+  if (board === 'nodemcu') { m.ESP8266 = 1; m.ARDUINO_ARCH_ESP8266 = 1; }
+  if (board === 'pico') { m.ARDUINO_ARCH_RP2040 = 1; m.ARDUINO_RASPBERRY_PI_PICO = 1; m.PICO_RP2040 = 1; }
+  return m;
+}
+
+/**
  * Analyse seule (sans génération) : l'arbre du programme, pour les vérifications statiques
  * (quelles broches le programme commande ou lit). Rend { ok, items, includes } ou { ok: false, error }.
  */
 export function parse(src, ctx = {}) {
   const intBits = INT_BITS[ctx.board] || 32;
   try {
-    const pp = preprocess(lex(src));
+    const pp = preprocess(lex(src), boardMacros(ctx.board));
     const items = new Parser(pp.toks, { intBits, types: new Set(), classes: new Set(Object.keys(CLASSES)) }).program();
     return { ok: true, items, includes: pp.includes };
   } catch (e) {
@@ -1203,8 +1393,8 @@ export function parse(src, ctx = {}) {
 export function compile(src, ctx = {}) {
   const intBits = INT_BITS[ctx.board] || 32;
   try {
-    const pp = preprocess(lex(src));
-    const gen = new Gen({ ...ctx, intBits });
+    const pp = preprocess(lex(src), boardMacros(ctx.board));
+    const gen = new Gen({ ...ctx, intBits, includes: pp.includes });
     for (const [file, d] of pp.incAt) gen.onBoard(BOARD_ONLY.include[file], file, d);
     const p = new Parser(pp.toks, { intBits, types: new Set(), classes: new Set(Object.keys(CLASSES)) });
     const items = p.program();

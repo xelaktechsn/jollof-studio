@@ -9,13 +9,17 @@
 import { volts, kindOf } from './boards.js';
 import { tl, DEC } from '../i18n/index.js';
 import { GEN_DEFAULT } from './analog-parts.js';
+import { vlRange, tcsCounts, ccsValues, bmeGasOhm } from './i2csensors.js';
+import { serialMod } from './serialmods.js';
+import { ACS712, acsRange } from './parts.js';
 
 /** Grandeurs de l'environnement simulé, réglables par curseur. */
 export const QUANT = {
   temp: { label: tl('Température'), unit: '°C', min: -30, max: 90, step: 0.5, def: 24, dec: 1 },
   hum: { label: tl('Humidité de l’air'), unit: '%', min: 0, max: 100, step: 1, def: 55 },
   press: { label: tl('Pression'), unit: 'hPa', min: 870, max: 1085, step: 1, def: 1013 },
-  lux: { label: tl('Lumière'), unit: 'lx', min: 0, max: 2000, step: 10, def: 300 },
+  // Jusqu'au plein soleil (≈ 100 000 lx) pour le panneau solaire ; une pièce éclairée : 300 à 1000 lx.
+  lux: { label: tl('Lumière'), unit: 'lx', min: 0, max: 100000, step: 10, def: 300, log: true }, // curseur logarithmique : 1 lx à 100 000 lx
   dist: { label: tl('Distance de l’obstacle'), unit: 'cm', min: 1, max: 450, step: 1, def: 50 },
   motion: { label: tl('Quelqu’un bouge devant le capteur'), bool: true, def: 0 },
   soil: { label: tl('Humidité du sol'), unit: '%', min: 0, max: 100, step: 1, def: 40 },
@@ -31,23 +35,65 @@ export const QUANT = {
   line: { label: tl('Ligne noire sous le capteur'), bool: true, def: 0 },
   shake: { label: tl('Secousses'), bool: true, def: 0 },
   touch: { label: tl('Doigt sur le capteur tactile'), bool: true, def: 0 },
-  air: { label: tl('Pollution de l’air (équivalent CO₂)'), unit: 'ppm', min: 400, max: 5000, step: 50, def: 400 },
+  // Jusqu'à 8000 ppm : la plage de l'eCO₂ du CCS811 (400 à 8192 ppm) ; le MQ-135 et le BME680 suivent la même grandeur.
+  air: { label: tl('Pollution de l’air (équivalent CO₂)'), unit: 'ppm', min: 400, max: 8000, step: 50, def: 400 },
   weight: { label: tl('Masse sur la balance'), unit: 'g', min: 0, max: 5000, step: 10, def: 0 },
-  current: { label: tl('Courant mesuré'), unit: 'A', min: -5, max: 5, step: 0.01, def: 0, dec: 2 },
+  // ±30 A : toute la plage de l'ACS712-30A (capteur de courant dont le primaire n'est pas dans un circuit calculé).
+  current: { label: tl('Courant mesuré'), unit: 'A', min: -30, max: 30, step: 0.01, def: 0, dec: 2 },
   voltage: { label: tl('Tension mesurée'), unit: 'V', min: 0, max: 30, step: 0.1, def: 12, dec: 1 },
   uv: { label: tl('Indice UV'), unit: '', min: 0, max: 15, step: 0.1, def: 0, dec: 1 },
   dust: { label: tl('Poussières fines (PM2,5)'), unit: 'µg/m³', min: 0, max: 500, step: 1, def: 10 },
   flow: { label: tl('Débit d’eau'), unit: 'L/min', min: 0, max: 30, step: 0.1, def: 0, dec: 1 },
   wind: { label: tl('Vitesse du vent'), unit: 'm/s', min: 0, max: 40, step: 0.1, def: 0, dec: 1 },
   ph: { label: tl('pH de l’eau'), unit: '', min: 0, max: 14, step: 0.1, def: 7, dec: 1 },
-  tds: { label: tl('Sels dissous dans l’eau (TDS)'), unit: 'ppm', min: 0, max: 2000, step: 10, def: 150 }
+  tds: { label: tl('Sels dissous dans l’eau (TDS)'), unit: 'ppm', min: 0, max: 2000, step: 10, def: 150 },
+  // Oxymètre MAX30102 : pouls, saturation en oxygène du sang, doigt posé ou non sur la fenêtre du capteur.
+  finger: { label: tl('Doigt sur l’oxymètre'), bool: true, def: 1 },
+  bpm: { label: tl('Fréquence cardiaque'), unit: 'bpm', min: 40, max: 180, step: 1, def: 72 },
+  spo2: { label: tl('Saturation en oxygène (SpO₂)'), unit: '%', min: 85, max: 100, step: 1, def: 98 },
+  // Couleur de la lumière reçue par le capteur TCS34725 (entier 0xRRGGBB, choisie au sélecteur de couleur).
+  color: { label: tl('Couleur de la lumière'), unit: '', min: 0, max: 0xffffff, step: 1, def: 0xffffff, color: true }
 };
+/**
+ * Curseur logarithmique (QUANT[q].log) : la position 0 à 1000 couvre 1 à max par décades égales (0 au tout début) ;
+ * une pièce sombre (10 lx) se règle aussi finement que le plein soleil (100 000 lx).
+ */
+export const SLIDER_STEPS = 1000;
+/** Couleur (entier 0xRRGGBB) écrite #rrggbb : valeur du sélecteur de couleur. */
+export const colorHex = v => '#' + (Math.max(0, Math.min(0xffffff, Math.round(+v || 0)))).toString(16).padStart(6, '0');
+export function sliderOf(q, v) {
+  const Q = QUANT[q]; if (Q && Q.color) return colorHex(v);
+  if (!Q || !Q.log) return v;
+  return v <= 1 ? 0 : Math.round(Math.log10(v) / Math.log10(Q.max) * SLIDER_STEPS);
+}
+export function fromSlider(q, p) {
+  const Q = QUANT[q]; if (Q && Q.color) { const m = /^#?([0-9a-f]{6})$/i.exec(String(p)); return m ? parseInt(m[1], 16) : Q.def; }
+  if (!Q || !Q.log) return +p;
+  if (+p <= 0) return 0;
+  const v = Math.pow(10, (+p / SLIDER_STEPS) * Math.log10(Q.max)), d = Math.pow(10, Math.max(0, Math.floor(Math.log10(v)) - 1));
+  return Math.min(Q.max, Math.round(v / d) * d); // deux chiffres significatifs : 340 lx, 12 000 lx
+}
+
 /** Balance HX711 : mesure brute de la barre vide, et coups par gramme (barre de 5 kg à 1 mV/V, gain 128, sous 5 V). */
 export const HX711_ZERO = 52000, HX711_PER_G = 430;
+/**
+ * Panneau solaire 6 V 1 W (Adafruit 3809 : 7,7 V à vide, 180 mA au point de puissance maximale en plein soleil).
+ * Éclairement G = lux ÷ 100 000 (plein soleil ≈ 100 000 lx ≈ 1000 W/m², efficacité lumineuse du soleil ≈ 100 lm/W).
+ * Courant de court-circuit isc × G (isc ≈ 190 mA : ≈ 1,05 × le courant au point de puissance maximale, rapport
+ * habituel des cellules au silicium) ; tension à vide voc + nvt × ln G (nvt ≈ 0,43 V : 12 cellules × n 1,4 × 25,7 mV),
+ * jamais négative. Le solveur (dc.js) en fait une source de Thévenin de résistance voc ÷ isc : simple et prudent, sa
+ * puissance maximale (voc × isc ÷ 4, ≈ 0,37 W au soleil) reste sous celle du vrai panneau (≈ 1 W au coude de sa courbe).
+ */
+export const SOLAR = { voc: 7.7, isc: 0.19, nvt: 0.43, lux: 100000 };
+/** Tension à vide (V) et courant de court-circuit (A) du panneau sous cette lumière (lx). */
+export function solarOf(lux) {
+  const G = Math.max(0, +lux || 0) / SOLAR.lux;
+  return { G, voc: G > 0 ? Math.max(0, SOLAR.voc + SOLAR.nvt * Math.log(G)) : 0, isc: SOLAR.isc * G };
+}
 export const ENV = Object.fromEntries(Object.entries(QUANT).map(([k, q]) => [k, q.def]));
 /** Commandes propres à certains composants d'entrée. */
 // Générateur de fonctions : forme, fréquence (Hz), amplitude crête et décalage (V), réglés dans l'onglet Simulation.
-export const INPUTS = { button: { pressed: false }, cylsensor: { pressed: false }, pressostat: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false }, siggen: { ...GEN_DEFAULT } };
+export const INPUTS = { button: { pressed: false }, cylsensor: { pressed: false }, pressostat: { pressed: false }, pot: { pos: 50 }, joystick: { x: 0, y: 0, sw: false }, ky040: { sw: false }, siggen: { ...GEN_DEFAULT } };
 
 export const num = (v, d = 0) => (Math.round(v * 10 ** d) / 10 ** d).toFixed(d).replace('.', DEC).replace('-', '−');
 /**
@@ -66,7 +112,7 @@ export function cleanEnv(e) {
   return Object.keys(out).length ? out : undefined;
 }
 /** Valeur d'une grandeur, avec son unité (ou « oui »/« non »). */
-export const fmtV = (q, v) => (QUANT[q].bool ? (v ? 'oui' : 'non') : `${num(v, QUANT[q].dec || 0)} ${QUANT[q].unit}`);
+export const fmtV = (q, v) => (QUANT[q].bool ? (v ? 'oui' : 'non') : QUANT[q].color ? colorHex(v).toUpperCase() : `${num(v, QUANT[q].dec || 0)} ${QUANT[q].unit}`);
 export const fmtQ = q => fmtV(q, ENV[q]);
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 const jitter = a => (Math.random() * 2 - 1) * a;
@@ -145,6 +191,14 @@ export const MODELS = {
         warn: temp < -40 || temp > 85 ? tl('hors de la plage de mesure (−40 à 85 °C)') : null, data: { temp: T, hum: H, press: P } };
     }
   },
+  // Panneau solaire : rien à lire pour la carte ; la lumière qu'il reçoit et ce qu'elle lui permet de fournir.
+  solar6v: {
+    q: ['lux'], period: 0.2, tau: 0,
+    read({ lux }) {
+      const s = solarOf(lux);
+      return { value: tl('{0} W/m² · {1} mA au plus', num(s.G * 1000), num(s.isc * 1000, s.isc < 0.01 ? 1 : 0)), detail: tl('{0} lx : tension à vide {1}, courant de court-circuit {2} mA', num(lux), v2(s.voc), num(s.isc * 1000, 1)) };
+    }
+  },
   bh1750: {
     q: ['lux'], period: 0.12, tau: 0.12,
     read({ lux }) {
@@ -158,6 +212,45 @@ export const MODELS = {
       const g = Math.max(0, weight + jitter(0.3)), raw = Math.round(HX711_ZERO + g * HX711_PER_G);
       return { value: `${num(g, 1)} g`, detail: tl('mesure brute {0} (24 bits), 10 mesures par seconde', raw), short: `${num(g)} g`,
         warn: weight > 5000 ? tl('au-delà de 5 kg, la barre est surchargée') : null, data: { grams: g, raw } };
+    }
+  },
+  // Capteurs I2C (sim/i2csensors.js) : ce que mesure la puce ; la bibliothèque le relit dans ses registres.
+  vl53l0x: {
+    q: ['dist'], period: 0.033, tau: 0.03,
+    read({ dist }) {
+      const mm = dist * 10 + jitter(1.5), r = vlRange(mm);
+      if (r.dev === 9) return { value: tl('hors de portée'), detail: tl('au-delà de 2 m : la puce rend 8190 mm, RangeStatus 4'), short: '> 2 m', data: { mm } };
+      return { value: `${num(r.mm)} mm`, detail: r.dev === 10 ? tl('sous 30 mm : mesure peu fiable (RangeStatus 3)') : tl('temps de vol d’un laser infrarouge de 940 nm, une mesure toutes les 33 ms'), short: `${num(r.mm)} mm`, data: { mm } };
+    }
+  },
+  max30102: {
+    q: ['finger', 'bpm', 'spo2', 'temp'], period: 0.1, tau: 0,
+    read({ finger, bpm, spo2, temp }) {
+      const T = temp + 1.5; // la puce chauffe un peu au contact du doigt et de ses LED
+      if (!finger) return { value: tl('pas de doigt'), detail: tl('infrarouge ≈ 1 000 : seule la lumière ambiante revient'), short: tl('Pas de doigt'), data: { finger: 0, bpm, spo2, temp: T } };
+      return { value: tl('{0} bpm · SpO₂ {1} %', num(bpm), num(spo2)), detail: tl('infrarouge ≈ 110 000, rouge ≈ 88 000 : le pouls fait varier la lumière reçue d’environ 0,4 %'), short: `${num(bpm)} bpm`, data: { finger: 1, bpm, spo2, temp: T } };
+    }
+  },
+  tcs34725: {
+    q: ['color', 'lux'], period: 0.1, tau: 0,
+    read({ color, lux }) {
+      const k = tcsCounts(color, lux, 614.4, 1);
+      return { value: `${colorHex(color).toUpperCase()} · ${num(lux)} lx`, detail: tl('à 614 ms et gain 1 : R {0} · V {1} · B {2} · clair {3}', k.r, k.g, k.b, k.c), short: colorHex(color).toUpperCase(), data: { rgb: color, lux } };
+    }
+  },
+  ccs811: {
+    q: ['air'], period: 1, tau: 2,
+    read({ air }) {
+      const v = ccsValues(air);
+      return { value: `eCO₂ ${num(v.eco2)} ppm · COVT ${num(v.tvoc)} ppb`, detail: tl('une mesure par seconde (mode 1) ; 20 minutes de chauffe sur la vraie puce avant des valeurs stables'), short: `${num(v.eco2)} ppm`, data: v };
+    }
+  },
+  bme680: {
+    q: ['temp', 'hum', 'press', 'air'], period: 0.5, tau: 1,
+    read({ temp, hum, press, air }) {
+      const T = temp + jitter(0.02), H = clamp(hum + jitter(0.3), 0, 100), P = press + jitter(0.03), G = bmeGasOhm(air) * (1 + jitter(0.01));
+      return { value: `${num(T, 1)} °C · ${num(H)} % · ${num(P)} hPa`, detail: tl('gaz : {0} kΩ (plus l’air est chargé, plus elle baisse)', num(G / 1000, 1)), short: `${num(T, 1)}°C ${num(G / 1000)} kΩ`,
+        warn: temp < -40 || temp > 85 ? tl('hors de la plage de mesure (−40 à 85 °C)') : null, data: { temp: T, hum: H, press: P, gas: G } };
     }
   },
   ttp223: {
@@ -322,6 +415,15 @@ export const MODELS = {
       return { value: `W ${raw} · ${v2(v)}`, detail: tl('curseur à {0} %', num(pos * 100)), short: tl('Pot {0}', raw), warn: over(v, cx.prof), out: { W: { v } } };
     }
   },
+  // Encodeur KY-040 : CLK et DT au niveau haut à chaque cran (résistances de tirage du module), SW à la masse quand on appuie.
+  ky040: {
+    q: [], period: 0.05,
+    read(p, cx) {
+      const st = periph(cx.comp), sw = !!cx.inp.sw;
+      return { value: tl('Cran {0}', st.pos), detail: tl('{0} crans tournés · SW {1}', st.seq, sw ? tl('appuyé (LOW)') : tl('relâché')), short: tl('Cran {0}', st.pos),
+        out: { CLK: { d: 1, v: cx.v }, DT: { d: 1, v: cx.v }, ...(sw ? { SW: { d: 0, v: 0 } } : {}) } };
+    }
+  },
   joystick: {
     q: [], period: 0.05,
     read(p, cx) {
@@ -330,8 +432,32 @@ export const MODELS = {
         out: { VRx: { v: cx.v * (0.5 + (cx.inp.x || 0) / 200) }, VRy: { v: cx.v * (0.5 + (cx.inp.y || 0) / 200) }, ...(cx.inp.sw ? { SW: { d: 0, v: 0 } } : {}) } };
     }
   },
+  // Capteur de courant ACS712 : courant du primaire calculé par le solveur (cx.dc, IP+ vers IP−) quand il est dans un
+  // circuit, sinon le courant réglé dans l'environnement. OUT = VCC/2 + sensibilité × I, sensibilité proportionnelle à
+  // VCC (fiche : donnée sous 5 V), bruit de la fiche, sortie bornée à 0,25 V des rails (saturation).
+  acs712: {
+    q: ['current'], period: 0.05, tau: 0,
+    read({ current }, cx) {
+      const r = acsRange(cx.comp), A = ACS712[r], c = cx.comp;
+      const mA = cx.dc && cx.dc.ok && c.pins && c.pins['IP+'] && c.pins['IP-'] ? cx.dc.current(c) : null;
+      const I = mA != null ? mA / 1000 : current, vcc = cx.v || 5, sens = A.sens * vcc / 5;
+      const v = clamp(vcc / 2 + sens * I + jitter(A.noise / 2), 0.25, vcc - 0.25), raw = cx.prof ? adc(v, cx.prof) : 0;
+      const warn = Math.abs(I) > r ? tl('{0} A : au-delà de la plage de ±{1} A, la sortie sature', num(I, 2), r) : over(v, cx.prof || { vref: 5 });
+      return { value: tl('{0} A · OUT {1}', num(I, 2), v2(v)), detail: tl('ACS712-{0}A : {1} mV/A, {2} à 0 A · analogRead() = {3}{4}', r, num(sens * 1000), v2(vcc / 2), raw, mA != null ? tl(' · courant du circuit') : tl(' · courant réglé (primaire hors circuit)')),
+        short: `${num(I, 2)} A`, warn, out: { OUT: { v } }, data: { amps: I } };
+    }
+  },
+  // Horloge DS3231 : son thermomètre (compensation du quartz) mesure toutes les 64 s, par pas de 0,25 °C.
+  ds3231: {
+    q: ['temp'], period: 64, tau: 20,
+    read({ temp }) {
+      const T = Math.round(clamp(temp, -40, 85) * 4) / 4;
+      return { value: `${num(T, 2)} °C`, detail: tl('thermomètre de l’horloge : pas de 0,25 °C, une mesure toutes les 64 s'), data: { temp: T } };
+    }
+  },
   oled: { display: true, q: [] },
-  lcd1602: { display: true, q: [] }
+  lcd1602: { display: true, q: [] },
+  lcd2004: { display: true, q: [] }
 };
 
 /** Fait évoluer la grandeur physique vue par le capteur vers la consigne, avec son inertie. */
@@ -384,6 +510,8 @@ export const PHONE = '+221770000000';
 
 const PERIPH = {
   ir: () => ({ frames: [] }),
+  // Encodeur rotatif KY-040 (sim/encoder.js) : crans tournés depuis l'onglet Simulation ou la scène, position affichée.
+  ky040: () => ({ ev: [], pos: 0 }),
   rc522: () => ({ card: null }),
   keypad: () => ({ down: null, last: null }),
   nrf24: () => ({ on: false, listening: false, channel: 76, rate: 0, pipes: [], tx: null, rx: [], payload: 32, dyn: false, ack: true, sent: 0, got: 0 }),
@@ -412,6 +540,20 @@ export function presentBadge(c, i) {
 /** Clavier : touche (ligne r, colonne col) enfoncée, puis relâchée. */
 export function keypadDown(c, r, col) { const st = periph(c); st.down = { r, c: col }; st.last = st.down; st.seq++; st.ver++; }
 export function keypadUp(c) { const st = periph(c); st.down = null; st.ver++; }
+/**
+ * Encodeur KY-040 : n crans dans le sens dir (1 : horaire, −1 : antihoraire). Chaque cran est une période complète
+ * des signaux en quadrature, que chaque moteur déroule à son heure (sim/encoder.js).
+ */
+export function encTurn(c, dir = 1, n = 1) {
+  const st = periph(c), d = dir < 0 ? -1 : 1;
+  for (let i = 0; i < Math.max(1, Math.min(40, n | 0)); i++) { st.ev.push({ seq: ++st.seq, dir: d }); st.pos += d; }
+  if (st.ev.length > 64) st.ev.splice(0, st.ev.length - 64);
+  st.ver++;
+}
+/** Encodeur KY-040 : bouton de l'axe enfoncé (SW à la masse) ou relâché. */
+export function encPress(c, down = true) { if (!c.inp) c.inp = {}; c.inp.sw = !!down; periph(c).ver++; }
+/** Télécommande seule (irremote) : la trame NEC part vers tous les récepteurs infrarouges du montage. */
+export function remotePress(comps, cmd, repeat = false) { let n = 0; for (const r of comps || []) if (r && r.type === 'ir') { irPress(r, cmd, repeat); n++; } return n; }
 
 /** Octets reçus à une vitesse différente de celle du module : du charabia. */
 const garble = s => s.replace(/[\s\S]/g, ch => String.fromCharCode(0x80 + ((ch.charCodeAt(0) * 37 + 11) & 0x7f)));
@@ -423,7 +565,8 @@ const smsDate = () => { const d = new Date(), p = n => String(n).padStart(2, '0'
  */
 export function serialDevice(c) {
   const st = periph(c);
-  if (!st.dev) st.dev = c.type === 'sim800' ? sim800(st) : hc05(st, c);
+  // GPS NEO-6M, radio HC-12, RS-485 MAX485 : sim/serialmods.js.
+  if (!st.dev) st.dev = serialMod(st, c, serialDevice) || (c.type === 'sim800' ? sim800(st) : hc05(st, c));
   return st.dev;
 }
 /**

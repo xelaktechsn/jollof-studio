@@ -1,0 +1,408 @@
+{
+ "id": "pn15-automate-ladder",
+ "level": "lycee",
+ "minutes": 45,
+ "title": {
+  "fr": "Automate programmable : un vérin commandé en Ladder",
+  "en": "Programmable logic controller: a cylinder driven in Ladder"
+ },
+ "summary": {
+  "fr": "Dans l’industrie, c’est un automate programmable (API) qui commande les électrovannes et lit les capteurs. On écrit son programme en langage à contacts (Ladder, norme IEC 61131-3) : des contacts, des bobines, un cycle qui recommence sans cesse. Un premier réseau fait sortir la tige tant qu’on appuie ; puis l’auto-maintien la fait sortir d’une impulsion et le capteur a1 l’arrête.",
+  "en": "In industry, a programmable logic controller (PLC) drives the solenoid valves and reads the sensors. Its program is written in ladder logic (IEC 61131-3): contacts, coils, a scan cycle that repeats forever. A first rung extends the rod while the button is held; then a self-holding rung extends it on a pulse and the a1 sensor stops it."
+ },
+ "objectives": [
+  {
+   "fr": "Comprendre le cycle d’un automate : lecture des entrées, calcul du programme, écriture des sorties",
+   "en": "Understand the PLC scan cycle: read inputs, run the program, write outputs"
+  },
+  {
+   "fr": "Écrire un réseau Ladder : contacts en série, en parallèle, bobine",
+   "en": "Write a ladder rung: series and parallel contacts, a coil"
+  },
+  {
+   "fr": "Réaliser un auto-maintien et l’arrêter par un capteur",
+   "en": "Build a self-holding circuit and stop it with a sensor"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un automate répète un cycle : il lit toutes ses entrées, calcule les réseaux de haut en bas, puis écrit toutes ses sorties. Une bobine ne change l’état d’un contact qu’au cycle suivant.",
+   "en": "A PLC repeats a scan: it reads all its inputs, computes the rungs top to bottom, then writes all its outputs. A coil only changes a contact’s state on the next scan."
+  },
+  {
+   "fr": "Contacts en série = ET ; contacts en parallèle = OU ; contact fermé au repos = NON.",
+   "en": "Series contacts = AND; parallel contacts = OR; a normally closed contact = NOT."
+  },
+  {
+   "fr": "Auto-maintien : la bobine se maintient par son propre contact en parallèle du bouton ; un contact fermé au repos sur le capteur ouvre le circuit pour l’arrêter : Y1 = (dcy + Y1) · /a1.",
+   "en": "Self-holding: the coil holds itself through its own contact in parallel with the button; a normally closed contact on the sensor breaks the circuit to stop it: Y1 = (dcy + Y1) · /a1."
+  },
+  {
+   "fr": "Une bobine écrite dans deux réseaux est une « double bobine » : seule la dernière écriture compte. L’automate le signale.",
+   "en": "A coil written in two rungs is a “double coil”: only the last write counts. The PLC flags it."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Automate Ladder",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "time": 1,
+         "s1": "a1",
+         "label": "A"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "tubes": [
+       {
+        "id": "t1",
+        "a": [
+         "src",
+         "1"
+        ],
+        "b": [
+         "v1",
+         "1"
+        ]
+       },
+       {
+        "id": "t2",
+        "a": [
+         "v1",
+         "4"
+        ],
+        "b": [
+         "A",
+         "1"
+        ]
+       },
+       {
+        "id": "t3",
+        "a": [
+         "v1",
+         "2"
+        ],
+        "b": [
+         "A",
+         "2"
+        ]
+       }
+      ],
+      "plc": {
+       "name": "API1",
+       "drive": true,
+       "cycle": 10,
+       "inputs": [
+        {
+         "name": "dcy",
+         "kind": "push"
+        }
+       ],
+       "rungs": []
+      },
+      "scene": {
+       "kind": "cylinders"
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "plc": {
+    "name": "API1",
+    "drive": true,
+    "cycle": 10,
+    "inputs": [
+     {
+      "name": "dcy",
+      "kind": "push"
+     }
+    ],
+    "rungs": [
+     {
+      "id": "r1",
+      "comment": "Sortie de la tige : Y1 se maintient jusqu’à a1",
+      "items": [
+       {
+        "t": "par",
+        "id": "p1",
+        "branches": [
+         [
+          {
+           "t": "no",
+           "id": "k1",
+           "v": "dcy"
+          }
+         ],
+         [
+          {
+           "t": "no",
+           "id": "k2",
+           "v": "Y1"
+          }
+         ]
+        ]
+       },
+       {
+        "t": "nc",
+        "id": "k3",
+        "v": "a1"
+       },
+       {
+        "t": "coil",
+        "id": "k4",
+        "v": "Y1"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’automate et son cycle",
+    "en": "The PLC and its scan cycle"
+   },
+   "text": {
+    "fr": "Le vérin **A** (capteur **a1** : tige sortie) est alimenté par le distributeur monostable **1V1** : tant que la bobine **Y1** est excitée, la tige sort ; sans Y1, le ressort la rentre.\nOuvrez le panneau **Automate** (bouton « Automate » en haut du plan). Son pupitre a un bouton **dcy**. Le programme est vide : vous allez l’écrire en **Ladder** (langage à contacts). Un automate répète sans cesse le même **cycle** : il lit ses entrées (dcy, a1), calcule les réseaux de haut en bas, puis écrit ses sorties (Y1).",
+    "en": "Cylinder **A** (sensor **a1**: rod extended) is fed by the monostable valve **1V1**: while coil **Y1** is energised, the rod extends; without Y1 the spring retracts it.\nOpen the **PLC** panel (“Automate” button at the top of the workspace). Its control panel has a **dcy** button. The program is empty: you will write it in **ladder** logic. A PLC repeats the same **scan cycle** forever: it reads its inputs (dcy, a1), computes the rungs top to bottom, then writes its outputs (Y1)."
+   },
+   "check": {
+    "type": "ui",
+    "need": [
+     "plc"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Dans quel ordre ?",
+    "en": "In which order?"
+   },
+   "text": {
+    "fr": "Que fait l’automate à chaque cycle ?",
+    "en": "What does the PLC do on every scan?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il écrit les sorties, puis lit les entrées, puis calcule",
+      "en": "It writes the outputs, then reads the inputs, then computes"
+     },
+     {
+      "fr": "Il lit toutes les entrées, calcule les réseaux de haut en bas, puis écrit toutes les sorties",
+      "en": "It reads all the inputs, computes the rungs top to bottom, then writes all the outputs"
+     },
+     {
+      "fr": "Il ne calcule que le réseau où quelque chose a changé",
+      "en": "It computes only the rung where something changed"
+     },
+     {
+      "fr": "Il calcule les réseaux dans un ordre quelconque",
+      "en": "It computes the rungs in any order"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Premier réseau : dcy commande Y1",
+    "en": "First rung: dcy drives Y1"
+   },
+   "text": {
+    "fr": "Dans le panneau Automate, **Ajouter un réseau**, puis, dans la palette : un contact **ouvert** nommé `dcy`, et une **bobine** nommée `Y1`. Le réseau se lit : *si dcy, alors Y1*. Le nom se tape dans le champ de la palette quand l’élément est choisi ; les noms connus sont proposés.",
+    "en": "In the PLC panel, **Add a rung**, then from the palette: a **normally open** contact named `dcy` and a **coil** named `Y1`. The rung reads: *if dcy, then Y1*. Type the name in the palette field while the element is selected; known names are suggested."
+   },
+   "hint": {
+    "fr": "Choisissez le « + » en bout de réseau, cliquez « ouvert », tapez dcy, Entrée ; puis « bobine », tapez Y1. Le pied du panneau dit « Programme correct » quand tout est résolu.",
+    "en": "Select the “+” at the end of the rung, click “open”, type dcy, Enter; then “coil”, type Y1. The panel footer says “Program correct” once everything resolves."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1"
+    ],
+    "reads": [
+     "dcy"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Simuler : la tige sort tant qu’on appuie",
+    "en": "Simulate: the rod extends while you press"
+   },
+   "text": {
+    "fr": "Lancez la **simulation** et maintenez **dcy** au pupitre de l’automate : le contact s’allume, la bobine Y1 aussi, le distributeur bascule, la tige sort (**A+**). Relâchez : Y1 retombe, la tige rentre.",
+    "en": "Start the **simulation** and hold **dcy** on the PLC’s control panel: the contact lights up, so does coil Y1, the valve switches, the rod extends (**A+**). Release: Y1 drops, the rod retracts."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pressed"
+    },
+    "expect": [
+     "A+"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi la tige rentre-t-elle quand on relâche ?",
+    "en": "Why does the rod retract when you release?"
+   },
+   "text": {
+    "fr": "Dès que dcy est relâché, la tige rentre. Pourquoi ?",
+    "en": "As soon as dcy is released, the rod retracts. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Parce que l’automate s’arrête",
+      "en": "Because the PLC stops"
+     },
+     {
+      "fr": "Parce que la bobine Y1 n’est plus écrite à 1 : le distributeur monostable revient par son ressort",
+      "en": "Because coil Y1 is no longer written to 1: the monostable valve returns by its spring"
+     },
+     {
+      "fr": "Parce que le capteur a0 commande la rentrée",
+      "en": "Because sensor a0 commands the retraction"
+     },
+     {
+      "fr": "Parce que le contact dcy est fermé au repos",
+      "en": "Because the dcy contact is normally closed"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Auto-maintien et arrêt sur a1",
+    "en": "Self-holding and stop on a1"
+   },
+   "text": {
+    "fr": "Une impulsion sur dcy doit suffire, et la tige doit rentrer d’elle-même une fois sortie. Modifiez le réseau : mettez le contact **dcy** en **dérivation** (parallèle) avec un contact ouvert **Y1** (la bobine se maintient par son propre contact), puis ajoutez en série un contact **fermé au repos** **a1** : quand la tige arrive en a1, il s’ouvre et coupe Y1. Équation : **Y1 = (dcy + Y1) · /a1**.",
+    "en": "A pulse on dcy must be enough, and the rod must retract by itself once extended. Change the rung: put the **dcy** contact in a **parallel branch** with a normally open contact **Y1** (the coil holds itself through its own contact), then add in series a **normally closed** contact **a1**: when the rod reaches a1, it opens and cuts Y1. Equation: **Y1 = (dcy + Y1) · /a1**."
+   },
+   "hint": {
+    "fr": "Choisissez le contact dcy, cliquez « dérivation » dans la palette : une branche vide apparaît sous lui ; son « + » insère le contact Y1. Puis choisissez le contact Y1 ou la dérivation et insérez le contact « fermé » a1 avant la bobine.",
+    "en": "Select the dcy contact and click “parallel” in the palette: an empty branch appears under it; its “+” inserts the Y1 contact. Then select the branch and insert the “closed” contact a1 before the coil."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1"
+    ],
+    "reads": [
+     "dcy",
+     "Y1",
+     "a1"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Simuler : un aller-retour sur une impulsion",
+    "en": "Simulate: one out-and-back on a pulse"
+   },
+   "text": {
+    "fr": "Relancez la simulation, appuyez brièvement sur **dcy** : la tige sort (**A+**) puis rentre (**A−**) sans que vous teniez le bouton. Observez le contact Y1 de la dérivation qui reste allumé, puis le contact a1 qui s’ouvre.",
+    "en": "Restart the simulation and press **dcy** briefly: the rod extends (**A+**) then retracts (**A−**) without you holding the button. Watch the Y1 contact in the branch stay lit, then the a1 contact open."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pulse"
+    },
+    "expect": [
+     "A+",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Double bobine",
+    "en": "Double coil"
+   },
+   "text": {
+    "fr": "Un camarade écrit un deuxième réseau « a0 → Y1 » sous le vôtre. L’automate affiche un avertissement « double bobine ». Que se passe-t-il ?",
+    "en": "A classmate writes a second rung “a0 → Y1” under yours. The PLC shows a “double coil” warning. What happens?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les deux réseaux s’additionnent : Y1 vaut 1 si l’un ou l’autre",
+      "en": "The two rungs add up: Y1 is 1 if either one is"
+     },
+     {
+      "fr": "Seule la dernière écriture compte : le second réseau écrase le premier à chaque cycle",
+      "en": "Only the last write counts: the second rung overwrites the first one every scan"
+     },
+     {
+      "fr": "L’automate refuse de démarrer",
+      "en": "The PLC refuses to start"
+     },
+     {
+      "fr": "Y1 clignote",
+      "en": "Y1 blinks"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Ce qu’il faut retenir",
+    "en": "What to remember"
+   },
+   "text": {
+    "fr": "Vous avez écrit un vrai programme d’automate : contacts en série (ET), en parallèle (OU), fermé au repos (NON), auto-maintien. Ouvrez la **table des variables** (bouton liste du panneau) : chaque nom a son adresse d’automate, %I0.0 pour dcy, %Q0.0 pour Y1. Pour aller plus loin : écrivez le GRAFCET d’un cycle, puis « d’après le GRAFCET » le traduit en Ladder, un réseau par transition.",
+    "en": "You wrote a real PLC program: series contacts (AND), parallel contacts (OR), normally closed (NOT), self-holding. Open the **variable table** (list button of the panel): each name has its PLC address, %I0.0 for dcy, %Q0.0 for Y1. To go further: write the GRAFCET of a cycle, then “from the GRAFCET” translates it to ladder, one rung per transition."
+   }
+  }
+ ]
+}

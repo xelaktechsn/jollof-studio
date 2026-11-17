@@ -8,11 +8,20 @@
 import { tl } from '../i18n/index.js';
 import { DEFS, props, portsOf, camTarget } from './elements.js';
 import { compileGrafcet } from './grafcet.js';
+import { compilePlc, lintPlc } from '../plc/ladder.js';
+import { processSensorNames, processOutputNames } from './process.js';
 
 export function checkPneu(c, bench = { coils: [], sensors: [] }) {
   const out = [], linked = new Set();
   const G = c.grafcet && c.grafcet.steps && c.grafcet.steps.length ? compileGrafcet(c.grafcet) : null;
-  const drives = G && c.grafcet.drive !== false, gOut = drives ? G.outputs : new Set(), gVars = G ? G.vars : new Set();
+  const drives = G && c.grafcet.drive !== false, gVars = G ? G.vars : new Set();
+  // L'automate (Ladder) : ses bobines comptent comme commandées ; ses fautes sont dites avec les autres.
+  const P = c.plc && Array.isArray(c.plc.rungs) && c.plc.rungs.length ? compilePlc(c.plc) : null;
+  const procSens = processSensorNames(c.scene); // capteurs du procédé de la machine (pièce en position, bouteille, voiture…)
+  const procOut = processOutputNames(c.scene).map(x => x.toUpperCase()); // sorties que la machine construite lit (convoyeur KM1, voyant H1…) : des bobines commandent quelque chose
+  const pOut = new Set(), pReads = new Set(P ? P.reads.keys() : []); const gOut = new Set(drives ? G.outputs : []);
+  if (P && c.plc.drive !== false && !P.errors.length) for (const w of P.written.values()) pOut.add(w.name.toUpperCase());
+  for (const y of pOut) gOut.add(y);
   for (const t of c.tubes || []) { linked.add(`${t.a[0]}:${t.a[1]}`); linked.add(`${t.b[0]}:${t.b[1]}`); }
   const els = c.elements.filter(e => DEFS[e.type]), name = e => (props(e).label || DEFS[e.type].name());
   const has = (e, p) => linked.has(`${e.id}:${p}`);
@@ -33,7 +42,7 @@ export function checkPneu(c, bench = { coils: [], sensors: [] }) {
     for (const y of coils) {
       if (!y) { out.push({ level: 'error', text: tl('{0} : donnez à son électroaimant le repère d’une électrovanne du montage (Y1…).', name(e)) }); continue; }
       coilUse.set(y, (coilUse.get(y) || 0) + 1);
-      if (!bench.coils.includes(y) && !gOut.has(y)) out.push({ level: 'error', text: G ? tl('{0} : l’électroaimant {1} n’est commandé ni par le GRAFCET ni par une électrovanne du montage.', name(e), y) : tl('{0} : aucune électrovanne {1} dans le montage électronique.', name(e), y) });
+      if (!bench.coils.includes(y) && !gOut.has(y)) out.push({ level: 'error', text: G && c.plc ? tl('{0} : l’électroaimant {1} n’est commandé ni par le GRAFCET, ni par l’automate, ni par une électrovanne du montage.', name(e), y) : c.plc ? tl('{0} : l’électroaimant {1} n’est commandé ni par l’automate (aucune bobine {1} dans le programme) ni par une électrovanne du montage.', name(e), y) : G ? tl('{0} : l’électroaimant {1} n’est commandé ni par le GRAFCET ni par une électrovanne du montage.', name(e), y) : tl('{0} : aucune électrovanne {1} dans le montage électronique.', name(e), y) });
     }
     if (e.type === 'pswitch') {
       if (!has(e, '1')) out.push({ level: 'warning', text: tl('{0} : son orifice n’est pas raccordé.', name(e)) });
@@ -46,7 +55,7 @@ export function checkPneu(c, bench = { coils: [], sensors: [] }) {
       for (const s of [P.s0, P.s1]) {
         if (!s) continue;
         sensorUse.set(s, (sensorUse.get(s) || 0) + 1);
-        if (!bench.sensors.includes(s) && !gVars.has(s.toLowerCase())) out.push({ level: 'warning', text: tl('{0} : aucun capteur de vérin {1} dans le montage électronique.', name(e), s) });
+        if (!bench.sensors.includes(s) && !gVars.has(s.toLowerCase()) && !pReads.has(s.toLowerCase())) out.push({ level: 'warning', text: c.plc || G ? tl('{0} : le capteur {1} n’est lu ni par le GRAFCET, ni par l’automate, ni par le montage.', name(e), s) : tl('{0} : aucun capteur de vérin {1} dans le montage électronique.', name(e), s) });
       }
       if (P.s0 && P.s0 === P.s1) out.push({ level: 'error', text: tl('{0} : le même capteur {1} aux deux fins de course.', name(e), P.s0) });
     }
@@ -56,11 +65,21 @@ export function checkPneu(c, bench = { coils: [], sensors: [] }) {
   if (G) {
     for (const e of G.errors) out.push({ level: 'error', text: tl('GRAFCET : {0}', e.text) });
     // Variables lues : boutons du pupitre, capteurs du plan (vérins, pressostats), entrées du montage.
-    const known = new Set([...G.inputNames, ...[...sensorUse.keys()].map(x => x.toLowerCase()), ...(bench.inputs || []).map(x => x.toLowerCase()), ...(bench.sensors || []).map(x => x.toLowerCase())]);
+    const known = new Set([...G.inputNames, ...[...sensorUse.keys(), ...procSens].map(x => x.toLowerCase()), ...(bench.inputs || []).map(x => x.toLowerCase()), ...(bench.sensors || []).map(x => x.toLowerCase())]);
     for (const v of G.vars) if (!known.has(v)) out.push({ level: 'warning', text: tl('GRAFCET : « {0} » n’est ni un bouton du pupitre, ni un capteur du circuit, ni une entrée du montage (il reste à 0).', v) });
-    const used = new Set(coilUse.keys());
+    const used = new Set([...coilUse.keys(), ...procOut]);
     if (drives) for (const y of G.outputs) if (!used.has(y)) out.push({ level: 'warning', text: tl('GRAFCET : l’action {0} ne commande aucun électroaimant du circuit.', y) });
     if (G.trans.some(t => !t.expr)) out.push({ level: 'warning', text: tl('GRAFCET : une transition n’a pas de réceptivité (elle ne sera jamais franchie).') });
+  }
+  if (P) {
+    // Automate : fautes de compilation, puis noms résolus avec le pupitre, les capteurs du plan, le montage et le GRAFCET.
+    const known = { inputs: [...(bench.inputs || []), ...sensorUse.keys(), ...procSens, ...(bench.sensors || [])], outputs: [...coilUse.keys(), ...(bench.coils || []), ...procOut], steps: G ? G.steps : null };
+    const L = lintPlc(P, known), seen = new Set();
+    for (const d of [...P.errors, ...L.diags.filter(x => x.level === 'error'), ...P.warnings, ...L.diags.filter(x => x.level === 'warning')]) {
+      const text = tl('Automate, réseau {0} : {1}', d.rung + 1, d.text); if (seen.has(text)) continue; seen.add(text);
+      out.push({ level: d.level, text });
+    }
+    if (c.plc.drive !== false && !P.errors.length) { const used = new Set([...coilUse.keys(), ...procOut]); for (const y of pOut) if (!used.has(y) && !(bench.coils || []).includes(y) && !P.timers.has(y.toLowerCase())) { const v = L.vars.find(x => x.name.toUpperCase() === y); if (v && v.cls === 'out') out.push({ level: 'warning', text: tl('Automate : la bobine {0} ne commande aucun électroaimant du circuit.', y) }); } }
   }
   return out;
 }

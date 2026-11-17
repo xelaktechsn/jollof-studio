@@ -14,14 +14,14 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 percent-encoding = "2"
 # Déjà utilisé par Tauri (même version, mêmes options) : `block_in_place` pour écrire sans copie
 # les gros corps binaires reçus de la webview.
-tokio = { version = "1", features = ["rt-multi-thread"] }
+tokio = { version = "1", features = ["rt-multi-thread", "net", "sync"] }
 # Carte réelle en USB (simulation avec du vrai matériel, protocole Firmata).
 serialport = "4"
 # Mode fidèle de l'ESP32 : téléchargement de l'émulateur (QEMU, programme à part) à la première utilisation,
@@ -32,6 +32,18 @@ zip = { version = "4", default-features = false, features = ["deflate-flate2-zli
 # Supervision MA-ISA du circuit simulé : caisse locale sans Tauri, bâtie sur la caisse publiée maisa-core
 # (crates.io), utilisée telle quelle.
 jollof-supervision = { path = "supervision" }
+# Journal de l'application (fichier tournant dans le dossier des journaux du système) : joint à un rapport de bogue.
+tauri-plugin-log = "2"
+log = "0.4"
+# Automate : export PLCopen XML (CODESYS, OpenPLC…) et serveur Modbus TCP (IHM, SCADA, autre automate).
+quick-xml = "0.42"
+tokio-modbus = { version = "0.17", default-features = false, features = ["tcp-server"] }
+ffmpeg-sidecar = { version = "2.7.0", default-features = false }
+
+[dev-dependencies]
+# Tests du serveur Modbus : un vrai client TCP l'interroge.
+tokio-modbus = { version = "0.17", default-features = false, features = ["tcp"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time"] }
 
 [profile.release]
 codegen-units = 1
@@ -42,3 +54,12 @@ strip = true
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
+# Une seule fenêtre : un projet ouvert depuis le Finder ou l'Explorateur arrive dans l'application déjà lancée.
+tauri-plugin-single-instance = "2"
+# Taille et position de la fenêtre retrouvées au lancement suivant.
+tauri-plugin-window-state = "2"
+# Clé du pont IA dans le trousseau du système (Trousseau macOS, Gestionnaire d'identification Windows,
+# Secret Service sous Linux) plutôt que dans un fichier ; repli sur le fichier si le trousseau manque.
+keyring = "4"
+# Téléversement sur ESP32 sans esptool (ni Python) : la bibliothèque d'espflash parle au chargeur de la puce.
+espflash = { version = "4", default-features = false, features = ["serialport"] }

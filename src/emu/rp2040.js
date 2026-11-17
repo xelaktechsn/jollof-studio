@@ -213,15 +213,18 @@ export function createRp2040Runtime(image, hw, opts = {}) {
       topUp();
       if (pendingRead && !cdc.txFIFO.empty) { const [ep, size] = pendingRead; pendingRead = null; cdcRead(ep, size); }
     }
-    const u = mcu.uart[0];
-    while (uartIn.length && u.rxEnabled && !(u.flags & 0x40)) u.feedByte(uartIn.shift()); // 0x40 : file de réception pleine
+    // Serial1 : un octet par durée de trame (10 bits à la vitesse de l'UART), comme sur le fil ; une salve (GPS : 450
+    // octets par seconde) ne déborde donc pas d'un coup la file de 32 octets ni le tampon du cœur arduino-pico.
+    const u = mcu.uart[0], frame = u.baudRate > 0 ? 1e10 / u.baudRate : 0;
+    while (uartIn.length && u.rxEnabled && !(u.flags & 0x40) && clock.nanos >= rxNext) { u.feedByte(uartIn.shift()); rxNext = Math.max(rxNext, clock.nanos - frame) + frame; }
   }
+  let rxNext = 0;
   // Serial1 (UART0, GP0/GP1) : liaison série vue par les modules (HC-05, GPS…), comme D0/D1 sur l'Uno.
   const txSubs = [];
-  mcu.uart[0].onByte = b => { for (const fn of txSubs) fn(b, cyc()); };
+  mcu.uart[0].onByte = b => { for (const fn of txSubs) fn(b, cyc()); if (hw.probe) hw.probe.uart('Serial1', 'tx', b); };
   const uart = {
     onTx(fn) { txSubs.push(fn); return () => { const i = txSubs.indexOf(fn); if (i >= 0) txSubs.splice(i, 1); }; },
-    inject(bytes) { for (const b of bytes) uartIn.push(b & 0xff); feedSerial(); },
+    inject(bytes) { for (const b of bytes) { uartIn.push(b & 0xff); if (hw.probe) hw.probe.uart('Serial1', 'rx', b); } feedSerial(); },
     baud: () => mcu.uart[0].baudRate
   };
 
@@ -444,7 +447,8 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     tapBuf = '';
   }
 
-  const devices = attachDevices({ cpu: mcu, MHZ, hw, pinApi, uart, now: cyc, after, i2c, spiBus });
+  // Serial1 du cœur arduino-pico : TX sur GP0, RX sur GP1 (un module série s'y branche croisé).
+  const devices = attachDevices({ cpu: mcu, MHZ, hw, pinApi, uart, uarts: [{ name: 'Serial1', rx: 'GP1', tx: 'GP0', api: uart }], now: cyc, after, i2c, spiBus });
   devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {

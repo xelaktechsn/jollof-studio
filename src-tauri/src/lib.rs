@@ -10,7 +10,12 @@
 //! (`blocking`) : la boucle d'événements de la fenêtre n'attend jamais une lecture ou une écriture.
 
 pub mod ai;
+mod espflash_cmd;
+mod ffmpeg;
+mod modbus;
+mod plcopen;
 mod qemu;
+mod render;
 mod serial;
 mod supervision_cmd;
 
@@ -23,7 +28,7 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 use tauri::ipc::{InvokeBody, Request, Response};
-use tauri::{AppHandle, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_dialog::DialogExt;
 
 /// Exécute un travail disque (ou de calcul) dans un fil dédié et en attend le résultat.
@@ -516,10 +521,27 @@ const CORE_URLS: [&str; 3] = [
 /// Cartes avec options acceptées telles quelles : l'ESP32 du mode fidèle se compile en flash DIO (le mode QIO par
 /// défaut ne démarre pas dans QEMU) ; les Nano compatibles gardent souvent l'ancien chargeur d'amorçage. Aucune autre
 /// option (ni `=`, ni `,`) ne passe.
-const FQBN_WITH_OPTIONS: [&str; 2] = [
+const FQBN_WITH_OPTIONS: [&str; 4] = [
     "esp32:esp32:esp32:FlashMode=dio",
+    "esp32:esp32:esp32s3:FlashMode=dio",
+    "esp32:esp32:esp32c3:FlashMode=dio",
     "arduino:avr:nano:cpu=atmega328old",
 ];
+/// Propriété de compilation du mode fidèle de l'ESP32 (src/emu/esp32-wraps.js) : `build.extra_libs=-Wl,` suivi
+/// d'une liste de `--wrap=symbole` (fonctions du cœur remplacées par la cale de l'émulateur), rien d'autre.
+fn esp32_link_property(s: &str) -> bool {
+    let Some(list) = s.strip_prefix("build.extra_libs=-Wl,") else {
+        return false;
+    };
+    s.len() <= 8192
+        && list.split(',').all(|w| {
+            w.strip_prefix("--wrap=").is_some_and(|sym| {
+                !sym.is_empty()
+                    && sym.len() <= 64
+                    && sym.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+            })
+        })
+}
 fn word(s: &str, extra: &str) -> bool {
     !s.is_empty()
         && s.len() <= 80
@@ -572,6 +594,13 @@ fn check_cli_args_in(sketch: &Path, build: &Path, args: &[String]) -> Result<(),
         ["compile", "--fqbn", f, dir] => fqbn(f) && is_sketch(dir),
         ["compile", "--fqbn", f, "--output-dir", out, dir] => {
             fqbn(f) && is_build(out) && is_sketch(dir)
+        }
+        ["compile", "--fqbn", f, "--build-property", prop, "--output-dir", out, dir] => {
+            f.starts_with("esp32:")
+                && fqbn(f)
+                && esp32_link_property(prop)
+                && is_build(out)
+                && is_sketch(dir)
         }
         ["upload", "-p", p, "--fqbn", f, dir] => port(p) && fqbn(f) && is_sketch(dir),
         _ => false,
@@ -707,6 +736,127 @@ fn read_install_language() -> Option<String> {
     None
 }
 
+// ---------------------------------------------------------------------------
+// Projet ouvert par le système : double-clic sur un .jollof (Finder, Explorateur, gestionnaire de fichiers), ou
+// fichier glissé sur l'icône. Le chemin vient du système, pas de la webview : c'est un choix de l'utilisateur, au
+// même titre que la boîte « Ouvrir ». Il devient lisible et inscriptible, attend dans LaunchFile, et la fenêtre le
+// prend (take_launch_file) au démarrage ou quand l'évènement « open-file » arrive. Une seule application tourne :
+// un deuxième lancement (single-instance) passe son fichier à la première et s'arrête.
+// ---------------------------------------------------------------------------
+
+#[derive(Default)]
+struct LaunchFile(Mutex<Option<PathBuf>>);
+
+/// Projet désigné par la ligne de commande : premier argument (après le programme) qui nomme un .jollof existant,
+/// relatif au dossier de lancement.
+fn project_arg(args: &[String], cwd: &Path) -> Option<PathBuf> {
+    args.iter()
+        .skip(1)
+        .filter(|a| !a.starts_with('-'))
+        .map(|a| {
+            let p = PathBuf::from(a);
+            if p.is_absolute() {
+                p
+            } else {
+                cwd.join(p)
+            }
+        })
+        .find(|p| is_project_file(p))
+}
+fn is_project_file(p: &Path) -> bool {
+    p.extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("jollof"))
+        && p.is_file()
+}
+/// Met la fenêtre au premier plan (deuxième lancement, fichier reçu).
+fn focus_main(app: &AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+/// Projet reçu du système : autorisé, mis en attente, annoncé à la fenêtre.
+fn offer_launch_file(app: &AppHandle, p: PathBuf) {
+    let p = p.canonicalize().unwrap_or(p);
+    log::info!("projet reçu du système : {}", p.display());
+    grant_write(app, &app.state::<Mutex<Grants>>(), &p);
+    *app.state::<LaunchFile>()
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner()) = Some(p);
+    let _ = app.emit("open-file", ());
+    focus_main(app);
+}
+/// Projet reçu du système et pas encore ouvert (une seule fois), ou None.
+#[tauri::command]
+fn take_launch_file(state: State<'_, LaunchFile>) -> Option<String> {
+    state
+        .0
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .take()
+        .map(|p| p.to_string_lossy().into_owned())
+}
+
+// ---------------------------------------------------------------------------
+// Journal : fichier tournant (1 Mo, trois anciens gardés) dans le dossier des journaux du système. Rust y écrit
+// ses évènements ; la fenêtre y envoie ses erreurs (log_js, en nombre borné). « Aide → Ouvrir le dossier des
+// journaux » le montre pour l'attacher à un rapport de bogue.
+// ---------------------------------------------------------------------------
+
+/// Messages de la fenêtre acceptés par session : une erreur répétée à chaque image ne remplit pas le disque.
+const MAX_JS_LOGS: u32 = 300;
+static JS_LOGS: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+fn clean_log_text(s: &str) -> String {
+    s.chars()
+        .map(|c| if c.is_control() && c != '\n' { ' ' } else { c })
+        .take(4000)
+        .collect()
+}
+/// Erreur ou avertissement de la fenêtre, écrit dans le journal.
+#[tauri::command]
+fn log_js(level: String, message: String) {
+    use std::sync::atomic::Ordering;
+    let n = JS_LOGS.fetch_add(1, Ordering::Relaxed);
+    if n > MAX_JS_LOGS {
+        return;
+    }
+    if n == MAX_JS_LOGS {
+        log::warn!(target: "webview", "trop de messages : la suite n'est plus écrite");
+        return;
+    }
+    let m = clean_log_text(&message);
+    match level.as_str() {
+        "error" => log::error!(target: "webview", "{m}"),
+        "warn" => log::warn!(target: "webview", "{m}"),
+        _ => log::info!(target: "webview", "{m}"),
+    }
+}
+/// Ouvre le dossier des journaux dans le gestionnaire de fichiers du système.
+#[tauri::command]
+fn open_log_dir(app: AppHandle) -> Result<(), String> {
+    let dir = app.path().app_log_dir().map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    let r = std::process::Command::new("open").arg(&dir).spawn();
+    #[cfg(target_os = "windows")]
+    let r = std::process::Command::new("explorer").arg(&dir).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let r = std::process::Command::new("xdg-open").arg(&dir).spawn();
+    r.map(|_| ()).map_err(|e| e.to_string())
+}
+/// Une panique (bogue) est écrite dans le journal avant le message habituel.
+fn log_panics() {
+    let prev = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log::error!("panique : {info}");
+        prev(info);
+    }));
+}
+
 /// La fenêtre ne quitte jamais l'application : toute navigation vers une autre adresse
 /// (lien piégé dans un message, redirection…) est bloquée ; les liens s'ouvrent dans le
 /// navigateur du système par `open_external`.
@@ -730,7 +880,43 @@ fn allowed_navigation(scheme: &str, host: &str) -> bool {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    use tauri_plugin_log::{RotationStrategy, Target, TargetKind};
+    let mut log_targets = vec![Target::new(TargetKind::LogDir {
+        file_name: Some("jollof-studio".into()),
+    })];
+    if cfg!(debug_assertions) {
+        log_targets.push(Target::new(TargetKind::Stdout));
+    }
     tauri::Builder::default()
+        // En premier : un deuxième lancement passe son projet à l'application ouverte et s'arrête aussitôt.
+        .plugin(tauri_plugin_single_instance::init(
+            |app, argv, cwd| match project_arg(&argv, Path::new(&cwd)) {
+                Some(p) => offer_launch_file(app, p),
+                None => focus_main(app),
+            },
+        ))
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .clear_targets()
+                .targets(log_targets)
+                .level(log::LevelFilter::Info)
+                .level_for("tao", log::LevelFilter::Warn)
+                .level_for("wry", log::LevelFilter::Warn)
+                .level_for("tokio_modbus", log::LevelFilter::Warn)
+                .level_for("espflash", log::LevelFilter::Warn)
+                .max_file_size(1_000_000)
+                .rotation_strategy(RotationStrategy::KeepSome(3))
+                .build(),
+        )
+        // Taille, position et état agrandi de la fenêtre retrouvés (pas sa visibilité : elle s'ouvre toujours).
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
+                .build(),
+        )
         .plugin(tauri_plugin_dialog::init())
         // Mises à jour de l'édition gratuite : manifeste latest.json de la dernière version GitHub,
         // installateur vérifié par sa signature (clé publique dans tauri.conf.json), puis redémarrage.
@@ -738,15 +924,46 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .plugin(navigation_guard())
         .manage(Mutex::new(Grants::default()))
+        .manage(LaunchFile::default())
         .manage(serial::Ports::default())
         .manage(qemu::Qemu::default())
         .manage(ai::Bridge::default())
         .manage(supervision_cmd::Supervision::default())
+        .manage(modbus::Modbus::default())
+        .manage(render::Render::default())
+        .manage(ffmpeg::Ffmpeg::default())
+        .setup(|app| {
+            log_panics();
+            log::info!(
+                "{} {} ({} {})",
+                app.package_info().name,
+                app.package_info().version,
+                std::env::consts::OS,
+                std::env::consts::ARCH
+            );
+            let args: Vec<String> = std::env::args().collect();
+            let cwd = std::env::current_dir().unwrap_or_default();
+            if let Some(p) = project_arg(&args, &cwd) {
+                offer_launch_file(app.handle(), p);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             supervision_cmd::supervision,
             pick_save,
             pick_open,
             save_bytes,
+            render::render_begin,
+            render::render_write,
+            render::render_end,
+            render::render_discard,
+            render::render_save,
+            ffmpeg::ffmpeg_info,
+            ffmpeg::master_aux,
+            ffmpeg::master_begin,
+            ffmpeg::master_frame,
+            ffmpeg::master_end,
+            ffmpeg::master_abort,
             save_text,
             read_text,
             library_list,
@@ -761,6 +978,9 @@ pub fn run() {
             read_build,
             install_language,
             open_external,
+            take_launch_file,
+            log_js,
+            open_log_dir,
             serial::serial_list,
             serial::serial_open,
             serial::serial_write,
@@ -778,15 +998,37 @@ pub fn run() {
             ai::ai_end_session,
             ai::ai_focus,
             ai::ai_clients,
-            ai::ai_connect
+            ai::ai_connect,
+            modbus::modbus_start,
+            modbus::modbus_stop,
+            modbus::modbus_image,
+            plcopen::plc_export_xml,
+            espflash_cmd::esp_detect,
+            espflash_cmd::esp_flash
         ])
         .build(tauri::generate_context!())
         .expect("Impossible de démarrer Jollof Studio")
-        .run(|app, event| {
+        .run(|app, event| match event {
             // Fermeture : les émulateurs ESP32 (programmes à part) s'arrêtent avec l'application.
-            if let tauri::RunEvent::Exit = event {
+            tauri::RunEvent::Exit => {
                 app.state::<qemu::Qemu>().kill_all();
+                app.state::<modbus::Modbus>().stop();
+                app.state::<ffmpeg::Ffmpeg>().kill();
+                render::cleanup(app);
+                log::info!("fermeture");
             }
+            // macOS : un .jollof ouvert depuis le Finder (au lancement ou ensuite) arrive par cet évènement.
+            #[cfg(target_os = "macos")]
+            tauri::RunEvent::Opened { urls } => {
+                if let Some(p) = urls
+                    .iter()
+                    .filter_map(|u| u.to_file_path().ok())
+                    .find(|p| is_project_file(p))
+                {
+                    offer_launch_file(app, p);
+                }
+            }
+            _ => {}
         });
 }
 
@@ -871,6 +1113,63 @@ mod tests {
             ]),
             "autre option refusée"
         );
+        // Mode fidèle de l'ESP32 : fonctions du cœur remplacées par la cale (--wrap), et rien d'autre.
+        let wraps = "build.extra_libs=-Wl,--wrap=i2cWrite,--wrap=_ZN7OneWire5resetEv";
+        assert!(ok(&[
+            "compile",
+            "--fqbn",
+            "esp32:esp32:esp32:FlashMode=dio",
+            "--build-property",
+            wraps,
+            "--output-dir",
+            &b,
+            &d
+        ]));
+        for bad in [
+            "build.extra_libs=-Wl,--wrap=i2cWrite,-T,/etc/x.ld",
+            "build.extra_libs=-Wl,--wrap=a b",
+            "compiler.c.elf.extra_flags=-Wl,--wrap=x",
+            "build.extra_libs=-Wl,--defsym=x=0",
+        ] {
+            assert!(
+                !ok(&[
+                    "compile",
+                    "--fqbn",
+                    "esp32:esp32:esp32:FlashMode=dio",
+                    "--build-property",
+                    bad,
+                    "--output-dir",
+                    &b,
+                    &d
+                ]),
+                "{bad}"
+            );
+        }
+        for f in [
+            "esp32:esp32:esp32s3:FlashMode=dio",
+            "esp32:esp32:esp32c3:FlashMode=dio",
+        ] {
+            assert!(ok(&[
+                "compile",
+                "--fqbn",
+                f,
+                "--build-property",
+                wraps,
+                "--output-dir",
+                &b,
+                &d
+            ]));
+        }
+        assert!(!ok(&[
+            "compile",
+            "--fqbn",
+            "arduino:avr:uno",
+            "--build-property",
+            wraps,
+            "--output-dir",
+            &b,
+            &d
+        ]));
         // Mode fidèle du Pico : cœur arduino-pico (dépôt d'Earle Philhower), compilation vers le dossier de build.
         assert!(ok(&[
             "core",
@@ -1004,6 +1303,34 @@ mod tests {
         ]));
         assert!(!ok(&["daemon"]));
         assert!(!ok(&[]));
+    }
+
+    #[test]
+    fn launch_argument_names_an_existing_project() {
+        let dir = temp_dir("launch");
+        fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("Projet 1.JOLLOF");
+        fs::write(&p, "{}").unwrap();
+        fs::write(dir.join("notes.txt"), "x").unwrap();
+        let a = |v: &[&str]| v.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+        // Relatif au dossier de lancement, insensible à la casse de l'extension ; options et autres fichiers ignorés.
+        assert_eq!(
+            project_arg(
+                &a(&["jollof-studio", "--flag", "notes.txt", "Projet 1.JOLLOF"]),
+                &dir
+            ),
+            Some(p.clone())
+        );
+        assert_eq!(
+            project_arg(&a(&["jollof-studio", p.to_str().unwrap()]), Path::new("/")),
+            Some(p.clone())
+        );
+        // Le programme lui-même, un fichier absent ou un dossier ne comptent pas.
+        assert_eq!(project_arg(&a(&[p.to_str().unwrap()]), &dir), None);
+        assert_eq!(project_arg(&a(&["x", "absent.jollof"]), &dir), None);
+        fs::create_dir_all(dir.join("d.jollof")).unwrap();
+        assert_eq!(project_arg(&a(&["x", "d.jollof"]), &dir), None);
+        assert_eq!(clean_log_text("a\u{1b}[31mb\nc"), "a [31mb\nc");
     }
 
     #[test]

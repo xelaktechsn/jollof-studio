@@ -4,6 +4,8 @@
 // travail pneumatique (le montage électronique ne change pas). Les mêmes circuits servent de départ aux TP de
 // pneumatique (src/lab/pneu). L'exemple électropneumatique avec carte est un projet entier (exemples/08-…).
 import { tl } from '../i18n/index.js';
+import { ladderFromGrafcet } from '../plc/fromgrafcet.js';
+import { TEMPLATES } from '../twin/model.js';
 
 const E = (id, type, x, y, p = {}) => ({ id, type, x, y, p });
 const T = (id, a, pa, b, pb) => ({ id, a: [a, pa], b: [b, pb] });
@@ -143,6 +145,63 @@ export const threeCircuit = (withGrafcet = true) => ({
  * Cascade à deux groupes pour A+ B+ B− A− : le distributeur de cascade (3V1) alimente une ligne à la fois ; une ligne
  * vide ne peut plus commander, plus de signaux qui se contredisent (b1 et a1 pendant B−).
  */
+/**
+ * Partie opérative d'une machine à procédé (vue 3D, process.js) : un vérin double effet par nom (repères A, B, C et
+ * leurs capteurs sens[i] : { s0, s1 }), chacun par un distributeur 5/2 monostable à électroaimant Y1, Y2… ; source d'air.
+ */
+export const machineCircuit = (names, sens) => {
+  const elements = [], tubes = [];
+  names.forEach((n, i) => {
+    const v = `v${i + 1}`, x = i * 36;
+    elements.push(E(n, 'cyl2', x, 0, { label: n, ...(sens[i] || {}) }), E(v, 'v52', x - 8, 12, { left: 'sol', right: 'spring', coilL: `Y${i + 1}`, label: `${i + 1}V1` }));
+    tubes.push(['src', '1', v, '1'], [v, '4', n, '1'], [v, '2', n, '2']);
+  });
+  elements.push(E('src', 'supply', 1, 22));
+  return { elements, tubes: TS(tubes) };
+};
+/** Magasin et transfert (vérins A poussoir, B bras, C descente) : pousser, prendre bras rentré, déposer bras sorti. */
+export const FEEDER_GRAFCET = () => ({
+  inputs: [{ name: 'dcy', kind: 'push' }],
+  steps: [
+    { n: 0, init: true, act: '', r: 'dcy . mag . NON pp . a0 . b0 . c0', to: 1 },
+    { n: 1, act: 'Y1', r: 'a1', to: 2 },
+    { n: 2, act: '', r: 'a0 . pp', to: 3 },
+    { n: 3, act: 'Y3', r: 'c1', to: 4 },
+    { n: 4, act: '', r: 'c0', to: 5 },
+    { n: 5, act: 'Y2', r: 'b1', to: 6 },
+    { n: 6, act: 'Y2, Y3', r: 'c1', to: 7 },
+    { n: 7, act: 'Y2', r: 'c0', to: 8 },
+    { n: 8, act: '', r: 'b0', to: 0 }
+  ]
+});
+export const feederCircuit = () => ({ ...machineCircuit(['A', 'B', 'C'], [{ s0: 'a0', s1: 'a1' }, { s0: 'b0', s1: 'b1' }, { s0: 'c0', s1: 'c1' }]), grafcet: FEEDER_GRAFCET(), scene: { kind: 'feeder', push: 'A', arm: 'B', down: 'C', start: 'dcy' } });
+/** Élément de réseau Ladder. */
+const K = (t, id, v, more = {}) => ({ t, id, v, ...more });
+/** Embouteillage (A butée, B bec) : M1 remplissage (pb → niv), M2 libération (bec remonté → butée rentrée et bouteille partie) ; la butée sort en marche sauf pour libérer. */
+export const FILLER_PLC = () => ({
+  name: 'API1', drive: true, cycle: 10, inputs: [{ name: 'm', kind: 'switch' }],
+  rungs: [
+    { id: 'r1', comment: 'Bouteille arrêtée sous le bec : remplir', items: [K('no', 'k1', 'm'), K('no', 'k2', 'pb'), K('no', 'k3', 'a1'), K('nc', 'k4', 'M2'), K('nc', 'k5', 'niv'), K('set', 'k6', 'M1')] },
+    { id: 'r2', comment: 'Niveau atteint : fermer le bec', items: [K('no', 'k7', 'niv'), K('reset', 'k8', 'M1')] },
+    { id: 'r3', comment: 'Bec en bas tant que M1', items: [K('no', 'k9', 'M1'), K('coil', 'k10', 'Y2')] },
+    { id: 'r4', comment: 'Bec remonté : libérer la bouteille', items: [K('no', 'k11', 'niv'), K('no', 'k12', 'b0'), K('nc', 'k13', 'M1'), K('set', 'k14', 'M2')] },
+    { id: 'r5', comment: 'Butée rentrée et bouteille partie : la butée peut ressortir', items: [K('no', 'k15', 'a0'), K('nc', 'k20', 'pb'), K('reset', 'k16', 'M2')] },
+    { id: 'r6', comment: 'Butée sortie en marche, sauf pour libérer', items: [K('no', 'k17', 'm'), K('nc', 'k18', 'M2'), K('coil', 'k19', 'Y1')] }
+  ]
+});
+export const fillerCircuit = () => ({ ...machineCircuit(['A', 'B'], [{ s0: 'a0', s1: 'a1' }, { s0: 'b0' }]), plc: FILLER_PLC(), scene: { kind: 'filler', stop: 'A', fill: 'B', run: 'm' } });
+/** Barrière (A lève la lisse) : badge → M1 ouverture ; lisse en haut et passage libre (pas de voiture sous elle) depuis 2 s → refermer. */
+export const BARRIER_PLC = () => ({
+  name: 'API1', drive: true, cycle: 10, inputs: [{ name: 'badge', kind: 'push' }],
+  rungs: [
+    { id: 'r1', comment: 'Badge présenté : ouvrir', items: [K('no', 'k1', 'badge'), K('set', 'k2', 'M1')] },
+    { id: 'r2', comment: 'Lisse levée tant que M1', items: [K('no', 'k3', 'M1'), K('coil', 'k4', 'Y1')] },
+    { id: 'r3', comment: 'Lisse en haut et personne sous elle depuis 2 s (sécurité : le contact pass)', items: [K('no', 'k5', 'a1'), K('nc', 'k6', 'pass'), K('ton', 'k7', 'T1', { pt: 2 })] },
+    { id: 'r4', comment: 'Refermer', items: [K('no', 'k8', 'T1'), K('reset', 'k9', 'M1')] }
+  ]
+});
+export const barrierCircuit = () => ({ ...machineCircuit(['A'], [{ s1: 'a1' }]), plc: BARRIER_PLC(), scene: { kind: 'barrier', lift: 'A', badge: 'badge' } });
+
 export const cascadeCircuit = () => ({
   elements: [...TWO_CYL(PILOTS, PILOTS),
     ROLLER('b0', -14, 24, 'B', '0'), ROLLER('a1', 2, 24, 'A', '1'), ROLLER('b1', 18, 24, 'B', '1'), ROLLER('a0', 34, 24, 'A', '0'),
@@ -154,6 +213,22 @@ export const cascadeCircuit = () => ({
 });
 
 /** Circuits d'exemple : { id, name(), text(), circuit() }. */
+/**
+ * Jumeau « convoyeur et éjecteur » (modèle sorter de src/twin) trié par un Ladder : au front de la cellule pe, si le
+ * tri est demandé (sel), M1 arrête le tapis (KM1) et sort le vérin A ; en bout (a1) l'éjection est finie, le tapis
+ * repart une fois le vérin rentré (a0).
+ */
+export const TWIN_SORTER_PLC = () => ({
+  name: 'API1', drive: true, cycle: 10, inputs: [{ name: 'dcy', kind: 'switch' }, { name: 'sel', kind: 'switch' }],
+  rungs: [
+    { id: 'r1', comment: 'Colis devant le poussoir et tri demandé : mémoriser l’éjection', items: [K('p', 'k1', 'pe'), K('no', 'k2', 'sel'), K('set', 'k3', 'M1')] },
+    { id: 'r2', comment: 'Éjecter : le vérin A sort', items: [K('no', 'k4', 'M1'), K('coil', 'k5', 'Y1')] },
+    { id: 'r3', comment: 'Plaque en bout de course : éjection finie', items: [K('no', 'k6', 'a1'), K('reset', 'k7', 'M1')] },
+    { id: 'r4', comment: 'Tapis en marche, sauf pendant l’éjection (vérin rentré)', items: [K('no', 'k8', 'dcy'), K('nc', 'k9', 'M1'), K('no', 'k10', 'a0'), K('coil', 'k11', 'KM1')] }
+  ]
+});
+export const twinSorterCircuit = () => ({ ...machineCircuit(['A'], [{ s0: 'a0', s1: 'a1' }]), plc: TWIN_SORTER_PLC(), scene: TEMPLATES.sorter.scene() });
+
 export const PNEU_EXAMPLES = [
   {
     id: 'direct', name: () => tl('Commande directe d’un vérin simple effet'),
@@ -242,6 +317,42 @@ export const PNEU_EXAMPLES = [
     id: 'door', name: () => tl('Porte de TER : GRAFCET avec temporisation'),
     text: () => tl('dcy ouvre la porte, elle reste ouverte 5 s (réceptivité 5s/X2) puis se ferme ; si l’obstacle obs est détecté pendant la fermeture, elle se rouvre (divergence en OU vers X1).'),
     circuit: () => doorCircuit(true)
+  },
+  {
+    id: 'ladder', name: () => tl('Automate : vérin commandé en Ladder (auto-maintien)'),
+    text: () => tl('Le programme de l’automate (panneau Automate) : Y1 = (dcy + Y1) · /a1. Une impulsion sur dcy enclenche la bobine Y1, qui se maintient par son propre contact jusqu’à ce que la tige arrive en a1 ; le distributeur monostable rentre alors la tige. Le réseau se lit de gauche à droite, le courant allume les contacts.'),
+    circuit: () => ({
+      elements: [E('c1', 'cyl2', 0, 0, { label: 'A', s1: 'a1' }), E('v1', 'v52', -8, 12, { left: 'sol', right: 'spring', coilL: 'Y1', label: '1V1' }), E('src', 'supply', 1, 22)],
+      tubes: [T('t1', 'src', '1', 'v1', '1'), T('t2', 'v1', '4', 'c1', '1'), T('t3', 'v1', '2', 'c1', '2')],
+      plc: { name: 'API1', drive: true, cycle: 10, inputs: [{ name: 'dcy', kind: 'push' }], rungs: [
+        { id: 'r1', comment: 'Sortie de la tige : auto-maintien de Y1 jusqu’à a1', items: [{ t: 'par', id: 'p1', branches: [[{ t: 'no', id: 'k1', v: 'dcy' }], [{ t: 'no', id: 'k2', v: 'Y1' }]] }, { t: 'nc', id: 'k3', v: 'a1' }, { t: 'coil', id: 'k4', v: 'Y1' }] }
+      ] }
+    })
+  },
+  {
+    id: 'ladderdoor', name: () => tl('Automate : la porte de TER traduite du GRAFCET en Ladder'),
+    text: () => tl('Le même GRAFCET que l’exemple « Porte de TER », écrit en Ladder par le bouton « d’après le GRAFCET » : un bit par étape (X0…X3), un réseau par transition (S des étapes aval, R des étapes amont), une temporisation TON pour « 5s/X2 », un réseau par action. Le GRAFCET observe ; c’est l’automate qui commande 1Y1.'),
+    circuit: () => { const c = doorCircuit(true), r = ladderFromGrafcet(c.grafcet); return { ...c, grafcet: { ...c.grafcet, drive: false }, ...(r.plc ? { plc: r.plc } : {}) }; }
+  },
+  {
+    id: 'feeder', name: () => tl('Machine : magasin et transfert (GRAFCET traduit en Ladder)'),
+    text: () => tl('Poste de distribution en 3D : le poussoir A amène la pièce du bas du magasin en position de prise (capteur pp), la ventouse C descend et la prend bras B rentré, puis la dépose bras sorti. Le GRAFCET (9 étapes) lit les capteurs de la machine (mag : pièce dans le magasin, pp) comme ceux des vérins ; il est traduit en Ladder, et c’est l’automate qui commande. Lancez la simulation, appuyez sur dcy ; videz le magasin : le cycle ne repart plus (mag à 0), « Remplir le magasin » le regarnit.'),
+    circuit: () => { const c = feederCircuit(), r = ladderFromGrafcet(c.grafcet); return { ...c, grafcet: { ...c.grafcet, drive: false }, ...(r.plc ? { plc: r.plc } : {}) }; }
+  },
+  {
+    id: 'filler', name: () => tl('Machine : embouteillage au capteur de niveau (Ladder)'),
+    text: () => tl('Ligne d’embouteillage en 3D : le tapis apporte une bouteille toutes les 8 s ; la butée A l’arrête sous le bec (cellule pb), le bec B descend et remplit jusqu’à la sonde de niveau niv, remonte, la butée rentre pour libérer la bouteille puis ressort. Le programme Ladder tient le remplissage dans la mémoire M1 (S par pb, R par niv) et la libération dans M2 (S bec remonté, R butée rentrée et bouteille partie). Mettez m en marche ; ajoutez des bouteilles au bouton : si le bec coule sans bouteille, du jus est renversé.'),
+    circuit: () => fillerCircuit()
+  },
+  {
+    id: 'barrier', name: () => tl('Machine : barrière de parking, temporisation et sécurité (Ladder)'),
+    text: () => tl('Entrée d’un parking-relais en 3D : une voiture arrive (bouton « Une voiture »), attend à la boucle de détection veh ; le badge met la mémoire M1 à 1 : le vérin A lève la lisse. Une temporisation TON de 2 s, armée quand la lisse est en haut et qu’aucune voiture n’est sous elle (capteur pass, la boucle de sécurité), remet M1 à 0 : la lisse redescend. Retirez le contact pass de la temporisation et faites passer deux voitures de près : la lisse descend sur la seconde (« Choc ! »).'),
+    circuit: () => barrierCircuit()
+  },
+  {
+    id: 'twinSorter', name: () => tl('Machine construite : convoyeur et éjecteur (jumeau 3D, Ladder)'),
+    text: () => tl('Une machine faite de composants (bouton « Construire » de la vue 3D) : un convoyeur commandé par la sortie KM1, une cellule pe, un poussoir mû par le vérin A, deux bacs. Départ (dcy) lance le tapis ; avec Éjecter (sel), chaque colis vu par la cellule est poussé dans le bac de côté, sinon il finit dans le bac du bout. Déplacez la cellule, changez la course du poussoir, ajoutez un capteur : la machine et son programme suivent.'),
+    circuit: () => twinSorterCircuit()
   },
   {
     id: 'force', name: () => tl('Force et pression (modèle physique)'),

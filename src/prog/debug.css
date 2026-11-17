@@ -13,7 +13,7 @@
 /* Marge de l'éditeur : points d'arrêt (rond plein, ou creux si la ligne ne peut pas arrêter le programme) */
 .ed.bpOn .edGut .gl:not(.pad):not(.bp):hover::after { content: ""; position: absolute; left: 3px; top: 4.5px; width: 9px; height: 9px; border-radius: 50%; background: #e5484d4d; }
 .edGut .gl.bp { color: var(--fg-2); }
-.edGut .gl.bp::after { content: ""; position: absolute; left: 3px; top: 4.5px; width: 9px; height: 9px; box-sizing: border-box; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 1.5px #0d1115; }
+.edGut .gl.bp::after { content: ""; position: absolute; left: 3px; top: 4.5px; width: 9px; height: 9px; box-sizing: border-box; border-radius: 50%; background: var(--danger); box-shadow: 0 0 0 1.5px var(--stage); }
 .edGut .gl.bp.off::after { background: transparent; border: 1.5px solid var(--danger); }
 /* Ligne d'arrêt du programme */
 .edGut .gl.pause { color: var(--warn); background: #f2c94c1a; }
@@ -49,13 +49,13 @@
 .plotLegend { display: flex; flex-wrap: wrap; gap: 4px; }
 .plotLegend:empty { display: none; }
 .plotChip { appearance: none; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; height: 22px; padding: 0 8px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--bg); color: var(--fg-2); font: 500 11px var(--sans); cursor: pointer; }
-.plotChip:hover { border-color: #3a4652; color: var(--fg); }
+.plotChip:hover { border-color: var(--line-3); color: var(--fg); }
 .plotChip i { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .plotChip span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .plotChip b { font: 500 11px var(--mono); color: var(--fg); }
 .plotChip[aria-pressed="false"] { opacity: .5; }
 .plotChip[aria-pressed="false"] b { visibility: hidden; }
-#plotCv { display: block; width: 100%; height: 190px; background: #0a0d10; border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; }
+#plotCv { display: block; width: 100%; height: 190px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; cursor: crosshair; }
 .plotBar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 #plotHold[aria-pressed="true"] { color: var(--warn); border-color: #f2c94c66; }
 

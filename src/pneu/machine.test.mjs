@@ -39,7 +39,10 @@ test('Scène 3D gardée avec le circuit, liaisons nettoyées', () => {
 
 test('Registre des scènes : chaque machine, ses vérins et ses commandes ; la porte garde ses liaisons par défaut', async () => {
   const { SCENES, sceneId } = await import('./machine.js');
-  assert.deepEqual(Object.keys(SCENES), ['cylinders', 'door', 'bus', 'press', 'station', 'pantograph', 'sorter']);
+  assert.deepEqual(Object.keys(SCENES), ['cylinders', 'door', 'bus', 'press', 'station', 'pantograph', 'sorter', 'feeder', 'filler', 'barrier', 'twin']);
+  // Machines à procédé : les vérins de la vue sont ceux du procédé, dans le même ordre (le rang sert de défaut).
+  const { PROCESSES } = await import('./process.js');
+  for (const [k, D] of Object.entries(PROCESSES)) assert.deepEqual(SCENES[k].cyls.map(c => c.key), D.cyls, k);
   for (const [id, s] of Object.entries(SCENES)) {
     assert.ok(s.name().length > 3, id);
     for (const c of s.cyls) assert.ok(c.key && c.label().length > 3, id);

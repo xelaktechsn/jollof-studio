@@ -9,6 +9,8 @@
 .app[data-kind="epneu"] .wsSwitch [data-ws="logic"] { display: none; }
 /* Projet analogique : ni programme ni vidéo de câblage de carte. */
 .app[data-kind="analog"] #tab-prog { display: none; }
+/* Logique ou pneumatique seule : pas de composant électronique, donc pas de fiches (Documentation), ni de carte réelle. */
+.app:is([data-kind="logic"], [data-kind="pneu"]) #docBtn { display: none !important; }
 /* Le nom du type reste lisible quand la barre compacte réduit les autres boutons à leur icône (sa règle compte
    plusieurs identifiants : !important). Électropneumatique : le sélecteur à côté dit déjà les deux plans. */
 .app:not([data-kind="epneu"]) .appbar #kindBtn > span { display: inline !important; }
@@ -28,5 +30,5 @@
 .kdSpaces { font-size: 11px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
 .kdNote { grid-column: 1 / -1; margin: 4px 0 0; display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--fg-2); }
 .kdNote .ic { width: 15px; height: 15px; color: var(--accent); }
-.kdNote .link { all: unset; color: #93c5fd; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.kdNote .link { all: unset; color: var(--accent-hi); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { .kdCard { transition: none; } }

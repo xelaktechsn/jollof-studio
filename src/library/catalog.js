@@ -8,11 +8,12 @@ import { M, V3, PITCH, mat, block, cyl, dome, decal, text, board, header, leg, s
 import { ownMaterial } from '../cad/library.js';
 import { tl } from '../i18n/index.js';
 import { stdMat } from '../quality.js';
-import { ANALOG_LIBRARY, ANALOG_CATEGORIES } from './analog.js';
+import { ANALOG_LIBRARY, ANALOG_CATEGORIES, dip } from './analog.js';
+import { paintTft } from '../sim/tft.js';
 
 /** Composants de l'utilisateur : créés dans l'atelier ou par un assistant IA, importés, apportés par un projet. */
 export const MINE = tl('Mes composants');
-export const CATEGORIES = [tl('Cartes'), tl('Prototypage'), tl('Capteurs'), tl('Entrées'), tl('Affichage'), tl('Sorties'), tl('Moteurs'), tl('Passifs'), tl('Alimentation'), tl('Communication'), ...ANALOG_CATEGORIES];
+export const CATEGORIES = [tl('Cartes'), tl('Prototypage'), tl('Capteurs'), tl('Entrées'), tl('Affichage'), tl('Sorties'), tl('Moteurs'), tl('Passifs'), tl('Alimentation'), tl('Communication'), tl('Circuits logiques'), tl('Horloges et mémoires'), ...ANALOG_CATEGORIES];
 
 const BLUE = '#1b4f8c', GREEN = '#22603a', BLACK = '#17191c', RED = '#9b2226', PURPLE = '#4b2d7a';
 
@@ -275,6 +276,16 @@ function hx711(c) {
   block(c, 9, 0.5, 12, X, 12.7, -6, 0xf0e3b0);
   cols.forEach((col, i) => block(c, 0.9, 0.9, 16, 14 + i * 1.3, 1, -14, col));
 }
+/** Module ACS712 : puce SOIC-8 au milieu, barrette VCC OUT GND d'un côté, bornier à vis du primaire (IP+, IP−) de l'autre. */
+function acs712(c) {
+  const b = moduleBoard(c, 31, 13, RED, ['VCC', 'OUT', 'GND'], { pitch: 2.54, pinX: -10, z: 0 });
+  b.finish((x, k) => { text(x, k, 'ACS712', 15.5, 2.2, 1.2); text(x, k, 'IP+  IP-', 26, 11.2, 0.9, { weight: 500 }); });
+  chipOnBoard(c, b, 5, 4, -2, 0, 'ACS712');
+  block(c, 1.6, 0.6, 0.9, -6.5, b.top, -3.5, 0xd8d2c4); block(c, 1.6, 0.6, 0.9, 2.5, b.top, -3.5, 0xd8d2c4);
+  block(c, 8, 8.5, 10, 11, b.top, 0, 0x2f62d8);
+  [['IP+', -2.5], ['IP-', 2.5]].forEach(([n, z]) => { cyl(c, 1.6, 0.8, 11, b.top + 8.5, z, M.silver); leg(c, n, 11, z, b.top + 9.3, 0.8); });
+  block(c, 1, 0.6, 0.6, -12.5, b.top, 4, 0xff2a2a, { e: 0x991111 });
+}
 /** TTP223 : pastille tactile ronde sur une petite carte. */
 function ttp223(c) {
   const b = moduleBoard(c, 15, 11, RED, ['SIG', 'VCC', 'GND']); b.finish((x, k) => text(x, k, 'TTP223B', 7.5, 2.4, 0.85));
@@ -304,6 +315,39 @@ function soundSensor(c) {
   const b = moduleBoard(c, 15, 34, BLUE, ['AO', 'GND', 'VCC', 'DO']); b.finish();
   cyl(c, 4.9, 5, 0, b.top, -11, M.silver); cyl(c, 4.4, 0.2, 0, b.top + 5, -11, 0x222222);
   block(c, 6.5, 4, 6.5, 0, b.top, 1, 0x2f6fd6);
+}
+/* Capteurs I2C (sim/i2csensors.js) */
+/** VL53L0X (module GY-VL53L0XV2) : la puce et ses deux fenêtres (émetteur laser, récepteur), régulateur 2,8 V. */
+function vl53l0x(c) {
+  const b = moduleBoard(c, 25, 12.5, PURPLE, ['VIN', 'GND', 'SCL', 'SDA', 'GPIO1', 'XSHUT']); b.finish((x, k) => text(x, k, 'VL53L0X', 18.5, 2.6, 1));
+  block(c, 4.4, 1, 2.4, 0, b.top, -3.8, 0x111111);
+  [-1, 1].forEach(s => cyl(c, 0.45, 0.06, s * 1.1, b.top + 1, -3.8, 0x3a2a4a, { seg: 16 }));
+  block(c, 2.9, 1.1, 1.6, -8, b.top, -3.6, M.plastic);
+}
+/** MAX30102 : la puce sous sa vitre (LED rouge et infrarouge, photodiode), régulateurs 1,8 V et 3,3 V. */
+function max30102(c) {
+  const b = moduleBoard(c, 20, 15.5, PURPLE, ['VIN', 'SDA', 'SCL', 'INT', 'IRD', 'RD', 'GND']); b.finish((x, k) => text(x, k, 'MAX30102', 10, 2.2, 1));
+  block(c, 5.6, 1.4, 3.3, 0, b.top, -4, 0x161616);
+  block(c, 4.8, 0.08, 2.5, 0, b.top + 1.4, -4, 0x40303a, { e: 0x1a0606 });
+  [-6.5, 6.5].forEach(xx => block(c, 2.9, 1, 1.6, xx, b.top, -4.5, M.plastic));
+}
+/** TCS34725 : la puce de couleur entre deux LED blanches d'éclairage, régulateur 3,3 V. */
+function tcs34725(c) {
+  const b = moduleBoard(c, 20.5, 20.5, BLUE, ['LED', 'INT', 'SDA', 'SCL', '3V3', 'GND', 'VIN']); b.finish((x, k) => text(x, k, 'TCS34725', 10.25, 2.2, 1));
+  block(c, 2, 0.8, 2.4, 0, b.top, -3.5, 0x101010); block(c, 1, 0.05, 1, 0, b.top + 0.8, -3.5, 0x6c7f98, { e: 0x101820 });
+  [-5, 5].forEach(xx => { block(c, 3.5, 1.4, 2.8, xx, b.top, -3.5, 0xf2f2ee); block(c, 2.6, 0.06, 2, xx, b.top + 1.4, -3.5, 0xfff6c8, { e: 0x554e30 }); });
+}
+/** CCS811 (module CJMCU-811) : capteur de gaz en boîtier LGA, sans régulateur. */
+function ccs811(c) {
+  const b = moduleBoard(c, 21, 15.5, PURPLE, ['VCC', 'GND', 'SCL', 'SDA', 'WAKE', 'INT', 'RST', 'ADDR']); b.finish((x, k) => text(x, k, 'CJMCU-811', 10.5, 2.2, 1));
+  block(c, 2.7, 1.1, 4, 0, b.top, -3.8, 0x1c1c1c);
+  cyl(c, 0.5, 0.06, 0, b.top + 1.1, -4.8, 0xb59a54, { seg: 14 });
+}
+/** BME680 (module GY-BME680) : la puce dans son boîtier métallique à évent, régulateur 3,3 V. */
+function bme680(c) {
+  const b = moduleBoard(c, 18, 13, PURPLE, ['VCC', 'GND', 'SCL', 'SDA', 'SDO', 'CS']); b.finish((x, k) => text(x, k, 'BME680', 9, 2.4, 1));
+  block(c, 3, 0.95, 3, 0, b.top, -3.4, M.silver); cyl(c, 0.35, 0.05, 0.7, b.top + 0.95, -4, 0x111111);
+  block(c, 2.9, 1, 1.6, -6, b.top, -3.4, M.plastic);
 }
 
 /* ---------- Entrées ---------- */
@@ -336,6 +380,39 @@ function keypad(c) {
       x.fillStyle = /[A-D]/.test(t) ? '#c23b32' : (/[*#]/.test(t) ? '#2f6fd6' : '#e6e6e2'); x.fillRect((cx - 6.5) * k, (cy - 6.5) * k, 13 * k, 13 * k);
       text(x, k, t, cx, cy, 5, { color: /[*#A-D]/.test(t) ? '#fff' : '#222' }); });
   });
+}
+
+/** Encodeur rotatif KY-040 : encodeur à 20 crans et son bouton d'axe, bouton moleté (c.knob tourne de 18° par cran). */
+function ky040(c) {
+  const b = moduleBoard(c, 19, 26.5, BLUE, ['CLK', 'DT', 'SW', '+', 'GND']);
+  b.finish((x, k) => { text(x, k, 'KY-040', 9.5, 2.4, 1.1); [-4.5, 0, 4.5].forEach(d => { x.fillStyle = '#2b2b2b'; x.fillRect((9.5 + d - 1.2) * k, 18.5 * k, 2.4 * k, 1.1 * k); }); });
+  block(c, 12.4, 6.5, 13.2, 0, b.top, -3, 0x2a2d31, { m: 0.4, r: 0.45 });
+  block(c, 12, 0.5, 12.8, 0, b.top + 6.5, -3, M.silver);
+  cyl(c, 3.5, 5, 0, b.top + 7, -3, M.silver, { seg: 24 });
+  const T = b.top + 12, knob = new THREE.Group(); knob.position.set(0, T, -3); c.g.add(knob);
+  const g = { g: knob };
+  cyl(g, 6.4, 11, 0, 0, 0, 0x1d1f22, { r2: 6, seg: 30, r: 0.5 });
+  cyl(g, 5.4, 0.3, 0, 11, 0, 0x2a2c30, { seg: 30 });
+  block(g, 0.9, 0.15, 4.2, 0, 11.3, -2.6, 0xf2f2ee);
+  for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; block(g, 0.6, 9, 0.6, Math.cos(a) * 6.3, 1, Math.sin(a) * 6.3, 0x26282c, { rot: [0, -a, 0] }); }
+  c.knob = knob;
+}
+/** Télécommande infrarouge « Car MP3 » à 21 touches (NEC) : boîtier mince, LED infrarouge en haut. */
+function irremote(c) {
+  const W = 40, L = 86, H = 6.5;
+  block(c, W, H, L, 0, 0, 0, 0x16181b, { r: 0.4 });
+  cyl(c, 2.5, 3, 0, H - 2.4, -L / 2 - 0.2, 0x3a2a4a, { axis: 'z', o: 0.85, r: 0.15 });
+  const keys = ['CH−', 'CH', 'CH+', '⏮', '⏭', '⏯', '−', '+', 'EQ', '0', '100+', '200+', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
+  decal(c, W - 2, L - 2, 0, H + 0.02, 0, (x, k) => {
+    x.fillStyle = '#1e2126'; x.fillRect(0, 0, (W - 2) * k, (L - 2) * k);
+    text(x, k, 'Car MP3', (W - 2) / 2, 5, 2.4, { color: '#c9ced6' });
+    keys.forEach((t, i) => {
+      const cx = 7 + (i % 3) * 12, cy = 13 + Math.floor(i / 3) * 10.4, ch = i < 3, play = i === 5;
+      x.fillStyle = ch ? '#c23b32' : play ? '#2f6fd6' : '#e8e8e4';
+      x.beginPath(); x.ellipse(cx * k, cy * k, 4.8 * k, 3.6 * k, 0, 0, 7); x.fill();
+      text(x, k, t, cx, cy + 0.2, t.length > 3 ? 2 : 2.5, { color: ch || play ? '#fff' : '#1a1a1a' });
+    });
+  }, 14);
 }
 
 /* ---------- Affichage ---------- */
@@ -669,20 +746,72 @@ function stepper(c) {
   block(c, 17, 16, 8, 0, 0, -2, 0x2f62d8);
   socket(c, 16, 6, ['IN1', 'IN2', 'IN3', 'IN4', 'VCC', 'GND']);
 }
+// L293D : brochage DIP-16 de la fiche TI (1,2EN = EN12, 1A = IN1, 1Y = OUT1, VCC2 : moteurs, VCC1 : logique).
+const L293D_PINS = ['EN12', 'IN1', 'OUT1', 'GND', 'GND (2)', 'OUT2', 'IN2', 'VCC2', 'EN34', 'IN3', 'OUT3', 'GND (3)', 'GND (4)', 'OUT4', 'IN4', 'VCC1'];
+/** Module TB6612FNG (format SparkFun) : commandes à gauche, alimentations et sorties à droite, puce SSOP au centre. */
+function tb6612(c) {
+  const b = board(c, 21, 23, RED);
+  header(c, ['PWMA', 'AIN2', 'AIN1', 'STBY', 'BIN1', 'BIN2', 'PWMB', 'GND'], { board: b, axis: 'z', x: -8.89, labels: 1 });
+  header(c, ['VM', 'VCC', 'GND (2)', 'AO1', 'AO2', 'BO2', 'BO1', 'GND (3)'], { board: b, axis: 'z', x: 8.89, labels: -1 });
+  b.finish((x, k) => text(x, k, 'TB6612FNG', 10.5, 21.4, 1.1));
+  chipOnBoard(c, b, 5.5, 6.5, 0, -1, '6612');
+  [-1.6, 1.6].forEach(z => block(c, 1.6, 0.8, 0.9, 0, b.top, z + 6, 0xc8a46a)); // condensateurs de découplage
+}
+/**
+ * Cartes Pololu des pilotes pas à pas (15 × 20 mm) : commandes à gauche, moteur et alimentations à droite, la puce,
+ * son potentiomètre de réglage du courant (Vref) et, collé dessus, le petit radiateur des kits.
+ */
+function stepCarrier(left, right, color, mark) {
+  return c => {
+    const b = board(c, 15.2, 20.3, color, { holes: false, labelSize: 0.9 });
+    header(c, left, { board: b, axis: 'z', x: -6.35, labels: 1 });
+    header(c, right, { board: b, axis: 'z', x: 6.35, labels: -1 });
+    b.finish((x, k) => text(x, k, mark, 7.6, 19.4, 0.9));
+    block(c, 5, 0.9, 5, 0, b.top, -2.5, 0x161616);
+    // Radiateur à ailettes collé sur la puce.
+    block(c, 6, 1, 6, 0, b.top + 0.9, -2.5, 0xb9bdc1, { m: 0.8 });
+    for (let i = 0; i < 5; i++) block(c, 0.7, 4, 6, -2.4 + i * 1.2, b.top + 1.9, -2.5, 0xb9bdc1, { m: 0.8 });
+    // Potentiomètre du courant (Vref), vis en croix.
+    cyl(c, 1.6, 1.4, 0, b.top, 5.5, 0xd8d8d8, { seg: 18 });
+    block(c, 2, 0.15, 0.4, 0, b.top + 1.4, 5.5, 0x555555); block(c, 0.4, 0.15, 2, 0, b.top + 1.4, 5.5, 0x555555);
+  };
+}
+/** Moteur pas à pas NEMA 17 (42,3 mm, 40 mm de long) debout, l'axe en haut avec un drapeau ; quatre fils vers un connecteur. */
+function nema17(c) {
+  const z = -24, H = 40;
+  block(c, 42.3, 6, 42.3, 0, 0, z, 0x9aa0a6, { m: 0.7, r: 0.5 });
+  block(c, 41, H - 12, 41, 0, 6, z, 0x1b1d20, { r: 0.5 });
+  block(c, 42.3, 6, 42.3, 0, H - 6, z, 0x9aa0a6, { m: 0.7, r: 0.5 });
+  cyl(c, 11, 2, 0, H, z, 0x9aa0a6, { m: 0.7, seg: 36 }); // centrage de 22 mm
+  [[-15.5, -15.5], [15.5, -15.5], [-15.5, 15.5], [15.5, 15.5]].forEach(([x, dz]) => cyl(c, 1.6, 0.3, x, H, z + dz, 0x111111, { seg: 12 }));
+  cyl(c, 2.5, 22, 0, H + 2, z, M.silver, { seg: 20 });
+  const piv = new THREE.Group(); piv.position.set(0, H + 20, z); c.g.add(piv);
+  const flag = new THREE.Mesh(boxGeo(16, 2, 4), mat(0xe0703a)); flag.position.set(7, 0, 0); piv.add(flag);
+  piv.add(new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 3, 18), mat(0x2a2a2a)));
+  c.spin = { obj: piv, axis: 'y' };
+  // Sortie des fils et connecteur 4 broches (rouge, bleu : bobine A ; vert, noir : bobine B).
+  block(c, 12, 6, 6, 0, 8, -2, 0x1b1d20);
+  const cols = [0xd8322f, 0x2f62d8, 0x2e9e4f, 0x161616];
+  ['A+', 'A-', 'B+', 'B-'].forEach((n, i) => { const x = (i - 1.5) * 2.54; block(c, 1, 1, 6, x, 9.5, 3.5, cols[i]); });
+  block(c, 12, 3, 6, 0, 0, 6, M.plastic);
+  ['A+', 'A-', 'B+', 'B-'].forEach((n, i) => leg(c, n, (i - 1.5) * 2.54, 7.5, 3, 5));
+}
 
 /* ---------- Passifs ---------- */
-const BAND = { 0: 0x111111, 1: 0x6b3a1e, 2: 0xc0302a, 3: 0xe07a1f, 4: 0xe8c33a, 5: 0x2e9e4f, 6: 0x2f62d8, 7: 0x7a3fb0, 8: 0x888888, 9: 0xf2f2f2, g: 0xc9a24a };
+const BAND = { 0: 0x111111, 1: 0x6b3a1e, 2: 0xc0302a, 3: 0xe07a1f, 4: 0xe8c33a, 5: 0x2e9e4f, 6: 0x2f62d8, 7: 0x7a3fb0, 8: 0x888888, 9: 0xf2f2f2, g: 0xc9a24a, s: 0xb8bcc0 };
+/** Repeint les anneaux d'une résistance (valeur réglée) : anneaux gardés par le constructeur (c.bands), code [d1, d2, ×, tol.]. */
+export function paintBands(comp, code) { (comp.bands || []).forEach((m, i) => { if (m && code[i] != null && BAND[code[i]] != null) m.material = mat(BAND[code[i]]); }); }
 function resistor(bands) {
   return c => {
     socket(c, 16, 7, ['1', '2'], { pitch: 10.16 });
     const real = cad(c, 'resistor-axial', 0, 3, -1.2);
     if (real) {
       const y = 3 + real.userData.size.y - 1.25;
-      bands.forEach((bd, i) => cyl(c, 1.32, 0.5, [-1.9, -0.9, 0.1, 1.9][i], y, -1.2, BAND[bd], { axis: 'x' }));
+      c.bands = bands.map((bd, i) => cyl(c, 1.32, 0.5, [-1.9, -0.9, 0.1, 1.9][i], y, -1.2, BAND[bd], { axis: 'x' }));
       return;
     }
     cyl(c, 1.35, 6.5, 0, 8, -1.2, 0xd9c39a, { axis: 'x' });
-    bands.forEach((bd, i) => cyl(c, 1.4, 0.55, [-2.1, -1, 0.1, 2.1][i], 8, -1.2, BAND[bd], { axis: 'x' }));
+    c.bands = bands.map((bd, i) => cyl(c, 1.4, 0.55, [-2.1, -1, 0.1, 2.1][i], 8, -1.2, BAND[bd], { axis: 'x' }));
     [-1, 1].forEach(s => { cyl(c, 0.25, 2, s * 4.2, 8, -1.2, M.leg, { axis: 'x', seg: 8 }); block(c, 0.5, 5, 0.5, s * 5.08, 3, -1.2, M.leg); });
   };
 }
@@ -703,6 +832,17 @@ function diode(c) {
   if (cad(c, 'diode-do41', 0, 3, -1.2)) return;
   cyl(c, 1.35, 5.2, 0, 8, -1.2, 0x151515, { axis: 'x' }); cyl(c, 1.4, 0.7, 2, 8, -1.2, 0xcfcfcf, { axis: 'x' });
   [-1, 1].forEach(s => { cyl(c, 0.25, 2.6, s * 3.9, 8, -1.2, M.leg, { axis: 'x', seg: 8 }); block(c, 0.5, 5, 0.5, s * 5.08, 3, -1.2, M.leg); });
+}
+/**
+ * Diode Zener en boîtier DO-35 (3,8 mm × 1,9 mm) : verre orangé où l'on devine la puce, bague noire côté cathode,
+ * pattes axiales pliées au pas de 10,16 mm comme la 1N4007.
+ */
+function zener(c) {
+  socket(c, 16, 7, ['A', 'K'], { pitch: 10.16 });
+  cyl(c, 0.95, 3.8, 0, 8, -1.2, 0xd9622b, { axis: 'x', o: 0.82, r: 0.15 });
+  cyl(c, 0.42, 1.4, 0, 8, -1.2, 0x8a8f94, { axis: 'x', m: 0.8, r: 0.35 });
+  cyl(c, 1.0, 0.5, 1.4, 8, -1.2, 0x151515, { axis: 'x' });
+  [-1, 1].forEach(s => { cyl(c, 0.22, 3.2, s * 3.5, 8, -1.2, M.leg, { axis: 'x', seg: 8 }); block(c, 0.5, 5, 0.5, s * 5.08, 3, -1.2, M.leg); });
 }
 function to92(names) {
   return c => {
@@ -773,6 +913,67 @@ function battery18650(c) {
   block(c, 10, 4, 8, 0, 0, 12, M.plastic);
   [['+', -2.54], ['-', 2.54]].forEach(([n, x]) => leg(c, n, x, 14.5, 4, 4));
 }
+/** Potentiomètre multitour bleu (réglage de la tension des convertisseurs), vis en laiton. */
+function trimmer(c, x, y, z) {
+  block(c, 9.5, 4.8, 4.5, x, y, z, 0x2f62d8, { r: 0.4 });
+  cyl(c, 1.1, 0.8, x - 3.6, y + 4.8, z, 0xc9a24a, { m: 0.8, r: 0.35, seg: 14 });
+}
+/** Condensateur électrolytique CMS ou traversant, debout. */
+const ecap = (c, r, h, x, y, z) => { cyl(c, r, h, x, y, z, 0x1b1b1b, { seg: 24 }); cyl(c, r * 0.98, 0.05, x, y + h, z, 0xb9bdc1, { m: 0.7, seg: 24 }); };
+/** Module régulateur AMS1117-3.3 : petit PCB bleu, régulateur SOT-223, deux condensateurs, voyant rouge. */
+function ams1117(c) {
+  const b = moduleBoard(c, 13, 18, BLUE, ['IN', 'GND', 'OUT']);
+  b.finish((x, k) => { text(x, k, 'AMS1117', 6.5, 3.4, 1.4); text(x, k, '3.3V', 6.5, 5.6, 1.2); });
+  block(c, 6.5, 1.7, 3.5, 0, b.top, 1.5, 0x161616); block(c, 3, 0.25, 1.4, 0, b.top, -1.3, M.silver);
+  [-4.2, 4.2].forEach(x => block(c, 2, 1.2, 1.3, x, b.top, -3.6, 0xc8a46a));
+  block(c, 1, 0.6, 0.6, 4.5, b.top, 4.2, 0xff2a2a, { e: 0x991111 });
+}
+/** Module abaisseur LM2596 : PCB bleu 43 × 21 mm, LM2596 en TO-263, grosse bobine, deux électrolytiques, multitour. */
+function lm2596(c) {
+  const pins = ['IN+', 'IN-', ...Array(12).fill(null), 'OUT-', 'OUT+'];
+  const b = moduleBoard(c, 43, 21, BLUE, pins);
+  b.finish((x, k) => { text(x, k, 'IN', 4.8, 15.6, 1.4); text(x, k, 'OUT', 38.2, 15.6, 1.4); text(x, k, 'LM2596 DC-DC', 21.5, 2.6, 1.3); });
+  block(c, 10, 4.4, 9, -3.5, b.top, -2, 0x161616); block(c, 10, 0.3, 2, -3.5, b.top, -7.5, M.silver);
+  block(c, 11, 7, 11, 7.5, b.top, -2.5, 0x3a3d40, { r: 0.6 }); cyl(c, 3.2, 7.05, 7.5, b.top, -2.5, 0x6b4a2b, { seg: 18 });
+  ecap(c, 4, 10, -15.5, b.top, -3); ecap(c, 4, 10, 17, b.top, -4.5);
+  trimmer(c, -9, b.top, 6.3);
+}
+/** Module élévateur MT3608 : PCB bleu 37 × 17 mm, puce SOT23-6, bobine, diode SS34, multitour. */
+function mt3608(c) {
+  const pins = ['IN+', 'IN-', ...Array(10).fill(null), 'OUT-', 'OUT+'];
+  const b = moduleBoard(c, 37, 17, BLUE, pins);
+  b.finish((x, k) => { text(x, k, 'VIN', 4.4, 12.2, 1.2); text(x, k, 'VOUT', 32.6, 12.2, 1.2); text(x, k, 'MT3608', 18.5, 2.4, 1.2); });
+  block(c, 3, 1.1, 1.7, -6, b.top, 0, 0x161616);
+  block(c, 5, 3, 5, 1, b.top, -1, 0x2b2d30, { r: 0.4 });
+  block(c, 4.3, 2.2, 2.6, 7.5, b.top, 0, 0x161616); block(c, 0.6, 2.21, 2.6, 9.2, b.top, 0, 0xdddddd);
+  [-12.5, 12.5].forEach(x => block(c, 3.2, 1.6, 1.6, x, b.top, -2.5, 0xc8a46a));
+  trimmer(c, -4, b.top, -4.6);
+}
+/** Chargeur TP4056 avec protection DW01 : PCB bleu, prise USB-C, deux voyants (rouge en charge, bleu chargé). */
+function tp4056(c) {
+  const b = moduleBoard(c, 26, 17, BLUE, ['IN+', 'IN-', null, 'B+', 'B-', null, 'OUT+', 'OUT-']);
+  b.finish((x, k) => { text(x, k, 'TP4056', 13, 3.2, 1.3); text(x, k, 'IN', 5.3, 11.6, 1.1); text(x, k, 'BAT', 13, 11.6, 1.1); text(x, k, 'OUT', 20.6, 11.6, 1.1); });
+  block(c, 9, 3.2, 7.4, -13 + 3.6, b.top, -4.3, M.silver, { r: 0.4 });
+  block(c, 5, 1.5, 4, 2.5, b.top, -4, 0x161616); block(c, 3, 1, 3, 8, b.top, -4, 0x161616); block(c, 2.9, 1, 2.9, 8, b.top, 0.5, 0x161616);
+  // Voyants : matières propres à ce composant (elles s'allument d'après le calcul du circuit, sim/actuators.js).
+  const lamp = (color, glow, x) => { const m = stdMat({ color, emissive: 0, roughness: 0.3 }); block(c, 1.6, 0.7, 0.8, x, b.top, 1.2, m); return { mat: m, glow }; };
+  c.chg = { red: lamp(0x7a1a1a, 0xff2a1a, -4.4), blue: lamp(0x1a2a7a, 0x2a6aff, -1.8) };
+}
+/** Panneau solaire 6 V 1 W (113 × 89 mm), couché, cellules polycristallines, bornier à l'avant. */
+function solar6v(c) {
+  block(c, 89, 2.5, 113, 0, 0, -48, 0xd8dadc, { r: 0.3 });
+  decal(c, 87, 111, 0, 2.52, -48, (x, k) => {
+    x.fillStyle = '#16264f'; x.fillRect(0, 0, 87 * k, 111 * k);
+    x.strokeStyle = '#8fa3c7'; x.lineWidth = 0.35 * k;
+    for (let i = 0; i < 2; i++) for (let j = 0; j < 6; j++) x.strokeRect((2 + i * 42) * k, (2 + j * 18) * k, 41 * k, 17 * k);
+    x.strokeStyle = '#c8ccd2'; x.lineWidth = 0.6 * k;
+    for (let j = 0; j < 6; j++) { const y = (10.5 + j * 18) * k; x.beginPath(); x.moveTo(2 * k, y); x.lineTo(85 * k, y); x.stroke(); }
+    text(x, k, '6V 1W', 80, 106, 3, { color: '#e8ecf2' });
+  }, 8);
+  block(c, 12, 4, 8, 0, 0, 16, M.plastic);
+  [['+', -2.54], ['-', 2.54]].forEach(([n, x]) => leg(c, n, x, 18.5, 4, 4));
+  block(c, 0.9, 0.9, 6, -2.54, 2.6, 11, 0xd8322f); block(c, 0.9, 0.9, 6, 2.54, 2.6, 11, 0x1b1b1b);
+}
 
 /* ---------- Communication ---------- */
 function hc05(c) {
@@ -786,6 +987,15 @@ function rc522(c) {
   block(c, 5, 0.9, 5, 0, b.top, 18, M.plastic);
 }
 function nrf24(c) { const b = moduleBoard(c, 15, 29, BLACK, ['GND', 'VCC', 'CE', 'CSN', 'SCK', 'MOSI', 'MISO', 'IRQ'], { pitch: 1.78 }); b.finish((x, k) => { x.strokeStyle = '#c9a35a'; x.lineWidth = 0.6 * k; x.beginPath(); for (let i = 0; i < 6; i++) { x.lineTo(2 * k, (2 + i * 1.6) * k); x.lineTo(13 * k, (2.8 + i * 1.6) * k); } x.stroke(); }); block(c, 4, 0.9, 4, 0, b.top, 0, M.plastic); }
+/** Module Ra-02 (SX1278, 433 MHz) sur sa carte d'adaptation : blindage métallique, antenne à ressort hélicoïdale. */
+function sx1278(c) {
+  const b = moduleBoard(c, 28, 32, BLUE, ['GND', '3.3V', 'RST', 'DIO0', 'NSS', 'MOSI', 'MISO', 'SCK', 'DIO1', 'DIO2'], { pitch: 2.54 });
+  b.finish((x, k) => { text(x, k, 'SX1278 LoRa', 14, 25.5, 1.3); text(x, k, '433 MHz', 14, 27.6, 1.1, { weight: 500 }); });
+  shield(c, 17, 16, 0, b.top, -4.5, ['Ra-02', 'LoRa SX1278', '433 MHz']);
+  // Antenne à ressort soudée au coin du module.
+  cyl(c, 0.6, 3, 11, b.top, -12.5, M.silver);
+  for (let i = 0; i < 9; i++) add(c, new THREE.TorusGeometry(1.4, 0.22, 6, 18), mat(0xc9a35a, { m: 0.7 }), 11, b.top + 3.6 + i * 1.1, -12.5, [Math.PI / 2 + 0.12, 0, 0]);
+}
 /** Adaptateur de niveau BSS138 4 voies : côté LV (3,3 V) d'un bord, côté HV (5 V) de l'autre, comme le module courant. */
 function lvlshift(c) {
   const b = board(c, 16, 16, BLUE);
@@ -796,6 +1006,208 @@ function lvlshift(c) {
   [-2, 2, 6].forEach(xx => block(c, 1.2, 0.5, 0.7, xx - 2, b.top, 0, 0x2a2a2a));
 }
 function sim800(c) { const b = moduleBoard(c, 25, 23, '#c23b32', ['NET', 'VCC', 'RST', 'RXD', 'TXD', 'GND']); b.finish(); block(c, 15, 2.4, 15, 0, b.top, -3, M.silver); }
+/** GPS GY-NEO6MV2 : module NEO-6M sous son blindage, pile de sauvegarde, et l'antenne céramique carrée posée dessus. */
+function neo6m(c) {
+  const b = moduleBoard(c, 25, 35, BLUE, ['VCC', 'RX', 'TX', 'GND']);
+  b.finish((x, k) => text(x, k, 'GY-NEO6MV2', 12.5, 2.4, 1.1));
+  block(c, 12.2, 2.4, 16, -3, b.top, -6, M.silver); decal(c, 12.2, 16, -3, b.top + 2.42, -6, (x, k) => { x.fillStyle = '#c7cbcf'; x.fillRect(0, 0, 12.2 * k, 16 * k); text(x, k, 'u-blox', 6.1, 5, 1.6, { color: '#2a2d30' }); text(x, k, 'NEO-6M', 6.1, 9, 1.5, { color: '#2a2d30' }); }, 12);
+  cyl(c, 2.8, 1.6, 8, b.top, -8, 0xb8b0a0); block(c, 1, 0.6, 0.6, 8, b.top, 2, 0x3b82f6, { e: 0x1d4ed8 });
+  block(c, 25, 4, 25, 30, 0, -4, 0xd8c890); block(c, 15, 0.3, 15, 30, 4, -4, M.silver);
+}
+/** Radio HC-12 : SI4463 sous son blindage, ressort d'antenne 433 MHz au bout. */
+function hc12(c) {
+  const b = moduleBoard(c, 14.4, 27.8, BLUE, ['VCC', 'GND', 'RXD', 'TXD', 'SET']);
+  b.finish((x, k) => text(x, k, 'HC-12', 7.2, 15, 1.6, { rot: -Math.PI / 2 }));
+  block(c, 11, 2.2, 13, 0, b.top, -3, M.silver);
+  cyl(c, 2.6, 11, 0, b.top + 2.6, -16.5, 0xc9a35a, { axis: 'z', seg: 14 });
+}
+/** Module RS-485 MAX485 : puce DIP-8, barrette RO RE DE DI d'un côté, VCC B A GND et bornier A/B de l'autre. */
+function max485(c) {
+  const b = board(c, 44, 14, BLUE);
+  header(c, ['RO', 'RE', 'DE', 'DI'], { board: b, axis: 'z', x: -19.5, labels: 1 });
+  header(c, ['VCC', 'B', 'A', 'GND'], { board: b, axis: 'z', x: 19.5, labels: -1 });
+  b.finish((x, k) => text(x, k, 'MAX485', 16, 1.8, 1.1));
+  chipOnBoard(c, b, 9.5, 6.5, -6, 0, 'MAX485');
+  block(c, 7.6, 7.5, 10, 9.5, b.top, 0, 0x2f62d8);
+  [-2.5, 2.5].forEach(z => cyl(c, 1.4, 0.6, 9.5, b.top + 7.5, z, M.silver));
+}
+
+/* ---------- Circuits logiques (sim/chips.js) ---------- */
+// 74HC595 et 74HC165 : brochage DIP-16 des fiches Nexperia (Q7S = Q7′ de TI, Q7N = Q7 inversée).
+const HC595_PINS = ['Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6', 'Q7', 'GND', 'Q7S', 'MR', 'SHCP', 'STCP', 'OE', 'DS', 'Q0', 'VCC'];
+const HC165_PINS = ['PL', 'CP', 'D4', 'D5', 'D6', 'D7', 'Q7N', 'GND', 'Q7', 'DS', 'D0', 'D1', 'D2', 'D3', 'CE', 'VCC'];
+/** Puce soudée sur un module : boîtier noir et sa référence. */
+function chipOnBoard(c, b, w, l, x, z, mark) {
+  block(c, w, 1.4, l, x, b.top, z, 0x161616, { r: 0.3 });
+  decal(c, w, l, x, b.top + 1.42, z, (g, k) => { g.fillStyle = '#161616'; g.fillRect(0, 0, w * k, l * k); text(g, k, mark, w / 2, l / 2, Math.min(1.6, w / mark.length * 1.5), { color: '#cfcfcf' }); }, 16);
+}
+/** Module MCP23017 : alimentation, bus I2C, adresse et interruptions devant ; GPA0 à GPB7 derrière. */
+function mcp23017(c) {
+  const b = board(c, 46, 22, PURPLE);
+  header(c, ['VCC', 'GND', 'SCL', 'SDA', 'RST', 'INTA', 'INTB', 'A0', 'A1', 'A2'], { board: b, axis: 'x', z: 8.6, labels: -1 });
+  header(c, ['GPA0', 'GPA1', 'GPA2', 'GPA3', 'GPA4', 'GPA5', 'GPA6', 'GPA7', 'GPB0', 'GPB1', 'GPB2', 'GPB3', 'GPB4', 'GPB5', 'GPB6', 'GPB7'], { board: b, axis: 'x', z: -8.6, labels: 1 });
+  b.finish((x, k) => text(x, k, 'MCP23017', 23, 11, 1.3));
+  chipOnBoard(c, b, 9, 5, -12, 0, '23017');
+}
+/** Module PCF8574 : alimentation, bus I2C, interruption et cavaliers d'adresse devant ; P0 à P7 derrière. */
+function pcf8574(c) {
+  const b = board(c, 26, 24, BLUE);
+  header(c, ['GND', 'VCC', 'SDA', 'SCL', 'INT', 'A0', 'A1', 'A2'], { board: b, axis: 'x', z: 9.6, labels: -1 });
+  header(c, ['P0', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6', 'P7'], { board: b, axis: 'x', z: -9.6, labels: 1 });
+  b.finish((x, k) => text(x, k, 'PCF8574', 13, 13.5, 1.2));
+  chipOnBoard(c, b, 8, 4.5, -4, 0, '8574');
+  [3, 6, 9].forEach(xx => block(c, 2, 1, 1.2, xx, b.top, 1, 0x2a2a2a)); // cavaliers d'adresse
+}
+/** Pilote PCA9685 : rangée d'alimentation et d'I2C à gauche, bornier V+, 16 voies de servo (signal, V+, GND) derrière. */
+function pca9685(c) {
+  const b = board(c, 62, 25, BLUE);
+  header(c, ['GND', 'OE', 'SCL', 'SDA', 'VCC'], { board: b, axis: 'z', x: -28.5, z: 3, labels: 1 });
+  header(c, Array.from({ length: 16 }, (_, i) => 'PWM' + i), { board: b, axis: 'x', x: 6, z: -4, labels: -1 });
+  // Rangées V+ (rouge) et GND (noire) des connecteurs de servo, derrière les signaux.
+  for (let i = 0; i < 16; i++) { const px = 6 + (i - 7.5) * PITCH; block(c, 2.54, 8.5, 2.54, px, b.top, -6.54, 0xb22222); block(c, 2.54, 8.5, 2.54, px, b.top, -9.08, 0x161616); }
+  // Bornier à vis de l'alimentation des servos : V+ (la masse est commune à GND).
+  block(c, 8, 8, 7, -14, b.top, 8, 0x2f62d8); leg(c, 'V+', -16, 8, b.top + 8, 2);
+  b.finish((x, k) => { text(x, k, 'PCA9685 16-CH PWM', 40, 20.5, 1.4); text(x, k, 'V+', 15, 23.5, 1.1); });
+  chipOnBoard(c, b, 7, 7, 24, 7, '9685');
+}
+
+/* ---------- Afficheurs à pilote (sim/displays.js), écrans TFT (sim/tft.js) ---------- */
+const SEG_ON = '#ff3b2f', SEG_OFF = '#2a0f0c';
+/** Couleur d'une LED allumée à la luminosité level (0 à 1), sur fond éteint. */
+const lit = (on, level = 1) => { const t = 0.35 + 0.65 * Math.max(0, Math.min(1, level)); return `rgba(255, ${Math.round(40 + 20 * t)}, ${Math.round(30 + 15 * t)}, ${t})`; };
+/** Un chiffre de 7 segments (segments : bit 0 = A … bit 6 = G, bit 7 = point) de w × h mm en (x0, y0). */
+function digit7(x, k, x0, y0, w, h, segs, color, dp = true) {
+  const t = Math.max(0.5, w * 0.16), sl = 0.12 * w, ln = w - t; // épaisseur, inclinaison, longueur d'un segment
+  const S = [[t / 2, 0, ln, t, 'h'], [w - t, t / 2, t, h / 2 - t / 2, 'v'], [w - t, h / 2, t, h / 2 - t / 2, 'v'], [t / 2, h - t, ln, t, 'h'], [0, h / 2, t, h / 2 - t / 2, 'v'], [0, t / 2, t, h / 2 - t / 2, 'v'], [t / 2, h / 2 - t / 2, ln, t, 'h']];
+  S.forEach(([sx, sy, sw, shh], i) => {
+    x.fillStyle = segs & (1 << i) ? color : SEG_OFF;
+    const skew = (1 - (sy + shh / 2) / h) * sl;
+    x.fillRect((x0 + sx + skew) * k, (y0 + sy) * k, sw * k, shh * k);
+  });
+  if (dp) { x.fillStyle = segs & 0x80 ? color : SEG_OFF; x.beginPath(); x.arc((x0 + w + t * 0.9) * k, (y0 + h - t / 2) * k, t * 0.55 * k, 0, 7); x.fill(); }
+}
+/** Rangée de chiffres : scr = { seg, on, level }, null (démonstration), [] ou des lignes de texte (éteint). */
+function paintDigits(n, W, H, demo, colon) {
+  return (x, k, scr) => {
+    x.fillStyle = '#120807'; x.fillRect(0, 0, W * k, H * k);
+    const segs = scr && !Array.isArray(scr) ? (scr.on ? scr.seg : []) : scr === null ? demo : [];
+    const color = scr && !Array.isArray(scr) ? lit(true, scr.level) : SEG_ON;
+    const cw = W / n, dw = cw * 0.58, dh = H * 0.72;
+    for (let i = 0; i < n; i++) digit7(x, k, i * cw + (cw - dw) / 2 - cw * 0.06, (H - dh) / 2, dw, dh, segs[i] || 0, color, !colon);
+    if (colon) { // deux-points entre le 2e et le 3e chiffre : bit 7 du 2e chiffre
+      x.fillStyle = (segs[1] || 0) & 0x80 ? color : SEG_OFF;
+      [0.36, 0.64].forEach(f => { x.beginPath(); x.arc(2 * cw * k, H * f * k, Math.max(0.5, dw * 0.09) * k, 0, 7); x.fill(); });
+    }
+  };
+}
+/** Matrice 8 × 8 : scr = { mat: 8 lignes (bit 7 = colonne de gauche), on, level }, null : démonstration (un cœur). */
+const HEART = [0x00, 0x66, 0xff, 0xff, 0x7e, 0x3c, 0x18, 0x00];
+function paintMatrix(x, k, scr) {
+  const S = 31;
+  x.fillStyle = '#0b0b0c'; x.fillRect(0, 0, S * k, S * k);
+  const rows = scr && !Array.isArray(scr) ? (scr.on ? scr.mat : []) : scr === null ? HEART : [], color = scr && !Array.isArray(scr) ? lit(true, scr.level) : SEG_ON;
+  const p = S / 8;
+  for (let r = 0; r < 8; r++) for (let col = 0; col < 8; col++) {
+    x.fillStyle = (rows[r] || 0) & (0x80 >> col) ? color : '#170907';
+    x.beginPath(); x.arc((col + 0.5) * p * k, (r + 0.5) * p * k, p * 0.36 * k, 0, 7); x.fill();
+  }
+}
+/** Connecteur de sortie d'un module MAX7219 : VCC, GND, CS et CLK recopiés (même piste, sim/circuit.js LINKS), et DOUT. */
+function maxOutHeader(c, b, axis, at) {
+  header(c, ['VCC (2)', 'GND (2)', 'DOUT', 'CS (2)', 'CLK (2)'], { board: b, axis, x: axis === 'x' ? 0 : at, z: axis === 'x' ? at : 0, labels: axis === 'x' ? 1 : -1 });
+}
+/** Matrice de LED 8 × 8 et son MAX7219 (module FC-16) : entrée en bas, sortie DOUT en haut pour chaîner. */
+function max7219m(c) {
+  const b = board(c, 32, 40, '#1d2b6b');
+  header(c, ['VCC', 'GND', 'DIN', 'CS', 'CLK'], { board: b, axis: 'x', z: 18.2, labels: -1 });
+  maxOutHeader(c, b, 'x', -18.2);
+  b.finish();
+  block(c, 32, 6.5, 32, 0, b.top, 0, 0x151515);
+  screen(c, 31, 31, 0, b.top + 6.52, 0, 14, paintMatrix, { r: 0.5 });
+}
+/** Afficheur 8 chiffres de 7 segments et son MAX7219 : entrée à gauche, sortie DOUT à droite. */
+function max7219s(c) {
+  const b = board(c, 82, 15, BLUE);
+  header(c, ['VCC', 'GND', 'DIN', 'CS', 'CLK'], { board: b, axis: 'z', x: -39, labels: 1 });
+  maxOutHeader(c, b, 'z', 39);
+  b.finish((x, k) => text(x, k, 'MAX7219', 72, 13.6, 1.0));
+  block(c, 61, 7, 14.4, 0, b.top, 0, 0x111111);
+  screen(c, 60, 13, 0, b.top + 7.02, 0, 12, paintDigits(8, 60, 13, [0x76, 0x79, 0x38, 0x38, 0x3f, 0, 0x06, 0x5b | 0x80]), { r: 0.4 });
+}
+/** Afficheur TM1637 à 4 chiffres et deux-points : CLK, DIO, VCC, GND à droite. */
+function tm1637(c) {
+  const b = board(c, 42, 24, BLUE);
+  header(c, ['CLK', 'DIO', 'VCC', 'GND'], { board: b, axis: 'z', x: 19, labels: 1 });
+  b.finish((x, k) => text(x, k, 'TM1637', 4, 12, 1.0, { rot: -Math.PI / 2 }));
+  block(c, 30.5, 7.5, 14.2, -3, b.top, 0, 0x111111);
+  screen(c, 29.5, 13, -3, b.top + 7.52, 0, 14, paintDigits(4, 29.5, 13, [0x06, 0x5b | 0x80, 0x4f, 0x66], true), { r: 0.4 });
+}
+/** Écran LCD 20 × 4 : comme le 16 × 2, quatre lignes de vingt caractères. */
+const paintLcd4 = (x, k, lines) => {
+  const off = lines && !lines.length && !lines.lines;
+  x.fillStyle = off ? '#0f1830' : '#2f62d8'; x.fillRect(0, 0, 77 * k, 26 * k);
+  if (off) return;
+  const rows = lines && lines.lines ? lines.lines : lines || ['Jollof Studio', 'LCD 20x4 I2C', 'Temp: 23.4 C', 'Hum : 58 %'];
+  for (let r = 0; r < 4; r++) for (let i = 0; i < 20; i++) {
+    const ch = (rows[r] || '')[i];
+    if (ch && ch !== ' ') text(x, k, ch, 2.6 + i * 3.65, 3.4 + r * 6.4, 4.2, { color: '#eaf2ff', weight: 500 });
+  }
+};
+function lcd2004(c) {
+  const b = board(c, 98, 60, GREEN);
+  header(c, ['GND', 'VCC', 'SDA', 'SCL'], { board: b, axis: 'z', x: -51.5, z: 0, y: 6, labels: 0 });
+  b.finish();
+  block(c, 97, 9, 40, 0, b.top, 0, 0x111111);
+  screen(c, 77, 26, 0, b.top + 9.02, 0, 10, paintLcd4, { r: 0.25 });
+  block(c, 4, 6, 42, -49, 0, 0, '#1b1b1b');
+}
+/** Écran TFT : PCB, verre, dalle portrait (w × h mm) peinte par paintTft, connecteur en haut. */
+function tftModule(c, o) {
+  const b = board(c, o.w, o.l, o.pcb);
+  header(c, o.pins, { board: b, axis: 'x', z: -o.l / 2 + 2.2, labels: 1 });
+  b.finish((x, k) => text(x, k, o.mark, o.w / 2, o.l - 2.4, 1.4));
+  block(c, o.sw + 3, 2.2, o.sh + 6, 0, b.top, o.dz, 0x0d0d0f);
+  screen(c, o.sw, o.sh, 0, b.top + 2.22, o.dz, o.k, (x, k, s) => paintTft(x, k, s, o.sw, o.sh), { r: 0.2 });
+}
+function st7735(c) { tftModule(c, { w: 34, l: 56, pcb: RED, pins: ['VCC', 'GND', 'CS', 'RESET', 'DC', 'SDA', 'SCK', 'LED'], mark: '1.8" TFT SPI 128x160', sw: 28, sh: 35, dz: 2.5, k: 9 }); }
+function ili9341(c) { tftModule(c, { w: 50, l: 86, pcb: RED, pins: ['VCC', 'GND', 'CS', 'RESET', 'DC', 'MOSI', 'SCK', 'LED', 'MISO'], mark: '2.8" TFT SPI 240x320', sw: 43.2, sh: 57.6, dz: 3, k: 7 }); }
+
+/* ---------- Horloges et mémoires (sim/storage.js, sim/sdcard.js) ---------- */
+/** Module ZS-042 : DS3231, mémoire AT24C32, pile CR2032 (dessous sur le vrai module, dessinée à côté). */
+function ds3231(c) {
+  const b = board(c, 38, 22, BLUE);
+  header(c, ['32K', 'SQW', 'SCL', 'SDA', 'VCC', 'GND'], { board: b, axis: 'z', x: 17.5, labels: 1 });
+  b.finish((x, k) => text(x, k, 'ZS-042  DS3231', 15, 2.4, 1.1));
+  chipOnBoard(c, b, 10, 7.5, -5, -2, 'DS3231');
+  chipOnBoard(c, b, 5, 4, -5, 6.5, '24C32');
+  cyl(c, 10, 3.2, -20 - 12, 0, 0, M.silver); cyl(c, 9.6, 0.4, -32, 3.2, 0, 0xd8d8d8);
+}
+/** Module Tiny RTC : DS1307 et son quartz de 32,768 kHz, pile CR2032. */
+function ds1307(c) {
+  const b = board(c, 27, 28, BLUE);
+  header(c, ['SQW', 'DS', 'SCL', 'SDA', 'VCC', 'GND'], { board: b, axis: 'z', x: 12, labels: 1 });
+  b.finish((x, k) => text(x, k, 'Tiny RTC', 12, 2.4, 1.1));
+  chipOnBoard(c, b, 9.5, 6.5, -4, -4, 'DS1307');
+  cyl(c, 1, 6, 1, b.top + 0.7, 7, M.silver, { axis: 'x' });
+  cyl(c, 10, 3.2, -27, 0, 0, M.silver); cyl(c, 9.6, 0.4, -27, 3.2, 0, 0xd8d8d8);
+}
+/** Module AT24C256 : mémoire en DIP-8, cavaliers d'adresse A0 à A2 et de protection d'écriture. */
+function at24c256(c) {
+  const b = board(c, 36, 22, BLUE);
+  header(c, ['VCC', 'GND', 'SCL', 'SDA', 'WP'], { board: b, axis: 'z', x: -16.5, labels: -1 });
+  header(c, ['A0', 'A1', 'A2'], { board: b, axis: 'x', x: 8, z: 9, labels: -1 });
+  b.finish((x, k) => text(x, k, 'AT24C256', 22, 3, 1.2));
+  chipOnBoard(c, b, 9.5, 6.5, 4, -1, '24C256');
+}
+/** Lecteur de carte microSD (adaptateur de niveau et régulateur 3,3 V intégrés) : la carte dépasse du support. */
+function sdcard(c) {
+  const b = board(c, 24, 42, BLUE);
+  header(c, ['GND', 'VCC', 'MISO', 'MOSI', 'SCK', 'CS'], { board: b, axis: 'x', z: 19, labels: -1 });
+  b.finish((x, k) => text(x, k, 'MicroSD Card Adapter', 12, 25, 1.0));
+  block(c, 15, 1.8, 15.5, 0, b.top, -11, M.silver);
+  block(c, 11, 0.8, 11, 0, b.top + 1.8, -15, 0x1c1c1c); decal(c, 9, 6, 0, b.top + 2.62, -16, (x, k) => { x.fillStyle = '#1c1c1c'; x.fillRect(0, 0, 9 * k, 6 * k); text(x, k, 'microSD', 4.5, 3, 1.4, { color: '#e2e2e2' }); }, 14);
+  chipOnBoard(c, b, 5, 4, 0, 4, 'LVC125');
+}
 
 /* ---------- Catalogue ---------- */
 export const LIBRARY = [
@@ -824,6 +1236,7 @@ export const LIBRARY = [
   { id: 'bme280', name: tl('BME280 température, humidité, pression'), cat: tl('Capteurs'), pre: 'BME', build: bme280 },
   { id: 'bh1750', name: tl('BH1750 lumière (lux)'), cat: tl('Capteurs'), pre: 'LUX', build: bh1750 },
   { id: 'hx711', name: tl('Balance HX711 (capteur de force 5 kg)'), cat: tl('Capteurs'), pre: 'BAL', build: hx711 },
+  { id: 'acs712', name: tl('ACS712 capteur de courant (5, 20 ou 30 A)'), cat: tl('Capteurs'), pre: 'COUR', build: acs712 },
   { id: 'rcwl0516', name: tl('RCWL-0516 radar de mouvement'), cat: tl('Capteurs'), pre: 'RADAR', build: rcwl0516 },
   { id: 'ttp223', name: tl('TTP223 bouton tactile'), cat: tl('Capteurs'), pre: 'TOUCH', build: ttp223 },
   { id: 'lm35', name: tl('LM35 température (analogique)'), cat: tl('Capteurs'), pre: 'LM', build: lm35 },
@@ -839,6 +1252,11 @@ export const LIBRARY = [
   { id: 'bmp280', name: tl('BMP280 pression'), cat: tl('Capteurs'), pre: 'BMP', build: bmp280 },
   { id: 'mpu6050', name: tl('MPU6050 accéléromètre'), cat: tl('Capteurs'), pre: 'IMU', build: mpu6050 },
   { id: 'sound', name: tl('Module micro (son)'), cat: tl('Capteurs'), pre: 'MIC', build: soundSensor },
+  { id: 'vl53l0x', name: tl('VL53L0X distance laser (I2C)'), cat: tl('Capteurs'), pre: 'TOF', build: vl53l0x },
+  { id: 'max30102', name: tl('MAX30102 pouls et oxygène du sang (I2C)'), cat: tl('Capteurs'), pre: 'SPO', build: max30102 },
+  { id: 'tcs34725', name: tl('TCS34725 couleur (I2C)'), cat: tl('Capteurs'), pre: 'COUL', build: tcs34725 },
+  { id: 'ccs811', name: tl('CCS811 qualité de l’air (I2C)'), cat: tl('Capteurs'), pre: 'COV', build: ccs811 },
+  { id: 'bme680', name: tl('BME680 environnement et gaz (I2C)'), cat: tl('Capteurs'), pre: 'ENV', build: bme680 },
 
   { id: 'button', name: tl('Bouton poussoir'), cat: tl('Entrées'), pre: 'BTN', build: button },
   { id: 'pressostat', name: tl('Pressostat (contact)'), cat: tl('Entrées'), pre: 'S', build: pressostat },
@@ -847,9 +1265,17 @@ export const LIBRARY = [
   { id: 'joystick', name: tl('Module joystick'), cat: tl('Entrées'), pre: 'JOY', build: joystick },
   { id: 'ir', name: tl('Récepteur infrarouge'), cat: tl('Entrées'), pre: 'IR', build: irReceiver },
   { id: 'keypad', name: tl('Clavier matriciel 4×4'), cat: tl('Entrées'), pre: 'KP', build: keypad },
+  { id: 'ky040', name: tl('Encodeur rotatif KY-040'), cat: tl('Entrées'), pre: 'ENC', build: ky040 },
+  { id: 'irremote', name: tl('Télécommande infrarouge (21 touches)'), cat: tl('Entrées'), pre: 'TEL', build: irremote },
 
   { id: 'oled', name: tl('Écran OLED 0,96" I2C'), cat: tl('Affichage'), pre: 'OLED', build: oled },
   { id: 'lcd1602', name: tl('Écran LCD 16×2 I2C'), cat: tl('Affichage'), pre: 'LCD', build: lcd1602 },
+  { id: 'lcd2004', name: tl('Écran LCD 20×4 I2C'), cat: tl('Affichage'), pre: 'LCD', build: lcd2004 },
+  { id: 'max7219m', name: tl('Matrice de LED 8×8 MAX7219'), cat: tl('Affichage'), pre: 'MAT', build: max7219m },
+  { id: 'max7219s', name: tl('Afficheur 8 chiffres MAX7219'), cat: tl('Affichage'), pre: 'AFF', build: max7219s },
+  { id: 'tm1637', name: tl('Afficheur 4 chiffres TM1637'), cat: tl('Affichage'), pre: 'AFF', build: tm1637 },
+  { id: 'st7735', name: tl('Écran TFT couleur 1,8" ST7735 (SPI)'), cat: tl('Affichage'), pre: 'TFT', build: st7735 },
+  { id: 'ili9341', name: tl('Écran TFT couleur 2,8" ILI9341 (SPI)'), cat: tl('Affichage'), pre: 'TFT', build: ili9341 },
   { id: '7seg', name: tl('Afficheur 7 segments'), cat: tl('Affichage'), pre: 'SEG', build: sevenSeg },
   { id: 'ws2812', name: tl('Barrette WS2812 8 LED'), cat: tl('Affichage'), pre: 'RGB', build: ws2812 },
 
@@ -869,6 +1295,11 @@ export const LIBRARY = [
   { id: 'dcmotor', name: tl('Moteur à courant continu'), cat: tl('Moteurs'), pre: 'M', build: dcMotor },
   { id: 'stepper', name: tl('Pas à pas 28BYJ-48 + ULN2003'), cat: tl('Moteurs'), pre: 'STEP', build: stepper },
   { id: 'l298n', name: tl('Pilote moteur L298N'), cat: tl('Moteurs'), pre: 'DRV', build: l298n },
+  { id: 'l293d', name: tl('Pilote moteur L293D (DIP-16)'), cat: tl('Moteurs'), pre: 'U', build: dip(L293D_PINS, 'L293D', 'H-BRIDGE') },
+  { id: 'tb6612', name: tl('Pilote moteur TB6612FNG'), cat: tl('Moteurs'), pre: 'DRV', build: tb6612 },
+  { id: 'nema17', name: tl('Moteur pas à pas NEMA 17'), cat: tl('Moteurs'), pre: 'STEP', build: nema17 },
+  { id: 'a4988', name: tl('Pilote pas à pas A4988'), cat: tl('Moteurs'), pre: 'DRV', build: stepCarrier(['ENABLE', 'MS1', 'MS2', 'MS3', 'RESET', 'SLEEP', 'STEP', 'DIR'], ['VMOT', 'GND', '2B', '2A', '1A', '1B', 'VDD', 'GND (2)'], GREEN, 'A4988') },
+  { id: 'drv8825', name: tl('Pilote pas à pas DRV8825'), cat: tl('Moteurs'), pre: 'DRV', build: stepCarrier(['ENABLE', 'M0', 'M1', 'M2', 'RESET', 'SLEEP', 'STEP', 'DIR'], ['VMOT', 'GND', 'B2', 'B1', 'A1', 'A2', 'FAULT', 'GND (2)'], PURPLE, 'DRV8825') },
   { id: 'fan', name: tl('Ventilateur 5 V'), cat: tl('Moteurs'), pre: 'FAN', build: fan },
   { id: 'pump', name: tl('Mini pompe à eau 5 V'), cat: tl('Moteurs'), pre: 'PMP', build: pump },
   { id: 'coil24', name: tl('Électrovanne 24 V (bobine de distributeur)'), cat: tl('Sorties'), pre: 'Y', build: coil24 },
@@ -885,18 +1316,41 @@ export const LIBRARY = [
   { id: 'diode', name: tl('Diode 1N4007'), cat: tl('Passifs'), pre: 'D', build: diode },
   { id: 'npn', name: tl('Transistor NPN BC547'), cat: tl('Passifs'), pre: 'Q', build: to92(['C', 'B', 'E']) },
   { id: 'pn2222', name: tl('Transistor NPN PN2222A'), cat: tl('Passifs'), pre: 'Q', build: to92(['E', 'B', 'C']) },
+  { id: 'pnp', name: tl('Transistor PNP BC557'), cat: tl('Passifs'), pre: 'Q', build: to92(['C', 'B', 'E']) },
+  { id: 'pn2907', name: tl('Transistor PNP PN2907A'), cat: tl('Passifs'), pre: 'Q', build: to92(['E', 'B', 'C']) },
+  { id: 'zener-3v3', name: tl('Diode Zener 3,3 V (BZX55C3V3)'), cat: tl('Passifs'), pre: 'D', build: zener },
+  { id: 'zener-5v1', name: tl('Diode Zener 5,1 V (BZX55C5V1)'), cat: tl('Passifs'), pre: 'D', build: zener },
+  { id: 'zener-12v', name: tl('Diode Zener 12 V (BZX55C12)'), cat: tl('Passifs'), pre: 'D', build: zener },
 
   { id: 'bat9v', name: tl('Pile 9 V'), cat: tl('Alimentation'), pre: 'BAT', build: battery9v },
   { id: 'psu24', name: tl('Alimentation 24 V (rail DIN)'), cat: tl('Alimentation'), pre: 'PS', build: psu24 },
   { id: 'bat18650', name: tl('Batterie 18650'), cat: tl('Alimentation'), pre: 'BAT', build: battery18650 },
   { id: 'mb102', name: tl('Module alimentation MB102'), cat: tl('Alimentation'), pre: 'PWR', build: mb102 },
   { id: 'lm7805', name: tl('Régulateur LM7805'), cat: tl('Alimentation'), pre: 'U', build: lm7805 },
+  { id: 'ams1117', name: tl('Régulateur AMS1117-3.3 (module)'), cat: tl('Alimentation'), pre: 'U', build: ams1117 },
+  { id: 'lm2596', name: tl('Abaisseur LM2596 (module DC-DC)'), cat: tl('Alimentation'), pre: 'PS', build: lm2596 },
+  { id: 'mt3608', name: tl('Élévateur MT3608 (module DC-DC)'), cat: tl('Alimentation'), pre: 'PS', build: mt3608 },
+  { id: 'tp4056', name: tl('Chargeur Li-ion TP4056 (avec protection)'), cat: tl('Alimentation'), pre: 'CHG', build: tp4056 },
+  { id: 'solar6v', name: tl('Panneau solaire 6 V 1 W'), cat: tl('Alimentation'), pre: 'PV', build: solar6v },
 
   { id: 'hc05', name: tl('Bluetooth HC-05'), cat: tl('Communication'), pre: 'BT', build: hc05 },
   { id: 'rc522', name: tl('Lecteur RFID RC522'), cat: tl('Communication'), pre: 'RFID', build: rc522 },
   { id: 'nrf24', name: tl('Radio nRF24L01'), cat: tl('Communication'), pre: 'RF', build: nrf24 },
+  { id: 'sx1278', name: tl('Radio LoRa SX1278 433 MHz (Ra-02)'), cat: tl('Communication'), pre: 'LORA', build: sx1278 },
   { id: 'sim800', name: 'GSM SIM800L', cat: tl('Communication'), pre: 'GSM', build: sim800 },
+  { id: 'neo6m', name: tl('GPS NEO-6M (série)'), cat: tl('Communication'), pre: 'GPS', build: neo6m },
+  { id: 'hc12', name: tl('Radio HC-12 433 MHz (série)'), cat: tl('Communication'), pre: 'HC', build: hc12 },
+  { id: 'max485', name: tl('RS-485 MAX485 (module)'), cat: tl('Communication'), pre: 'RS', build: max485 },
   { id: 'lvlshift', name: tl('Adaptateur de niveau 3,3 V ↔ 5 V'), cat: tl('Communication'), pre: 'LS', build: lvlshift },
+  { id: 'hc595', name: tl('Registre à décalage 74HC595'), cat: tl('Circuits logiques'), pre: 'U', build: dip(HC595_PINS, '74HC595', 'SHIFT REG') },
+  { id: 'hc165', name: tl('Registre à décalage 74HC165'), cat: tl('Circuits logiques'), pre: 'U', build: dip(HC165_PINS, '74HC165', 'PISO REG') },
+  { id: 'mcp23017', name: tl('Extenseur 16 E/S MCP23017 (I2C)'), cat: tl('Circuits logiques'), pre: 'IOX', build: mcp23017 },
+  { id: 'pcf8574', name: tl('Extenseur 8 E/S PCF8574 (I2C)'), cat: tl('Circuits logiques'), pre: 'IOX', build: pcf8574 },
+  { id: 'pca9685', name: tl('Pilote PWM 16 voies PCA9685 (I2C)'), cat: tl('Circuits logiques'), pre: 'PWM', build: pca9685 },
+  { id: 'ds3231', name: tl('Horloge temps réel DS3231 (I2C)'), cat: tl('Horloges et mémoires'), pre: 'RTC', build: ds3231 },
+  { id: 'ds1307', name: tl('Horloge temps réel DS1307 (I2C)'), cat: tl('Horloges et mémoires'), pre: 'RTC', build: ds1307 },
+  { id: 'at24c256', name: tl('Mémoire EEPROM AT24C256 32 Ko (I2C)'), cat: tl('Horloges et mémoires'), pre: 'EE', build: at24c256 },
+  { id: 'sdcard', name: tl('Lecteur de carte microSD (SPI)'), cat: tl('Horloges et mémoires'), pre: 'SD', build: sdcard },
   // Composants analogiques et instruments (analog.js)
   ...ANALOG_LIBRARY
 ];

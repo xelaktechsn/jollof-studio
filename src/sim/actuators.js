@@ -7,6 +7,8 @@
 import * as audio from './audio.js';
 import { tl, DEC } from '../i18n/index.js';
 import { MOTORS, isMotor, COILS } from './parts.js';
+import { chipDriver, resetChips, netLevel } from './chips.js';
+import { STEPPERS, stepperLink, stepState, driverInputs, resetStepDrivers } from './motordrv.js';
 
 const IDLE = { mode: 0, d: 0, pwm: null, freq: 0, servo: null, px: null, stepper: null, weak: false };
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -76,6 +78,17 @@ export function driveActuators(comps, cx, dt) {
       continue;
     }
     switch (c.type) {
+      case 'tp4056': {
+        // Chargeur : voyant rouge tant qu'il pousse plus de C/10 (100 mA) vers l'accu, bleu une fois la charge finie
+        // (tension de fin de charge tenue, courant retombé) ; éteints sans tension d'entrée. D'après le calcul du circuit.
+        if (!c.chg) break;
+        const a = dc ? dc.across(c) : null, mode = a && a.extra ? a.extra.mode : 'off', ma = a ? Math.max(0, a.mA || 0) : 0;
+        const red = mode === 'cc' || (mode === 'reg' && ma > 100), blue = mode === 'reg' && !red;
+        for (const [l, lit] of [[c.chg.red, red], [c.chg.blue, blue]]) { l.mat.emissive.setHex(lit ? l.glow : 0); l.mat.emissiveIntensity = lit ? 1.4 : 0; }
+        c.actR = { value: red ? tl('en charge ({0} mA)', Math.round(ma)) : blue ? tl('chargé (4,2 V)') : tl('pas d’entrée : l’accu alimente la sortie'), sig: '', level: 'ok' };
+        any = true;
+        break;
+      }
       case 'led-rgb': {
         const r = pin(c, 'R'), g = pin(c, 'G'), b = pin(c, 'B');
         if (!r && !g && !b) break;
@@ -169,7 +182,10 @@ export function driveActuators(comps, cx, dt) {
         break;
       }
       case 'servo': {
-        const s = pin(c, 'SIG'); if (!s) break; any = true;
+        // Commande d'une carte, ou d'une voie d'un pilote PCA9685 (sim/chips.js) : la largeur de l'impulsion donne l'angle.
+        let s = pin(c, 'SIG');
+        if (!s) { const ch = chipDriver(cx.A, { comp: c, key: 'SIG' }); if (ch) s = { p: { mode: 1, d: ch.out.d, pwm: ch.out.duty ?? null, servo: ch.out.servo ?? null }, rt: null, key: `${ch.chip.name} ${ch.key}` }; }
+        if (!s) break; any = true;
         if (c.servoA == null) c.servoA = 90;
         // Tension reçue (calcul du circuit) : sous 4,2 V le servo peine, sous 3 V il ne bouge plus.
         const a = across(c), v = a && a.v != null ? a.v : null, weak = v != null && v < 4.2, dead = v != null && v < 3;
@@ -197,6 +213,7 @@ export function driveActuators(comps, cx, dt) {
         c.actR = { value: powered ? tl('{0} tour', (Math.round(pos * 100) / 100).toString().replace('.', DEC)) : tl('non alimenté'), sig: s.key, level: powered ? 'ok' : 'err' };
         break;
       }
+      case 'nema17': if (stepperMotor(c, cx, dt)) any = true; break;
     }
   }
   return any;
@@ -226,16 +243,55 @@ function motor(c, a, dt) {
   return true;
 }
 
+/**
+ * Moteur pas à pas bipolaire (NEMA 17) derrière un pilote A4988 ou DRV8825 (motordrv.js) : il suit le rotor du modèle
+ * du pilote (comp.stepState), dans le sens que donne le raccordement des bobines ; bobines mal appariées, il vibre.
+ * Rend vrai s'il est relié à un pilote.
+ */
+function stepperMotor(c, cx, dt) {
+  const L = stepperLink(c, cx.A); if (!L) return false;
+  const drv = L.drv, s = stepState(drv), ins = cx.ins.get(drv), dok = !!ins && ins.level !== 'err', m = STEPPERS[c.type];
+  // Entrées du pilote dans le montage : sorties des cartes (programme), alimentation, masse, tirages.
+  const gpio = g => { const rt = cx.rts.get(g.comp.id), p = rt && rt.pins.get(g.key); return p && p.mode === 1 ? (p.d ? 1 : 0) : null; };
+  const x = driverInputs(drv, k => (drv.pins[k] ? netLevel(cx.A, { comp: drv, key: k }, gpio) : null));
+  drv.stepOn = dok && x.on; // bobines alimentées : courant pris sur VMOT (calcul suivant du circuit)
+  const g = ins && ins.io.STEP, rt = g && cx.rts.get(g.comp.id), now = rt ? rt.clock() : s.last;
+  const prev = c.stepRotor ?? 0; c.stepRotor = s.rotor; // le pilote part de 0 à chaque lancement
+  if (dok && L.ok) c.stepAng = (c.stepAng || 0) + (s.rotor - prev) * L.sign;
+  const ang = c.stepAng || 0, a = Math.abs(s.v), fresh = a > 0 && now - s.last < Math.max(60, 3000 / a);
+  const rate = fresh ? a : 0, busy = rate > 0, shake = busy && (s.stalled || !L.ok);
+  c.stepPos = ang / m.steps; c.stepBusy = busy && dok;
+  if (c.spin) c.spin.obj.rotation[c.spin.axis || 'y'] = -c.stepPos * Math.PI * 2 + (shake ? (Math.random() - 0.5) * 0.12 : 0);
+  const n = v => (Math.round(v * 10) / 10).toString().replace('.', DEC);
+  let value, level = 'ok';
+  if (!dok) { value = tl('pilote {0} mal câblé ou non alimenté', drv.name); level = 'err'; }
+  else if (!L.ok) { value = L.why === 'pair' ? tl('bobines mal appariées : le moteur vibre sans tourner') : tl('une bobine n’est pas reliée au pilote : le moteur vibre sans tourner'); level = 'warn'; }
+  else if (s.ignored === 'sleep') { value = tl('pilote en veille (SLEEP bas) : les pas sont ignorés'); level = 'warn'; }
+  else if (s.ignored === 'reset') { value = tl('pilote en remise à zéro (RESET bas) : les pas sont ignorés'); level = 'warn'; }
+  else if (s.ignored === 'enable') { value = tl('pilote désactivé (ENABLE à HIGH) : bobines coupées'); level = 'warn'; }
+  else if (s.stalled && busy) { value = tl('décroche : {0} pas/s, trop vite sans rampe d’accélération ({1} pas perdus)', Math.round(rate), Math.round(s.lost)); level = 'warn'; }
+  else {
+    const deg = ((ang * 360 / m.steps) % 360 + 360) % 360;
+    value = tl('{0} pas · {1}° · {2} tr/min', n(ang), Math.round(deg), n(rate * 60 / m.steps)) + (s.div > 1 ? ` · 1/${s.div}` : '') + (s.lost ? tl(' · {0} pas perdus', Math.round(s.lost)) : '');
+    if (s.lost) level = 'warn';
+  }
+  c.actR = { value, sig: g ? g.key : '', level, live: busy };
+  return true;
+}
+
 /** Simulation arrêtée : effecteurs au repos, sons coupés. */
 export function resetActuators(comps) {
   audio.stopAll();
+  resetChips(comps); // puces logiques : registres à leur valeur de mise sous tension
+  resetStepDrivers(comps); // pilotes pas à pas : compteurs remis à zéro (le moteur garde sa position)
   for (const c of comps) {
-    c.actR = null; c.relayOn = undefined; c.motorV = 0; c.servoBusy = false; c.stepBusy = false;
+    c.actR = null; c.relayOn = undefined; c.motorV = 0; c.servoBusy = false; c.stepBusy = false; c.stepRotor = undefined; c.stepOn = undefined;
     if (c.buzz) c.buzz.obj.position.copy(c.buzz.base);
     if (c.water) { c.water.speed = 0; c.water.tick(0); }
     if (c.rgb) { c.rgb.mat.emissive.setHex(0); c.rgb.mat.emissiveIntensity = 0; c.rgb.light.intensity = 0; }
     if (c.pixels) c.pixels.forEach(m => m.emissive.setHex(0x221a08));
     if (c.relay) { c.relay.led.emissive.setHex(0); c.relay.led.emissiveIntensity = 0; }
+    if (c.chg) for (const l of [c.chg.red, c.chg.blue]) { l.mat.emissive.setHex(0); l.mat.emissiveIntensity = 0; }
     if (c.seg7 && c.seg7.key !== undefined) {
       c.seg7.key = undefined;
       const tex = c.seg7.mesh.material.map; c.seg7.paint(tex.image.getContext('2d'), c.seg7.k, null); tex.needsUpdate = true;

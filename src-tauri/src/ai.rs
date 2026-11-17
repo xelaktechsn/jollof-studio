@@ -70,10 +70,14 @@ pub struct Info {
     exe: String,
 }
 
-#[derive(serde::Deserialize, Serialize, Default)]
+#[derive(serde::Deserialize, Serialize, Default, Clone)]
 struct Config {
     port: u16,
+    /// Vide quand la clé est dans le trousseau du système (keyring).
     token: String,
+    /// La clé est rangée dans le trousseau du système (service : identifiant de l'édition), pas dans ce fichier.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    keyring: bool,
 }
 
 /* ---------- Dossiers et fichier de la clé ---------- */
@@ -120,10 +124,77 @@ fn config_path(app: &AppHandle) -> Result<PathBuf, String> {
         .map_err(|e| e.to_string())?
         .join(FILE))
 }
+/// Fichier de clé : la clé elle-même, ou (keyring) son renvoi vers le trousseau du système.
 fn read_config(path: &Path) -> Option<Config> {
-    serde_json::from_str::<Config>(&std::fs::read_to_string(path).ok()?)
+    let mut c = serde_json::from_str::<Config>(&std::fs::read_to_string(path).ok()?).ok()?;
+    if c.keyring {
+        c.token = keyring_get(identifier_of(path)?)?;
+    }
+    Some(c).filter(|c| c.token.len() >= 32)
+}
+
+/* ---------- Trousseau du système ---------- */
+// La clé du pont vit dans le trousseau du système (Trousseau macOS, Gestionnaire d'identification Windows, Secret
+// Service sous Linux) : un logiciel qui lit les fichiers de l'utilisateur ne la trouve plus en clair. Le relais
+// `--mcp` est le même programme : il la lit au même endroit. Sans trousseau utilisable (Linux sans Secret Service,
+// session sans bureau), la clé reste dans le fichier, lisible par l'utilisateur seul, comme avant. En développement,
+// le trousseau n'est utilisé qu'avec JOLLOF_KEYRING=1 : chaque recompilation ferait redemander l'accès sous macOS.
+
+const KEY_USER: &str = "ai-bridge";
+fn keyring_on() -> bool {
+    !cfg!(debug_assertions) || std::env::var_os("JOLLOF_KEYRING").is_some_and(|v| v == "1")
+}
+/// Édition d'un fichier de clé : le nom de son dossier de données (sn.jollof.studio…).
+fn identifier_of(path: &Path) -> Option<&str> {
+    path.parent()?
+        .file_name()?
+        .to_str()
+        .filter(|s| valid_identifier(s))
+}
+fn keyring_get(identifier: &str) -> Option<String> {
+    if !keyring_on() {
+        return None;
+    }
+    keyring::Entry::new(identifier, KEY_USER)
+        .ok()?
+        .get_password()
         .ok()
-        .filter(|c| c.token.len() >= 32)
+        .filter(|t| t.len() >= 32)
+}
+/// Range la clé et la relit : vrai seulement si le trousseau la rend telle quelle.
+fn keyring_set(identifier: &str, token: &str) -> bool {
+    keyring_on()
+        && keyring::Entry::new(identifier, KEY_USER)
+            .and_then(|e| e.set_password(token))
+            .is_ok()
+        && keyring_get(identifier).as_deref() == Some(token)
+}
+/// Écrit la configuration : la clé au trousseau si possible (le fichier n'en garde que le renvoi), sinon au fichier.
+fn save_config(path: &Path, cfg: &Config) -> Result<(), String> {
+    if let Some(id) = identifier_of(path) {
+        if keyring_set(id, &cfg.token) {
+            return write_config(
+                path,
+                &Config {
+                    port: cfg.port,
+                    token: String::new(),
+                    keyring: true,
+                },
+            );
+        }
+        if keyring_on() {
+            log::warn!(
+                "trousseau du système indisponible : clé du pont IA gardée dans son fichier"
+            );
+        }
+    }
+    write_config(
+        path,
+        &Config {
+            keyring: false,
+            ..cfg.clone()
+        },
+    )
 }
 /// Écriture atomique (fichier temporaire puis renommage) ; private : lisible par l'utilisateur seul.
 fn write_atomic(path: &Path, text: &str, private: bool) -> Result<(), String> {
@@ -230,7 +301,7 @@ pub fn ai_bridge(
         let (port, listener) =
             found.ok_or_else(|| "aucun port libre pour le pont IA".to_string())?;
         cfg.port = port;
-        write_config(&path, &cfg)?;
+        save_config(&path, &cfg)?;
         let stop = Arc::new(AtomicBool::new(false));
         g.stop = Some(stop.clone());
         g.port = port;
@@ -265,7 +336,7 @@ pub fn ai_new_token(app: AppHandle, bridge: State<'_, Bridge>) -> Result<(), Str
     if cfg.port < 1024 {
         cfg.port = if g.port >= 1024 { g.port } else { PORT0 };
     }
-    write_config(&path, &cfg)?;
+    save_config(&path, &cfg)?;
     g.token = cfg.token;
     g.sessions.clear();
     Ok(())
@@ -1206,6 +1277,7 @@ mod tests {
             &Config {
                 port,
                 token: T.into(),
+                keyring: false,
             },
         )
         .unwrap();
@@ -1339,6 +1411,7 @@ mod tests {
             &Config {
                 port,
                 token: T.into(),
+                keyring: false,
             },
         )
         .unwrap();

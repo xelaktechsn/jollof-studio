@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
-// Composants analogiques : minuterie NE555, double ampli-op LM358, MOSFET logique IRLZ44N, bobine de 10 mH,
+// Composants analogiques : minuterie NE555, double ampli-op LM358, MOSFET IRLZ44N (canal N) et IRF9540N (canal P), bobine de 10 mH,
 // générateur de fonctions et oscilloscope 2 voies. Fiches de câblage (même forme que parts.js, qui les reprend
 // dans PARTS) et paramètres des modèles du solveur (dc.js), tirés des fiches techniques citées (check/sources.js).
 // network : montage d'application que le câblage automatique pose avec le composant (autowire.js) ; own : broche
@@ -31,7 +31,11 @@ export const OPAMPS = { lm358: { gain: 1e5, head: 1.5, vol: 0.005, rOut: 10, cmr
  * à 5 V, 22 mΩ à 10 V. Entre le seuil et 4 V, RDS(on) suit k / (VGS − VGS(th)), k = 0,0875 Ω·V, qui passe par les
  * deux points de la fiche à 4 et 5 V (extrapolation sous 4 V) ; jamais moins de 22 mΩ. Diode interne source → drain.
  */
-export const MOSFETS = { irlz44n: { vth: 1.5, k: 0.0875, rdsMin: 0.022, vfBody: 0.7, rBody: 0.5 } };
+export const MOSFETS = {
+  irlz44n: { vth: 1.5, k: 0.0875, rdsMin: 0.022, vfBody: 0.7, rBody: 0.5 },
+  // Canal P (pch) : vth est |VGS(th)| ; il conduit quand la grille descend sous la source (interrupteur côté +).
+  irf9540n: { vth: 3, k: 0.82, rdsMin: 0.117, vfBody: 1, rBody: 0.5, pch: true }
+};
 /** Rds(on) du MOSFET m pour une tension grille-source vgs (Ω), Infinity sous le seuil. */
 export const rdsOn = (m, vgs) => (vgs > m.vth ? Math.max(m.rdsMin, m.k / (vgs - m.vth)) : Infinity);
 /** Bobine 10 mH Bourns 5800-103-RC : DCR 24 Ω au plus. */
@@ -144,6 +148,22 @@ export const ANALOG_PARTS = {
     notes: [tl('Brochage G-D-S, face imprimée vers soi. Une charge à bobine (moteur, relais) demande une diode de roue libre à ses bornes, cathode côté +.'),
       tl('Câblage automatique : grille par 220 Ω vers une sortie de la carte, 10 kΩ de rappel vers la masse, source à la masse ; la charge se branche sur le drain.')],
     code: p => tl('pinMode({0}, OUTPUT);\nanalogWrite({1}, 128); // charge à mi-puissance', p.G, p.G)
+  },
+  // Canal P : l'interrupteur côté +. Source au + (le câblage automatique prend la tension logique), grille tirée vers la source par 10 kΩ (bloqué au
+  // démarrage), commandée par une sortie à travers 220 Ω : LOW le rend passant.
+  irf9540n: {
+    what: tl('MOSFET canal P IRF9540N (boîtier TO-220) : l’interrupteur côté + d’une charge. Source au +, charge entre le drain et la masse ; il conduit quand la grille descend sous la source de plus de 2 à 4 V (|VGS(th)|). Jusqu’à 100 V et 23 A, 0,117 Ω à VGS = −10 V.'),
+    pins: [
+      io('G', 'out', tl('Grille'), tl('Grille : la broche de la carte la commande à travers 220 Ω. LOW la met à 0 V, VGS vaut alors moins la tension de la source et le MOSFET conduit ; HIGH, à la tension de la source, le bloque. La résistance de 10 kΩ vers la source le garde bloqué tant que la carte démarre.'), { opt: true, autowire: true, wireVia: 'res-220', pull: 'res-10k', pullTo: 'S' }),
+      nc('D', tl('Drain'), tl('Drain : vers le + de la charge (moteur, bande de LED), dont le − va à la masse. C’est aussi la languette métallique.')),
+      pwr('S', [1.8, 100], tl('Source au + : à la tension logique de la carte quand la broche commande la grille directement, pour qu’une sortie HIGH ramène VGS à 0 V et bloque bien le MOSFET. Jusqu’à 100 V (VDSS) si un NPN tire la grille, en gardant |VGS| sous 20 V.'), 'infineonIrf9540n', tl('Source'))
+    ],
+    pullTo: 'S',
+    notes: [tl('Logique inversée : LOW allume la charge, HIGH l’éteint. |VGS| doit dépasser nettement |VGS(th)| (2 à 4 V) : sur une carte 5 V, LOW donne VGS = −5 V, assez pour une charge modeste (≈ 0,4 Ω) ; sur une carte 3,3 V, −3,3 V le laisse à peine passant.'),
+      tl('Pour des ampères, ou une charge alimentée sous plus que la tension logique : source à la tension de la charge, grille tirée vers la source par 10 kΩ, et un NPN (collecteur sur la grille, émetteur à la masse) que la carte commande. Un HIGH à 3,3 ou 5 V ne bloquerait pas un MOSFET dont la source est à 12 V.'),
+      tl('Brochage G-D-S, face imprimée vers soi, comme l’IRLZ44N. Une charge à bobine demande une diode de roue libre à ses bornes, cathode côté drain (le + de la charge).'),
+      tl('Câblage automatique : grille par 220 Ω vers une sortie de la carte, 10 kΩ de tirage vers la tension logique, source à la tension logique ; la charge se branche entre le drain et la masse.')],
+    code: p => tl('pinMode({0}, OUTPUT);\ndigitalWrite({1}, LOW); // MOSFET passant : la charge s’allume (HIGH l’éteint)', p.G, p.G)
   },
   'ind-10m': {
     what: tl('Bobine (inductance) de 10 mH : elle s’oppose aux variations du courant. Résistance de son fil : 24 Ω au plus ; 76 mA en continu.'),

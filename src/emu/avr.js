@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
-// Mode « fidèle » de l'Uno et de la Nano : le vrai programme machine (compilé par arduino-cli) tourne,
-// instruction par instruction, sur un ATmega328P émulé (avr8js, licence MIT). Le moteur expose la même
-// interface que l'interpréteur (src/prog/runtime.js) : broches, temps virtuel, port série, sondes, pour que
-// le calcul du circuit, les effecteurs, l'oscilloscope et le moniteur série n'y voient aucune différence.
+// Mode « fidèle » de l'Uno, de la Nano et du Mega 2560 : le vrai programme machine (compilé par arduino-cli) tourne,
+// instruction par instruction, sur un ATmega328P ou un ATmega2560 émulé (avr8js, licence MIT ; réglages des deux
+// puces dans src/emu/avr-chips.js). Le moteur expose la même interface que l'interpréteur (src/prog/runtime.js) :
+// broches, temps virtuel, port série, sondes, pour que le calcul du circuit, les effecteurs, l'oscilloscope et le
+// moniteur série n'y voient aucune différence.
 import {
-  CPU, avrInstruction, AVRTimer, timer0Config, timer1Config, timer2Config, AVRIOPort, portBConfig, portCConfig,
-  portDConfig, AVRUSART, usart0Config, AVRADC, adcConfig, PinState, AVREEPROM, EEPROMMemoryBackend, eepromConfig,
-  AVRTWI, twiConfig, AVRSPI, spiConfig, AVRClock, clockConfig, AVRWatchdog, watchdogConfig
+  CPU, avrInstruction, AVRTimer, AVRIOPort, AVRUSART, AVRADC, PinState, AVREEPROM, EEPROMMemoryBackend,
+  AVRTWI, AVRSPI, AVRClock, AVRWatchdog
 } from 'avr8js';
 import { parseHex } from './hex.js';
 import { pinMap } from '../prog/runtime.js';
 import { attachDevices } from './devices/index.js';
+import { AVR_CHIPS, chipOfKind } from './avr-chips.js';
 
 export const MHZ = 16e6;
 const PER_MS = MHZ / 1000;
@@ -19,57 +20,72 @@ const SLICE = 8;          // ms de calcul par image au plus (comme l'interpréte
 const LAG = 250;          // au-delà, le temps virtuel cède : un vieux PC ralentit la carte au lieu de rattraper
 const WINDOW = 60;        // ms : fenêtre d'analyse des fronts (PWM, tone(), servo)
 const RING = 256;         // fronts gardés par broche
-// Broches Arduino de l'ATmega328P : port et bit.
-const PORT_PINS = { D: [0, 1, 2, 3, 4, 5, 6, 7], B: [8, 9, 10, 11, 12, 13], C: [14, 15, 16, 17, 18, 19] };
-const CONFIG = { B: portBConfig, C: portCConfig, D: portDConfig };
+
+/**
+ * Minuterie de 16 bits à trois comparaisons (ATmega2560) : avr8js gère OCRnC, mais ses registres TIFRn et TIMSKn
+ * ignorent OCFnC / OCIEnC, et la PWM rapide ne remet pas la sortie OCnC à son niveau de départ au débordement.
+ */
+function completeCompareC(cpu, t, cfg) {
+  if (!cfg.OCRC) return;
+  const tifr = cpu.writeHooks[cfg.TIFR], timsk = cpu.writeHooks[cfg.TIMSK];
+  cpu.writeHooks[cfg.TIFR] = (v, ...r) => { const x = tifr(v, ...r); cpu.clearInterruptByFlag(t.OCFC, v); return x; };
+  cpu.writeHooks[cfg.TIMSK] = (v, ...r) => { const x = timsk(v, ...r); cpu.updateInterruptEnable(t.OCFC, v); return x; };
+  const count = t.count;
+  t.count = (reschedule, external) => {
+    const before = t.tcnt;
+    count(reschedule, external);
+    if (t.compC && t.timerMode === 3 /* PWM rapide */ && t.tcnt < before) t.updateCompPin(t.compC, 'C', true);
+  };
+}
 
 /**
  * Moteur d'exécution d'un programme compilé. hexText : contenu du .hex ; hw : pont vers le montage (makeHw,
- * src/prog/panel.js), dont on lit hw.prof, hw.kind et hw.read(clé) pour les entrées.
+ * src/prog/panel.js), dont on lit hw.prof, hw.kind et hw.read(clé) pour les entrées. opts.mcu : 'atmega328p' ou
+ * 'atmega2560' (sinon déduit de hw.kind : le Mega a l'ATmega2560).
  */
 export function createAvrRuntime(hexText, hw, opts = {}) {
-  const prof = hw.prof, logic = prof.logic, keys = pinMap(prof, hw.kind);
-  const cpu = new CPU(new Uint16Array(parseHex(hexText, 0x8000).buffer));
-  [timer0Config, timer1Config, timer2Config].forEach(c => new AVRTimer(cpu, c));
-  const usart = new AVRUSART(cpu, usart0Config, MHZ), adc = new AVRADC(cpu, adcConfig);
+  const prof = hw.prof, logic = prof.logic, keys = pinMap(prof, hw.kind), chip = AVR_CHIPS[opts.mcu] || chipOfKind(hw.kind);
+  const cpu = new CPU(new Uint16Array(parseHex(hexText, chip.flash).buffer), chip.sram);
+  chip.timers.forEach(c => completeCompareC(cpu, new AVRTimer(cpu, c), c));
+  const adc = new AVRADC(cpu, chip.adc);
   // I2C et SPI : sans module branché, une adresse I2C n'est pas acquittée (Wire.endTransmission rend 2) ; les modules
   // de src/emu/devices s'y raccordent. Horloge et chien de garde : pour les programmes qui s'en servent.
-  const twi = new AVRTWI(cpu, twiConfig, MHZ), spi = new AVRSPI(cpu, spiConfig, MHZ), clock = new AVRClock(cpu, MHZ, clockConfig);
-  new AVRWatchdog(cpu, watchdogConfig, clock);
+  const twi = new AVRTWI(cpu, chip.twi, MHZ), spi = new AVRSPI(cpu, chip.spi, MHZ), clock = new AVRClock(cpu, MHZ, chip.clock);
+  new AVRWatchdog(cpu, chip.watchdog, clock);
   // EEPROM : la même mémoire que l'interpréteur (prog.mem de la carte, en hexadécimal), gardée avec le projet.
-  const mem = hw.mem ? hw.mem() : { ee: '' }, eeBack = new EEPROMMemoryBackend(1024);
+  const EE = chip.eeprom, mem = hw.mem ? hw.mem() : { ee: '' }, eeBack = new EEPROMMemoryBackend(EE);
   eeBack.memory.fill(0xff);
-  for (let i = 0; i < Math.min(1024, (mem.ee || '').length >> 1); i++) eeBack.memory[i] = parseInt(mem.ee.substr(2 * i, 2), 16) & 255;
+  for (let i = 0; i < Math.min(EE, (mem.ee || '').length >> 1); i++) eeBack.memory[i] = parseInt(mem.ee.substr(2 * i, 2), 16) & 255;
   let eeDirty = false;
   const eeWrite = eeBack.writeMemory.bind(eeBack), eeErase = eeBack.eraseMemory.bind(eeBack);
   eeBack.writeMemory = (a, v) => { eeWrite(a, v); eeDirty = true; };
   eeBack.eraseMemory = a => { eeErase(a); eeDirty = true; };
-  new AVREEPROM(cpu, eeBack, eepromConfig);
+  new AVREEPROM(cpu, eeBack, chip.eepromCfg);
   const flushEeprom = () => {
     eeDirty = false;
-    let end = 1024; while (end > 0 && eeBack.memory[end - 1] === 0xff) end--;
+    let end = EE; while (end > 0 && eeBack.memory[end - 1] === 0xff) end--;
     mem.ee = Array.from(eeBack.memory.subarray(0, end), b => b.toString(16).padStart(2, '0')).join('');
     if (hw.memChanged) hw.memChanged();
   };
   const ports = {}, pins = new Map(), lines = [], warnings = new Map();
-  let out = '', tapBuf = '', serialIn = [], T = 0, started = false, state = 'run', error = null, trace = null, tap = null;
+  let out = '', tapBuf = '', T = 0, started = false, state = 'run', error = null, trace = null, tap = null;
   const vt = () => cpu.cycles / PER_MS;
 
   // Une fiche par broche, de la même forme que celle de l'interpréteur.
-  for (const [P, nums] of Object.entries(PORT_PINS)) {
-    const port = ports[P] = new AVRIOPort(cpu, CONFIG[P]);
+  for (const [P, [cfg, nums]] of Object.entries(chip.ports)) {
+    const port = ports[P] = new AVRIOPort(cpu, cfg), mine = [];
     nums.forEach((n, bit) => {
-      const key = keys.get(n); if (!key) return;
+      const key = n == null ? null : keys.get(n); if (!key) return;
       const rec = { mode: 0, d: 0, pwm: null, freq: 0, ledc: 0, toneEnd: 0, servo: null, px: null, stepper: null, weak: false, dac: null };
       pins.set(key, rec);
-      lines.push({ key, n, P, bit, port, rec, level: 0, ext: null, dev: null, line: 1, subs: [], ring: new Float64Array(RING), lev: new Uint8Array(RING), head: 0, count: 0, sliceEdges: 0 });
+      const L = { key, n, P, bit, port, rec, level: 0, ext: null, dev: null, line: 1, subs: [], ring: new Float64Array(RING), lev: new Uint8Array(RING), head: 0, count: 0, sliceEdges: 0 };
+      lines.push(L); mine.push(L);
     });
     let inside = false;
     port.addListener(() => {
       if (inside) return;
       const now = cpu.cycles;
-      for (const L of lines) {
-        if (L.P !== P) continue;
+      for (const L of mine) {
         const st = port.pinState(L.bit), out1 = st === PinState.High || st === PinState.Low, mode = out1 ? 1 : st === PinState.InputPullUp ? 2 : 0;
         // Entrée qui vient de changer de mode : niveau aussitôt (module, montage, sinon tirage interne), comme sur la carte.
         L.rec.mode = mode;
@@ -106,15 +122,24 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     /** Fiche de la broche (celle de pins) : un module y publie ce qu'il affiche (px des LED WS2812…). */
     rec: key => { const L = byKey.get(key); return L ? L.rec : null; }
   };
-  // Port série matériel (D0/D1) : le moniteur série le lit, et un module branché sur RX/TX aussi (HC-05, SIM800).
-  const txSubs = [];
-  usart.onByteTransmit = b => { const ch = String.fromCharCode(b); out += ch; tapBuf += ch; for (const fn of txSubs) fn(b, cpu.cycles); };
-  /** Liaison série matérielle vue par les modules : octets envoyés par la carte, octets reçus par la carte. */
-  const uart = {
-    onTx(fn) { txSubs.push(fn); return () => { const i = txSubs.indexOf(fn); if (i >= 0) txSubs.splice(i, 1); }; },
-    inject(bytes) { for (const b of bytes) serialIn.push(b & 0xff); },
-    baud: () => usart.baudRate
-  };
+  // Ports série matériels : Serial (D0/D1) que lit le moniteur série, et sur le Mega Serial1 à Serial3 (D19/D18,
+  // D17/D16, D15/D14) ; un module branché sur leurs broches RX/TX (HC-05, SIM800) les lit aussi.
+  const uarts = chip.usarts.map(([name, cfg, rxPin, txPin]) => {
+    const usart = new AVRUSART(cpu, cfg, MHZ), q = [], subs = [];
+    usart.onByteTransmit = b => {
+      if (name === 'Serial') { const ch = String.fromCharCode(b); out += ch; tapBuf += ch; }
+      for (const fn of subs) fn(b, cpu.cycles);
+      if (hw.probe) hw.probe.uart(name, 'tx', b);
+    };
+    /** Liaison série matérielle vue par les modules : octets envoyés par la carte, octets reçus par la carte. */
+    const api = {
+      onTx(fn) { subs.push(fn); return () => { const i = subs.indexOf(fn); if (i >= 0) subs.splice(i, 1); }; },
+      inject(bytes) { for (const b of bytes) { q.push(b & 0xff); if (hw.probe) hw.probe.uart(name, 'rx', b); } },
+      baud: () => usart.baudRate
+    };
+    return { name, usart, q, api, rx: keys.get(rxPin) || null, tx: keys.get(txPin) || null };
+  });
+  const usart = uarts[0].usart, serialIn = uarts[0].q, uart = uarts[0].api;
 
   /** Entrées : niveau imposé par le montage (capteur, bouton, autre carte), sinon tirage interne ; tensions de l'ADC. */
   function readInputs() {
@@ -125,7 +150,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
       L.port.setPin(L.bit, inLevel(L));
       lineChanged(L, +inLevel(L), cpu.cycles);
     }
-    for (let ch = 0; ch < 8; ch++) {
+    for (let ch = 0; ch < chip.adcChannels; ch++) {
       const r = hw.read ? hw.read('A' + ch) : null;
       adc.channelValues[ch] = r ? (r.v != null ? r.v : r.d ? logic : 0) : 0;
     }
@@ -158,10 +183,11 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     }
   }
 
-  /** Octets reçus par le port série : un à la fois, quand le récepteur est activé (Serial.begin) et libre. */
+  /** Octets reçus par les ports série : un à la fois, quand le récepteur est activé (Serial.begin) et libre. */
   function feedSerial() {
-    while (serialIn.length && !usart.rxBusy) { if (usart.writeByte(serialIn[0]) === false) break; serialIn.shift(); }
+    for (const U of uarts) while (U.q.length && !U.usart.rxBusy) { if (U.usart.writeByte(U.q[0]) === false) break; U.q.shift(); }
   }
+  const rxWaiting = () => { for (const U of uarts) if (U.q.length) return true; return false; };
   function run(dt) {
     if (state !== 'run') return;
     if (started) T += Math.min(Math.max(dt, 0), 250);
@@ -173,7 +199,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     try {
       while (cpu.cycles < target) {
         for (let i = 0; i < 4096 && cpu.cycles < target; i++) { avrInstruction(cpu); cpu.tick(); }
-        if (serialIn.length) feedSerial();
+        if (rxWaiting()) feedSerial();
         if (performance.now() > deadline) break;
       }
     } catch (e) { state = 'error'; error = { line: 0, msg: String((e && e.message) || e) }; }
@@ -184,7 +210,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     tapBuf = '';
   }
 
-  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi, uart });
+  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi, uart, uarts: uarts.map(U => ({ name: U.name, rx: U.rx, tx: U.tx, api: U.api })) });
   devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {
@@ -197,12 +223,12 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     },
     setTrace(fn) { trace = fn || null; },
     setSerialTap(fn) { tap = fn || null; },
-    debug, logic, firmware: 'avr',
+    debug, logic, firmware: 'avr', mcu: chip.name,
     get state() { return state; }, get error() { return error; }, get line() { return null; },
     takeSerial() { const s = out; out = ''; return s; },
     send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); },
     stop() { state = 'stopped'; },
     /** Pour les tests et les modèles de modules : le processeur émulé et ses périphériques. */
-    hw: { cpu, ports, usart, adc, twi, spi, eeprom: eeBack, pinApi, devices }
+    hw: { cpu, ports, usart, uarts: Object.fromEntries(uarts.map(U => [U.name, U.api])), adc, twi, spi, eeprom: eeBack, pinApi, devices }
   };
 }

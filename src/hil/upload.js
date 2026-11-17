@@ -7,6 +7,7 @@ import './upload.css';
 import { tl, locale } from '../i18n/index.js';
 import { listPorts, claim, unclaim } from './serial.js';
 import { baudOf } from './monitor.js';
+import { buildPaths, espDetect, espFlash } from '../native.js';
 
 const FQBN = { uno: 'arduino:avr:uno', nano: 'arduino:avr:nano', nanoOld: 'arduino:avr:nano:cpu=atmega328old', mega: 'arduino:avr:mega', esp32: 'esp32:esp32:esp32doit-devkit-v1', 'esp32-38': 'esp32:esp32:nodemcu-32s', esp32s3: 'esp32:esp32:esp32s3', esp32c3: 'esp32:esp32:nologo_esp32c3_super_mini', nodemcu: 'esp8266:esp8266:nodemcuv2', d1mini: 'esp8266:esp8266:d1_mini', pico: 'rp2040:rp2040:rpipico' };
 /** Modèle à proposer : celui de la carte elle-même (Wemos D1 mini), sinon celui de sa famille de code. */
@@ -19,6 +20,7 @@ function uploadHint(txt, fqbn) {
   if (/not in sync|stk500_recv|programmer is not responding|stk500_getsync/i.test(txt)) return /nano/.test(fqbn) && !/atmega328old/.test(fqbn)
     ? tl('La carte ne répond pas. Beaucoup de Nano compatibles ont l’ancien chargeur : choisissez « Arduino Nano (ancien bootloader) » et réessayez.')
     : tl('La carte ne répond pas : vérifiez le modèle de carte choisi et le port, puis réessayez.');
+  if (/La carte branchée est un/.test(txt)) return '';
   if (/Wrong boot mode|Failed to connect to ESP|Timed out waiting for packet header|No serial data received/i.test(txt)) return tl('L’ESP ne passe pas en mode téléversement : maintenez son bouton BOOT enfoncé au début du téléversement, relâchez-le quand « Writing » apparaît.');
   if (/busy|Access is denied|Permission denied|could not open port|can't open device/i.test(txt)) return tl('Le port est utilisé par un autre logiciel (IDE Arduino, autre moniteur série…) : fermez-le, puis réessayez.');
   if (/No such file or directory.*\.h|fatal error: .*\.h/i.test(txt)) return tl('Une bibliothèque manque : « Préparer » l’installe.');
@@ -33,7 +35,15 @@ const LIBS = {
   'DHT.h': ['DHT sensor library', 'Adafruit Unified Sensor'], 'OneWire.h': ['OneWire'], 'DallasTemperature.h': ['DallasTemperature'],
   'Adafruit_BMP280.h': ['Adafruit BMP280 Library'], 'Adafruit_BME280.h': ['Adafruit BME280 Library'], 'BH1750.h': ['BH1750'], 'HX711.h': ['HX711 Arduino Library'], 'Adafruit_MPU6050.h': ['Adafruit MPU6050'], 'LiquidCrystal_I2C.h': ['LiquidCrystal I2C'],
   'Adafruit_SSD1306.h': ['Adafruit SSD1306', 'Adafruit GFX Library'], 'Adafruit_GFX.h': ['Adafruit GFX Library'], 'Servo.h': ['Servo'], 'ESP32Servo.h': ['ESP32Servo'],
-  'Adafruit_NeoPixel.h': ['Adafruit NeoPixel'], 'Stepper.h': ['Stepper']
+  'Adafruit_NeoPixel.h': ['Adafruit NeoPixel'], 'Stepper.h': ['Stepper'],
+  // Capteurs I2C (sim/i2csensors.js) : distance VL53L0X (Adafruit ou Pololu), oxymètre MAX30102, couleur TCS34725, air CCS811, BME680.
+  'Adafruit_VL53L0X.h': ['Adafruit_VL53L0X'], 'VL53L0X.h': ['VL53L0X'], 'MAX30105.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'], 'heartRate.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'],
+  'spo2_algorithm.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'], 'Adafruit_TCS34725.h': ['Adafruit TCS34725'], 'Adafruit_CCS811.h': ['Adafruit CCS811 Library'], 'Adafruit_BME680.h': ['Adafruit BME680 Library', 'Adafruit Unified Sensor', 'Adafruit BusIO'],
+  'Encoder.h': ['Encoder'],
+  // GPS NEO-6M : TinyGPSPlus de Mikal Hart.
+  'TinyGPSPlus.h': ['TinyGPSPlus'], 'TinyGPS++.h': ['TinyGPSPlus'],
+  // Radio LoRa SX1278 (bibliothèque de Sandeep Mistry).
+  'LoRa.h': ['LoRa']
 };
 
 export function installUpload(app) {
@@ -48,6 +58,7 @@ export function installUpload(app) {
       <label class="field">${tl('Port USB')}<span class="portRow"><select class="sel" data-b="port"><option value="">${tl('— rechercher —')}</option></select><button type="button" class="btn icon" data-b="ports" aria-label="${tl('Rechercher les cartes branchées')}">${icon('rotate')}</button></span></label>
     </div>
     <div class="row">
+      <button type="button" class="btn" data-b="detect" hidden>${icon('search')}<span>${tl('Détecter la puce')}</span></button>
       <button type="button" class="btn" data-b="prepare">${icon('wand')}<span>${tl('Préparer (support et bibliothèques)')}</span></button>
       <button type="button" class="btn" data-b="compile">${icon('check')}<span>${tl('Compiler')}</span></button>
       <button type="button" class="btn primary" data-b="upload">${icon('upload')}<span>${tl('Téléverser')}</span></button>
@@ -57,8 +68,14 @@ export function installUpload(app) {
   document.body.appendChild(modal);
   const q = k => modal.querySelector(`[data-b="${k}"]`);
   let busy = false, cur = null, lastOut = '';
-  const log = (s, cls) => { const el = q('log'); const line = document.createElement('div'); if (cls) line.className = cls; line.textContent = s; el.appendChild(line); el.scrollTop = el.scrollHeight; };
-  const setBusy = on => { busy = on; ['prepare', 'compile', 'upload', 'ports'].forEach(k => (q(k).disabled = on)); };
+  const log = (s, cls) => {
+    const el = q('log'); const line = document.createElement('div'); if (cls) line.className = cls; line.textContent = s; el.appendChild(line); el.scrollTop = el.scrollHeight;
+    if (app.log) app.log(s, cls === 'cmd' || cls === 'err' || cls === 'ok' ? cls : 'info'); // aussi dans le panneau Sortie
+  };
+  const setBusy = on => { busy = on; ['prepare', 'compile', 'upload', 'ports', 'detect'].forEach(k => (q(k).disabled = on)); };
+  /** Cartes ESP32 : téléversées par espflash (dans l'application, sans esptool) d'après l'image complète compilée. */
+  const isEsp32 = fqbn => /^esp32:esp32:/.test(fqbn);
+  const showDetect = () => { q('detect').hidden = !(app.isDesktop() && isEsp32(q('fqbn').value)); };
   async function cli(args, label) {
     log(`$ arduino-cli ${args.join(' ')}`, 'cmd');
     try {
@@ -116,7 +133,9 @@ export function installUpload(app) {
     }
     const dir = await native.writeSketch(cur.code).catch(e => { log('✕ ' + (e.message || e), 'err'); return null; });
     if (!dir) return null;
-    const r = await cli(['compile', '--fqbn', fqbn, dir], tl('Compilation'));
+    // ESP32 : l'image complète (merged.bin) va dans le dossier de compilation de l'application, pour espflash.
+    const out = isEsp32(fqbn) ? await buildPaths().then(p => p[1]).catch(() => null) : null;
+    const r = await cli(out ? ['compile', '--fqbn', fqbn, '--output-dir', out, dir] : ['compile', '--fqbn', fqbn, dir], tl('Compilation'));
     if (!r && retry && /\.h: No such file|fatal error: .*\.h|platform not installed|Platform .* not found/i.test(lastOut)) {
       log(tl('Il manque quelque chose : installation, puis nouvelle compilation…'), 'ok');
       if (await prepare()) return compile(false);
@@ -124,12 +143,51 @@ export function installUpload(app) {
     if (r) log(tl('✓ Compilation réussie.'), 'ok');
     return r ? dir : null;
   }
+  /** ESP32 par espflash : connexion au chargeur de la puce, écriture (zones identiques sautées), redémarrage. */
+  async function flashEsp(port, fqbn, dir) {
+    log(tl('Téléversement par espflash (sans esptool) sur {0}…', port), 'cmd');
+    const line = document.createElement('div'); q('log').appendChild(line);
+    try {
+      const r = await espFlash(port, fqbn, p => {
+        if (p.stage === 'write' && p.total) line.textContent = tl('Écriture : {0} %', Math.floor((100 * p.done) / p.total));
+        else if (p.stage === 'verify') line.textContent = tl('Vérification…');
+        else if (p.stage === 'done') line.textContent = p.skipped ? tl('Déjà à jour : rien à réécrire.') : tl('Écriture : 100 %');
+      });
+      log(tl('✓ Puce {0} programmée.', r.chip.toUpperCase()), 'ok');
+      return { code: 0 };
+    } catch (e) {
+      const m = String(e && e.message || e); lastOut = m;
+      if (/Image complète introuvable/.test(m)) { // paquet esp32 ancien (sans merged.bin) : l'outil de la carte
+        log(tl('Image complète absente (paquet esp32 ancien) : téléversement par l’outil de la carte.'), 'ok');
+        return cli(['upload', '-p', port, '--fqbn', fqbn, dir], tl('Téléversement'));
+      }
+      log('✕ ' + m, 'err');
+      return null;
+    }
+  }
+  /** Puce branchée : nom, révision, flash, MAC ; le modèle de carte suit la puce si besoin. */
+  async function detect() {
+    const port = q('port').value;
+    if (!port) { log(tl('Choisissez d’abord le port USB de la carte (bouton de recherche).'), 'err'); return; }
+    await claim(port, 'upload', () => {});
+    try {
+      const c = await espDetect(port);
+      log(tl('✓ Puce {0}{1}, flash {2}{3}.', c.chip.toUpperCase(), c.revision ? ' ' + c.revision : '', c.flash, c.mac ? ', MAC ' + c.mac : ''), 'ok');
+      const want = { esp32s3: 'esp32s3', esp32c3: 'esp32c3' }[c.chip], cur = Object.keys(FQBN).find(k => FQBN[k] === q('fqbn').value);
+      const next = want || (c.chip === 'esp32' && !['esp32', 'esp32-38'].includes(cur) ? 'esp32' : null);
+      if (next && next !== cur) { q('fqbn').value = FQBN[next]; log(tl('Modèle de carte choisi d’après la puce : {0}.', q('fqbn').selectedOptions[0].textContent), 'ok'); }
+      else if (!want && c.chip !== 'esp32') log(tl('⚠ Puce {0} : aucun modèle de carte de la liste ne lui correspond.', c.chip.toUpperCase()), 'err');
+    } catch (e) {
+      const m = String(e && e.message || e); log('✕ ' + m, 'err');
+      const hint = uploadHint(m, q('fqbn').value); if (hint) log('→ ' + hint, 'err');
+    } finally { unclaim(port, 'upload'); }
+  }
   modal.addEventListener('click', async e => {
     if (e.target === modal) { if (!busy) modal.hidden = true; return; }
     const b = e.target.closest('[data-b]'); if (!b || busy) return;
     const k = b.dataset.b;
     if (k === 'close') { modal.hidden = true; return; }
-    if (!['ports', 'prepare', 'compile', 'upload'].includes(k)) return;
+    if (!['ports', 'prepare', 'compile', 'upload', 'detect'].includes(k)) return;
     setBusy(true);
     try {
       // Comme rustc : rien ne part vers une vraie carte tant que le vérificateur trouve une erreur.
@@ -142,6 +200,7 @@ export function installUpload(app) {
         if (r) log(r.proven ? tl('✓ Vérifié : aucune faute dans les {0} états atteignables.', Number(r.states).toLocaleString(locale())) : tl('✓ Vérifié sur {0} états (vérification partielle).', Number(r.states).toLocaleString(locale())), 'ok');
       }
       if (k === 'ports') await findPorts();
+      if (k === 'detect') await detect();
       if (k === 'prepare') await prepare();
       if (k === 'compile') { const ok = await compile(); if (!ok) { const hint = uploadHint(lastOut, q('fqbn').value); if (hint) log('→ ' + hint, 'err'); } }
       if (k === 'upload') {
@@ -153,7 +212,7 @@ export function installUpload(app) {
         const wasOn = !!(app.realBoard && app.realBoard.state().state === 'on');
         await claim(port, 'upload', () => {});
         let r;
-        try { r = await cli(['upload', '-p', port, '--fqbn', q('fqbn').value, dir], tl('Téléversement')); } finally { unclaim(port, 'upload'); }
+        try { r = isEsp32(q('fqbn').value) ? await flashEsp(port, q('fqbn').value, dir) : await cli(['upload', '-p', port, '--fqbn', q('fqbn').value, dir], tl('Téléversement')); } finally { unclaim(port, 'upload'); }
         if (r) {
           log(tl('✓ Programme téléversé : la carte l’exécute.'), 'ok'); app.status(tl('Programme téléversé sur la carte réelle ({0}).', port), 'ok');
           if (app.realBoard) { // la sortie de la carte, tout de suite : le moniteur série de la carte réelle s'ouvre
@@ -174,7 +233,7 @@ export function installUpload(app) {
     const model = modelOf(cur);
     q('fqbn').innerHTML = opts.map(([k, l]) => `<option value="${FQBN[k]}"${k === model ? ' selected' : ''}>${l}</option>`).join('');
     const kept = store.get(`jollof-up-fqbn-${model}`); if (kept && [...q('fqbn').options].some(o => o.value === kept)) q('fqbn').value = kept;
-    q('fqbn').onchange = checkMatch; q('port').onchange = checkMatch;
+    q('fqbn').onchange = () => { checkMatch(); showDetect(); }; q('port').onchange = checkMatch; showDetect();
     q('intro').textContent = tl('Le programme de {0} (onglet Code) est compilé puis envoyé par USB avec arduino-cli. La première fois, « Préparer » installe le support de la carte et les bibliothèques (connexion Internet nécessaire).', cur.board.name);
     q('log').textContent = '';
     modal.hidden = false;

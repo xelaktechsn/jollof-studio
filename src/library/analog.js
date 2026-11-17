@@ -8,34 +8,36 @@ import { M, PITCH, mat, block, cyl, decal, text, leg, socket, add, boxGeo } from
 import { GEN_DEFAULT } from '../sim/analog-parts.js';
 import { tl } from '../i18n/index.js';
 
-/* ---------- Circuit intégré DIP-8 ---------- */
+/* ---------- Circuit intégré DIP ---------- */
 /**
- * Puce DIP-8 posée sur un support : broches 1 à 4 devant (de gauche à droite), 5 à 8 derrière (de droite à gauche),
- * encoche et point côté broche 1, référence sérigraphiée sur le dessus, numéro de chaque broche sur le support.
+ * Puce DIP (8, 14, 16… broches) posée sur un support : broches 1 à n/2 devant (de gauche à droite), les autres derrière
+ * (de droite à gauche), encoche et point côté broche 1, référence sérigraphiée sur le dessus, numéro de chaque broche
+ * sur le support. Les puces logiques (catalog.js) s'en servent aussi.
  */
-function dip8(names, mark, sub) {
+export function dip(names, mark, sub) {
+  const half = names.length / 2, mid = (half - 1) / 2, BW = half * PITCH - 0.56;
   return c => {
-    const W = 12.4, D = 15, row = 5.6;
+    const W = half * PITCH + 2.24, D = 15, row = 5.6;
     block(c, W, 2.2, D, 0, 0, 0, 0x232323); // support
     decal(c, W, D, 0, 2.22, 0, (x, k) => {
       x.fillStyle = '#232323'; x.fillRect(0, 0, W * k, D * k);
       names.forEach((n, i) => {
-        const front = i < 4, px = W / 2 + (front ? (i - 1.5) * PITCH : (1.5 - (i - 4)) * PITCH), pz = D / 2 + (front ? row + 0.9 : -row - 0.9);
+        const front = i < half, px = W / 2 + (front ? (i - mid) * PITCH : (mid - (i - half)) * PITCH), pz = D / 2 + (front ? row + 0.9 : -row - 0.9);
         text(x, k, String(i + 1), px, pz, 1.0, { color: '#9aa0a6', weight: 600 });
       });
     }, 14);
     // Boîtier : corps noir, encoche en demi-lune à gauche, point près de la broche 1.
-    block(c, 9.6, 3.2, 6.4, 0, 2.2, 0, 0x141414, { r: 0.5 });
-    const notch = add(c, new THREE.CylinderGeometry(0.8, 0.8, 0.12, 20, 1, false, 0, Math.PI), mat(0x050505), -4.8, 5.43, 0);
+    block(c, BW, 3.2, 6.4, 0, 2.2, 0, 0x141414, { r: 0.5 });
+    const notch = add(c, new THREE.CylinderGeometry(0.8, 0.8, 0.12, 20, 1, false, 0, Math.PI), mat(0x050505), -BW / 2, 5.43, 0);
     notch.rotation.y = -Math.PI / 2;
-    cyl(c, 0.45, 0.1, -3.6, 5.4, 2.2, 0x050505);
-    decal(c, 9.6, 6.4, 0, 5.42, 0, (x, k) => {
-      x.fillStyle = '#141414'; x.fillRect(0, 0, 9.6 * k, 6.4 * k);
-      text(x, k, mark, 4.8, 2.7, 1.55, { color: '#d8d8d8' }); text(x, k, sub, 4.8, 4.6, 0.95, { color: '#9a9a9a', weight: 500 });
+    cyl(c, 0.45, 0.1, -BW / 2 + 1.2, 5.4, 2.2, 0x050505);
+    decal(c, BW, 6.4, 0, 5.42, 0, (x, k) => {
+      x.fillStyle = '#141414'; x.fillRect(0, 0, BW * k, 6.4 * k);
+      text(x, k, mark, BW / 2, 2.7, 1.55, { color: '#d8d8d8' }); text(x, k, sub, BW / 2, 4.6, 0.95, { color: '#9a9a9a', weight: 500 });
     }, 18);
     // Pattes : sorties latérales argentées, puis point de raccordement doré à l'avant et à l'arrière du support.
     names.forEach((n, i) => {
-      const front = i < 4, x = front ? (i - 1.5) * PITCH : (1.5 - (i - 4)) * PITCH, s = front ? 1 : -1;
+      const front = i < half, x = front ? (i - mid) * PITCH : (mid - (i - half)) * PITCH, s = front ? 1 : -1;
       block(c, 0.6, 0.3, 1.4, x, 3.2, s * 3.8, M.leg);
       block(c, 0.6, 1.4, 0.3, x, 2.2, s * 4.4, M.leg);
       leg(c, n, x, s * row, 2.2, 4);
@@ -144,9 +146,10 @@ function scope(c) {
 /** Catégories ajoutées à celles de catalog.js, dans cet ordre. */
 export const ANALOG_CATEGORIES = [tl('Circuits intégrés'), tl('Instruments')];
 export const ANALOG_LIBRARY = [
-  { id: 'ne555', name: tl('Minuterie NE555'), cat: tl('Circuits intégrés'), pre: 'U', build: dip8(['GND', 'TRIG', 'OUT', 'RESET', 'CV', 'THR', 'DIS', 'VCC'], 'NE555', 'TIMER') },
-  { id: 'lm358', name: tl('Ampli-op double LM358'), cat: tl('Circuits intégrés'), pre: 'U', build: dip8(['1OUT', '1IN-', '1IN+', 'GND', '2IN+', '2IN-', '2OUT', 'VCC'], 'LM358', 'DUAL OP-AMP') },
+  { id: 'ne555', name: tl('Minuterie NE555'), cat: tl('Circuits intégrés'), pre: 'U', build: dip(['GND', 'TRIG', 'OUT', 'RESET', 'CV', 'THR', 'DIS', 'VCC'], 'NE555', 'TIMER') },
+  { id: 'lm358', name: tl('Ampli-op double LM358'), cat: tl('Circuits intégrés'), pre: 'U', build: dip(['1OUT', '1IN-', '1IN+', 'GND', '2IN+', '2IN-', '2OUT', 'VCC'], 'LM358', 'DUAL OP-AMP') },
   { id: 'irlz44n', name: tl('MOSFET logique IRLZ44N'), cat: tl('Passifs'), pre: 'Q', build: to220(['G', 'D', 'S'], 'IRLZ44N') },
+  { id: 'irf9540n', name: tl('MOSFET canal P IRF9540N'), cat: tl('Passifs'), pre: 'Q', build: to220(['G', 'D', 'S'], 'IRF9540N') },
   { id: 'ind-10m', name: tl('Bobine 10 mH'), cat: tl('Passifs'), pre: 'L', build: inductor([1, 0, 3, 's']) },
   { id: 'siggen', name: tl('Générateur de fonctions'), cat: tl('Instruments'), pre: 'GEN', build: siggen },
   { id: 'scope', name: tl('Oscilloscope 2 voies'), cat: tl('Instruments'), pre: 'OSC', build: scope }

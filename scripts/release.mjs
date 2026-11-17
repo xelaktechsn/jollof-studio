@@ -54,6 +54,17 @@ const conf = {
 // Sous Windows, une version bilingue ne produit que l'installateur NSIS : c'est lui qui demande la langue.
 if (lang === 'auto' && process.platform === 'win32') conf.bundle.targets = ['nsis'];
 
+// ffmpeg (LGPL) livré à côté de l'application pour les masters ProRes/DNxHR et le repli du rendu sous Linux :
+// préparé pour la cible (scripts/ffmpeg.mjs), avec le texte de sa licence. --no-ffmpeg pour s'en passer.
+if (!own.includes('--no-ffmpeg')) {
+  if (!own.includes('--dry-run')) {
+    const f = spawnSync(process.execPath, [join(root, 'scripts', 'ffmpeg.mjs'), ...(target ? ['--target', target] : [])], { cwd: root, stdio: 'inherit' });
+    if (f.status !== 0) process.exit(f.status || 1);
+  }
+  conf.bundle.externalBin = ['binaries/ffmpeg'];
+  conf.bundle.resources = { 'binaries/FFMPEG-LICENSE.txt': 'licenses/FFMPEG-LICENSE.txt' };
+}
+
 if (own.includes('--dry-run')) { console.log(JSON.stringify(conf, null, 2)); console.log('VITE_EDITION=' + edition, lang === 'auto' ? '' : 'VITE_LANG=' + lang, apiUrl ? 'VITE_API_URL=' + apiUrl : ''); process.exit(0); }
 const confPath = join(root, 'src-tauri', `tauri.release.conf.json`);
 writeFileSync(confPath, JSON.stringify(conf, null, 2));

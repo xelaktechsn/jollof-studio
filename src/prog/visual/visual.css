@@ -20,7 +20,7 @@
 .blocklyWidgetDiv .blocklyMenuItem, .blocklyContextMenu .blocklyMenuItem { color: var(--fg); }
 .blocklyWidgetDiv .blocklyMenuItemHighlight, .blocklyContextMenu .blocklyMenuItemHighlight { background: var(--raise-2); }
 .blocklyWidgetDiv .blocklyMenuItemDisabled { color: var(--muted); }
-.blocklyTooltipDiv { background: #1c232a; color: var(--fg); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow); font: 12px/1.4 var(--sans); padding: 5px 8px; opacity: 1; }
+.blocklyTooltipDiv { background: var(--tip); color: var(--fg); border: 1px solid var(--line-2); border-radius: 6px; box-shadow: var(--shadow); font: 12px/1.4 var(--sans); padding: 5px 8px; opacity: 1; }
 .blocklyWidgetDiv .blocklyHtmlInput { font-family: var(--sans); }
 
 /* Boîte de dialogue des blocs (nom d'une variable…) : window.prompt n'existe pas partout. */

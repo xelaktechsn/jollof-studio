@@ -1,0 +1,1108 @@
+{
+ "id": "pn16-magasin-transfert",
+ "level": "pro",
+ "minutes": 60,
+ "series": "usine",
+ "title": {
+  "fr": "Magasin et transfert : un pick-and-place en GRAFCET, puis en Ladder",
+  "en": "Magazine and transfer: a pick-and-place in GRAFCET, then in ladder"
+ },
+ "summary": {
+  "fr": "Un poste de distribution comme dans une usine, en 3D : un magasin de pièces, un poussoir, un bras de transfert et une ventouse qui descend. Les capteurs de la machine (pièce dans le magasin, pièce en position de prise) réagissent vraiment à ce que fait le programme. On écrit le GRAFCET du cycle, on le voit tourner, puis on le traduit en Ladder pour l’automate.",
+  "en": "A distribution station like in a factory, in 3D: a parts magazine, a pusher, a transfer arm and a suction cup that comes down. The machine’s sensors (part in the magazine, part at the pick position) really react to what the program does. You write the GRAFCET of the cycle, watch it run, then translate it to ladder for the PLC."
+ },
+ "objectives": [
+  {
+   "fr": "Lire les capteurs d’une machine (magasin, position de prise) dans un GRAFCET, comme les fins de course",
+   "en": "Read a machine’s sensors (magazine, pick position) in a GRAFCET, like the limit switches"
+  },
+  {
+   "fr": "Écrire un cycle à trois vérins avec prise et dépose",
+   "en": "Write a three-cylinder cycle with pick and place"
+  },
+  {
+   "fr": "Protéger le cycle : pas de départ magasin vide, pas de bourrage",
+   "en": "Protect the cycle: no start with an empty magazine, no jam"
+  },
+  {
+   "fr": "Traduire le GRAFCET en Ladder et vérifier que l’automate donne le même cycle",
+   "en": "Translate the GRAFCET to ladder and check the PLC gives the same cycle"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Les capteurs d’une machine (mag, pp) se lisent dans les réceptivités exactement comme les capteurs des vérins : la partie commande ne sait pas d’où vient un bit.",
+   "en": "A machine’s sensors (mag, pp) are read in receptivities exactly like the cylinder sensors: the control part doesn’t know where a bit comes from."
+  },
+  {
+   "fr": "Une réceptivité de départ protège le cycle : dcy · mag · NON pp · a0 · b0 · c0. Sans NON pp, un second départ pousse une pièce sur celle qui attend : bourrage.",
+   "en": "A start receptivity protects the cycle: dcy · mag · NOT pp · a0 · b0 · c0. Without NOT pp, a second start pushes a part onto the one waiting: jam."
+  },
+  {
+   "fr": "Avec des distributeurs monostables, une action doit être maintenue dans chaque étape où le vérin doit rester sorti (Y2 pendant la dépose).",
+   "en": "With monostable valves, an action must be held in every step where the cylinder has to stay extended (Y2 during the deposit)."
+  },
+  {
+   "fr": "Le GRAFCET se traduit mécaniquement en Ladder : un bit par étape, un réseau par transition (S et R), un réseau par action. Les deux donnent le même cycle.",
+   "en": "A GRAFCET translates mechanically to ladder: one bit per step, one rung per transition (S and R), one rung per action. Both give the same cycle."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Magasin et transfert",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "A",
+         "s0": "a0",
+         "s1": "a1"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "B",
+        "type": "cyl2",
+        "x": 36,
+        "y": 0,
+        "p": {
+         "label": "B",
+         "s0": "b0",
+         "s1": "b1"
+        }
+       },
+       {
+        "id": "v2",
+        "type": "v52",
+        "x": 28,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y2",
+         "label": "2V1"
+        }
+       },
+       {
+        "id": "C",
+        "type": "cyl2",
+        "x": 72,
+        "y": 0,
+        "p": {
+         "label": "C",
+         "s0": "c0",
+         "s1": "c1"
+        }
+       },
+       {
+        "id": "v3",
+        "type": "v52",
+        "x": 64,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y3",
+         "label": "3V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "scene": {
+       "kind": "feeder",
+       "push": "A",
+       "arm": "B",
+       "down": "C",
+       "start": "dcy"
+      },
+      "tubes": [],
+      "grafcet": {
+       "inputs": [
+        {
+         "name": "dcy",
+         "kind": "push"
+        }
+       ],
+       "steps": []
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "A",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "A",
+      "2"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v2",
+      "1"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "v2",
+      "4"
+     ],
+     "b": [
+      "B",
+      "1"
+     ]
+    },
+    {
+     "id": "t6",
+     "a": [
+      "v2",
+      "2"
+     ],
+     "b": [
+      "B",
+      "2"
+     ]
+    },
+    {
+     "id": "t7",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v3",
+      "1"
+     ]
+    },
+    {
+     "id": "t8",
+     "a": [
+      "v3",
+      "4"
+     ],
+     "b": [
+      "C",
+      "1"
+     ]
+    },
+    {
+     "id": "t9",
+     "a": [
+      "v3",
+      "2"
+     ],
+     "b": [
+      "C",
+      "2"
+     ]
+    }
+   ],
+   "grafcet": {
+    "inputs": [
+     {
+      "name": "dcy",
+      "kind": "push"
+     }
+    ],
+    "steps": [
+     {
+      "n": 0,
+      "init": true,
+      "act": "",
+      "r": "dcy . mag . NON pp . a0 . b0 . c0",
+      "to": 1
+     },
+     {
+      "n": 1,
+      "act": "Y1",
+      "r": "a1",
+      "to": 2
+     },
+     {
+      "n": 2,
+      "act": "",
+      "r": "a0 . pp",
+      "to": 3
+     },
+     {
+      "n": 3,
+      "act": "Y3",
+      "r": "c1",
+      "to": 4
+     },
+     {
+      "n": 4,
+      "act": "",
+      "r": "c0",
+      "to": 5
+     },
+     {
+      "n": 5,
+      "act": "Y2",
+      "r": "b1",
+      "to": 6
+     },
+     {
+      "n": 6,
+      "act": "Y2, Y3",
+      "r": "c1",
+      "to": 7
+     },
+     {
+      "n": 7,
+      "act": "Y2",
+      "r": "c0",
+      "to": 8
+     },
+     {
+      "n": 8,
+      "act": "",
+      "r": "b0",
+      "to": 0
+     }
+    ],
+    "drive": false
+   },
+   "plc": {
+    "name": "API1",
+    "drive": true,
+    "cycle": 10,
+    "inputs": [
+     {
+      "name": "dcy",
+      "kind": "push"
+     }
+    ],
+    "rungs": [
+     {
+      "id": "emwhgume42",
+      "comment": "Mise sous tension : étape initiale",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume40",
+        "v": "INIT"
+       },
+       {
+        "t": "set",
+        "id": "emwhgume41",
+        "v": "X0"
+       }
+      ]
+     },
+     {
+      "id": "emwhgume4d",
+      "comment": "Transition X0 → X1 : dcy . mag . NON pp . a0 . b0 . c0",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume4b",
+        "v": "X0"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume43",
+        "v": "dcy"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume44",
+        "v": "mag"
+       },
+       {
+        "t": "nc",
+        "id": "emwhgume45",
+        "v": "pp"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume46",
+        "v": "a0"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume47",
+        "v": "b0"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume48",
+        "v": "c0"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume4c",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume49",
+           "v": "X1"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume4a",
+           "v": "X0"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume4j",
+      "comment": "Transition X1 → X2 : a1",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume4h",
+        "v": "X1"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume4e",
+        "v": "a1"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume4i",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume4f",
+           "v": "X2"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume4g",
+           "v": "X1"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume4q",
+      "comment": "Transition X2 → X3 : a0 . pp",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume4o",
+        "v": "X2"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume4k",
+        "v": "a0"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume4l",
+        "v": "pp"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume4p",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume4m",
+           "v": "X3"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume4n",
+           "v": "X2"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume4w",
+      "comment": "Transition X3 → X4 : c1",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume4u",
+        "v": "X3"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume4r",
+        "v": "c1"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume4v",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume4s",
+           "v": "X4"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume4t",
+           "v": "X3"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume412",
+      "comment": "Transition X4 → X5 : c0",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume410",
+        "v": "X4"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume4x",
+        "v": "c0"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume411",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume4y",
+           "v": "X5"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume4z",
+           "v": "X4"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume418",
+      "comment": "Transition X5 → X6 : b1",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume416",
+        "v": "X5"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume413",
+        "v": "b1"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume417",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume414",
+           "v": "X6"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume415",
+           "v": "X5"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume41e",
+      "comment": "Transition X6 → X7 : c1",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume41c",
+        "v": "X6"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume419",
+        "v": "c1"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume41d",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume41a",
+           "v": "X7"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume41b",
+           "v": "X6"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume41k",
+      "comment": "Transition X7 → X8 : c0",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume41i",
+        "v": "X7"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume41f",
+        "v": "c0"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume41j",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume41g",
+           "v": "X8"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume41h",
+           "v": "X7"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume51q",
+      "comment": "Transition X8 → X0 : b0",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume51o",
+        "v": "X8"
+       },
+       {
+        "t": "no",
+        "id": "emwhgume41l",
+        "v": "b0"
+       },
+       {
+        "t": "par",
+        "id": "emwhgume51p",
+        "branches": [
+         [
+          {
+           "t": "set",
+           "id": "emwhgume41m",
+           "v": "X0"
+          }
+         ],
+         [
+          {
+           "t": "reset",
+           "id": "emwhgume41n",
+           "v": "X8"
+          }
+         ]
+        ]
+       }
+      ]
+     },
+     {
+      "id": "emwhgume51t",
+      "comment": "Action Y1",
+      "items": [
+       {
+        "t": "no",
+        "id": "emwhgume51r",
+        "v": "X1"
+       },
+       {
+        "t": "coil",
+        "id": "emwhgume51s",
+        "v": "Y1"
+       }
+      ]
+     },
+     {
+      "id": "emwhgume51y",
+      "comment": "Action Y3",
+      "items": [
+       {
+        "t": "par",
+        "id": "emwhgume51w",
+        "branches": [
+         [
+          {
+           "t": "no",
+           "id": "emwhgume51u",
+           "v": "X3"
+          }
+         ],
+         [
+          {
+           "t": "no",
+           "id": "emwhgume51v",
+           "v": "X6"
+          }
+         ]
+        ]
+       },
+       {
+        "t": "coil",
+        "id": "emwhgume51x",
+        "v": "Y3"
+       }
+      ]
+     },
+     {
+      "id": "emwhgume524",
+      "comment": "Action Y2",
+      "items": [
+       {
+        "t": "par",
+        "id": "emwhgume522",
+        "branches": [
+         [
+          {
+           "t": "no",
+           "id": "emwhgume51z",
+           "v": "X5"
+          }
+         ],
+         [
+          {
+           "t": "no",
+           "id": "emwhgume520",
+           "v": "X6"
+          }
+         ],
+         [
+          {
+           "t": "no",
+           "id": "emwhgume521",
+           "v": "X7"
+          }
+         ]
+        ]
+       },
+       {
+        "t": "coil",
+        "id": "emwhgume523",
+        "v": "Y2"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le poste de distribution",
+    "en": "The distribution station"
+   },
+   "text": {
+    "fr": "La vue 3D montre le poste : un **magasin** à gravité garde six pièces empilées ; le vérin **A** (poussoir, capteurs a0, a1) amène la pièce du bas en **position de prise** ; au-dessus, le vérin **B** (bras, b0, b1) déplace un chariot entre la position de prise (bras rentré) et la palette (bras sorti) ; le vérin **C** (c0, c1) descend une **ventouse** : en bas, elle prend la pièce qui attend ou dépose celle qu’elle porte.\nLa machine a deux capteurs à elle : **mag** (une pièce est dans le magasin) et **pp** (une pièce attend en position de prise). Ils s’allument dans le bandeau de la vue 3D et se lisent dans le GRAFCET comme a1 ou b0. Si la vue 3D n’est pas ouverte, cliquez le bouton **3D** du plan.",
+    "en": "The 3D view shows the station: a gravity **magazine** holds six stacked parts; cylinder **A** (pusher, sensors a0, a1) brings the bottom part to the **pick position**; above, cylinder **B** (arm, b0, b1) moves a carriage between the pick position (arm retracted) and the pallet (arm extended); cylinder **C** (c0, c1) lowers a **suction cup**: at the bottom it grabs the waiting part or releases the one it carries.\nThe machine has two sensors of its own: **mag** (a part is in the magazine) and **pp** (a part is waiting at the pick position). They light up in the 3D view’s strip and are read in the GRAFCET like a1 or b0. If the 3D view is not open, click the **3D** button of the workspace."
+   },
+   "check": {
+    "type": "ui",
+    "need": [
+     "3d"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Qui dit qu’une pièce attend ?",
+    "en": "Which one says a part is waiting?"
+   },
+   "text": {
+    "fr": "Quel capteur indique qu’une pièce attend en position de prise ?",
+    "en": "Which sensor tells that a part is waiting at the pick position?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "a1 : le poussoir est sorti",
+      "en": "a1: the pusher is extended"
+     },
+     {
+      "fr": "pp : la pièce est devant le capteur de la position de prise",
+      "en": "pp: the part is in front of the pick-position sensor"
+     },
+     {
+      "fr": "mag : il reste des pièces dans le magasin",
+      "en": "mag: parts remain in the magazine"
+     },
+     {
+      "fr": "c1 : la ventouse est en bas",
+      "en": "c1: the cup is down"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez la source d’air à l’orifice 1 des trois distributeurs **1V1**, **2V1**, **3V1**, puis l’orifice 4 de chacun à la chambre arrière (orifice 1) de son vérin et l’orifice 2 à la chambre avant (orifice 2). Distributeurs monostables : la bobine excitée fait sortir la tige, le ressort la rentre.",
+    "en": "Connect the air supply to port 1 of the three valves **1V1**, **2V1**, **3V1**, then port 4 of each to the rear chamber (port 1) of its cylinder and port 2 to the front chamber (port 2). Monostable valves: the energised coil extends the rod, the spring retracts it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "A:1"
+     ],
+     [
+      "v1:2",
+      "A:2"
+     ],
+     [
+      "src:1",
+      "v2:1"
+     ],
+     [
+      "v2:4",
+      "B:1"
+     ],
+     [
+      "v2:2",
+      "B:2"
+     ],
+     [
+      "src:1",
+      "v3:1"
+     ],
+     [
+      "v3:4",
+      "C:1"
+     ],
+     [
+      "v3:2",
+      "C:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Prise bras rentré, dépose bras sorti",
+    "en": "Pick with the arm in, place with the arm out"
+   },
+   "text": {
+    "fr": "Pourquoi la ventouse doit-elle descendre **bras rentré** (b0) pour prendre la pièce ?",
+    "en": "Why must the cup come down with the **arm retracted** (b0) to grab the part?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Bras rentré, la ventouse est au-dessus de la position de prise ; bras sorti, elle est au-dessus de la palette",
+      "en": "Arm in, the cup is above the pick position; arm out, it is above the pallet"
+     },
+     {
+      "fr": "Le vérin C ne peut pas descendre quand B est sorti",
+      "en": "Cylinder C cannot come down while B is out"
+     },
+     {
+      "fr": "Pour aller plus vite",
+      "en": "To go faster"
+     },
+     {
+      "fr": "Parce que b0 et c1 sont le même capteur",
+      "en": "Because b0 and c1 are the same sensor"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Le GRAFCET du cycle",
+    "en": "The GRAFCET of the cycle"
+   },
+   "text": {
+    "fr": "Ouvrez le panneau **GRAFCET** et écrivez le cycle, à partir de l’étape initiale X0 :\n- X0 → X1 : `dcy . mag . NON pp . a0 . b0 . c0` (départ : une pièce dans le magasin, aucune en attente, tout rentré)\n- X1 : **Y1** (pousser) → `a1`\n- X2 : rien (le poussoir revient) → `a0 . pp`\n- X3 : **Y3** (descendre : prise) → `c1`\n- X4 : rien (remonter) → `c0`\n- X5 : **Y2** (transférer) → `b1`\n- X6 : **Y2, Y3** (descendre : dépose) → `c1`\n- X7 : **Y2** (remonter) → `c0`\n- X8 : rien (le bras revient) → `b0` → X0",
+    "en": "Open the **GRAFCET** panel and write the cycle from the initial step X0:\n- X0 → X1: `dcy . mag . NON pp . a0 . b0 . c0` (start: a part in the magazine, none waiting, everything retracted)\n- X1: **Y1** (push) → `a1`\n- X2: nothing (the pusher returns) → `a0 . pp`\n- X3: **Y3** (go down: pick) → `c1`\n- X4: nothing (go up) → `c0`\n- X5: **Y2** (transfer) → `b1`\n- X6: **Y2, Y3** (go down: place) → `c1`\n- X7: **Y2** (go up) → `c0`\n- X8: nothing (the arm returns) → `b0` → X0"
+   },
+   "hint": {
+    "fr": "Y2 doit rester écrite dans X5, X6 et X7 : le distributeur est monostable, sans Y2 le bras rentre. mag et pp se tapent comme un capteur dans la réceptivité (la palette les propose).",
+    "en": "Y2 must stay written in X5, X6 and X7: the valve is monostable, without Y2 the arm retracts. mag and pp are typed like any sensor in the receptivity (the palette offers them)."
+   },
+   "check": {
+    "type": "grafcet",
+    "outputs": [
+     "Y1",
+     "Y2",
+     "Y3"
+    ],
+    "reads": [
+     "dcy",
+     "mag",
+     "pp",
+     "a0",
+     "a1",
+     "b0",
+     "b1",
+     "c0",
+     "c1"
+    ],
+    "minSteps": 8
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : une pièce transférée",
+    "en": "Test: one part transferred"
+   },
+   "text": {
+    "fr": "Lancez la simulation et donnez une impulsion sur **dcy** (pupitre du GRAFCET, bouton « Départ » de la vue 3D ou bouton ci-dessous). Regardez la pièce quitter le magasin, la ventouse la prendre et la déposer sur la palette ; le compteur « Transférées » du bandeau passe à 1.",
+    "en": "Run the simulation and pulse **dcy** (GRAFCET control panel, the “Start” button in the 3D view or the button below). Watch the part leave the magazine, the cup grab it and place it on the pallet; the “Transferred” counter in the strip goes to 1."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pulse"
+    },
+    "expect": [
+     "A+",
+     "A-",
+     "C+",
+     "C-",
+     "B+",
+     "C+",
+     "C-",
+     "B-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le bourrage",
+    "en": "The jam"
+   },
+   "text": {
+    "fr": "Imaginez le GRAFCET sans `NON pp` dans la première réceptivité. Une pièce attend déjà en position de prise et l’opérateur appuie sur dcy. Que se passe-t-il ?",
+    "en": "Imagine the GRAFCET without `NON pp` in the first receptivity. A part is already waiting at the pick position and the operator presses dcy. What happens?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : le poussoir ne peut pas sortir",
+      "en": "Nothing: the pusher cannot extend"
+     },
+     {
+      "fr": "La ventouse prend les deux pièces",
+      "en": "The cup grabs both parts"
+     },
+     {
+      "fr": "Le poussoir envoie une seconde pièce sur celle qui attend : bourrage (la vue 3D l’affiche en rouge)",
+      "en": "The pusher sends a second part onto the waiting one: a jam (the 3D view shows it in red)"
+     },
+     {
+      "fr": "Le magasin se vide d’un coup",
+      "en": "The magazine empties at once"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Du GRAFCET à l’automate",
+    "en": "From the GRAFCET to the PLC"
+   },
+   "text": {
+    "fr": "Dans l’industrie, c’est un automate qui exécute ce cycle. Ouvrez le panneau **Automate** et cliquez **« Écrire le Ladder d’après le GRAFCET »** : un bit de mémoire par étape (X0…X8), un réseau par transition (mise à 1 de l’étape suivante, mise à 0 de la précédente), un réseau par action. Le GRAFCET passe en observation ; c’est l’automate qui commande les électrovannes. Parcourez les réseaux : retrouvez la transition X0 → X1 et ses contacts mag et pp.",
+    "en": "In industry, a PLC runs this cycle. Open the **PLC** panel and click **“Write the ladder from the GRAFCET”**: one memory bit per step (X0…X8), one rung per transition (set the next step, reset the previous one), one rung per action. The GRAFCET switches to observing; the PLC now drives the solenoid valves. Browse the rungs: find transition X0 → X1 and its mag and pp contacts."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1",
+     "Y2",
+     "Y3"
+    ],
+    "reads": [
+     "dcy",
+     "mag",
+     "pp"
+    ],
+    "minRungs": 10
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : le même cycle par l’automate",
+    "en": "Test: the same cycle from the PLC"
+   },
+   "text": {
+    "fr": "Relancez la simulation, impulsion sur **dcy** : le cycle est identique, mais ce sont les réseaux Ladder qui s’allument. Videz le magasin (six impulsions) : **mag** retombe et le cycle ne repart plus ; « Remplir le magasin » le regarnit.",
+    "en": "Run the simulation again, pulse **dcy**: the cycle is identical, but now the ladder rungs light up. Empty the magazine (six pulses): **mag** drops and the cycle no longer starts; “Refill the magazine” restocks it."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "dcy": "pulse"
+    },
+    "expect": [
+     "A+",
+     "A-",
+     "C+",
+     "C-",
+     "B+",
+     "C+",
+     "C-",
+     "B-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Magasin vide",
+    "en": "Empty magazine"
+   },
+   "text": {
+    "fr": "Le magasin est vide (mag = 0) quand l’opérateur appuie sur dcy. Que fait le cycle ?",
+    "en": "The magazine is empty (mag = 0) when the operator presses dcy. What does the cycle do?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Il tourne à vide : le poussoir sort et la ventouse descend pour rien",
+      "en": "It runs empty: the pusher extends and the cup comes down for nothing"
+     },
+     {
+      "fr": "Il ne démarre pas : la transition X0 → X1 attend mag",
+      "en": "It does not start: transition X0 → X1 waits for mag"
+     },
+     {
+      "fr": "Il remplit le magasin",
+      "en": "It refills the magazine"
+     },
+     {
+      "fr": "L’automate se met en erreur",
+      "en": "The PLC goes into error"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

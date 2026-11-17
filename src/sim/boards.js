@@ -63,12 +63,12 @@ export const BOARDS = {
     gpio: pins([
       ['VP', 36, 'in adc', ESP_IN], ['VN', 39, 'in adc', ESP_IN], ['D34', 34, 'in adc', ESP_IN], ['D35', 35, 'in adc', ESP_IN],
       ['D32', 32, 'in out pu pwm adc'], ['D33', 33, 'in out pu pwm adc'],
-      ['D25', 25, 'in out pu pwm'], ['D26', 26, 'in out pu pwm'], ['D27', 27, 'in out pu pwm'], ['D14', 14, 'in out pu pwm'],
-      ['D12', 12, 'in out pu pwm', tl('broche de démarrage : tirée au niveau haut au démarrage, elle empêche l’ESP32 de démarrer')],
-      ['D13', 13, 'in out pu pwm'], ['D23', 23, 'in out pu pwm'], ['D22', 22, 'in out pu pwm'], ['D21', 21, 'in out pu pwm'],
+      ['D25', 25, 'in out pu pwm adc'], ['D26', 26, 'in out pu pwm adc'], ['D27', 27, 'in out pu pwm adc'], ['D14', 14, 'in out pu pwm adc'],
+      ['D12', 12, 'in out pu pwm adc', tl('broche de démarrage : tirée au niveau haut au démarrage, elle empêche l’ESP32 de démarrer')],
+      ['D13', 13, 'in out pu pwm adc'], ['D23', 23, 'in out pu pwm'], ['D22', 22, 'in out pu pwm'], ['D21', 21, 'in out pu pwm'],
       ['D19', 19, 'in out pu pwm'], ['D18', 18, 'in out pu pwm'], ['D5', 5, 'in out pu pwm', ESP_BOOT],
-      ['TX2', 17, 'in out pu pwm'], ['RX2', 16, 'in out pu pwm'], ['D4', 4, 'in out pu pwm'],
-      ['D2', 2, 'in out pu pwm', tl('reliée à la LED bleue de la carte ; broche de démarrage')], ['D15', 15, 'in out pu pwm', ESP_BOOT],
+      ['TX2', 17, 'in out pu pwm'], ['RX2', 16, 'in out pu pwm'], ['D4', 4, 'in out pu pwm adc'],
+      ['D2', 2, 'in out pu pwm adc', tl('reliée à la LED bleue de la carte ; broche de démarrage')], ['D15', 15, 'in out pu pwm adc', ESP_BOOT],
       ['TX0', 1, 'in out uart0', tl('TX du port série USB')], ['RX0', 3, 'in out uart0', tl('RX du port série USB')]
     ]),
     order: ['D4', 'D13', 'D14', 'D27', 'D26', 'D25', 'D33', 'D32', 'RX2', 'TX2', 'D19', 'D18', 'D23', 'D5', 'D15', 'D2', 'D21', 'D22', 'D12', 'D34', 'D35', 'VP', 'VN'],
@@ -91,11 +91,11 @@ export const BOARDS = {
     gpio: pins([
       ['VP', 36, 'in adc', ESP_IN], ['VN', 39, 'in adc', ESP_IN], ['IO34', 34, 'in adc', ESP_IN], ['IO35', 35, 'in adc', ESP_IN],
       ['IO32', 32, 'in out pu pwm adc'], ['IO33', 33, 'in out pu pwm adc'],
-      ...[25, 26, 27, 14, 13, 23, 22, 21, 19, 18, 17, 16, 4].map(n => [`IO${n}`, n, 'in out pu pwm']),
-      ['IO12', 12, 'in out pu pwm', tl('broche de démarrage : tirée au niveau haut au démarrage, elle empêche l’ESP32 de démarrer')],
-      ['IO5', 5, 'in out pu pwm', ESP_BOOT], ['IO15', 15, 'in out pu pwm', ESP_BOOT],
+      ...[25, 26, 27, 14, 13, 23, 22, 21, 19, 18, 17, 16, 4].map(n => [`IO${n}`, n, [25, 26, 27, 14, 13, 4].includes(n) ? 'in out pu pwm adc' : 'in out pu pwm']), // ADC2 : 25, 26, 27, 14, 13, 4
+      ['IO12', 12, 'in out pu pwm adc', tl('broche de démarrage : tirée au niveau haut au démarrage, elle empêche l’ESP32 de démarrer')],
+      ['IO5', 5, 'in out pu pwm', ESP_BOOT], ['IO15', 15, 'in out pu pwm adc', ESP_BOOT],
       ['IO0', 0, 'in out pu pwm', tl('reliée au bouton BOOT ; broche de démarrage : un niveau bas au démarrage bloque la carte en mode téléversement')],
-      ['IO2', 2, 'in out pu pwm', tl('broche de démarrage ; reliée à la LED bleue sur la NodeMCU-32S')],
+      ['IO2', 2, 'in out pu pwm adc', tl('broche de démarrage ; reliée à la LED bleue sur la NodeMCU-32S')],
       ['TX', 1, 'in out uart0', tl('TX du port série USB')], ['RX', 3, 'in out uart0', tl('RX du port série USB')],
       ...['SD0', 'SD1', 'SD2', 'SD3', 'CMD', 'CLK'].map(k => [k, k, 'flash', tl('reliée à la mémoire flash : à ne jamais utiliser')])
     ]),
@@ -129,7 +129,8 @@ export const BOARDS = {
     order: ['IO15', 'IO16', 'IO17', 'IO18', 'IO21', 'IO47', 'IO14', 'IO13', 'IO12', 'IO11', 'IO42', 'IO41', 'IO40', 'IO39', 'IO10', 'IO9', 'IO8', 'IO7', 'IO6', 'IO5', 'IO4', 'IO2', 'IO1', 'IO38', 'IO48', 'IO3', 'IO45', 'IO0'],
     adcOrder: ['IO1', 'IO2', 'IO4', 'IO5', 'IO6', 'IO7', 'IO10', 'IO3', 'IO8', 'IO9'],
     i2c: { sda: 'IO8', scl: 'IO9' }, spi: { sck: 'IO12', miso: 'IO13', mosi: 'IO11', ss: 'IO10' }, uart: { rx: 'IO15', tx: 'IO16', port: 'Serial1', pins: true },
-    strap: { IO0: 1, IO45: 0 },
+    // IO45 haut : flash à 1,8 V ; IO46 haut avec IO0 bas : combinaison invalide (fiche, Table 3-3).
+    strap: { IO0: 1, IO45: 0, IO46: 0 },
     adcNote: tl('elle appartient à l’ADC1 (GPIO 1 à 10), qui reste utilisable quand le Wi-Fi est actif.'),
     tips: [tl('À éviter : IO0, IO3, IO45 et IO46 (démarrage), IO19 et IO20 (USB natif), IO35 à IO37 (PSRAM des modules N8R8), TX et RX (port série USB). Entrées analogiques utilisables avec le Wi-Fi : IO1 à IO10.'),
       tl('Deux prises USB : « UART » (puce USB-série : téléversement et moniteur série) et « USB » (USB natif de l’ESP32-S3).')],
@@ -151,7 +152,8 @@ export const BOARDS = {
     order: ['IO5', 'IO6', 'IO7', 'IO10', 'IO4', 'IO3', 'IO1', 'IO0', 'IO20', 'IO21', 'IO2', 'IO8', 'IO9'],
     adcOrder: ['IO0', 'IO1', 'IO3', 'IO4', 'IO2'],
     i2c: { sda: 'IO8', scl: 'IO9' }, spi: { sck: 'IO4', miso: 'IO5', mosi: 'IO6', ss: 'IO7' }, uart: { rx: 'IO20', tx: 'IO21', port: 'Serial1', pins: true },
-    strap: { IO9: 1, IO8: 1 },
+    // IO2 : « it is recommended to pull this pin up » (fiche de l'ESP32-C3, Table 3-3).
+    strap: { IO9: 1, IO8: 1, IO2: 1 },
     adcNote: tl('elle appartient à l’ADC1 (GPIO 0 à 4).'),
     tips: [tl('Entrées analogiques : IO0 à IO4. À éviter : IO2, IO8 et IO9 (démarrage ; IO8 porte la LED, IO9 le bouton BOOT).'),
       tl('Le moniteur série passe par l’USB natif : Serial ne touche aucune broche. IO20 et IO21 restent libres pour un module série (Serial1).')],
@@ -271,9 +273,41 @@ for (const [type, prof] of Object.entries(BOARDS)) {
 
 /** Autres sources d'énergie : tension par broche, 0 pour la masse. */
 // Générateur de fonctions : sa masse est une référence (sa sortie varie, elle n'est pas une source fixe).
-export const SOURCES = { bat9v: { '+': 9, '-': 0 }, psu24: { '+': 24, '-': 0 }, bat18650: { '+': 3.7, '-': 0 }, mb102: { '+5V': 5, '+3V3': 3.3, GND: 0 }, siggen: { GND: 0 } };
-/** Régulateurs : la sortie existe si l'entrée reçoit assez de tension. */
-export const DERIVED = { lm7805: { from: 'IN', out: 'OUT', v: 5, min: 7 }, l298n: { from: '+12V', out: '+5V', v: 5, min: 7 } };
+// Panneau solaire : 6 V nominal pour l'analyse du câblage ; le solveur (dc.js) suit la lumière de l'environnement.
+export const SOURCES = { bat9v: { '+': 9, '-': 0 }, psu24: { '+': 24, '-': 0 }, bat18650: { '+': 3.7, '-': 0 }, mb102: { '+5V': 5, '+3V3': 3.3, GND: 0 }, siggen: { GND: 0 }, solar6v: { '+': 6, '-': 0 } };
+/**
+ * Tension de sortie réglable par composant (c.inp.vout, en volts) des convertisseurs à découpage : défaut et bornes
+ * (LM2596 : 1,23 à 37 V ; MT3608 : jusqu'à 28 V).
+ */
+export const VOUT = { lm2596: { def: 5, lo: 1.25, hi: 37 }, mt3608: { def: 9, lo: 2, hi: 28 } };
+/** Tension de sortie réglée d'un convertisseur (celle de son type si rien n'est réglé ou si la valeur est hors bornes). */
+export function voutOf(c) {
+  const s = c && VOUT[c.type]; if (!s) return 0;
+  const v = c.inp && +c.inp.vout;
+  return Number.isFinite(v) && v >= s.lo && v <= s.hi ? v : s.def;
+}
+/**
+ * Régulateurs : la sortie existe si l'entrée reçoit assez de tension.
+ * from, out, gnd (GND par défaut) : broches ; v : tension de sortie (nombre, ou fonction du composant) ; min : tension
+ * d'entrée à partir de laquelle la sortie est tenue ; uvlo : en dessous, le régulateur est coupé (min par défaut) ;
+ * drop : entre uvlo et min, la sortie suit l'entrée moins drop (régulateur saturé) ; boost : élévateur, la sortie ne
+ * descend jamais sous l'entrée moins drop (diode Schottky) ; eff : rendement d'un convertisseur à découpage, le courant
+ * pris sur l'entrée vaut Vout × Iout ÷ (eff × Vin) ; ilim : courant de sortie limité (A, chargeur) ; soft : la sortie
+ * n'est une source pour l'analyse du câblage que si rien d'autre n'alimente son nœud (chargeur sur un accu).
+ */
+export const DERIVED = {
+  lm7805: { from: 'IN', out: 'OUT', v: 5, min: 7 }, l298n: { from: '+12V', out: '+5V', v: 5, min: 7 },
+  // AMS1117-3.3 : chute de 1,1 V (typ.) à 0,8 A.
+  ams1117: { from: 'IN', out: 'OUT', v: 3.3, min: 4.4, uvlo: 1.5, drop: 1.1 },
+  // LM2596 : entrée de 4,5 à 40 V, interrupteur saturé à 1,5 V (typ.) ; rendement pris à 85 %.
+  lm2596: { from: 'IN+', out: 'OUT+', gnd: 'IN-', v: voutOf, min: c => Math.max(4.5, voutOf(c) + 1.5), uvlo: 4.5, drop: 1.5, eff: 0.85 },
+  // MT3608 : entrée de 2 à 24 V (verrouillage sous 1,98 V) ; sans découpage, l'entrée passe par la diode Schottky.
+  mt3608: { from: 'IN+', out: 'OUT+', gnd: 'IN-', v: voutOf, min: 2, drop: 0.4, boost: true, eff: 0.9 },
+  // TP4056 : 4,2 V à 1 A au plus vers l'accu, dès que l'entrée reçoit 4,5 V.
+  tp4056: { from: 'IN+', out: 'B+', gnd: 'B-', v: 4.2, min: 4.5, ilim: 1, soft: true }
+};
+/** Valeur d'un champ de DERIVED pour ce composant (nombre, ou fonction du composant). */
+export const derivedOf = (d, k, c) => (typeof d[k] === 'function' ? d[k](c) : d[k]);
 
 /** Nom lisible d'une broche de carte : « ESP32 D13 (GPIO 13) ». */
 export function pinName(ref) {

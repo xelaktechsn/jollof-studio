@@ -3,10 +3,13 @@
 // Pneumatique : nettoyage d'un circuit reçu (projet ouvert, exemple, copie d'élève).
 import { DEFS } from './elements.js';
 import { cleanGrafcet } from './grafcet.js';
+import { cleanPlc } from '../plc/ladder.js';
+import { cleanTwin } from '../twin/model.js';
 
 // Machines de la vue 3D et réglages gardés avec le circuit (voir SCENES dans machine.js, chargé à la demande).
-const SCENE_KINDS = ['cylinders', 'door', 'press', 'station', 'pantograph', 'sorter'];
-const SCENE_KEYS = ['skin', 'cyl', 'clamp', 'drill', 'open', 'obstacle', 'emergency', 'left', 'right', 'start', 'up', 'detect', 'send', 'coil'];
+const SCENE_KINDS = ['cylinders', 'door', 'press', 'station', 'pantograph', 'sorter', 'feeder', 'filler', 'barrier'];
+const SCENE_KEYS = ['skin', 'cyl', 'clamp', 'drill', 'open', 'obstacle', 'emergency', 'left', 'right', 'start', 'up', 'detect', 'send', 'coil',
+  'push', 'arm', 'down', 'mag', 'pp', 'stop', 'fill', 'pb', 'niv', 'run', 'lift', 'veh', 'pass', 'badge']; // procédés (process.js) : vérins des rôles, capteurs, commandes
 /** Circuit reçu (projet, exemple) : éléments connus, nombres entiers, réglages nettoyés ; tuyaux vers des orifices. */
 export function clean(c) {
   if (!c || !Array.isArray(c.elements)) return { elements: [], tubes: [] };
@@ -28,10 +31,11 @@ export function clean(c) {
   });
   const ids = new Set(els.map(e => e.id));
   const tubes = (Array.isArray(c.tubes) ? c.tubes : []).slice(0, 1000).filter(t => t && id(t.id) && Array.isArray(t.a) && Array.isArray(t.b) && ids.has(t.a[0]) && ids.has(t.b[0])).map(t => ({ id: t.id, a: [t.a[0], String(t.a[1]).slice(0, 4)], b: [t.b[0], String(t.b[1]).slice(0, 4)] }));
-  const grafcet = cleanGrafcet(c.grafcet);
+  const grafcet = cleanGrafcet(c.grafcet), plc = cleanPlc(c.plc);
   // Vue 3D : la scène (vérins, porte de TER ou de bus, presse, poste de perçage, pantographe, convoyeur) et ses
   // liaisons (habillage, vérins des rôles, commandes : ouverture, obstacle, deux mains, départ, cellule…, électroaimant).
+  // La machine construite par l'utilisateur (jumeau, src/twin) est nettoyée par son propre module.
   const sc = c.scene && typeof c.scene === 'object' ? c.scene : null;
-  const scene = sc ? { kind: SCENE_KINDS.includes(sc.kind) ? sc.kind : 'cylinders', ...Object.fromEntries(SCENE_KEYS.map(k => [k, tag(sc[k])]).filter(([, v]) => v)) } : null;
-  return { ...(c.model === 'physical' ? { model: 'physical' } : {}), elements: els, tubes, ...(grafcet ? { grafcet } : {}), ...(scene ? { scene } : {}) };
+  const scene = !sc ? null : sc.kind === 'twin' ? cleanTwin(sc) : { kind: SCENE_KINDS.includes(sc.kind) ? sc.kind : 'cylinders', ...Object.fromEntries(SCENE_KEYS.map(k => [k, tag(sc[k])]).filter(([, v]) => v)) };
+  return { ...(c.model === 'physical' ? { model: 'physical' } : {}), elements: els, tubes, ...(grafcet ? { grafcet } : {}), ...(plc ? { plc } : {}), ...(scene ? { scene } : {}) };
 }

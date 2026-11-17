@@ -17,7 +17,7 @@ import { BOARDS, kindOf } from '../sim/boards.js';
 import { PARTS } from '../sim/parts.js';
 import { analyze, bbGroups } from '../sim/circuit.js';
 import { compile } from '../prog/lang.js';
-import { checkWire, checkCode, checkQuiz, expectedMeasure, checkPneuTube, checkParts, checkWired, checkPneuParts, checkGrafcet } from './engine.js';
+import { checkWire, checkCode, checkQuiz, expectedMeasure, checkPneuTube, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkScene } from './engine.js';
 import { pinKeys } from '../check/load.js';
 import { DEFS as LOGIC, layoutOf, sizeOf } from '../logic/elements.js';
 import { checkLogicTable, checkLogicSeq, checkLogicParts, checkExpr, checkTableFill } from '../logic/check.js';
@@ -28,6 +28,7 @@ import { createRunner, runStep, inputKey } from '../pneu/run.js';
 import { hasSequence, moveText } from '../pneu/seq.js';
 import { clean as cleanPneu } from '../pneu/clean.js';
 import { checkPneu } from '../pneu/check.js';
+import { processSensorNames, processActRoles, actProcess } from '../pneu/process.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tp');
 const logicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'logic');
@@ -56,7 +57,7 @@ function build(project, wires) {
 }
 let failures = 0;
 /** États d'interface qu'une étape « ui » peut demander (lab/index.js). */
-const UI_STATES = new Set(['sim', 'split', 'pneu', 'elec', 'grafcet', '3d']);
+const UI_STATES = new Set(['sim', 'split', 'pneu', 'elec', 'grafcet', 'plc', '3d', 'build']);
 let eStartPlan = null, eSolPlan = null; // plans pneumatiques du tutoriel en cours de vérification
 const bad = (tp, msg) => { failures++; console.log(`  ✕ ${tp.id} : ${msg}`); };
 const both = (o, what, tp) => { if (!o || !o.fr || !o.en) bad(tp, `${what} : texte fr et en requis`); };
@@ -113,14 +114,33 @@ for (const [fdir, f] of elecFiles) {
     if (c.type === 'parts') return solFirst(checkParts, 'les composants');
     if (c.type === 'wired') return solFirst(checkWired, 'le câblage');
     if (c.type === 'pneu-parts') return proj ? solFirst(checkPneuParts, 'les éléments du plan') : bad(tp, `étape ${i + 1} : pneu-parts réservé aux tutoriels`);
-    if (c.type === 'grafcet') return proj ? solFirst(checkGrafcet, 'le GRAFCET') : bad(tp, `étape ${i + 1} : grafcet réservé aux tutoriels`);
+    if (c.type === 'scene') return proj ? solFirst(checkScene, 'la machine 3D construite') : bad(tp, `étape ${i + 1} : scene réservé aux tutoriels`);
+    if (c.type === 'grafcet') {
+      // GRAFCET : la solution (projet d'un tutoriel, ou plan du départ + GRAFCET de la solution) réussit, le départ non.
+      if (proj) return solFirst(checkGrafcet, 'le GRAFCET');
+      if (!pneuStart(tp)) { bad(tp, `étape ${i + 1} : pas de plan pneumatique au départ`); return; }
+      const ok = checkGrafcet(c, { pneu: () => pneuCircuit(tp, true) }), ko = checkGrafcet(c, { pneu: () => pneuCircuit(tp, false) });
+      if (!ok.ok) bad(tp, `étape ${i + 1} : la solution ne réussit pas le GRAFCET (${JSON.stringify(ok)})`);
+      if (ko.ok) bad(tp, `étape ${i + 1} : le GRAFCET déjà réussi au départ`);
+      return;
+    }
+    if (c.type === 'ladder') {
+      // Automate : la solution (plan du départ + programme de la solution) réussit, le départ non.
+      if (proj) return solFirst(checkLadder, 'le Ladder');
+      if (!pneuStart(tp)) { bad(tp, `étape ${i + 1} : pas de plan pneumatique au départ`); return; }
+      const ok = checkLadder(c, { pneu: () => pneuCircuit(tp, true) }), ko = checkLadder(c, { pneu: () => pneuCircuit(tp, false) });
+      if (!ok.ok) bad(tp, `étape ${i + 1} : la solution ne réussit pas le Ladder (${JSON.stringify(ok)})`);
+      if (ko.ok) bad(tp, `étape ${i + 1} : le Ladder déjà réussi au départ`);
+      return;
+    }
     if (c.type === 'ui') { const unknown = (c.need || []).filter(n => !UI_STATES.has(n)); if (!c.need || !c.need.length || unknown.length) bad(tp, `étape ${i + 1} : état d'interface inconnu ${JSON.stringify(unknown)}`); return; }
     if (proj && c.type === 'pneu-tube') return solFirst(checkPneuTube, 'les tuyaux');
     if (proj && c.type === 'pneu-seq') {
       const ok = tutoSeq(eSolPlan, sol.comps, c), ko = tutoSeq(eStartPlan, start.comps, c);
       if (!ok.ok) bad(tp, `étape ${i + 1} : la solution simulée donne « ${ok.seen} », pas ${JSON.stringify(c.expect)}`);
       if (ko.ok) bad(tp, `étape ${i + 1} : le cycle est déjà réalisé au départ`);
-      for (const n of Object.keys(c.when || {})) if (!sol.comps.some(x => x.name === n)) bad(tp, `étape ${i + 1} : bouton ${n} absent du montage de la solution`);
+      const panel = new Set([...(((eSolPlan || {}).grafcet || {}).inputs || []), ...(((eSolPlan || {}).plc || {}).inputs || [])].map(x => x.name.toLowerCase())); // pupitres du GRAFCET et de l'automate de la solution
+      for (const n of Object.keys(c.when || {})) if (!sol.comps.some(x => x.name === n) && !panel.has(n.toLowerCase())) bad(tp, `étape ${i + 1} : bouton ${n} absent du montage et des pupitres de la solution`);
       return;
     }
     if (c.type === 'wire') {
@@ -168,10 +188,13 @@ for (const [fdir, f] of elecFiles) {
 function tutoSeq(plan, comps, c) {
   if (!plan || !plan.elements.length) return { ok: false, seen: '' };
   const circ = plan.grafcet ? { ...plan, grafcet: { ...plan.grafcet, drive: true } } : plan, R = createRunner(), dt = 0.02;
-  let held = new Set();
-  const io = { coil: () => false, pushed: () => false, input: n => held.has(n) };
+  // Boutons appuyés : ceux du montage (lus par la carte) et ceux des pupitres du GRAFCET ou de l'automate du plan (« @nom »).
+  let held = new Set(), pushed = new Set();
+  const panel = new Set([...((circ.grafcet && circ.grafcet.inputs) || []), ...((circ.plc && circ.plc.inputs) || [])].map(x => x.name.toLowerCase()));
+  const io = { coil: () => false, pushed: k => pushed.has(k), input: n => held.has(n) };
   for (let t = 0; t < 1; t += dt) runStep(R, circ, io, dt);
   held = new Set(Object.entries(c.when || {}).filter(([n, v]) => v === 'pressed' && comps.some(x => x.name === n)).map(([n]) => n.toLowerCase()));
+  pushed = new Set(Object.entries(c.when || {}).filter(([n, v]) => v === 'pressed' && panel.has(n.toLowerCase())).map(([n]) => inputKey(n)));
   for (let t = 0; t < 40 && !hasSequence(R.rec.moves, c.expect); t += dt) runStep(R, circ, io, dt);
   return { ok: hasSequence(R.rec.moves, c.expect), seen: R.rec.moves.map(moveText).join(' ') };
 }
@@ -179,22 +202,27 @@ function pneuStart(tp) { return (((tp.start.settings || {}).modules || {}).pneu 
 /** Plan de la solution (sol) ou du départ : tuyaux de la solution ajoutés, GRAFCET de la solution à la place du départ. */
 function pneuCircuit(tp, sol) {
   const s = pneuStart(tp), p = tp.solution.pneu || {};
-  return cleanPneu(sol ? { ...s, tubes: [...(s.tubes || []), ...(p.tubes || [])], ...(p.grafcet ? { grafcet: p.grafcet } : {}) } : s);
+  return cleanPneu(sol ? { ...s, tubes: [...(s.tubes || []), ...(p.tubes || [])], ...(p.grafcet ? { grafcet: p.grafcet } : {}), ...(p.plc ? { plc: p.plc } : {}) } : s);
 }
-/** Identifiants du plan et boutons du pupitre du GRAFCET (minuscules). */
+/** Identifiants du plan et boutons des pupitres (GRAFCET, automate), en minuscules. */
 function pneuNames(tp) {
   const s = pneuStart(tp); if (!s) return new Set();
-  const g = (tp.solution.pneu || {}).grafcet || s.grafcet;
-  return new Set([...s.elements.map(e => e.id.toLowerCase()), ...((g && g.inputs) || []).map(x => x.name.toLowerCase())]);
+  const g = (tp.solution.pneu || {}).grafcet || s.grafcet, p = (tp.solution.pneu || {}).plc || s.plc;
+  return new Set([...s.elements.map(e => e.id.toLowerCase()), ...((g && g.inputs) || []).map(x => x.name.toLowerCase()), ...((p && p.inputs) || []).map(x => x.name.toLowerCase()), ...processSensorNames(s.scene).map(x => x.toLowerCase()), ...processActRoles(s.scene)]);
 }
-/** Simulation d'un plan : au repos 1 s, puis les boutons de « when » appuyés (distributeurs, ou pupitre « @nom »). */
+/** Simulation d'un plan : au repos 1 s, puis les boutons de « when » appuyés (distributeurs, ou pupitre « @nom ») ; « click » : une action du procédé (une voiture…). */
 function pneuSim(circ, when) {
-  const R = createRunner(), dt = 0.02, inputs = new Set(((circ.grafcet && circ.grafcet.inputs) || []).map(x => x.name.toLowerCase()));
+  const R = createRunner(), dt = 0.02, inputs = new Set([...((circ.grafcet && circ.grafcet.inputs) || []), ...((circ.plc && circ.plc.inputs) || [])].map(x => x.name.toLowerCase()));
   let pushed = new Set();
   const io = { coil: () => false, pushed: k => pushed.has(k) };
   for (let t = 0; t < 1; t += dt) runStep(R, circ, io, dt);
-  pushed = new Set(Object.entries(when || {}).filter(([, v]) => v === 'pressed').map(([k]) => (circ.elements.some(e => e.id === k.replace(/:R$/, '')) || !inputs.has(k.toLowerCase()) ? k : inputKey(k))));
-  return { R, io, step: () => runStep(R, circ, io, dt), dt };
+  const keyOf = k => (circ.elements.some(e => e.id === k.replace(/:R$/, '')) || !inputs.has(k.toLowerCase()) ? k : inputKey(k));
+  // « pressed » : maintenu ; « pulse » : appuyé 0,3 s puis relâché (auto-maintien, front montant).
+  const pulse = new Set(Object.entries(when || {}).filter(([, v]) => v === 'pulse').map(([k]) => keyOf(k)));
+  pushed = new Set([...Object.entries(when || {}).filter(([, v]) => v === 'pressed').map(([k]) => keyOf(k)), ...pulse]);
+  for (const [k, v] of Object.entries(when || {})) if (v === 'click') actProcess(R.proc, k);
+  let t2 = 0;
+  return { R, io, step: () => { t2 += dt; if (pulse.size && t2 >= 0.3) { for (const k of pulse) pushed.delete(k); pulse.clear(); } return runStep(R, circ, io, dt); }, dt };
 }
 /**
  * Étape « watch » d'un TP de pneumatique pur : la solution au repos 1 s, puis les boutons de « when » appuyés ;

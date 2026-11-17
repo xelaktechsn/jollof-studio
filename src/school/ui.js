@@ -78,6 +78,9 @@ export function toast(text, kind = 'ok', ms = 3800) {
   setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, ms);
 }
 
+/** Retire les notifications affichées (un autre projet s'ouvre : celles du précédent ne le concernent plus). */
+export function clearToasts() { if (toastBox) toastBox.replaceChildren(); }
+
 /* ---------- Boîtes de dialogue ---------- */
 /**
  * Boîte modale. body : HTML ou élément. actions : [{ label, value, kind: 'primary'|'danger'|'' }].

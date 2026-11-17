@@ -62,7 +62,7 @@ body.partStudioOpen { overflow: hidden; }
 .partStudio .psRail [data-tip]:hover::after { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); animation-name: fadeIn; }
 
 /* ---------- Vue 3D ---------- */
-.partStudio .psView { grid-area: view; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #121a20, #0a0d10 70%); }
+.partStudio .psView { grid-area: view; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: radial-gradient(ellipse at 50% 40%, #121a20, var(--bg) 70%); }
 .partStudio .psView canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; touch-action: none; }
 .partStudio .psLabels { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .partStudio .psLab { position: absolute; left: 0; top: 0; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--ka); background: #0d1216d9; color: #fff; font: 600 10.5px/1.5 var(--mono); white-space: nowrap; box-shadow: 0 2px 6px #0007; will-change: transform; }
@@ -70,10 +70,10 @@ body.partStudioOpen { overflow: hidden; }
 .partStudio .psLab.hov { z-index: 3; border-color: #fff; }
 .partStudio .psBar { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; flex-wrap: wrap; gap: 8px; pointer-events: none; }
 .partStudio .psBar > * { pointer-events: auto; }
-.partStudio .psBar .seg { background: #11151ae6; }
+.partStudio .psBar .seg { background: var(--glass); }
 .partStudio .psBar .segBtn[aria-pressed="true"] { background: var(--raise-2); color: var(--fg); }
 .partStudio .psGridCtl select { height: 28px; padding: 0 22px 0 6px; border: 0; background-color: transparent; color: var(--fg-2); font-size: 12px; background-position: right 6px center; }
-.partStudio .psHint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); max-width: calc(100% - 360px); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: #11151ae6; color: var(--fg-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
+.partStudio .psHint { position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); max-width: calc(100% - 360px); padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--glass); color: var(--fg-2); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; pointer-events: none; }
 .partStudio .psCoords { position: absolute; right: 12px; bottom: 12px; padding: 4px 9px; border-radius: 6px; background: #11151acc; color: var(--fg-2); font: 11.5px var(--mono); pointer-events: none; }
 .partStudio .psCoords:empty { display: none; }
 .partStudio .psLegend { position: absolute; left: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 3px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: #11151acc; color: var(--fg-2); font-size: 11px; pointer-events: none; }
@@ -127,9 +127,9 @@ body.partStudioOpen { overflow: hidden; }
 .partStudio .psXYZ { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
 .partStudio .psXYZ label { display: flex; align-items: center; gap: 6px; }
 .partStudio .psXYZ b { color: var(--muted); font: 600 11px var(--mono); }
-.partStudio .psXYZ label:nth-child(1) b { color: #ff8f92; }
-.partStudio .psXYZ label:nth-child(2) b { color: #7fd6a4; }
-.partStudio .psXYZ label:nth-child(3) b { color: #8ab8ff; }
+.partStudio .psXYZ label:nth-child(1) b { color: var(--danger-ink); }
+.partStudio .psXYZ label:nth-child(2) b { color: var(--ok-ink); }
+.partStudio .psXYZ label:nth-child(3) b { color: var(--accent-hi); }
 .partStudio :is(.psXYZ input, .psCxyz input) { font-family: var(--mono); }
 .partStudio .psBtns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .partStudio .psBtns > span { min-width: 96px; color: var(--fg-2); font-size: 11.5px; }
@@ -188,7 +188,7 @@ body.partStudioOpen { overflow: hidden; }
 .partStudio .psTable th:nth-child(n+7):nth-child(-n+9) { width: 78px; }
 .partStudio .psTable th:last-child { width: 30px; }
 .partStudio .psTable td { padding: 2px 4px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-.partStudio .psTable tbody tr:hover td { background: #ffffff05; }
+.partStudio .psTable tbody tr:hover td { background: var(--hi-0); }
 .partStudio .psTable tbody tr.on td { background: var(--accent-soft); }
 .partStudio .psTable tbody tr.on td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .partStudio .psTable :is(input, select) { width: 100%; min-width: 0; height: 26px; padding: 0 6px; padding-right: 6px; border-color: transparent; background-color: transparent; font-size: 12px; }
@@ -228,18 +228,18 @@ body.partStudioOpen { overflow: hidden; }
 .partStudio .psSvg { width: 100%; height: 100%; max-height: 100%; }
 .partStudio .psSvg .svBody { fill: #fffdf6; stroke: #7a1f1f; stroke-width: .25; }
 .partStudio .psSvg .svLead { stroke: #7a1f1f; stroke-width: .22; }
-.partStudio .psSvg .svPin { fill: #20262c; font: 1.35px var(--mono); }
-.partStudio .psSvg .svRef { fill: #20262c; font: 600 1.9px var(--sans); }
+.partStudio .psSvg .svPin { fill: var(--raise-2); font: 1.35px var(--mono); }
+.partStudio .psSvg .svRef { fill: var(--raise-2); font: 600 1.9px var(--sans); }
 .partStudio .psSvg .svVal { fill: #57606a; font: 1.6px var(--sans); }
 .partStudio .psSvg.svOwn .svInk * { fill: none; stroke: #7a1f1f; }
 .partStudio .psSvg.svOwn .svInk .svFill { fill: #7a1f1f; }
-.partStudio .psSvg.svOwn .svTx { fill: #20262c; font-family: var(--sans); }
+.partStudio .psSvg.svOwn .svTx { fill: var(--raise-2); font-family: var(--sans); }
 
 /* Messages de l'atelier (le bandeau d'état de l'application est dessous) et vue 3D indisponible */
-.partStudio .psToast { position: fixed; top: 62px; left: 50%; z-index: 45; transform: translateX(-50%); max-width: min(720px, calc(100vw - 40px)); padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line-2); background: #161c22f2; color: var(--fg); font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow); animation: sheetIn .14s ease-out; pointer-events: none; }
+.partStudio .psToast { position: fixed; top: 62px; left: 50%; z-index: 45; transform: translateX(-50%); max-width: min(720px, calc(100vw - 40px)); padding: 8px 14px; border-radius: 9px; border: 1px solid var(--line-2); background: var(--glass); color: var(--fg); font-size: 12.5px; line-height: 1.45; box-shadow: var(--shadow); animation: sheetIn .14s ease-out; pointer-events: none; }
 .partStudio .psToast.ok { border-color: #3fb27f88; }
-.partStudio .psToast.warn { border-color: #f2c94c88; color: #ffe08a; }
-.partStudio .psToast.err { border-color: #e5484d; background: #2a1517f2; color: #ffb3b5; }
+.partStudio .psToast.warn { border-color: #f2c94c88; color: var(--warn-ink); }
+.partStudio .psToast.err { border-color: var(--danger); background: #2a1517f2; color: var(--danger-ink); }
 .partStudio .psView.noGl canvas, .partStudio .psView.noGl .psLabels { display: none; }
 .partStudio .psNoGl { position: absolute; inset: 0; display: grid; place-items: center; padding: 40px; color: var(--fg-2); font-size: 13px; line-height: 1.5; text-align: center; }
 

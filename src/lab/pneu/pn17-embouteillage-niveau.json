@@ -1,0 +1,637 @@
+{
+ "id": "pn17-embouteillage-niveau",
+ "level": "lycee",
+ "minutes": 50,
+ "series": "usine",
+ "title": {
+  "fr": "Embouteillage : remplir au capteur de niveau, en Ladder",
+  "en": "Bottling: fill to the level sensor, in ladder"
+ },
+ "summary": {
+  "fr": "Une ligne d’embouteillage de jus de bissap en 3D : le tapis apporte les bouteilles, une butée arrête chacune sous le bec, le bec descend et remplit jusqu’à la sonde de niveau, puis la bouteille repart. Le programme Ladder de l’automate se construit réseau par réseau, avec des mémoires (mise à 1, mise à 0) pour le remplissage et la libération. Si le bec coule sans bouteille, du jus est renversé.",
+  "en": "A bissap juice bottling line in 3D: the belt brings bottles, a stopper holds each one under the nozzle, the nozzle comes down and fills to the level probe, then the bottle leaves. The PLC’s ladder program is built rung by rung, with memories (set, reset) for filling and release. If the nozzle pours without a bottle, juice is spilled."
+ },
+ "objectives": [
+  {
+   "fr": "Lire les capteurs d’une ligne (bouteille présente, niveau) dans un programme Ladder",
+   "en": "Read a line’s sensors (bottle present, level) in a ladder program"
+  },
+  {
+   "fr": "Tenir une phase avec une mémoire : S quand elle commence, R quand elle finit",
+   "en": "Hold a phase with a memory: S when it starts, R when it ends"
+  },
+  {
+   "fr": "Enchaîner remplissage puis libération sans double bobine",
+   "en": "Chain filling then release without a double coil"
+  },
+  {
+   "fr": "Choisir entre capteur de niveau et temporisation",
+   "en": "Choose between a level sensor and a timer"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Une bobine donne l’état d’une condition à chaque cycle ; une mémoire (S / R) garde une phase qui commence sur un événement et finit sur un autre.",
+   "en": "A coil gives the state of a condition on every scan; a memory (S / R) holds a phase that starts on one event and ends on another."
+  },
+  {
+   "fr": "Chaque mémoire a un S et un R, dans deux réseaux : M1 (remplissage) S par pb, R par niv ; M2 (libération) S par niv · b0, R par a0 · /pb.",
+   "en": "Each memory has an S and an R, in two rungs: M1 (filling) S by pb, R by niv; M2 (release) S by niv · b0, R by a0 · /pb."
+  },
+  {
+   "fr": "Une sortie n’est écrite que par une bobine : Y1 = m · /M2, Y2 = M1. Deux bobines Y1 seraient une double bobine.",
+   "en": "An output is written by a single coil: Y1 = m · /M2, Y2 = M1. Two Y1 coils would be a double coil."
+  },
+  {
+   "fr": "La sonde de niveau s’adapte à toute bouteille ; une temporisation suppose un débit et un volume constants.",
+   "en": "The level probe adapts to any bottle; a timer assumes a constant flow and volume."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Embouteillage",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "A",
+         "s0": "a0",
+         "s1": "a1"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "B",
+        "type": "cyl2",
+        "x": 36,
+        "y": 0,
+        "p": {
+         "label": "B",
+         "s0": "b0"
+        }
+       },
+       {
+        "id": "v2",
+        "type": "v52",
+        "x": 28,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y2",
+         "label": "2V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "scene": {
+       "kind": "filler",
+       "stop": "A",
+       "fill": "B",
+       "run": "m"
+      },
+      "tubes": [],
+      "plc": {
+       "name": "API1",
+       "drive": true,
+       "cycle": 10,
+       "inputs": [
+        {
+         "name": "m",
+         "kind": "switch"
+        }
+       ],
+       "rungs": []
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "A",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "A",
+      "2"
+     ]
+    },
+    {
+     "id": "t4",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v2",
+      "1"
+     ]
+    },
+    {
+     "id": "t5",
+     "a": [
+      "v2",
+      "4"
+     ],
+     "b": [
+      "B",
+      "1"
+     ]
+    },
+    {
+     "id": "t6",
+     "a": [
+      "v2",
+      "2"
+     ],
+     "b": [
+      "B",
+      "2"
+     ]
+    }
+   ],
+   "plc": {
+    "name": "API1",
+    "drive": true,
+    "cycle": 10,
+    "inputs": [
+     {
+      "name": "m",
+      "kind": "switch"
+     }
+    ],
+    "rungs": [
+     {
+      "id": "r1",
+      "comment": "Bouteille arrêtée sous le bec : remplir",
+      "items": [
+       {
+        "t": "no",
+        "id": "k1",
+        "v": "m"
+       },
+       {
+        "t": "no",
+        "id": "k2",
+        "v": "pb"
+       },
+       {
+        "t": "no",
+        "id": "k3",
+        "v": "a1"
+       },
+       {
+        "t": "nc",
+        "id": "k4",
+        "v": "M2"
+       },
+       {
+        "t": "nc",
+        "id": "k5",
+        "v": "niv"
+       },
+       {
+        "t": "set",
+        "id": "k6",
+        "v": "M1"
+       }
+      ]
+     },
+     {
+      "id": "r2",
+      "comment": "Niveau atteint : fermer le bec",
+      "items": [
+       {
+        "t": "no",
+        "id": "k7",
+        "v": "niv"
+       },
+       {
+        "t": "reset",
+        "id": "k8",
+        "v": "M1"
+       }
+      ]
+     },
+     {
+      "id": "r3",
+      "comment": "Bec en bas tant que M1",
+      "items": [
+       {
+        "t": "no",
+        "id": "k9",
+        "v": "M1"
+       },
+       {
+        "t": "coil",
+        "id": "k10",
+        "v": "Y2"
+       }
+      ]
+     },
+     {
+      "id": "r4",
+      "comment": "Bec remonté : libérer la bouteille",
+      "items": [
+       {
+        "t": "no",
+        "id": "k11",
+        "v": "niv"
+       },
+       {
+        "t": "no",
+        "id": "k12",
+        "v": "b0"
+       },
+       {
+        "t": "nc",
+        "id": "k13",
+        "v": "M1"
+       },
+       {
+        "t": "set",
+        "id": "k14",
+        "v": "M2"
+       }
+      ]
+     },
+     {
+      "id": "r5",
+      "comment": "Butée rentrée et bouteille partie : la butée peut ressortir",
+      "items": [
+       {
+        "t": "no",
+        "id": "k15",
+        "v": "a0"
+       },
+       {
+        "t": "nc",
+        "id": "k20",
+        "v": "pb"
+       },
+       {
+        "t": "reset",
+        "id": "k16",
+        "v": "M2"
+       }
+      ]
+     },
+     {
+      "id": "r6",
+      "comment": "Butée sortie en marche, sauf pour libérer",
+      "items": [
+       {
+        "t": "no",
+        "id": "k17",
+        "v": "m"
+       },
+       {
+        "t": "nc",
+        "id": "k18",
+        "v": "M2"
+       },
+       {
+        "t": "coil",
+        "id": "k19",
+        "v": "Y1"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La ligne d’embouteillage",
+    "en": "The bottling line"
+   },
+   "text": {
+    "fr": "La vue 3D montre la ligne : le **tapis** apporte une bouteille vide toutes les 8 s ; le vérin **A** (butée, capteurs a0 rentrée, a1 sortie) l’arrête sous le **bec** ; le vérin **B** (b0 : bec remonté) descend le bec, qui coule tant qu’il est en bas. Deux capteurs de la ligne : **pb**, la cellule qui voit la bouteille sous le bec, et **niv**, la sonde qui dit que le niveau est atteint. Le bandeau de la vue compte les bouteilles pleines et mal remplies ; une alarme signale le jus renversé.\nOuvrez le panneau **Automate** : son pupitre a un interrupteur **m** (marche). Le programme est vide. Si la vue 3D n’est pas ouverte, cliquez le bouton **3D**.",
+    "en": "The 3D view shows the line: the **belt** brings an empty bottle every 8 s; cylinder **A** (stopper, sensors a0 in, a1 out) holds it under the **nozzle**; cylinder **B** (b0: nozzle up) lowers the nozzle, which pours while it is down. Two line sensors: **pb**, the photocell that sees the bottle under the nozzle, and **niv**, the probe that says the level is reached. The view’s strip counts full and badly filled bottles; an alarm reports spilled juice.\nOpen the **PLC** panel: its control panel has a switch **m** (run). The program is empty. If the 3D view is not open, click the **3D** button."
+   },
+   "check": {
+    "type": "ui",
+    "need": [
+     "plc"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Quand fermer le bec ?",
+    "en": "When to close the nozzle?"
+   },
+   "text": {
+    "fr": "Quel événement doit fermer le bec (remonter B) ?",
+    "en": "Which event should close the nozzle (raise B)?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "3 s après son ouverture",
+      "en": "3 s after it opened"
+     },
+     {
+      "fr": "niv passe à 1 : le niveau est atteint",
+      "en": "niv goes to 1: the level is reached"
+     },
+     {
+      "fr": "La bouteille quitte le tapis",
+      "en": "The bottle leaves the belt"
+     },
+     {
+      "fr": "m est relâché",
+      "en": "m is released"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez la source à l’orifice 1 de **1V1** et **2V1**, l’orifice 4 de chacun à la chambre arrière (1) de son vérin, l’orifice 2 à la chambre avant (2).",
+    "en": "Connect the supply to port 1 of **1V1** and **2V1**, port 4 of each to the rear chamber (1) of its cylinder, port 2 to the front chamber (2)."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "A:1"
+     ],
+     [
+      "v1:2",
+      "A:2"
+     ],
+     [
+      "src:1",
+      "v2:1"
+     ],
+     [
+      "v2:4",
+      "B:1"
+     ],
+     [
+      "v2:2",
+      "B:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La butée : Y1 = m",
+    "en": "The stopper: Y1 = m"
+   },
+   "text": {
+    "fr": "Premier réseau : un contact ouvert **m**, une bobine **Y1**. En marche, la butée sort et attend la bouteille. Lancez la simulation, mettez m : la bouteille arrive et s’arrête sous le bec ; **pb** s’allume dans le bandeau.",
+    "en": "First rung: a normally open contact **m**, a coil **Y1**. When running, the stopper extends and waits for the bottle. Run the simulation, switch m on: the bottle arrives and stops under the nozzle; **pb** lights up in the strip."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1"
+    ],
+    "reads": [
+     "m"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le remplissage : une mémoire M1",
+    "en": "Filling: a memory M1"
+   },
+   "text": {
+    "fr": "Le remplissage commence quand la bouteille est là et finit quand le niveau est atteint : une **mémoire M1**.\n- Réseau : `m` · `pb` · `a1` · `/niv` → **S M1** (bouteille arrêtée : remplir)\n- Réseau : `niv` → **R M1** (niveau atteint : fermer)\n- Réseau : `M1` → bobine **Y2** (bec en bas tant que M1)\nLes contacts `/…` sont des contacts fermés au repos (NON).",
+    "en": "Filling starts when the bottle is there and ends when the level is reached: a **memory M1**.\n- Rung: `m` · `pb` · `a1` · `/niv` → **S M1** (bottle stopped: fill)\n- Rung: `niv` → **R M1** (level reached: close)\n- Rung: `M1` → coil **Y2** (nozzle down while M1)\nThe `/…` contacts are normally closed contacts (NOT)."
+   },
+   "hint": {
+    "fr": "S et R sont dans la palette (« Mise à 1 », « Mise à 0 »). Le contact /niv dans le S empêche de relancer le remplissage d’une bouteille déjà pleine.",
+    "en": "S and R are in the palette (“Set”, “Reset”). The /niv contact in the S prevents refilling an already full bottle."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1",
+     "Y2",
+     "M1"
+    ],
+    "reads": [
+     "m",
+     "pb",
+     "niv",
+     "a1"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : une bouteille remplie",
+    "en": "Test: one bottle filled"
+   },
+   "text": {
+    "fr": "Simulation en marche, **m** mis : la bouteille s’arrête, le bec descend, le jus monte, **niv** s’allume et le bec remonte. La bouteille reste bloquée par la butée : c’est l’étape suivante.",
+    "en": "Simulation running, **m** on: the bottle stops, the nozzle comes down, the juice rises, **niv** lights up and the nozzle goes back up. The bottle stays blocked by the stopper: that is the next step."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "m": "pressed"
+    },
+    "expect": [
+     "A+",
+     "B+",
+     "B-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Libérer la bouteille",
+    "en": "Release the bottle"
+   },
+   "text": {
+    "fr": "La bouteille est pleine et le bec remonté. Comment la libérer sans bloquer la suivante ?",
+    "en": "The bottle is full and the nozzle is up. How to release it without blocking the next one?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une mémoire M2 : S quand niv · b0 (bec remonté), R quand a0 · /pb (butée rentrée et bouteille partie) ; la butée ne sort pas tant que M2 : Y1 = m · /M2",
+      "en": "A memory M2: S when niv · b0 (nozzle up), R when a0 · /pb (stopper in and bottle gone); the stopper stays in while M2: Y1 = m · /M2"
+     },
+     {
+      "fr": "Une seconde bobine Y1 commandée par niv",
+      "en": "A second Y1 coil driven by niv"
+     },
+     {
+      "fr": "Couper m une seconde",
+      "en": "Switch m off for a second"
+     },
+     {
+      "fr": "Attendre la bouteille suivante, qui pousse la première",
+      "en": "Wait for the next bottle, which pushes the first one"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "La libération : M2",
+    "en": "Release: M2"
+   },
+   "text": {
+    "fr": "Ajoutez :\n- Réseau : `niv` · `b0` · `/M1` → **S M2** (bec remonté : libérer)\n- Réseau : `a0` · `/pb` → **R M2** (butée rentrée, bouteille partie)\nEt complétez le premier réseau : `m` · `/M2` → **Y1** (la butée reste rentrée pendant la libération). Ajoutez aussi `/M2` dans le S de M1 : pas de remplissage pendant qu’une bouteille s’en va.",
+    "en": "Add:\n- Rung: `niv` · `b0` · `/M1` → **S M2** (nozzle up: release)\n- Rung: `a0` · `/pb` → **R M2** (stopper in, bottle gone)\nAnd complete the first rung: `m` · `/M2` → **Y1** (the stopper stays in during release). Also add `/M2` to the S of M1: no filling while a bottle is leaving."
+   },
+   "hint": {
+    "fr": "Un seul réseau écrit Y1 : si vous en aviez écrit un second, le panneau signalerait une double bobine.",
+    "en": "Only one rung writes Y1: if you had written a second one, the panel would flag a double coil."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "Y1",
+     "Y2",
+     "M1",
+     "M2"
+    ],
+    "reads": [
+     "m",
+     "pb",
+     "niv",
+     "a0",
+     "a1",
+     "b0"
+    ],
+    "minRungs": 5
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la ligne tourne",
+    "en": "Test: the line runs"
+   },
+   "text": {
+    "fr": "Simulation en marche, **m** mis : remplissage, bec remonté, butée rentrée, bouteille partie, butée ressortie pour la suivante. Le compteur « Pleines » monte. Ajoutez une bouteille au bouton de la vue 3D ; coupez m pendant un remplissage et observez.",
+    "en": "Simulation running, **m** on: filling, nozzle up, stopper in, bottle gone, stopper out again for the next one. The “Full” counter rises. Add a bottle with the 3D view’s button; switch m off during a filling and watch."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "m": "pressed"
+    },
+    "expect": [
+     "A+",
+     "B+",
+     "B-",
+     "A-",
+     "A+"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Capteur ou temporisation ?",
+    "en": "Sensor or timer?"
+   },
+   "text": {
+    "fr": "Le client veut des bouteilles de 50 cl au lieu de 33 cl. Avec quelle solution le programme reste-t-il juste sans rien changer ?",
+    "en": "The customer wants 50 cl bottles instead of 33 cl. With which solution does the program stay right without any change?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une temporisation TON de 3 s à la place de niv",
+      "en": "A 3 s TON timer instead of niv"
+     },
+     {
+      "fr": "La sonde de niveau niv : elle ferme le bec quand la bouteille est pleine, quelle que soit sa taille",
+      "en": "The level probe niv: it closes the nozzle when the bottle is full, whatever its size"
+     },
+     {
+      "fr": "Aucune : il faut recâbler les distributeurs",
+      "en": "None: the valves must be re-plumbed"
+     },
+     {
+      "fr": "Compter les bouteilles avec un CTU",
+      "en": "Count bottles with a CTU"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

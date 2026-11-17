@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { M, V3 } from './library/kit.js';
-import { LIBRARY, BY_ID, CATEGORIES, MINE } from './library/catalog.js';
+import { LIBRARY, BY_ID, CATEGORIES, MINE, paintBands } from './library/catalog.js';
 import { STANDARD } from './library/standard.js';
 import { installStandard, isStandard, isInstalled, uninstall as uninstallPkg } from './library/packages.js';
 import * as native from './native.js';
@@ -20,16 +20,18 @@ import { installGuide } from './schematic/guide.js'; // guide de montage en PDF
 import { installLogic } from './logic/index.js';
 import { installPneu } from './pneu/index.js';
 import { Q, LIGHT, LEVEL, CHOICE, stdMat, setQuality, autoLevel } from './quality.js';
-import { menu as popMenu, confirm as confirmDlg } from './school/ui.js';
+import { menu as popMenu, confirm as confirmDlg, download as downloadText } from './school/ui.js';
 import { createNavDock, dragRect } from './ui/navdock.js';
 import './ui/selection.css';
-import { KINDS, spacesOf, inferKind } from './ui/kind.js';
+import { KINDS, spacesOf, inferKind, hasProgram } from './ui/kind.js';
 import { chooseKind, installKind } from './ui/kindui.js';
+import { createHome, resumeInfo, onboarded } from './ui/home.js';
 import { installSupervision } from './supervision/index.js';
-import { BOARDS, boardOf, volts } from './sim/boards.js';
-import { PARTS, partOf } from './sim/parts.js';
+import { BOARDS, boardOf, volts, VOUT, voutOf } from './sim/boards.js';
+import { PARTS, partOf, ACS712, acsRange } from './sim/parts.js';
+import { STEP_DRIVERS, ilimOf, ILIM_RANGE } from './sim/motordrv.js';
 import { analyze, inspect, firstMsg, bbGroups } from './sim/circuit.js';
-import { QUANT, ENV, INPUTS, MODELS, fmtQ, advance, sample as readSensor, envOf, cleanEnv, fmtV as fmtEnv } from './sim/models.js';
+import { QUANT, ENV, INPUTS, MODELS, fmtQ, advance, sample as readSensor, envOf, cleanEnv, fmtV as fmtEnv, sliderOf, fromSlider, SLIDER_STEPS, encTurn } from './sim/models.js';
 import { planWiring, planJoinGround, explain, wirable, needsWiring } from './sim/autowire.js';
 import { makeLabel, paintLabel, disposeLabel } from './sim/labels.js';
 import { collectFaults, elecFaults } from './sim/faults.js';
@@ -43,6 +45,7 @@ import { loadCadLibrary, REAL, setRealistic, cadManifest } from './cad/library.j
 import { FAMILIES, MODULE_ROLES, guessRole, parseBoardPin, buildBoardProfile, buildModuleSpec } from './sim/custom.js';
 import { createProgram } from './prog/panel.js';
 import { installPeripherals } from './sim/peripherals.js';
+import { installSdPanel } from './sim/sdpanel.js';
 import { installInstruments } from './sim/instruments.js';
 import { driveActuators, resetActuators } from './sim/actuators.js';
 import * as audio from './sim/audio.js';
@@ -57,13 +60,21 @@ import { createGuides, textSprite, dispose as disposeSprite } from './ui/guides.
 import { createBlocks, BLOCK_COLORS } from './ui/blocks.js';
 import { installProjectMenu, shortcut } from './ui/appbar.js';
 import { installInspector } from './ui/inspector.js';
+import { installShell } from './ui/shell.js'; // ossature à la manière d'un éditeur de code : barre d'activité, onglets des plans, panneau Problèmes / Sortie
+import { createPalette } from './ui/commands.js'; // palette de commandes (Ctrl+Maj+P, F1)
+import { theme as uiTheme, themeMode, setTheme } from './ui/theme.js'; // thème clair ou sombre
 import { toSvg, toPdf, Draw, textWidth } from './schematic/draw.js';
-import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale } from './i18n/index.js';
+import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale, dec } from './i18n/index.js';
 import { creditsHtml } from './library/credits.js';
 import * as parts from './library/parteditor.js'; // composants en paquet (.jpart) : éditeur, import, bibliothèque
 import { installAi } from './ai/panel.js'; // assistants IA : pont MCP (application de bureau) et copier-coller
 import * as TL from './video/timeline.js';
+import * as VX from './video/encode.js';
+import { emptyAudio, normalizeAudio, isSilent, wav24 } from './audio/mix.js';
 import { createTimelineDock } from './video/dock.js';
+import { valueOf, valueText, familyOf, acceptValue, defaultValue, formatValue, suggestions, bandsOf, ratingOf, capKind, RATINGS } from './sim/passives.js'; // valeur réglable des passifs
+import { createBusLog } from './sim/buslog.js'; // analyseur de bus I2C, SPI, série
+import { installBusView } from './sim/busview.js';
 
 /** Projets du dossier exemples/, intégrés à l'application. */
 const EXAMPLES = Object.entries(import.meta.glob('../exemples/*.jollof', { query: '?raw', import: 'default', eager: true }))
@@ -88,7 +99,7 @@ const mk = (g, m) => new THREE.Mesh(g, m);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const S = {
   comps: [], wires: [], pinHits: [], color: '#f2c94c', sel: null, multi: new Set(), selWire: null, pending: null, hover: null,
-  anim: null, rec: null, drag: null, wireDrag: null, endDrag: null, placing: false, caption: '',
+  anim: null, rec: null, audio: emptyAudio(), audioUi: null, drag: null, wireDrag: null, endDrag: null, placing: false, caption: '',
   projectPath: null, projectName: tl('Sans titre'), dirty: false, userLib: [], video: null, simOn: false, simLast: 0,
   faults: [], faultKeys: new Set(), faultWires: new Map(), glowing: new Set(), fly: null, shots: [], vr: null, netNames: {}, netView: false, wireView: 'parts',
   // Timeline de la vidéo (src/video/timeline.js) : automatique tant qu'on ne la modifie pas à la main.
@@ -157,15 +168,16 @@ function createComp(type, o = {}) {
     BY_ID[type].build(ctx);
     // Pièces animées déclarées par le constructeur (LED, écran, LED RVB, NeoPixel, relais,
     // afficheur 7 segments, palonnier de servo, rotor de moteur, laser, feu tricolore) : la simulation les fait bouger.
-    for (const k of ['led', 'screen', 'rgb', 'pixels', 'relay', 'seg7', 'servo', 'spin', 'buzz', 'water', 'laser', 'traffic']) if (ctx[k]) comp[k] = ctx[k];
+    for (const k of ['led', 'screen', 'rgb', 'pixels', 'relay', 'seg7', 'servo', 'spin', 'buzz', 'water', 'laser', 'traffic', 'bands', 'knob']) if (ctx[k]) comp[k] = ctx[k];
   }
   comp.inp = { ...(INPUTS[type] || {}), ...(o.inp || {}) };
+  if (comp.bands) paintBands(comp, bandsOf(valueOf(comp))); // résistance à valeur réglée : ses anneaux la disent
   const own = cleanEnv(o.env); if (own) comp.env = own; // capteur réglé à part (onglet Simulation)
   // Rendu léger : les cibles invisibles des broches (des centaines par breadboard) sont cachées à
   // l'objet, pas seulement par leur matière : le moteur 3D ne les parcourt plus à chaque image (le
   // lancer de rayons les trouve toujours). Les pièces fixes gardent une matrice calculée une fois :
   // seul le groupe du composant bouge (déplacement, rotation) ; servo et moteur restent animés.
-  const moving = new Set([comp.servo && comp.servo.piv, comp.spin && comp.spin.obj, comp.buzz && comp.buzz.obj, comp.water && comp.water.obj, ...(comp.water ? comp.water.drops : [])].filter(Boolean));
+  const moving = new Set([comp.knob, ...(comp.knob ? comp.knob.children : []), comp.servo && comp.servo.piv, comp.spin && comp.spin.obj, comp.buzz && comp.buzz.obj, comp.water && comp.water.obj, ...(comp.water ? comp.water.drops : [])].filter(Boolean));
   comp.group.traverse(m => {
     if (m.isMesh && (m.material === M.hit || m.material === M.hole)) m.visible = false;
     else if (m.isMesh) { m.castShadow = Q.shadows; m.receiveShadow = Q.shadows; }
@@ -428,7 +440,10 @@ function frameAll() {
   const b = new THREE.Box3(); S.comps.forEach(c => b.expandByObject(c.group));
   const center = b.getCenter(new V3()), size = b.getSize(new V3()).length();
   const dir = camera.position.clone().sub(controls.target).normalize();
-  controls.target.copy(center); camera.position.copy(center).addScaledVector(dir, Math.max(90, size * 1.32)); // marge : la barre du bas ne cache pas la dernière rangée
+  // Vue plus haute que large (vue partagée avec la pneumatique) : c'est l'angle horizontal qui borne, on recule d'autant.
+  const s = $('#stage'), aspect = s && s.clientWidth && s.clientHeight ? s.clientWidth / s.clientHeight : camera.aspect;
+  const narrow = aspect < 1 ? 0.92 / aspect : 1; // tan(demi-angle horizontal) = tan(demi-angle vertical) × largeur / hauteur
+  controls.target.copy(center); camera.position.copy(center).addScaledVector(dir, Math.max(90, size * 1.32 * Math.max(1, narrow))); // marge : la barre du bas ne cache pas la dernière rangée
 }
 
 /* ---------- Animation ---------- */
@@ -447,7 +462,7 @@ function startAnim(list) {
   S.anim = { tl: line, temp: !!list, t0: performance.now(), T: 0, paused: false, done: null };
   controls.autoRotate = $('#orbitOn').checked;
   applyAt(0);
-  timelineDock.update();
+  timelineDock.update(); audioFollow();
   return true;
 }
 function runAnim(now) {
@@ -458,16 +473,21 @@ function runAnim(now) {
 }
 const shotMap = () => new Map(S.shots.map(s => [s.id, s]));
 const wireById = id => S.wires.find(w => w.id === id);
-/** Pose la scène à l'instant T de l'animation en cours : fils, broches allumées, légende, caméra. */
-function applyAt(T) {
-  const A = S.anim, line = A.tl, r = TL.evalAt(line, T, shotMap());
-  for (const w of S.wires) { const p = r.prog.get(w.id) ?? 1; if (w.progress !== p) setProgress(w, p); }
+/** Légende à l'instant évalué `r` (« titre|détail ») et fil en cours de tracé. Sans effet sur la scène. */
+function captionFor(line, r) {
   const clip = r.cur >= 0 ? line.wires[r.cur] : null, grp = TL.together(clip), w = clip && !grp ? wireById(clip.ws[0]) : null;
   let cap;
   if (r.cap) cap = r.cap.text;
   else if (r.done || !clip) cap = tl('Circuit câblé');
   else if (grp) cap = tl('Câblage de {0} fils', clip.ws.length);
   else cap = w ? `${tl('Fil {0}/{1}', r.cur + 1, line.wires.length)}${w.role ? ' · ' + w.role : ''}|${wireLabel(w)}` : '';
+  return { cap, w };
+}
+/** Pose la scène à l'instant T de l'animation en cours : fils, broches allumées, légende, caméra. */
+function applyAt(T) {
+  const A = S.anim, line = A.tl, r = TL.evalAt(line, T, shotMap());
+  for (const w of S.wires) { const p = r.prog.get(w.id) ?? 1; if (w.progress !== p) setProgress(w, p); }
+  const { cap, w } = captionFor(line, r);
   const want = w && r.started && !r.done ? [w.a, w.b] : [];
   if (want.length !== hlPins.length || want.some((p, i) => !same(p, hlPins[i]))) setHL(want);
   if (!A.temp && r.cam) applyCam(r.cam);
@@ -483,7 +503,7 @@ function finishAnim() {
   [...$('#wires').children].forEach(li => li.classList.remove('on'));
   $('#wireParts').querySelectorAll('li.on').forEach(li => li.classList.remove('on'));
   if (S.rec) stopRec();
-  timelineDock.update();
+  timelineDock.update(); audioFollow();
   // Fils enfin tous tracés : les programmes générés tiennent compte du nouveau câblage.
   prog.circuitChanged(); if (S.sel) renderBehavior();
 }
@@ -493,15 +513,37 @@ function previewAt(T) {
   if (S.anim && S.anim.temp) finishAnim();
   if (!S.anim && !startAnim()) return;
   const A = S.anim; A.paused = true; A.T = Math.max(0, Math.min(TL.end(A.tl), T));
-  applyAt(A.T); invalidate(); timelineDock.update();
+  applyAt(A.T); invalidate(); timelineDock.update(); audioFollow();
 }
 function playTimeline() {
   if (S.rec || S.vr) return;
-  if (S.anim && S.anim.paused) { const A = S.anim; if (A.T >= TL.end(A.tl) - 0.01) A.T = 0; A.paused = false; A.t0 = performance.now() - A.T * 1000; timelineDock.update(); return; }
+  if (S.anim && S.anim.paused) { const A = S.anim; if (A.T >= TL.end(A.tl) - 0.01) A.T = 0; A.paused = false; A.t0 = performance.now() - A.T * 1000; timelineDock.update(); audioFollow(); return; }
   if (S.anim) finishAnim();
   startAnim();
 }
-function pauseTimeline() { if (S.anim && !S.anim.temp && !S.rec) { S.anim.paused = true; timelineDock.update(); } }
+function pauseTimeline() { if (S.anim && !S.anim.temp && !S.rec) { S.anim.paused = true; timelineDock.update(); audioFollow(); } }
+
+/* ---------- Bande-son (src/audio) : chargée au premier usage ---------- */
+let audioMod = null;
+const audioEngine = () => audioMod || (audioMod = import('./audio/engine.js'));
+/** Bande-son mixée et normalisée sur `seconds` secondes, ou null si le projet n'en a pas. */
+async function soundtrack(seconds) {
+  if (isSilent(S.audio)) return null;
+  return (await audioEngine()).buildSoundtrack(S.audio, S.timeline, TL.doneAt, seconds, import.meta.env.BASE_URL);
+}
+const loudLabel = t => `${t.stats.after.toFixed(1).replace('.', DEC)} LUFS`;
+let audioReq = 0;
+/** L'écoute suit l'animation : jouée depuis la tête de lecture quand elle défile, coupée sinon (et pendant une prise de voix). */
+async function audioFollow() {
+  const id = ++audioReq, A = S.anim;
+  const on = A && !A.temp && !A.paused && !S.vr && !S.rec && !(S.audioUi && S.audioUi.recording()) && !isSilent(S.audio);
+  if (!on) { if (audioMod) (await audioMod).stop(); return; }
+  try {
+    const track = await soundtrack(TL.end(A.tl));
+    if (id !== audioReq || S.anim !== A || A.paused) return;
+    (await audioEngine()).play(track, A.T);
+  } catch (e) { console.warn('bande-son', e); }
+}
 function setCaption(c) {
   S.caption = $('#capOn').checked ? c : '';
   const el = $('#caption');
@@ -529,19 +571,25 @@ function startRec() {
   rec.ondataavailable = e => e.data.size && chunks.push(e.data);
   rec.onstop = () => {
     const type = rec.mimeType || mime || 'video/webm';
-    showVideo(new Blob(chunks, { type }), cv.width, cv.height, type.includes('mp4') ? 'mp4' : 'webm', tl('temps réel'));
+    const blob = new Blob(chunks, { type });
+    showVideo({ blob, url: URL.createObjectURL(blob), size: blob.size }, type.includes('mp4') ? 'mp4' : 'webm', [`${cv.width} × ${cv.height}`, tl('temps réel')]);
   };
   S.rec = { rec, cv, ctx };
   composite(); rec.start(200);
   if (!startAnim()) { S.rec = null; rec.stop(); return; }
   $('#recBadge').hidden = false; $('#recBtn').disabled = true; status(tl('Enregistrement en cours…'));
 }
-function showVideo(blob, w, h, ext, how) {
-  const url = URL.createObjectURL(blob);
-  if (S.video) URL.revokeObjectURL(S.video.url);
-  S.video = { blob, url, name: `${S.projectName.replace(/\.jollof$/i, '')}.${ext}` };
-  $('#vid').src = url;
-  $('#vidMeta').textContent = tl('{0} × {1} px · {2} Mo · {3} · {4}', w, h, (blob.size / 1048576).toFixed(1).replace('.', DEC), ext.toUpperCase(), how);
+/**
+ * Fenêtre « Vidéo prête ». v : { blob } (rendu en mémoire) ou { file } (rendu écrit dans le cache), avec url, size ;
+ * cues : répliques des sous-titres ; facts : caractéristiques affichées.
+ */
+function showVideo(v, ext, facts, cues = []) {
+  if (S.video && S.video.blob) URL.revokeObjectURL(S.video.url);
+  const base = S.projectName.replace(/\.jollof$/i, '');
+  S.video = { ...v, name: `${base}.${ext}`, base, cues };
+  $('#vid').src = v.url;
+  $('#vidMeta').textContent = [...facts, tl('{0} Mo', (v.size / 1048576).toFixed(1).replace('.', DEC))].join(' · ');
+  $('#vidSubs').hidden = !cues.length;
   $('#modal').hidden = false; status(tl('Vidéo prête.'), 'ok');
 }
 
@@ -575,81 +623,269 @@ function syncTimeline() {
 }
 
 /* ---------- Rendu image par image ---------- */
-const RES = { 720: [1280, 720], 1080: [1920, 1080], 1440: [2560, 1440], 2160: [3840, 2160] };
-/** Choisit un encodeur : H.264 (MP4) si possible, sinon VP9. */
-async function pickEncoder(W, H, fps, bitrate) {
-  for (const [kind, codec] of [['avc', 'avc1.640034'], ['avc', 'avc1.4d0034'], ['avc', 'avc1.42003e'], ['vp9', 'vp09.00.50.08']]) {
-    try { if ((await VideoEncoder.isConfigSupported({ codec, width: W, height: H, bitrate, framerate: fps })).supported) return { kind, codec }; } catch (e) { /* codec suivant */ }
+/**
+ * Premier encodeur accepté par le système : le codec choisi, puis H.264. Pour chacun, le niveau exact d'abord,
+ * l'encodeur matériel d'abord (VideoToolbox, Media Foundation, VA-API), puis n'importe lequel.
+ */
+async function pickEncoder(want, W, H, rate, quality) {
+  for (const kind of VX.codecOrder(want)) {
+    const bitrate = VX.bitrateFor(H, rate.fps, kind, quality);
+    for (const codec of VX.codecStrings(kind, W, H, rate.fps, bitrate)) {
+      for (const hardwareAcceleration of ['prefer-hardware', 'no-preference']) {
+        const config = { codec, width: W, height: H, bitrate, framerate: rate.fps, hardwareAcceleration, contentHint: 'detail', ...(kind === 'avc' ? { avc: { format: 'avc' } } : {}) };
+        try { if ((await VideoEncoder.isConfigSupported(config)).supported) return { kind, config, bitrate }; } catch (e) { /* réglage suivant */ }
+      }
+    }
   }
   return null;
 }
 /**
- * Calcule chaque image à son instant exact, puis l'encode : la vidéo est fluide même sur une
- * machine lente, à la résolution choisie. Repli sur l'enregistrement en temps réel sinon.
+ * Couleur annoncée dans le MP4 : celle que l'encodeur dit avoir produite (elle concorde avec l'en-tête du flux), et
+ * BT.709 plage limitée s'il ne dit rien (c'est ce que video/yuv.js lui donne).
+ */
+function withColor(meta) {
+  if (!meta || !meta.decoderConfig) return meta;
+  const c = meta.decoderConfig.colorSpace, cs = c && (typeof c.toJSON === 'function' ? c.toJSON() : c);
+  const ok = cs && cs.primaries && cs.transfer && cs.matrix;
+  return { ...meta, decoderConfig: { ...meta.decoderConfig, colorSpace: ok ? cs : { ...VX.BT709 } } };
+}
+/** Répliques des sous-titres : la légende de chaque image, regroupée (sans toucher à la scène). */
+function subtitleCues(line, frames, rate) {
+  const shots = shotMap(), samples = [];
+  for (let i = 0; i < frames; i++) { const t = VX.frameTime(i, rate); samples.push({ t, text: VX.capLines(captionFor(line, TL.evalAt(line, t, shots)).cap) }); }
+  return VX.cuesFrom(samples, VX.frameTime(frames, rate));
+}
+/** Pose la scène à l'instant T de la vidéo (animation, rotation lente, simulation, éclairage) et la rend. */
+function sceneFrame(T, now, orbit, saved) {
+  if (S.anim) runAnim(now);
+  if (orbit) { const off = saved.pos.clone().sub(saved.tgt).applyAxisAngle(new V3(0, 1, 0), T * 0.0733); camera.position.copy(saved.tgt).add(off); camera.lookAt(saved.tgt); }
+  if (S.simOn) simFrame(now);
+  followView(); placeLamps(); guides.update(); blocks.update(); S.frameHooks.forEach(f => f(now));
+  renderer.render(scene, camera);
+}
+const MASTER_NAME = { prores: 'ProRes 422 HQ', dnxhr: 'DNxHR HQ', web: 'MP4' };
+/**
+ * Master pour le montage (ProRes 422 HQ, DNxHR HQ) ou repli web, par le ffmpeg livré avec l'application : chaque
+ * image est lue en RVBA sur la puce graphique et envoyée à ffmpeg, qui convertit en BT.709 4:2:2 et encode ; son
+ * PCM 24 bits normalisé, sous-titres mov_text, code temporel (src-tauri/src/ffmpeg.rs).
+ */
+async function renderMaster(kind) {
+  if (S.rec || S.vr) return;
+  if (!S.wires.length) { status(tl('Ajoutez au moins un fil avant de rendre une vidéo.'), 'warn'); return; }
+  const ff = await native.ffmpegInfo();
+  if (!ff) { status(tl('ffmpeg manque à cette installation : ce format est indisponible.'), 'err'); return; }
+  const [W, H] = VX.SIZES[$('#vRes').value] || VX.SIZES[1080], rate = VX.parseRate($('#vFps').value);
+  if (S.anim) finishAnim();
+  const { createYuv } = await import('./video/yuv.js');
+  const line = S.timeline, frames = VX.frameCount(TL.end(line), rate), seconds = VX.frameTime(frames, rate);
+  const cues = $('#vSubs').checked ? subtitleCues(line, frames, rate) : [];
+  const lang = isEn ? 'en' : 'fr', title = S.projectName.replace(/\.jollof$/i, ''), name = MASTER_NAME[kind] || kind;
+  const saved = { pos: camera.position.clone(), tgt: controls.target.clone(), pr: renderer.getPixelRatio() };
+  S.vr = { cancel: false };
+  let failure = null, yuv = null, ext = 'mov', track = null, began = false;
+  $('#renderModal').hidden = false; $('#rFrames').textContent = `0 / ${frames}`; $('#rBar').style.width = '0%';
+  $('#rInfo').textContent = `${W} × ${H} · ${tl('{0} images/s', VX.rateLabel(rate.fps, DEC))} · ${name} · BT.709 · ffmpeg`;
+  const started = performance.now();
+  try {
+    track = await soundtrack(seconds);
+    if (track) await native.masterAux('wav', wav24(track.channels, track.fs));
+    if (cues.length) await native.masterAux('srt', new TextEncoder().encode(VX.toSRT(cues)));
+    ext = await native.masterBegin({ width: W, height: H, fpsNum: rate.num, fpsDen: rate.den, codec: kind, audio: !!track, subs: !!cues.length, title, lang: VX.iso639(lang) });
+    began = true;
+    yuv = createYuv(renderer, W, H, { rgba: true });
+    if (!yuv) throw new Error(tl('WebGL 2 indisponible'));
+    startAnim();
+    const t0 = S.anim.t0, orbit = $('#orbitOn').checked && !S.shots.length;
+    controls.autoRotate = false;
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
+    const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
+    const ovCtx = ov.getContext('2d'), queue = [];
+    let lastCap = null, chain = Promise.resolve();
+    // Ordre garanti : l'image suivante part quand la précédente est écrite ; la lecture sur la puce, elle, avance.
+    const send = async () => { const bytes = await queue.shift(); await chain; chain = native.masterFrame(bytes); };
+    for (let i = 0; i < frames && !S.vr.cancel; i++) {
+      const T = VX.frameTime(i, rate);
+      sceneFrame(T, t0 + T * 1000, orbit, saved);
+      if (S.caption !== lastCap) { lastCap = S.caption; ovCtx.clearRect(0, 0, W, H); drawMarks(ovCtx, W, H); yuv.setOverlay(ov); }
+      queue.push(yuv.capture(0, 0));
+      if (queue.length >= 2) await send();
+      if (i % 2 === 0) {
+        const el = (performance.now() - started) / 1000, left = el / (i + 1) * (frames - i - 1);
+        $('#rFrames').textContent = `${i + 1} / ${frames}${i > 10 ? ' · ' + tl('reste {0} s', Math.ceil(left)) : ''}`;
+        $('#rBar').style.width = `${(100 * (i + 1) / frames).toFixed(1)}%`;
+        await new Promise(r => setTimeout(r, 0));
+      }
+    }
+    while (queue.length && !S.vr.cancel) await send();
+    await chain;
+  } catch (e) { failure = e; }
+  if (yuv) yuv.dispose();
+  const cancelled = S.vr.cancel;
+  S.vr = null; $('#renderModal').hidden = true;
+  if (S.anim) finishAnim();
+  renderer.setPixelRatio(saved.pr); camera.position.copy(saved.pos); controls.target.copy(saved.tgt); resize();
+  if (failure || cancelled) {
+    if (began) await native.masterAbort();
+    if (failure) { console.error(failure); status(tl('Rendu interrompu : ') + (failure.message || failure), 'err'); } else status(tl('Rendu annulé.'), 'warn');
+    return;
+  }
+  let done;
+  try { done = await native.masterEnd(); } catch (e) { status(tl('Rendu interrompu : ') + (e.message || e), 'err'); return; }
+  const facts = [`${W} × ${H}`, tl('{0} i/s', VX.rateLabel(rate.fps, DEC)), name, kind === 'web' ? 'BT.709' : 'BT.709 4:2:2', track ? `${kind === 'web' ? 'AAC' : 'PCM 24 bits'} ${loudLabel(track)}` : null, cues.length ? tl('sous-titres') : null, tl('rendu en {0} s', Math.round((performance.now() - started) / 1000))].filter(Boolean);
+  showVideo({ file: done.path, url: native.fileUrl(done.path), size: done.size }, ext, facts, cues);
+  if (ext === 'mov') status(tl('Master prêt. L’aperçu peut rester noir : ProRes et DNxHR se lisent dans les logiciels de montage.'), 'ok');
+}
+/**
+ * Calcule chaque image à son instant exact, puis l'encode (WebCodecs, encodeur matériel si possible) et la range
+ * dans un MP4 (Mediabunny) : vidéo fluide même sur une machine lente, aux normes de diffusion (voir video/encode.js).
+ * Dans l'application, le fichier s'écrit au fil de l'eau sur le disque ; dans un navigateur, en mémoire.
+ * Repli sur l'enregistrement en temps réel si le système ne sait pas encoder.
  */
 async function renderVideo() {
   if (S.rec || S.vr) return;
   if (!S.wires.length) { status(tl('Ajoutez au moins un fil avant de rendre une vidéo.'), 'warn'); return; }
-  const [W, H] = RES[$('#vRes').value] || RES[1080], fps = +$('#vFps').value || 30, bitrate = Math.round(W * H * fps * 0.12);
-  const pick = window.VideoEncoder && window.VideoFrame ? await pickEncoder(W, H, fps, bitrate) : null;
-  if (!pick) { status(tl('Encodage image par image indisponible sur ce système : enregistrement en temps réel.'), 'warn'); startRec(); return; }
-  const { Muxer, ArrayBufferTarget } = await import('mp4-muxer');
-  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: pick.kind, width: W, height: H, frameRate: fps }, fastStart: 'in-memory' });
-  let failure = null;
-  const enc = new VideoEncoder({ output: (chunk, meta) => muxer.addVideoChunk(chunk, meta), error: e => { failure = e; } });
-  enc.configure({ codec: pick.codec, width: W, height: H, bitrate, framerate: fps, ...(pick.kind === 'avc' ? { avc: { format: 'avc' } } : {}) });
+  if ($('#vFmt').value !== 'mp4') { renderMaster($('#vFmt').value); return; }
+  const [W, H] = VX.SIZES[$('#vRes').value] || VX.SIZES[1080], rate = VX.parseRate($('#vFps').value);
+  const want = $('#vCodec').value, quality = $('#vQual').value;
+  const pick = window.VideoEncoder && window.VideoFrame ? await pickEncoder(want, W, H, rate, quality) : null;
+  if (!pick) {
+    // Webview sans encodeur (Linux) : ffmpeg livré avec l'application fait le MP4, sinon enregistrement en temps réel.
+    const ff = await native.ffmpegInfo();
+    if (ff && ff.encoders.some(e => /openh264|svtav1|aom|vpx|mpeg4/.test(e))) { status(tl('Encodage par la webview indisponible : ffmpeg prend le relais.'), 'warn'); renderMaster('web'); return; }
+    status(tl('Encodage image par image indisponible sur ce système : enregistrement en temps réel.'), 'warn'); startRec(); return;
+  }
+  if (pick.kind !== want) status(tl('{0} indisponible sur ce système : la vidéo est encodée en {1}.', VX.CODEC_NAME[want], VX.CODEC_NAME[pick.kind]), 'warn');
   if (S.anim) finishAnim();
-  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const target = { cv, ctx: cv.getContext('2d') };
-  const saved = { pos: camera.position.clone(), tgt: controls.target.clone(), pr: renderer.getPixelRatio() };
+  const [MB, { createYuv, probeFullRange }] = await Promise.all([import('./video/mux.js'), import('./video/yuv.js')]);
+  const line = S.timeline, frames = VX.frameCount(TL.end(line), rate);
+  const cues = $('#vSubs').checked ? subtitleCues(line, frames, rate) : [];
+  const lang = isEn ? 'en' : 'fr', lang3 = VX.iso639(lang), codecName = VX.CODEC_NAME[pick.kind];
   S.vr = { cancel: false };
-  startAnim();
-  const A = S.anim, frames = Math.ceil(TL.end(A.tl) * fps), t0 = A.t0, orbit = $('#orbitOn').checked && !S.shots.length;
-  controls.autoRotate = false;
-  renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
+  let track = null, acodec = null;
+  try { track = await soundtrack(VX.frameTime(frames, rate)); } catch (e) { S.vr = null; status(tl('Bande-son impossible à préparer : ') + (e.message || e), 'err'); return; }
+  if (track) acodec = (await MB.canEncodeAudio('aac', { numberOfChannels: 2, sampleRate: track.fs, bitrate: 256000 })) ? 'aac' : 'opus';
+  let sink = null;
+  try { sink = await native.renderSink(); } catch (e) { console.warn('rendu en mémoire', e); }
+  const target = sink ? new MB.StreamTarget(sink.writable, { chunked: true, chunkSize: 8 << 20 }) : new MB.BufferTarget();
+  // Index « moov » en tête du fichier (lecture immédiate sur le web) : place réservée d'avance quand le fichier
+  // s'écrit sur le disque, réordonné en mémoire sinon.
+  const output = new MB.Output({ format: new MB.Mp4OutputFormat({ fastStart: sink ? 'reserve' : 'in-memory' }), target });
+  const vsrc = new MB.EncodedVideoPacketSource(pick.kind);
+  output.addVideoTrack(vsrc, { frameRate: rate.num / rate.den, languageCode: lang3, maximumPacketCount: frames + 1, bitrate: pick.bitrate });
+  let asrc = null;
+  if (track) { asrc = new MB.AudioBufferSource({ codec: acodec, bitrate: 256000 }); output.addAudioTrack(asrc, { languageCode: lang3, maximumPacketCount: Math.ceil(VX.frameTime(frames, rate) * 50) + 64 }); }
+  let ssrc = null;
+  if (cues.length) { ssrc = new MB.TextSubtitleSource('webvtt'); output.addSubtitleTrack(ssrc, { languageCode: lang3, name: tl('Légendes'), maximumPacketCount: cues.length * 2 + 2 }); }
+  const title = S.projectName.replace(/\.jollof$/i, '');
+  output.setMetadataTags({ title, date: new Date(), comment: 'Jollof Studio', description: tl('Animation du câblage : {0}', title) });
+
+  // Images I420 BT.709 calculées sur la puce graphique, dans la plage que l'encodeur annoncera (voir video/yuv.js) ;
+  // repli : images RVB du canevas, converties par l'encodeur.
+  let yuv = null;
+  if (!(import.meta.env.DEV && window.__yuv === false)) {
+    try { yuv = createYuv(renderer, W, H, { full: (await probeFullRange(pick.config)) === true }); } catch (e) { console.warn('conversion BT.709 indisponible', e); }
+  }
+  const ov = document.createElement('canvas'); ov.width = W; ov.height = H;
+  const ovCtx = ov.getContext('2d');
+  let lastCap = null;
+  let failure = null, chain = Promise.resolve();
+  const enc = new VideoEncoder({
+    output: (chunk, meta) => { const pkt = MB.EncodedPacket.fromEncodedChunk(chunk), m = withColor(meta); chain = chain.then(() => vsrc.add(pkt, m)).catch(e => { failure = failure || e; }); },
+    error: e => { failure = failure || e; }
+  });
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const draw = { cv, ctx: cv.getContext('2d', { alpha: false }) };
+  const saved = { pos: camera.position.clone(), tgt: controls.target.clone(), pr: renderer.getPixelRatio() };
+  const gop = Math.max(1, Math.round(rate.fps)); // une image clé par seconde
+  let t0 = 0, orbit = false, fed = 0;
+  const audio = track ? await audioEngine() : null;
+  const queue = [], send = async ({ p, key }) => { const f = await p; try { enc.encode(f, { keyFrame: key }); } finally { f.close(); } };
   $('#renderModal').hidden = false; $('#rFrames').textContent = `0 / ${frames}`; $('#rBar').style.width = '0%';
-  $('#rInfo').textContent = tl('{0} × {1} · {2} images/s · {3} · MP4', W, H, fps, pick.kind === 'avc' ? 'H.264' : 'VP9');
+  $('#rInfo').textContent = tl('{0} × {1} · {2} images/s · {3} · {4} Mbit/s · BT.709 · MP4', W, H, VX.rateLabel(rate.fps, DEC), codecName, (pick.bitrate / 1e6).toFixed(1).replace('.', DEC));
+  const started = performance.now();
   try {
+    enc.configure(pick.config);
+    await output.start();
+    if (ssrc) { await ssrc.add(VX.toWebVTT(cues, lang)); ssrc.close(); }
+    startAnim();
+    t0 = S.anim.t0; orbit = $('#orbitOn').checked && !S.shots.length;
+    controls.autoRotate = false;
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
     for (let i = 0; i < frames && !S.vr.cancel && !failure; i++) {
-      const now = t0 + (i / fps) * 1000;
-      if (S.anim) runAnim(now);
-      if (orbit) { const off = saved.pos.clone().sub(saved.tgt).applyAxisAngle(new V3(0, 1, 0), (i / fps) * 0.0733); camera.position.copy(saved.tgt).add(off); camera.lookAt(saved.tgt); }
-      if (S.simOn) simFrame(now);
-      followView(); placeLamps(); guides.update(); blocks.update(); S.frameHooks.forEach(f => f(now));
-      renderer.render(scene, camera);
-      composite(target);
-      const frame = new VideoFrame(cv, { timestamp: Math.round(i * 1e6 / fps), duration: Math.round(1e6 / fps) });
-      enc.encode(frame, { keyFrame: i % (fps * 2) === 0 }); frame.close();
+      const T = VX.frameTime(i, rate);
+      sceneFrame(T, t0 + T * 1000, orbit, saved);
+      while (asrc && fed * track.fs < track.channels[0].length && fed <= T) { await asrc.add(audio.toAudioBuffer(track, fed * track.fs, Math.min(track.channels[0].length, (fed + 1) * track.fs))); fed++; }
+      const ts = Math.round(T * 1e6), du = Math.round(1e6 * rate.den / rate.num), key = i % gop === 0;
+      if (yuv) {
+        if (S.caption !== lastCap) { lastCap = S.caption; ovCtx.clearRect(0, 0, W, H); drawMarks(ovCtx, W, H); yuv.setOverlay(ov); }
+        queue.push({ p: yuv.capture(ts, du), key }); if (queue.length >= 2) await send(queue.shift());
+      } else { composite(draw); const frame = new VideoFrame(cv, { timestamp: ts, duration: du }); enc.encode(frame, { keyFrame: key }); frame.close(); }
       while (enc.encodeQueueSize > 4) await new Promise(r => setTimeout(r, 2));
-      if (i % 2 === 0) { $('#rFrames').textContent = `${i + 1} / ${frames}`; $('#rBar').style.width = `${(100 * (i + 1) / frames).toFixed(1)}%`; await new Promise(r => setTimeout(r, 0)); }
+      if (i % 4 === 3) await chain; // le disque suit (contre-pression du multiplexeur)
+      if (i % 2 === 0) {
+        const el = (performance.now() - started) / 1000, left = el / (i + 1) * (frames - i - 1);
+        $('#rFrames').textContent = `${i + 1} / ${frames}${i > 10 ? ' · ' + tl('reste {0} s', Math.ceil(left)) : ''}`;
+        $('#rBar').style.width = `${(100 * (i + 1) / frames).toFixed(1)}%`;
+        await new Promise(r => setTimeout(r, 0));
+      }
     }
-    if (!S.vr.cancel && !failure) { await enc.flush(); muxer.finalize(); }
+    while (queue.length && !S.vr.cancel && !failure) await send(queue.shift());
+    if (!S.vr.cancel && !failure) { await enc.flush(); await chain; }
+    while (asrc && !S.vr.cancel && !failure && fed * track.fs < track.channels[0].length) { await asrc.add(audio.toAudioBuffer(track, fed * track.fs, Math.min(track.channels[0].length, (fed + 1) * track.fs))); fed++; }
+    if (!S.vr.cancel && !failure) { vsrc.close(); if (asrc) asrc.close(); await output.finalize(); }
   } catch (e) { failure = failure || e; }
+  for (const q of queue.splice(0)) q.p.then(f => f.close(), () => {});
+  if (yuv) yuv.dispose();
   const cancelled = S.vr.cancel;
   if (enc.state !== 'closed') enc.close();
   S.vr = null; $('#renderModal').hidden = true;
   if (S.anim) finishAnim();
   renderer.setPixelRatio(saved.pr); camera.position.copy(saved.pos); controls.target.copy(saved.tgt); resize();
-  if (failure) { status(tl('Rendu interrompu : ') + (failure.message || failure), 'err'); return; }
-  if (cancelled) { status(tl('Rendu annulé.'), 'warn'); return; }
-  showVideo(new Blob([muxer.target.buffer], { type: 'video/mp4' }), W, H, 'mp4', tl('rendu image par image, {0} i/s', fps));
+  if (failure || cancelled) {
+    try { if (output.state !== 'finalized' && output.state !== 'canceled') await output.cancel(); } catch (e) { /* déjà fermé */ }
+    if (sink) await sink.discard();
+    if (failure) { console.error(failure); status(tl('Rendu interrompu : ') + (failure.message || failure), 'err'); }
+    else status(tl('Rendu annulé.'), 'warn');
+    return;
+  }
+  const facts = [`${W} × ${H}`, tl('{0} i/s', VX.rateLabel(rate.fps, DEC)), codecName, 'BT.709', track ? `${acodec === 'aac' ? 'AAC' : 'Opus'} ${loudLabel(track)}` : null, cues.length ? tl('sous-titres') : null, tl('rendu en {0} s', Math.round((performance.now() - started) / 1000))].filter(Boolean);
+  if (sink) {
+    let size = 0;
+    try { size = await sink.end(); } catch (e) { status(tl('Rendu interrompu : ') + (e.message || e), 'err'); return; }
+    showVideo({ file: sink.path, url: sink.url(), size }, 'mp4', facts, cues);
+  } else {
+    const blob = new Blob([target.buffer], { type: 'video/mp4' });
+    showVideo({ blob, url: URL.createObjectURL(blob), size: blob.size }, 'mp4', facts, cues);
+  }
 }
 function stopRec() { const r = S.rec; S.rec = null; $('#recBadge').hidden = true; $('#recBtn').disabled = false; if (r.rec.state !== 'inactive') r.rec.stop(); }
+/**
+ * Image finale : rendu 3D, marque et légende, placées dans la zone de sécurité titre (UER R 95 : 5 % de marge) pour
+ * rester lisibles sur tout écran et ne jamais être rognées. La légende rétrécit si elle dépasse cette zone.
+ */
 function composite(target = S.rec) {
-  const { cv, ctx: x } = target, gl = renderer.domElement, s = cv.height / 720;
-  x.drawImage(gl, 0, 0, cv.width, cv.height);
-  x.font = `600 ${15 * s}px "Instrument Sans", sans-serif`; x.textBaseline = 'middle'; x.textAlign = 'left';
-  x.fillStyle = '#3b82f6'; x.beginPath(); x.arc(28 * s, 30 * s, 5 * s, 0, 7); x.fill();
-  x.fillStyle = 'rgba(228,231,232,.85)'; x.fillText('Jollof Studio', 42 * s, 30 * s);
+  const { cv, ctx: x } = target;
+  x.drawImage(renderer.domElement, 0, 0, cv.width, cv.height);
+  drawMarks(x, cv.width, cv.height);
+}
+/** Marque et légende seules (sur une toile transparente pour video/yuv.js). */
+function drawMarks(x, W, H) {
+  const s = H / 720, safe = VX.titleSafe(W, H);
+  x.font = `600 ${16 * s}px "Instrument Sans", sans-serif`; x.textBaseline = 'middle'; x.textAlign = 'left';
+  const ly = safe.y + 8 * s;
+  x.fillStyle = '#3b82f6'; x.beginPath(); x.arc(safe.x + 5 * s, ly, 5 * s, 0, 7); x.fill();
+  x.fillStyle = 'rgba(228,231,232,.85)'; x.fillText('Jollof Studio', safe.x + 18 * s, ly);
   if (S.caption) {
     const [a, b] = S.caption.split('|');
-    x.font = `500 ${19 * s}px "JetBrains Mono", monospace`;
-    const wa = b ? x.measureText(a + '   ').width : 0, wb = x.measureText(b || a).width;
-    const w = wa + wb + 40 * s, h = 44 * s, X = (cv.width - w) / 2, Y = cv.height - h - 30 * s;
-    x.fillStyle = 'rgba(13,16,19,.9)'; x.strokeStyle = '#252c32'; x.lineWidth = 1.5 * s;
-    x.beginPath(); x.roundRect ? x.roundRect(X, Y, w, h, h / 2) : x.rect(X, Y, w, h); x.fill(); x.stroke();
-    let cx = X + 20 * s;
-    if (b) { x.fillStyle = '#3b82f6'; x.fillText(a, cx, Y + h / 2); cx += wa; }
+    let k = s;
+    const measure = () => { x.font = `500 ${22 * k}px "JetBrains Mono", monospace`; const wa = b ? x.measureText(a + '   ').width : 0, wb = x.measureText(b || a).width; return { wa, wb, w: wa + wb + 44 * k }; };
+    let m = measure();
+    if (m.w > safe.w) { k *= safe.w / m.w; m = measure(); }
+    const h = 50 * k, X = (W - m.w) / 2, Y = safe.y + safe.h - h;
+    x.fillStyle = 'rgba(13,16,19,.9)'; x.strokeStyle = '#252c32'; x.lineWidth = 1.5 * k;
+    x.beginPath(); x.roundRect ? x.roundRect(X, Y, m.w, h, h / 2) : x.rect(X, Y, m.w, h); x.fill(); x.stroke();
+    let cx = X + 22 * k;
+    if (b) { x.fillStyle = '#3b82f6'; x.fillText(a, cx, Y + h / 2); cx += m.wa; }
     x.fillStyle = '#e4e7e8'; x.fillText(b || a, cx, Y + h / 2);
   }
 }
@@ -760,6 +996,7 @@ function updateFlow() {
   try { flow.set(wireFlows(S.simA, S.dc, S.wires)); } catch (e) { console.error(e); flow.clear(); }
 }
 let bench = null, flow = null, sch = null, chk = null, nav = null;
+let shell = null, palette = null; // ossature (src/ui/shell.js) et palette de commandes (src/ui/commands.js)
 let kindUi = null, kindBusy = false; // type de projet : bouton de la barre, changement en cours
 const naturalKey = (a, b) => a.localeCompare(b, undefined, { numeric: true });
 const benchCtx = {
@@ -774,7 +1011,7 @@ const benchCtx = {
     }
     return out;
   },
-  parts: () => S.comps.filter(c => /^(res-|led-|diode|bat|button|pot|cap-|npn)/.test(c.type)).map(c => ({ id: c.id, label: `${c.name} · ${describe(c).title}`, comp: c })),
+  parts: () => S.comps.filter(c => /^(res-|led-|diode|zener-|bat|button|pot|cap-|npn|pnp|pn2)/.test(c.type)).map(c => ({ id: c.id, label: `${c.name} · ${describe(c).title}`, comp: c })),
   dc: () => solveCircuit(null),
   onShow: on => { $('#benchBtn').setAttribute('aria-pressed', on); invalidate(); }
 };
@@ -789,7 +1026,7 @@ function tick(now) {
   const moving = controls.update();
   if (!moving && !busyScene(now) && gap < 1000) return;
   if (document.body.classList.contains('hubOpen') && !S.rec && !S.simOn) { FRAME.last = now; return; }
-  if ((document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen')) && !S.rec && !S.simOn) { FRAME.last = now; return; } // plan de travail logique ou pneumatique : la scène 3D est cachée
+  if ((document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('codeOpen')) && !S.rec && !S.simOn) { FRAME.last = now; return; } // plan de travail logique ou pneumatique : la scène 3D est cachée
   watchSpeed(gap, moving || busyScene(now));
   FRAME.last = now; FRAME.need = false;
   if (S.anim) runAnim(now);
@@ -800,7 +1037,7 @@ function tick(now) {
   if (S.simOn) simFrame(now);
   if (bench && bench.visible) bench.draw(now);
   if (S.view2d) { if (!document.body.classList.contains('hubOpen')) sch.frame(now); if (!S.rec) return; } // vue Schéma : la scène 3D, cachée, n'est pas dessinée
-  if ((document.body.classList.contains('hubOpen') || document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen')) && !S.rec) return; // l'espace classe, la logique ou la pneumatique cache la scène
+  if ((document.body.classList.contains('hubOpen') || document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('codeOpen')) && !S.rec) return; // l'espace classe, la logique ou la pneumatique cache la scène
   renderer.render(scene, camera);
   if (S.rec) composite();
 }
@@ -879,7 +1116,7 @@ function simTipHtml(target) {
   }
   const c = target.comp, a = r.across ? r.across(c) : null; if (!a) return '';
   const head = `<b>${esc(c.name)}</b>`;
-  if (a.kind === 'npn' && a.extra) { const st = { off: tl('bloqué'), active: tl('actif'), sat: tl('saturé') }[a.extra.state] || ''; return `${head} · ${st}<br>Ic <b>${fmtI(a.extra.ic)}</b> · Ib <b>${fmtI(a.extra.ib)}</b> · Vce <b>${fmtV(a.extra.vce)}</b>`; }
+  if ((a.kind === 'npn' || a.kind === 'pnp') && a.extra) { const st = { off: tl('bloqué'), active: tl('actif'), sat: tl('saturé') }[a.extra.state] || ''; return `${head} · ${st}<br>Ic <b>${fmtI(a.extra.ic)}</b> · Ib <b>${fmtI(a.extra.ib)}</b> · Vce <b>${fmtV(a.extra.vce)}</b>`; }
   const p = a.v != null && a.mA != null ? Math.abs(a.v * a.mA) : null;
   const extra = a.kind === 'led' ? ` · ${a.mA > 0.01 ? tl('allumée') : tl('éteinte')}` : a.kind === 'res' && p != null ? ` · P <b>${p >= 1000 ? fmtN(p / 1000, 2) + ' W' : fmtN(p, 1) + ' mW'}</b>` : '';
   return `${head}<br>U <b>${fmtV(a.v)}</b> · I <b>${fmtI(a.mA)}</b>${extra}`;
@@ -999,10 +1236,10 @@ function installNav() {
   const in2d = () => S.view2d && sch;
   nav = createNavDock($('#stage'), {
     cls: 'ndStage',
-    active: () => !['logicOpen', 'pneuOpen', 'hubOpen'].some(c => document.body.classList.contains(c)),
+    active: () => !['logicOpen', 'pneuOpen', 'hubOpen', 'codeOpen'].some(c => document.body.classList.contains(c)),
     target: () => (in2d() ? sch.el : renderer.domElement),
     tools: () => (in2d() ? ['select', 'pan', 'zoom'] : ['orbit', 'select', 'pan', 'zoom']),
-    get tips() { return in2d() ? { select: tl('Sélection · V : cliquer pour choisir, glisser un symbole pour le déplacer') } : { select: tl('Sélection · V : glisser dans le vide pour encadrer des composants (clic droit glissé : déplacer la vue)') }; },
+    get tips() { return in2d() ? { select: tl('Sélection · V : cliquer pour choisir, glisser un symbole pour le déplacer, R pour le faire pivoter (Maj+R : miroir)') } : { select: tl('Sélection · V : glisser dans le vide pour encadrer des composants (clic droit glissé : déplacer la vue)') }; },
     zoomBy: (f, x, y) => { if (in2d()) sch.zoomAt(f, x, y); else zoom3d(f, x, y); },
     panBy: (dx, dy) => { if (in2d()) sch.panBy(-dx, -dy); else { panView(-dx, -dy); invalidate(300); } },
     zoomPct: () => (in2d() ? sch.zoomPct() : null),
@@ -1056,9 +1293,13 @@ function installChecker() {
     allow: () => S.checkAllow || [],
     setAllow(list) { S.checkAllow = list; S.dirty = true; $('#projectName').classList.add('dirty'); clearTimeout(changed.t); changed.t = setTimeout(autosave, 400); },
     dist: (a, b) => pinWorld(a).distanceTo(pinWorld(b)),
-    // Plan pneumatique : ses fautes rejoignent le rapport quand le projet le montre (pneumatique, électropneumatique).
-    extra: () => (moduleApi.pneu && spacesOf(S.kind).includes('pneu') ? moduleApi.pneu.diags() : []),
+    // Plans pneumatique et logique : leurs fautes rejoignent le rapport quand le projet les montre.
+    extra: () => [
+      ...(moduleApi.pneu && spacesOf(S.kind).includes('pneu') ? moduleApi.pneu.diags() : []),
+      ...(moduleApi.logic && moduleApi.logic.diags && spacesOf(S.kind).includes('logic') ? moduleApi.logic.diags() : [])
+    ],
     focus(d) {
+      if (d.space === 'logic' && moduleApi.logic) { moduleApi.logic.reveal(d.el); return; }
       if (d.space === 'pneu' && moduleApi.pneu) { if (!moduleApi.pneu.isOn() && !moduleApi.pneu.isSplit()) moduleApi.pneu.setMode(true); if (d.el) moduleApi.pneu.editor.select({ el: d.el }); if (!d.loc || !d.loc.comp) return; }
       if (d.fault && d.fault.pins && d.fault.pins.length) { focusFault(d.fault); return; }
       const c = d.loc && d.loc.comp; if (!c) return;
@@ -1068,6 +1309,7 @@ function installChecker() {
     actLabel: a => ACT[a] || a,
     goCode: (b, line, col) => prog.showLine(b, line, col)
   });
+  if (shell) shell.dock.bind(chk); // panneau Problèmes : la liste des diagnostics, barre d'état, barre d'activité
   S.changeHooks.push(() => chk.schedule());
   chk.schedule();
 }
@@ -1217,7 +1459,14 @@ function onDown(e) {
   // Simulation en cours : un clic sur un bouton (hors de ses broches) l'enfonce tant qu'on reste appuyé.
   if (S.simOn && !exact && !S.pending) {
     const c = compAt();
-    if (c && (c.type === 'button' || c.type === 'joystick')) {
+    // Encodeur KY-040 : un clic à droite du bouton le tourne d'un cran dans le sens horaire, à gauche dans l'autre sens ;
+    // Maj + clic enfonce son axe (SW) tant qu'on reste appuyé.
+    if (c && c.type === 'ky040' && !e.shiftKey) {
+      const q = c.group.position.clone().project(camera), rr = renderer.domElement.getBoundingClientRect();
+      turnEnc(c, e.clientX >= rr.left + (q.x + 1) / 2 * rr.width ? 1 : -1);
+      return;
+    }
+    if (c && (c.type === 'button' || c.type === 'joystick' || c.type === 'ky040')) {
       S.pressing = c; c.inp[c.type === 'button' ? 'pressed' : 'sw'] = true; syncPress(c);
       controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId); renderer.domElement.style.cursor = 'pointer';
       if (S.simOn) S.simLast = performance.now() - 100; // prise en compte immédiate
@@ -1311,7 +1560,7 @@ function onMove(e) {
   }
   const over = p ? null : compAt();
   if (S.simOn) simTip(over, e, r); else hideSimTip();
-  renderer.domElement.style.cursor = p ? (S.pending && busy(p) && !same(p, S.pending) ? 'not-allowed' : 'crosshair') : (S.placing ? 'cell' : (S.pending ? 'crosshair' : (over ? (S.simOn && (over.type === 'button' || over.type === 'joystick') ? 'pointer' : 'grab') : '')));
+  renderer.domElement.style.cursor = p ? (S.pending && busy(p) && !same(p, S.pending) ? 'not-allowed' : 'crosshair') : (S.placing ? 'cell' : (S.pending ? 'crosshair' : (over ? (S.simOn && (over.type === 'button' || over.type === 'joystick' || over.type === 'ky040') ? 'pointer' : 'grab') : '')));
   if (S.pending) {
     const a = pinWorld(S.pending), b = p && !same(p, S.pending) ? pinWorld(p) : groundAt();
     if (b) { rubber.geometry.setFromPoints([a, b]); rubber.visible = true; }
@@ -1354,6 +1603,13 @@ function lockHint() {
 let heldPress = null;
 const latchedPress = new Set();
 const pressLabel = (c, k) => (k !== 'pressed' ? 'SW' : latchedPress.has(c.id) && c.inp[k] ? tl('Relâcher le bouton') : tl('Appuyer sur le bouton'));
+/** Encodeur KY-040 tourné d'un cran (dir : 1 horaire, −1 antihoraire) : la simulation démarre au besoin, le bouton tourne. */
+function turnEnc(c, dir) {
+  if (!S.simOn) setSim(true);
+  encTurn(c, dir);
+  if (c.knob) { c.knob.rotation.y = -c.periph.pos * Math.PI / 10; invalidate(); }
+  if (S.simOn) S.simLast = performance.now() - 100; // prise en compte immédiate
+}
 /** Bouton appuyé depuis la scène : le panneau Simulation suit. */
 function syncPress(c) {
   const k = c.type === 'button' ? 'pressed' : 'sw', b = document.querySelector(`#probes li[data-id="${c.id}"] [data-press="${k}"]`);
@@ -1561,7 +1817,60 @@ function editName(c, at = null) {
 }
 function renderBehavior() { $('#behav').innerHTML = prog.behaviorHtml(S.sel); }
 const multiBoxes = []; // cadres des autres composants d'une sélection multiple
+/** Champ de valeur du composant sélectionné (résistance, condensateur, bobine) ; force : réécrit même s'il a le focus. */
+function renderValue(force = false) {
+  const c = S.sel, one = c && !S.multi.size, fam = one ? familyOf(c.type) : null, vo = one ? VOUT[c.type] : null, sd = one ? STEP_DRIVERS[c.type] : null, box = $('#valBox');
+  const acs = one && c.type === 'acs712';
+  box.hidden = !fam && !vo && !sd && !acs; if (!fam && !vo && !sd && !acs) return;
+  if (acs) {
+    // Capteur de courant ACS712 : version du module (c.inp.range : 5, 20 ou 30 A), donc sensibilité et plage.
+    $('#valLab').textContent = tl('Version (plage)');
+    if (force || document.activeElement !== $('#valIn')) $('#valIn').value = `${acsRange(c)} A`;
+    if (box.dataset.type !== c.type) { box.dataset.type = c.type; $('#valList').innerHTML = Object.keys(ACS712).map(v => `<option value="${v} A">`).join(''); }
+    $('#valHint').textContent = tl('ACS712-{0}A : ±{0} A, {1} mV/A, 2,5 V à 0 A. La simulation et le vérificateur suivent cette version.', acsRange(c), Math.round(ACS712[acsRange(c)].sens * 1000));
+    $('#vmaxField').hidden = true;
+    return;
+  }
+  if (sd) {
+    // Pilote pas à pas : courant par phase réglé par le potentiomètre de la carte (c.inp.ilim, motordrv.js), et le Vref à mesurer.
+    $('#valLab').textContent = tl('Courant par phase');
+    if (force || document.activeElement !== $('#valIn')) $('#valIn').value = `${ilimOf(c)} mA`;
+    if (box.dataset.type !== c.type) {
+      box.dataset.type = c.type;
+      $('#valList').innerHTML = [500, 700, 1000, 1200, 1500, 1700, 2000].map(v => `<option value="${v} mA">`).join('');
+    }
+    $('#valHint').textContent = tl('Réglé au potentiomètre : Vref = {0} entre sa vis et la masse. Sans radiateur, {1} au plus ; réglez-le au courant du moteur (1,7 A pour un NEMA 17 17HS4401) ou en dessous.', `${dec(Math.round(sd.vref(ilimOf(c)) * 1000) / 1000)} V`, `${dec(sd.i.cool / 1000)} A`);
+    $('#vmaxField').hidden = true;
+    return;
+  }
+  if (vo) {
+    // Convertisseur LM2596 ou MT3608 : tension de sortie réglée par son potentiomètre (c.inp.vout, boards.js).
+    $('#valLab').textContent = tl('Tension de sortie');
+    if (force || document.activeElement !== $('#valIn')) $('#valIn').value = `${dec(voutOf(c))} V`;
+    if (box.dataset.type !== c.type) {
+      box.dataset.type = c.type;
+      $('#valList').innerHTML = [3.3, 5, 6, 9, 12, 15, 24].filter(v => v >= vo.lo && v <= vo.hi).map(v => `<option value="${dec(v)} V">`).join('');
+    }
+    $('#valHint').textContent = tl('De {0} à {1} : c’est le potentiomètre du module. La simulation et le vérificateur suivent ce réglage.', `${dec(vo.lo)} V`, `${dec(vo.hi)} V`);
+    $('#vmaxField').hidden = true;
+    return;
+  }
+  const unit = fam === 'R' ? 'Ω' : fam === 'C' ? 'F' : 'H';
+  $('#valLab').textContent = fam === 'R' ? tl('Résistance') : fam === 'C' ? tl('Capacité') : tl('Inductance');
+  if (force || document.activeElement !== $('#valIn')) $('#valIn').value = valueText(c);
+  if (box.dataset.type !== c.type) {
+    box.dataset.type = c.type;
+    $('#valList').innerHTML = suggestions(c.type).map(v => `<option value="${esc(formatValue(v, unit))}">`).join('');
+  }
+  $('#valHint').textContent = fam === 'R' ? tl('Tapez 4k7, 220, 1M… ou choisissez une valeur normalisée (E24). Les anneaux suivent.') : fam === 'C' ? tl('Tapez 100n, 4n7, 10u, 470µ… ou choisissez une valeur courante.') : tl('Tapez 100u, 10m, 1… (henrys) ou choisissez une valeur courante.');
+  const kind = capKind(c.type), vf = $('#vmaxField'); vf.hidden = !kind;
+  if (kind) {
+    const cur = ratingOf(c);
+    $('#vmaxIn').innerHTML = RATINGS[kind].map(v => `<option value="${v}"${v === cur ? ' selected' : ''}>${dec(v)} V</option>`).join('');
+  }
+}
 function updateSel() {
+  renderValue();
   const extra = [...S.multi].filter(c => c !== S.sel);
   while (multiBoxes.length < extra.length) { const h = new THREE.Box3Helper(new THREE.Box3(), 0x60a5fa); h.visible = false; scene.add(h); multiBoxes.push(h); }
   multiBoxes.forEach((h, i) => { const c = extra[i]; h.visible = !!c; if (c) { h.box.setFromObject(c.group); h.box.expandByScalar(1.5); } });
@@ -1596,15 +1905,88 @@ function setPlacing(on) { S.placing = on; $('#placeBtn').classList.toggle('on', 
 function status(t, kind = 'info') {
   const el = $('#status'); el.textContent = t; el.dataset.kind = kind;
   el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+  if (shell) shell.dock.log(t, kind); // panneau Sortie : l'historique des messages
 }
 /** Onglets de l'inspecteur : wiring | sim | video. */
 function setTab(name) {
   if (!$(`#tab-${name}`)) name = 'wiring';
+  if (name === 'prog' && codeMode !== 'off') { prog.render(); return; } // code au centre ou à côté : il y reste, l'inspecteur garde son onglet
   document.querySelectorAll('.panel.right .tabs .tab').forEach(t => {
     const n = t.id.slice(4), on = n === name, pane = $(`#pane-${n}`);
+    if (n === 'prog' && codeMode !== 'off') { t.setAttribute('aria-selected', false); t.tabIndex = -1; return; }
     t.setAttribute('aria-selected', on); t.tabIndex = on ? 0 : -1; if (pane) pane.hidden = !on;
   });
   if (name === 'prog') prog.render();
+}
+/**
+ * Code au centre (onglet « Code » à côté de Montage 3D et Schéma, src/ui/shell.js) : le panneau Code entier (règles,
+ * blocs, éditeur, débogueur, moniteur série) quitte l'inspecteur pour la place du plan de travail, comme un fichier
+ * ouvert dans un éditeur. Le même élément est déplacé : ses actions et son état ne changent pas. Revenir au montage,
+ * au schéma, à la logique ou à la pneumatique le rend à l'inspecteur.
+ */
+let codeHost = null, codeMode = 'off', codeGrip = null;
+const codeCenter = () => codeMode === 'center';
+const CODE_W = 'jollof-code-w';
+/**
+ * Où se trouve le panneau Code : 'off' (inspecteur), 'center' (à la place du plan de travail) ou 'split' (à droite du
+ * montage ou du schéma, une colonne de plus dans la grille, largeur réglable et retenue).
+ */
+function setCodeView(mode) {
+  if (!['off', 'center', 'split'].includes(mode)) mode = 'off';
+  if (mode === codeMode) return;
+  const pane = $('#pane-prog'), app = $('.app'), was = codeMode;
+  if (mode !== 'off') {
+    if (moduleApi.logic && moduleApi.logic.isOn()) moduleApi.logic.setMode(false);
+    if (moduleApi.pneu && moduleApi.pneu.isOn()) moduleApi.pneu.setMode(false);
+    if (mode === 'split' && moduleApi.pneu && moduleApi.pneu.isSplit()) moduleApi.pneu.setSplit(false); // une seule colonne de plus à la fois
+    if (!codeHost) {
+      codeHost = document.createElement('div'); codeHost.className = 'codeHost';
+      codeHost.setAttribute('role', 'region'); codeHost.setAttribute('aria-label', tl('Code'));
+      codeGrip = document.createElement('div'); codeGrip.className = 'codeGrip'; codeGrip.tabIndex = 0;
+      codeGrip.setAttribute('role', 'separator'); codeGrip.setAttribute('aria-orientation', 'vertical'); codeGrip.setAttribute('aria-label', tl('Largeur du code'));
+      codeGrip.title = tl('Tirer pour partager la place · double-clic : moitié-moitié');
+      codeHost.appendChild(codeGrip); bindCodeGrip();
+    }
+    if (was === 'off') { const wasProg = !pane.hidden; codeHost.appendChild(pane); if (wasProg) { codeMode = mode; setTab('wiring'); } }
+    if (S.flyCat) closeFlyout(); cancelPending(); $('#tip').hidden = true;
+    // Au centre : dans le plan de travail, par-dessus. À côté : une colonne de la grille, juste après le plan.
+    if (mode === 'center') $('#stage').appendChild(codeHost); else $('#stage').after(codeHost);
+    codeMode = mode;
+    app.classList.toggle('codeCenter', mode === 'center'); app.classList.toggle('codeSplit', mode === 'split');
+    document.body.classList.toggle('codeOpen', mode === 'center');
+    pane.hidden = false;
+    prog.render();
+  } else {
+    $('#modPane').after(pane); // sa place d'origine, entre le panneau des modules et Simulation
+    pane.hidden = true; codeMode = 'off';
+    app.classList.remove('codeCenter', 'codeSplit'); document.body.classList.remove('codeOpen');
+  }
+  invalidate(400); if (nav) nav.update();
+}
+/** Bord gauche du code côte à côte : tirer règle sa largeur (retenue) ; double-clic : moitié-moitié. */
+function bindCodeGrip() {
+  const app = $('.app');
+  const setW = (w, save = true) => {
+    if (w == null) { app.style.removeProperty('--codeW'); try { localStorage.removeItem(CODE_W); } catch (e) { /* stockage indisponible */ } return; }
+    const room = $('#stage').getBoundingClientRect().width + codeHost.getBoundingClientRect().width;
+    w = Math.round(Math.max(320, Math.min(room - 280, w)));
+    app.style.setProperty('--codeW', w + 'px'); if (save) try { localStorage.setItem(CODE_W, String(w)); } catch (e) { /* stockage indisponible */ }
+  };
+  try { const w = +localStorage.getItem(CODE_W); if (w > 0) app.style.setProperty('--codeW', w + 'px'); } catch (e) { /* stockage indisponible */ }
+  codeGrip.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || codeMode !== 'split') return;
+    e.preventDefault(); codeGrip.setPointerCapture(e.pointerId);
+    const right = codeHost.getBoundingClientRect().right;
+    app.classList.add('resizing'); document.body.classList.add('colResize');
+    const mv = ev => setW(right - ev.clientX, false);
+    const up = () => { codeGrip.removeEventListener('pointermove', mv); codeGrip.removeEventListener('pointerup', up); codeGrip.removeEventListener('pointercancel', up); app.classList.remove('resizing'); document.body.classList.remove('colResize'); setW(codeHost.getBoundingClientRect().width); };
+    codeGrip.addEventListener('pointermove', mv); codeGrip.addEventListener('pointerup', up); codeGrip.addEventListener('pointercancel', up);
+  });
+  codeGrip.addEventListener('dblclick', () => setW(null));
+  codeGrip.addEventListener('keydown', e => {
+    const w = codeHost.getBoundingClientRect().width, st = e.shiftKey ? 64 : 16;
+    if (e.key === 'ArrowLeft') { e.preventDefault(); setW(w + st); } else if (e.key === 'ArrowRight') { e.preventDefault(); setW(w - st); }
+  });
 }
 /** Onglet de séance (TP, devoir, projet de groupe) : à côté de Câblage, Code, Simulation. */
 const sessionTab = {
@@ -2000,13 +2382,19 @@ function showLabel(c, r) {
 }
 /** Redessine un écran : null = texte de démonstration, [] = éteint. */
 function paintScreen(c, lines) {
-  const s = c.screen, key = !lines ? 'demo' : lines.ops || lines.bits ? `ops:${lines.ver}:${lines.inv}` : lines.length + ':' + lines.join('\n');
+  // Image d'un programme (objet : dessin de l'OLED, mémoire d'un TFT, chiffres, matrice, lignes d'un LCD) : redessinée quand sa version change.
+  const s = c.screen, key = !lines ? 'demo' : !Array.isArray(lines) ? `v:${lines.ver}:${lines.inv}:${lines.on}` : lines.length + ':' + lines.join('\n');
   if (s.key === key) return; s.key = key;
   const tex = s.mesh.material.map, x = tex.image.getContext('2d');
   x.clearRect(0, 0, tex.image.width, tex.image.height); s.paint(x, s.k, lines); tex.needsUpdate = true;
 }
 /** Programmes des cartes (onglet Code) : règles, code, exécution. */
+/** Analyseur de bus : transactions I2C, SPI et série de toutes les cartes (src/sim/buslog.js), affichées au banc de mesure. */
+const busLog = createBusLog();
 const prog = createProgram({
+  busLog,
+  /** Moniteur série : il vit dans le panneau du bas (onglet « Moniteur série », src/ui/shell.js). */
+  showSerial: () => { if (shell) shell.dock.show('serial'); },
   comps: () => S.comps, wires: () => S.wires,
   sim: () => ({ A: S.simA, ins: S.insMap, drive: S.drive, pinComps: S.pinComps }),
   /** Tension d'une broche de carte calculée par le solveur (pont diviseur, condensateur…), ou null. */
@@ -2017,15 +2405,48 @@ const prog = createProgram({
   /** Valeurs de départ posées : curseurs d'environnement et commandes des entrées suivent. */
   envChanged() { renderSim.sig = null; renderSim(); S.comps.forEach(c => { if (c.type === 'button' || c.type === 'joystick') syncPress(c); }); }
 });
-const screenLines = (c, list) => (c.type === 'lcd1602' ? [list[0], list[1] || ''] : [list[0], list.slice(1).join('  ')]);
+const screenLines = (c, list) => (c.type === 'lcd1602' ? [list[0], list[1] || ''] : c.type === 'lcd2004' ? [0, 1, 2, 3].map(i => list[i] || '') : [list[0], list.slice(1).join('  ')]);
+/** Afficheurs qui ne montrent rien sans programme (pas de texte des capteurs) : matrices et chiffres à pilote. */
+const NO_SENSOR_TEXT = new Set(['max7219m', 'max7219s', 'tm1637']);
 /** Onglet Simulation : télécommande, badges RFID, clavier, téléphones Bluetooth et GSM des modules câblés. */
 installPeripherals({ comps: () => S.comps, simOn: () => S.simOn, ins: () => S.insMap, net: () => prog.net(), netChanged: () => prog.netChanged() });
+/** Onglet Simulation : fichiers des cartes microSD du montage (gardés avec le projet), à télécharger ou à ajouter. */
+installSdPanel({ comps: () => S.comps, mem: c => prog.compMem(c), changed: () => prog.netChanged(), simOn: () => S.simOn,
+  save: (bytes, name) => downloadText(bytes, name, 'application/octet-stream'), confirm: text => confirmDlg(tl('Carte microSD'), text, tl('Vider'), true) });
+installBusView({ bench: () => bench, log: busLog, boardName: id => { const c = S.comps.find(x => x.id === id); return c ? c.name : id; }, save: (text, name) => downloadText(text, name, 'text/csv') });
 installInstruments({ bench: () => bench, comps: () => S.comps, wires: () => S.wires, analyze: () => S.simA || analyze(S.comps, S.wires), simOn: () => S.simOn, dc: () => S.dc, ctx: () => dcCtx(null), changed, invalidate,
   freqOf: (c, k) => { const rt = prog.rts.get(c.id), p = rt && rt.pins.get(k); return (p && p.freq) || 490; } });
 /** Onglet Simulation : carte réelle en USB (StandardFirmata) qui recopie les sorties et montre ses vraies entrées. */
+/** Masters (ProRes, DNxHR) : codec et qualité web n'ont plus de sens ; formats offerts si ffmpeg est livré. */
+function syncFmt() {
+  const master = $('#vFmt').value !== 'mp4';
+  for (const id of ['#vCodec', '#vQual']) $(id).disabled = master;
+}
+function enableMasters() {
+  native.ffmpegInfo().then(ff => {
+    for (const [v, enc] of [['prores', 'prores_ks'], ['dnxhr', 'dnxhd']]) {
+      const o = $('#vFmt').querySelector(`option[value="${v}"]`), ok = !!(ff && ff.encoders.includes(enc));
+      o.disabled = !ok; o.title = ok ? '' : tl('ffmpeg manque à cette installation');
+    }
+  });
+}
+// Bande-son : panneau de l'onglet Vidéo (musique libre, effets, voix off, sonie).
+import('./audio/panel.js').then(m => {
+  S.audioUi = m.installAudio({
+    host: $('#audioSec'), tl, esc, icon, DEC, status, base: import.meta.env.BASE_URL,
+    get: () => S.audio, commit: changed,
+    playhead: () => (S.anim && !S.anim.temp ? S.anim.T : 0),
+    playFrom: T => { previewAt(T); playTimeline(); },
+    playing: () => !!(S.anim && !S.anim.temp && !S.anim.paused),
+    stopAnim: () => { if (S.anim) finishAnim(); }
+  });
+}).catch(e => console.error(e));
+if (native.isTauri()) setTimeout(enableMasters, 4000); // deux petits lancements de ffmpeg : après le démarrage
 import('./hil/panel.js').then(m => m.installHil({ comps: () => S.comps, simOn: () => S.simOn, rts: () => prog.rts, boardOf, status })).catch(e => console.error(e));
+let serialShownOnce = false; // le moniteur série s'ouvre seul une fois par session, au premier programme qui écrit
 function setSim(on) {
   S.simOn = on; S.simLast = performance.now() - 1000; S.simT = 0;
+  if (on && shell && !serialShownOnce && !shell.dock.isOpen() && hasProgram(S.kind) && boards().some(b => /\bSerial\d?\.(print|write)|\bprint\s*\(/.test(prog.programOf(b) || ''))) { serialShownOnce = true; shell.dock.show('serial'); }
   $('#simBtn').innerHTML = icon(on ? 'stop' : 'play') + `<span>${on ? tl('Arrêter') : tl('Simuler')}</span>`;
   $('#simBtn').classList.toggle('running', on); $('#simBtn').dataset.tip = on ? tl('Arrêter la simulation') : tl('Lancer la simulation');
   $('#simLive').hidden = !on; $('#simEmpty').hidden = on; $('#faultSec').hidden = !on;
@@ -2074,14 +2495,20 @@ function runPrograms(now) {
   prog.frame(dt);
   if (S.dc && S.dc.dyn && dt > 0) solveLive(dt / 1000); // condensateur, transistor : le circuit avance avec le temps
   if (bench) bench.sample();
-  if (S.simA) driveActuators(S.comps, { ins: S.insMap, rts: prog.rts, A: S.simA, dc: S.dc }, dt / 1000);
+  if (S.simA) {
+    const relays = S.comps.filter(c => c.type === 'relay'), was = relays.map(c => !!c.relayOn);
+    driveActuators(S.comps, { ins: S.insMap, rts: prog.rts, A: S.simA, dc: S.dc }, dt / 1000);
+    // Relais qui vient de coller ou de retomber : ses contacts changent le circuit à l'image suivante (≈ 16 ms, le temps
+    // de basculement d'un vrai relais), pas au pas d'analyse suivant (jusqu'à 100 ms).
+    if (relays.some((c, i) => !!c.relayOn !== was[i])) S.simLast = Math.min(S.simLast, now - 100);
+  }
   // Modules qui avancent avec la simulation (plan de travail pneumatique : bobines lues, capteurs de vérin posés).
   if (S.simA) S.simHooks.forEach(f => f(dt / 1000));
 }
 /** Relance les programmes sur un montage recréé (projet ouvert, annulation…) : nouvelle analyse d'abord. */
 function restartPrograms() { resetActuators(S.comps); S.simA = null; S.simLast = performance.now() - 1000; prog.startAll(); if (bench) bench.reset(); }
 /** Effecteurs qui ont une étiquette dans la scène (les LED se voient d'elles-mêmes). */
-const ACT_LABEL = new Set(['servo', 'relay', 'buzzer', 'speaker', 'dcmotor', 'stepper', 'fan', 'pump', 'vibro']);
+const ACT_LABEL = new Set(['servo', 'relay', 'buzzer', 'speaker', 'dcmotor', 'stepper', 'nema17', 'fan', 'pump', 'vibro']);
 const OLED_TEXT = scr => scr.ops.filter(o => o.t === 'text').map(o => o.str.trim()).filter(Boolean).join(' / ');
 /** Niveau d'une sortie de capteur vu de la carte, à travers un pont diviseur ou un adaptateur de niveau (circuit.js bridge). */
 function linked(v, link, prof) {
@@ -2098,7 +2525,7 @@ function linked(v, link, prof) {
  */
 function simAnalyze() {
   let sig = '';
-  for (const c of S.comps) { sig += c.id + ':' + Object.keys(c.pins).length; if (c.type === 'button' || c.type === 'cylsensor' || c.type === 'pressostat') sig += c.inp && c.inp.pressed ? '+' : '-'; else if (c.type === 'relay') sig += c.relayOn ? '+' : '-'; sig += ','; }
+  for (const c of S.comps) { sig += c.id + ':' + Object.keys(c.pins).length; if (c.type === 'button' || c.type === 'cylsensor' || c.type === 'pressostat') sig += c.inp && c.inp.pressed ? '+' : '-'; else if (c.type === 'relay') sig += c.relayOn ? '+' : '-'; else if (VOUT[c.type]) sig += voutOf(c); sig += ','; }
   sig += '|';
   for (const w of S.wires) sig += `${w.a.comp.id}.${w.a.key}-${w.b.comp.id}.${w.b.key}${(w.progress ?? 1) < 1 ? '~' : ''},`;
   if (simAnalyze.sig === sig && simAnalyze.A && simAnalyze.comps === S.comps && simAnalyze.wires === S.wires) return simAnalyze.A;
@@ -2124,7 +2551,7 @@ function simTick(now) {
     let r;
     if (ins.level === 'err') { c.simS.next = 0; r = { level: 'err', value: firstMsg(ins) || tl('câblage incomplet'), detail: tl('aucune mesure tant que le câblage est incorrect') }; }
     else {
-      r = readSensor(c, m, { A, prof: ins.prof, v: ins.v ?? (ins.prof ? ins.prof.logic : 0), io: ins.io, flags: ins.flags }, t);
+      r = readSensor(c, m, { A, prof: ins.prof, v: ins.v ?? (ins.prof ? ins.prof.logic : 0), io: ins.io, flags: ins.flags, dc: S.dc }, t);
       r.level = r.level || (r.warn || ins.level === 'warn' ? 'warn' : 'ok');
       r.warn = r.warn || firstMsg(ins, 'warn');
       if (r.sampled) pulseFrom(c, ins, now);
@@ -2145,11 +2572,11 @@ function simTick(now) {
     let lines, value;
     if (rt) {
       // Carte programmée : l'écran montre ce que le programme y écrit, et rien d'autre.
-      lines = off ? [] : c.type === 'lcd1602' ? (ps ? ps.lines : ['', '']) : ps || [];
-      value = off ? firstMsg(ins) || tl('câblage incomplet') : !ps ? tl('rien d’affiché par le programme') : ps.bits ? tl('dessin') : ps.ops ? OLED_TEXT(ps) || 'dessin' : ps.lines.length ? ps.lines.map(l => l.trimEnd()).join(' / ') : tl('rétroéclairage éteint');
+      lines = off ? [] : c.type === 'lcd1602' || c.type === 'lcd2004' ? (ps ? ps.lines : ['', '']) : ps || [];
+      value = off ? firstMsg(ins) || tl('câblage incomplet') : !ps ? tl('rien d’affiché par le programme') : ps.lines ? (ps.lines.length ? ps.lines.map(l => l.trimEnd()).join(' / ') : tl('rétroéclairage éteint')) : ps.ops ? OLED_TEXT(ps) || 'dessin' : ps.on === false ? tl('affichage éteint') : ps.text || tl('dessin');
     } else {
       const list = (shown.get(ins.board) || []).slice().sort((a, b) => a.p - b.p).map(x => x.t);
-      lines = off ? [] : list.length ? screenLines(c, list) : ['Jollof Studio', tl('Aucun capteur')];
+      lines = off || NO_SENSOR_TEXT.has(c.type) ? [] : list.length ? screenLines(c, list) : ['Jollof Studio', tl('Aucun capteur')];
       value = off ? firstMsg(ins) || tl('câblage incomplet') : lines.filter(Boolean).join(' / ');
     }
     paintScreen(c, lines);
@@ -2357,12 +2784,17 @@ function runPulses(now) {
 function envField(q) {
   const Q = QUANT[q];
   if (Q.bool) return `<label class="check"><input type="checkbox" data-q="${q}"${ENV[q] ? ' checked' : ''}> ${esc(Q.label)}</label>`;
+  // Couleur de la lumière (TCS34725) : sélecteur de couleur ; fromSlider lit sa valeur #rrggbb.
+  if (Q.color) return `<label class="field"><span class="fh">${esc(Q.label)}<output data-o="${q}">${fmtQ(q)}</output></span><input type="color" data-q="${q}" value="${sliderOf(q, ENV[q])}"></label>`;
+  if (Q.log) return `<label class="field"><span class="fh">${esc(Q.label)}<output data-o="${q}">${fmtQ(q)}</output></span><input type="range" data-q="${q}" min="0" max="${SLIDER_STEPS}" step="1" value="${sliderOf(q, ENV[q])}"></label>`;
   return `<label class="field"><span class="fh">${esc(Q.label)}<output data-o="${q}">${fmtQ(q)}</output></span><input type="range" data-q="${q}" min="${Q.min}" max="${Q.max}" step="${Q.step}" value="${ENV[q]}"></label>`;
 }
 /** Grandeur réglée à part pour un capteur : même curseur que l'environnement, sur ce capteur seulement. */
 function ownField(c, q) {
   const Q = QUANT[q], v = envOf(c, q);
   if (Q.bool) return `<label class="check"><input type="checkbox" data-oq="${q}"${v ? ' checked' : ''}> ${esc(Q.label)}</label>`;
+  if (Q.color) return `<label class="field"><span class="fh">${esc(Q.label)}<output data-oo="${q}">${fmtEnv(q, v)}</output></span><input type="color" data-oq="${q}" value="${sliderOf(q, v)}"></label>`;
+  if (Q.log) return `<label class="field"><span class="fh">${esc(Q.label)}<output data-oo="${q}">${fmtEnv(q, v)}</output></span><input type="range" data-oq="${q}" min="0" max="${SLIDER_STEPS}" step="1" value="${sliderOf(q, v)}"></label>`;
   return `<label class="field"><span class="fh">${esc(Q.label)}<output data-oo="${q}">${fmtEnv(q, v)}</output></span><input type="range" data-oq="${q}" min="${Q.min}" max="${Q.max}" step="${Q.step}" value="${v}"></label>`;
 }
 /** Capteur : réglage à part (sa propre mesure) ou environnement commun. */
@@ -2376,6 +2808,7 @@ function probeRow(c) {
   let ctl = '';
   if (c.type === 'button') ctl = `<button class="btn small" data-press="pressed" aria-pressed="${!!i.pressed}" title="${tl('Comme le vrai bouton : appuyé tant que vous maintenez le clic (ou la barre d’espace). Maj + clic : le laisser appuyé.')}">${pressLabel(c, 'pressed')}</button>`;
   if (c.type === 'pot') ctl = `${tl('Curseur')} <input type="range" data-inp="pos" min="0" max="100" value="${i.pos}" aria-label="${tl('Position du curseur de {0}', n)}">`;
+  if (c.type === 'ky040') ctl = `<button class="btn small" data-turn="-1" aria-label="${tl('Tourner {0} d’un cran dans le sens antihoraire', n)}">⟲</button> <button class="btn small" data-turn="1" aria-label="${tl('Tourner {0} d’un cran dans le sens horaire', n)}">⟳</button> <button class="btn small" data-press="sw" aria-pressed="${!!i.sw}" title="${tl('Bouton de l’axe : appuyé tant que vous maintenez le clic. Dans la scène : clic à droite ou à gauche du bouton pour le tourner, Maj + clic pour l’enfoncer.')}">SW</button>`;
   if (c.type === 'joystick') ctl = `X <input type="range" data-inp="x" min="-100" max="100" value="${i.x}" aria-label="${tl('Axe X de {0}', n)}"> Y <input type="range" data-inp="y" min="-100" max="100" value="${i.y}" aria-label="${tl('Axe Y de {0}', n)}"> <button class="btn small" data-press="sw" aria-pressed="${!!i.sw}">SW</button>`;
   return `<li data-id="${esc(c.id)}"><div class="ph"><span class="lv"></span><b>${n}</b><span class="sig"></span></div><div class="pv">—</div><div class="pd"></div><div class="pm"></div>${ctl ? `<div class="ctl">${ctl}</div>` : ''}${ownRow(c)}</li>`;
 }
@@ -2399,6 +2832,7 @@ function updateProbes() {
     li.querySelector('.pv').innerHTML = r ? esc(r.value) + (r.trend ? `<i>${TREND[r.trend]}</i>` : '') : '—';
     li.querySelector('.pd').textContent = r ? r.detail || '' : tl('Démarrez la simulation pour le lire.');
     li.querySelector('.pm').textContent = r && r.warn ? '⚠ ' + r.warn : '';
+    if (c.knob) { const y = -((c.periph && c.periph.pos) || 0) * Math.PI / 10; if (c.knob.rotation.y !== y) { c.knob.rotation.y = y; invalidate(); } }
   }
 }
 
@@ -2722,13 +3156,20 @@ function cadArrived(tries = 0) {
 // Chaque modification du montage enregistre un instantané (composants, positions, fils).
 // L'environnement simulé et les réglages ne font pas partie de l'historique.
 const UNDO = [], REDO = [], GLB = new Map();
+/** Réglages d'un composant qui font partie du montage (et de l'historique d'annulation), pas de la simulation. */
+const DESIGN_INP = ['val', 'vmax', 'vout', 'ilim', 'addr', 'schRot', 'schMir', 'range'];
 function stateOf() {
   return JSON.stringify({
     comps: S.comps.map(c => {
       if (c.custom) GLB.set(c.id, c.custom.glb); // le modèle .glb est gardé à part, une seule fois
       if (c.skin) GLB.set('s:' + c.id, c.skin.glb);
       const { glb, ...custom } = c.custom || {}, { glb: g2, ...skin } = c.skin || {};
-      return { id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom && custom, skin: c.skin && skin };
+      // Réglages de conception gardés dans l'historique (annulables comme une rotation sur le tapis) : valeur d'un passif,
+      // tension de service, tension de sortie d'un convertisseur, adresse I2C, orientation du symbole sur le schéma.
+      // Les entrées de simulation (bouton appuyé, potentiomètre…) n'y entrent pas.
+      const i = c.inp || {}, keep = {};
+      for (const k of DESIGN_INP) if (i[k] != null && i[k] !== false) keep[k] = i[k];
+      return { id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom && custom, skin: c.skin && skin, inp: Object.keys(keep).length ? keep : undefined };
     }),
     wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role })),
     blocks: blocks.data(),
@@ -2787,7 +3228,7 @@ function serialize() {
       kind: S.kind, // type de projet (src/ui/kind.js)
       dur: +$('#dur').value, env: { ...ENV }, shots: S.shots, netNames: S.netNames, prog: prog.data, modules: moduleData(),
       check: { allow: S.checkAllow || [] },
-      timeline: S.timeline, video: { res: $('#vRes').value, fps: +$('#vFps').value, cap: $('#capOn').checked, orbit: $('#orbitOn').checked }
+      timeline: S.timeline, audio: isSilent(S.audio) && !Object.keys(S.audio.clips).length ? undefined : S.audio, video: { res: $('#vRes').value, fps: Math.round(VX.parseRate($('#vFps').value).fps), rate: $('#vFps').value, codec: $('#vCodec').value, quality: $('#vQual').value, subs: $('#vSubs').checked, fmt: $('#vFmt').value, cap: $('#capOn').checked, orbit: $('#orbitOn').checked }
     }
   };
 }
@@ -2797,6 +3238,7 @@ function serialize() {
  * l'interface ; la promesse renvoyée est tenue une fois le projet écrit (à attendre avant un redémarrage).
  */
 function autosave() {
+  if (S.homeGuard) return Promise.resolve(); // accueil du démarrage : la session d'avant reste intacte tant qu'on n'a rien choisi
   let json;
   try { json = JSON.stringify({ ...serialize(), path: S.projectPath }); } catch (e) { console.error(e); return Promise.resolve(); }
   return native.autosaveWrite(json);
@@ -2809,6 +3251,7 @@ function clearProject() {
   blocks.set([]);
 }
 async function restore(raw) {
+  if (!S.restoring) closeHome(); // un projet arrive (fichier, exemple, TP, assistant IA…) : l'accueil s'efface ; pas pour un simple redessin (pièces CAO, annulation)
   const data = sanitizeProject(raw); // projet reçu d'ailleurs : libellés nettoyés avant tout affichage
   invalidate(500);
   clearProject();
@@ -2837,11 +3280,19 @@ async function restore(raw) {
   // Avertissements acceptés (#[allow] du vérificateur) : seulement à l'ouverture d'un projet, pas pendant l'historique.
   if (data.settings) S.checkAllow = data.settings.check && Array.isArray(data.settings.check.allow) ? data.settings.check.allow : [];
   S.timeline = (set && TL.normalize(set.timeline, cleanText)) || TL.buildAuto('seq', [], +$('#dur').value);
+  S.audio = (set && normalizeAudio(set.audio, cleanText)) || emptyAudio();
+  if (audioMod) audioMod.then(m => m.stop());
+  if (S.audioUi) S.audioUi.refresh();
   syncTimeline();
   const vs = data.settings && data.settings.video;
   if (vs && typeof vs === 'object') {
-    if (RES[vs.res]) $('#vRes').value = String(vs.res);
-    if (vs.fps === 30 || vs.fps === 60) $('#vFps').value = String(vs.fps);
+    if (VX.SIZES[vs.res]) $('#vRes').value = String(vs.res);
+    if (VX.RATES[vs.rate]) $('#vFps').value = String(vs.rate); else if (VX.RATES[vs.fps]) $('#vFps').value = String(vs.fps);
+    if (VX.CODEC_NAME[vs.codec]) $('#vCodec').value = vs.codec;
+    if (vs.quality === 'web' || vs.quality === 'master') $('#vQual').value = vs.quality;
+    if (typeof vs.subs === 'boolean') $('#vSubs').checked = vs.subs;
+    if (['mp4', 'prores', 'dnxhr'].includes(vs.fmt)) { const o = $('#vFmt').querySelector(`option[value="${vs.fmt}"]`); if (o && !o.disabled) $('#vFmt').value = vs.fmt; }
+    syncFmt();
     if (typeof vs.cap === 'boolean') $('#capOn').checked = vs.cap;
     if (typeof vs.orbit === 'boolean') $('#orbitOn').checked = vs.orbit;
   }
@@ -2899,20 +3350,55 @@ async function newProject(kind) {
     if (!kind) return false;
   }
   if (S.simOn) setSim(false);
+  closeHome();
   clearProject(); prog.load(null); loadModules(null); setKind(kind, true);
   // Nouveau projet : plans, noms de nœuds et timeline repartent de zéro.
   S.shots = []; S.netNames = {}; S.checkAllow = []; S.timeline = TL.buildAuto('seq', [], +$('#dur').value); renderShots(); syncTimeline(); if (S.simOn) restartPrograms(); renderWires(); renderBlocks(); setProjectName(tl('Sans titre'), null); S.projectPath = null; if (chk) chk.schedule();
   S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); resetHistory(); status(tl('Nouveau projet {0}.', KINDS[kind].name().toLowerCase()));
   return true;
 }
+/* ---------- Accueil ---------- */
+// À l'ouverture, l'application montre l'accueil (src/ui/home.js) au lieu de charger un projet : nouveau projet par
+// type, reprise du dernier projet (la sauvegarde automatique), ouverture d'un fichier, exemples, TP, tutoriel.
+// startData : la session d'avant, reprise seulement si on le demande.
+let home = null, startData = null;
+function closeHome() { if (home) home.hide(); S.homeGuard = false; startData = null; }
+function showHome(o = {}) {
+  if (!home) home = createHome({
+    resume: () => resumeInfo(startData || (S.comps.length || (moduleApi.pneu && moduleApi.pneu.circuit().elements.length) || (moduleApi.logic && moduleApi.logic.circuit().elements.length) ? serialize() : null)),
+    async onResume() {
+      const d = startData;
+      if (!d) { closeHome(); return; } // accueil rouvert depuis le menu : le projet est déjà là
+      await restore(d); setProjectName(d.name || tl('Sans titre'), d.path || null); S.projectPath = d.path || null;
+      S.dirty = false; $('#projectName').classList.remove('dirty'); frameAll(); resetHistory();
+    },
+    onKind: k => newProject(k),
+    onOpen: () => openProjectFile(),
+    onExamples: () => { S.homeGuard = false; openEx(); },
+    onLabs: () => { S.homeGuard = false; if (moduleApi.openLabs) moduleApi.openLabs(S.kind === 'pneu' || S.kind === 'epneu' ? 'pneu' : S.kind === 'logic' ? 'logic' : 'elec'); },
+    onTutorial: () => { S.homeGuard = false; if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); },
+    onClose: () => closeHome()
+  });
+  home.show(o);
+}
 async function openProjectFile() {
   try {
     const f = await native.openProject(); if (!f) return;
-    const data = JSON.parse(f.text);
-    if (!data || !Array.isArray(data.comps)) throw new Error(tl('ce fichier n’est pas un projet Jollof Studio'));
-    await restore(data); setProjectName(f.name, f.path); S.projectPath = f.path;
-    S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); frameAll(); resetHistory(); status(tl('Projet ouvert : {0}', f.name), 'ok');
+    await openProjectText(f);
   } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
+}
+/** Ouvre un projet lu : { path, name, text } (boîte « Ouvrir », ou fichier reçu du système). */
+async function openProjectText(f) {
+  const data = JSON.parse(f.text);
+  if (!data || !Array.isArray(data.comps)) throw new Error(tl('ce fichier n’est pas un projet Jollof Studio'));
+  if (S.anim) finishAnim();
+  await restore(data); setProjectName(f.name, f.path); S.projectPath = f.path;
+  S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); frameAll(); resetHistory(); status(tl('Projet ouvert : {0}', f.name), 'ok');
+}
+/** Projet reçu du système pendant que l'application tourne (double-clic sur un .jollof, deuxième lancement). */
+async function openLaunchedFile() {
+  const f = await native.takeLaunchFile(); if (!f) return;
+  try { if (S.simOn) setSim(false); await openProjectText(f); } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
 }
 /** Projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé) : converti, ouvert, compte rendu affiché. */
 async function importWokwiFiles(list) {
@@ -2928,7 +3414,7 @@ async function importWokwiFiles(list) {
     S.dirty = true; $('#projectName').classList.add('dirty'); autosave(); frameAll(); resetHistory();
     const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
     $('#impBody').innerHTML = `<p>${esc(tl('{0} composants et {1} fils importés. Les breadboards de Wokwi sont remplacées par des fils directs.', report.parts, report.wires))}</p>`
-      + (report.engine ? `<p>${esc(report.engine === 'firmware' ? tl('Programme : mode fidèle (le vrai compilateur, application de bureau).') : tl('Programme : mode débutant (interpréteur, pas à pas possible).'))}</p>` : '')
+      + (report.engine === 'micropython' ? `<p>${esc(tl('Programme : MicroPython.'))}</p>` : '')
       + (report.unknown.length ? `<h3>${esc(tl('Composants non importés'))}</h3><ul class="bad">${li(report.unknown.map(u => `${u.id} (${u.type})${u.why ? ' : ' + u.why : ''}`))}</ul>` : '')
       + (report.dropped.length ? `<h3>${esc(tl('Connexions non importées'))}</h3><ul class="bad">${li(report.dropped)}</ul>` : '')
       + (report.notes.length ? `<h3>${esc(tl('Remarques'))}</h3><ul>${li(report.notes)}</ul>` : '');
@@ -2948,6 +3434,16 @@ async function saveProjectFile(saveAs) {
 
 /* ---------- Liaisons de l'interface ---------- */
 function bindUI() {
+  // Ossature à la manière d'un éditeur de code (barre d'activité, onglets des plans, panneau du bas) et palette de
+  // commandes : posées avant les plans de travail, pour que leurs raccourcis (Ctrl+Maj+P, Ctrl+J) passent en premier.
+  palette = createPalette();
+  shell = installShell({ libOpen: libIsOpen, setLibOpen, openPalette: () => palette.open(), togglePalette: () => palette.toggle(), paletteOpen: () => palette.isOpen(), codeMode: () => codeMode, setCodeView });
+  registerCommands();
+  // Moniteur série : dans le panneau du bas, à côté de Problèmes et Sortie (comme le terminal d'un éditeur de code).
+  { const sec = $('.serialSec'); if (sec) { sec.classList.remove('folded'); sec.removeAttribute('data-fold'); shell.dock.addTab({ id: 'serial', label: tl('Moniteur série'), el: sec, onShow: () => prog.render(), when: () => hasProgram(S.kind) }); } }
+  // Thème : le fond de la scène 3D (et sa brume) suit la feuille de style (--stage).
+  const paintTheme = () => { const c = uiTheme() === 'light' ? 0xf3f5f8 : 0x0f1316; scene.background.set(c); if (scene.fog) scene.fog.color.set(c); invalidate(300); };
+  addEventListener('jollof:theme', paintTheme); paintTheme();
   $('#hint').textContent = tl('Glisser broche → broche : tirer un fil · Molette : zoom vers le curseur · Clic droit glissé, deux doigts ou flèches : déplacer la vue · F : tout voir · ? : raccourcis');
   $('#libSearch').oninput = renderLibrary;
   ['#lib', '#flyList'].forEach(id => {
@@ -3004,7 +3500,11 @@ function bindUI() {
     if (b.dataset.a === 'down' && i < w.length - 1) [w[i + 1], w[i]] = [w[i], w[i + 1]];
     w.forEach(buildWire); renderWires(); updatePower(); changed();
   };
-  $('#rot').onclick = () => { const list = selComps(); if (!list.length) return; list.forEach(c => { c.group.rotation.y += Math.PI / 2; c.group.updateMatrixWorld(true); rebuildFor(c); }); updateSel(); changed(); };
+  $('#rot').onclick = e => {
+    const list = selComps(); if (!list.length) return;
+    // Vue Schéma : on fait pivoter le symbole (Maj : miroir), pas le composant sur le tapis.
+    if (S.view2d && sch) { sch.rotate(list, !!(e && e.shiftKey)); changed(); return; }
+    list.forEach(c => { c.group.rotation.y += Math.PI / 2; c.group.updateMatrixWorld(true); rebuildFor(c); }); updateSel(); changed(); };
   $('#del').onclick = () => {
     const list = selComps(); if (!list.length) return;
     if (list.length === 1) { removeComp(list[0]); return; }
@@ -3089,6 +3589,50 @@ function bindUI() {
   $('#redoBtn').onclick = redo;
   $('#frameBtn').onclick = frameAll;
   document.querySelectorAll('[data-view]').forEach(b => (b.onclick = () => setView(b.dataset.view)));
+  // Valeur d'un passif : tapée (4k7, 100n, 10 mH…) ou choisie dans les valeurs normalisées.
+  $('#valIn').onchange = () => {
+    const c = S.sel, vo = c && VOUT[c.type];
+    if (c && c.type === 'acs712') {
+      // Version de l'ACS712 : « 20 », « 20 A », « 30A ».
+      const r = Math.trunc(parseFloat(String($('#valIn').value).replace(',', '.')));
+      if (!ACS712[r]) { status(tl('Version inconnue : {0} (5 A, 20 A ou 30 A)', $('#valIn').value), 'warn'); renderValue(true); return; }
+      if (r === 5) delete c.inp.range; else c.inp.range = r;
+      renderValue(true); changed(); invalidate(300);
+      status(tl('{0} : version ±{1} A', c.name, r), 'ok');
+      return;
+    }
+    if (c && STEP_DRIVERS[c.type]) {
+      // Courant d'un pilote pas à pas : « 1200 », « 1,2 A », « 800 mA ».
+      const t = String($('#valIn').value).replace(',', '.'), x = parseFloat(t), ma = /\bA\s*$/i.test(t) && !/mA/i.test(t) ? x * 1000 : x;
+      if (!(ma >= ILIM_RANGE.lo && ma <= ILIM_RANGE.hi)) { status(tl('Courant illisible ou hors de la plage du réglage ({0} à {1}) : {2}', `${ILIM_RANGE.lo} mA`, `${ILIM_RANGE.hi} mA`, $('#valIn').value), 'warn'); renderValue(true); return; }
+      if (Math.round(ma) === STEP_DRIVERS[c.type].i.def) delete c.inp.ilim; else c.inp.ilim = Math.round(ma);
+      renderValue(true); changed(); invalidate(300);
+      status(tl('{0} : {1} par phase', c.name, `${ilimOf(c)} mA`), 'ok');
+      return;
+    }
+    if (vo) {
+      // Tension de sortie d'un convertisseur : « 5 », « 3,3 V », « 12V ».
+      const v = parseFloat(String($('#valIn').value).replace(',', '.'));
+      if (!(v >= vo.lo && v <= vo.hi)) { status(tl('Tension illisible ou hors de la plage du module ({0} à {1}) : {2}', `${dec(vo.lo)} V`, `${dec(vo.hi)} V`, $('#valIn').value), 'warn'); renderValue(true); return; }
+      if (Math.abs(v - vo.def) < 1e-9) delete c.inp.vout; else c.inp.vout = Math.round(v * 100) / 100;
+      renderValue(true); changed(); invalidate(300);
+      status(tl('{0} : sortie réglée à {1}', c.name, volts(voutOf(c))), 'ok');
+      return;
+    }
+    if (!c || !familyOf(c.type)) return;
+    const v = acceptValue(c.type, $('#valIn').value);
+    if (v == null) { status(tl('Valeur illisible ou hors limites : {0}', $('#valIn').value), 'warn'); renderValue(true); return; }
+    if (Math.abs(v - defaultValue(c.type)) < defaultValue(c.type) * 1e-9) delete c.inp.val; else c.inp.val = v;
+    if (c.bands) paintBands(c, bandsOf(valueOf(c)));
+    renderValue(true); changed(); invalidate(300);
+    status(tl('{0} = {1}', c.name, valueText(c)), 'ok');
+  };
+  $('#valIn').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); };
+  $('#vmaxIn').onchange = () => {
+    const c = S.sel; if (!c) return;
+    const v = +$('#vmaxIn').value; if (!(v > 0)) return;
+    c.inp.vmax = v; changed(); status(tl('{0} : tension de service {1} V', c.name, dec(v)), 'ok');
+  };
   const xf = () => {
     const c = S.sel; if (!c) return;
     const x = parseFloat($('#tX').value), z = parseFloat($('#tZ').value), r = parseFloat($('#tR').value);
@@ -3160,7 +3704,7 @@ function bindUI() {
   });
   const onEnv = e => {
     const q = e.target.dataset.q; if (!q) return;
-    ENV[q] = e.target.type === 'checkbox' ? (e.target.checked ? 1 : 0) : +e.target.value;
+    ENV[q] = e.target.type === 'checkbox' ? (e.target.checked ? 1 : 0) : fromSlider(q, e.target.value); // lumière : curseur logarithmique
     const o = $(`#env [data-o="${q}"]`); if (o) o.textContent = fmtQ(q);
     if (!S.simOn) setSim(true);
     changed();
@@ -3171,7 +3715,7 @@ function bindUI() {
     const c = probeComp(e.target); if (!c) return;
     const oq = e.target.dataset.oq;
     if (oq) { // grandeur réglée à part pour ce capteur
-      c.env = { ...(c.env || {}), [oq]: e.target.type === 'checkbox' ? (e.target.checked ? 1 : 0) : +e.target.value };
+      c.env = { ...(c.env || {}), [oq]: e.target.type === 'checkbox' ? (e.target.checked ? 1 : 0) : fromSlider(oq, e.target.value) };
       const o = e.target.closest('li').querySelector(`[data-oo="${oq}"]`); if (o) o.textContent = fmtEnv(oq, c.env[oq]);
       if (!S.simOn) setSim(true); changed(); return;
     }
@@ -3211,6 +3755,7 @@ function bindUI() {
   });
   $('#probes').addEventListener('keyup', e => { if (e.key === ' ' || e.key === 'Enter') releaseProbe(); });
   $('#probes').addEventListener('click', e => { if (e.target.closest('[data-press]')) e.preventDefault(); });
+  $('#probes').addEventListener('click', e => { const b = e.target.closest('[data-turn]'), c = b && probeComp(b); if (c) turnEnc(c, +b.dataset.turn); });
   $('#animPlay').onclick = () => { if (!S.rec && !S.vr) { if (S.anim) finishAnim(); startAnim(); } };
   // Séquence automatique choisie : la timeline est refaite (une timeline faite à la main revient par Ctrl+Z).
   $('#animMode').onchange = e => {
@@ -3252,6 +3797,8 @@ function bindUI() {
   });
   $('#tlToggle').onclick = () => timelineDock.toggle();
   $('#recBtn').onclick = renderVideo;
+  $('#vFmt').onchange = () => { syncFmt(); changed(); };
+  $('#vFmtField').hidden = !native.isTauri();
   $('#rCancel').onclick = () => { if (S.vr) S.vr.cancel = true; };
   $('#addShot').onclick = addShot;
   $('#shots').onclick = e => {
@@ -3265,10 +3812,20 @@ function bindUI() {
   $('#closeModal').onclick = () => { $('#modal').hidden = true; $('#vid').pause(); };
   $('#dl').onclick = async () => {
     if (!S.video) return;
-    try { const p = await native.saveVideo(S.video.blob, S.video.name); if (p) status(tl('Vidéo enregistrée : {0}', p)); }
+    try { const p = await native.saveVideo(S.video, S.video.name); if (p) status(tl('Vidéo enregistrée : {0}', p)); }
     catch (e) { status(tl('Enregistrement de la vidéo impossible : ') + (e.message || e)); }
   };
+  // Sous-titres à part : SubRip pour les logiciels de montage et YouTube, WebVTT pour le web.
+  $('#vidSubs').onclick = async e => {
+    const b = e.target.closest('[data-sub]'); if (!b || !S.video || !S.video.cues.length) return;
+    const vtt = b.dataset.sub === 'vtt', text = vtt ? VX.toWebVTT(S.video.cues, isEn ? 'en' : 'fr') : VX.toSRT(S.video.cues);
+    try {
+      const p = await native.saveFile(new Blob([text], { type: vtt ? 'text/vtt' : 'application/x-subrip' }), `${S.video.base}.${isEn ? 'en' : 'fr'}.${vtt ? 'vtt' : 'srt'}`, tl('Sous-titres'), vtt ? 'vtt' : 'srt');
+      if (p) status(tl('Sous-titres enregistrés : {0}', p), 'ok');
+    } catch (err) { status(tl('Enregistrement des sous-titres impossible : ') + (err.message || err), 'err'); }
+  };
   $('#newBtn').onclick = () => newProject();
+  $('#homeBtn').onclick = () => showHome();
   $('#openBtn').onclick = openProjectFile;
   $('#importBtn').onclick = () => $('#importFile').click();
   $('#importFile').onchange = e => { const l = [...e.target.files]; e.target.value = ''; importWokwiFiles(l); };
@@ -3350,6 +3907,7 @@ function bindUI() {
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.visualHost, .ProseMirror')) return; // blocs de code, texte enrichi : leurs propres raccourcis
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (codeCenter() || (codeHost && codeHost.contains(document.activeElement))) return; // code au centre, ou focus dans le code : pas de raccourci de la scène 3D (S, F, R, Suppr, flèches)
     if (k === 'escape' && S.flyCat) { closeFlyout(); return; }
     if (mod && k === 'a') { e.preventDefault(); if (S.comps.length) setMulti(S.comps.slice()); return; }
     if (mod && k === 'g') { e.preventDefault(); if (selComps().length) blockFromSel(); return; }
@@ -3368,12 +3926,102 @@ function bindUI() {
     const arrows = { arrowleft: [-1, 0], arrowright: [1, 0], arrowup: [0, -1], arrowdown: [0, 1] }[k];
     if (arrows && S.view2d) { e.preventDefault(); const st = e.shiftKey ? 240 : 80; sch.panBy(arrows[0] * st, arrows[1] * st); return; }
     if (arrows) { e.preventDefault(); const st = e.shiftKey ? 240 : 80; panView(arrows[0] * st, arrows[1] * st); return; }
-    if (k === 'r' && S.sel && !S.view2d) $('#rot').click();
+    if (k === 'r' && S.sel && !mod) { if (S.view2d && sch) { sch.rotate(selComps(), e.shiftKey); changed(); } else $('#rot').click(); }
     // Schéma : d'abord le fil ou la broche survolés, sinon le composant sélectionné (visible sur le schéma).
     if ((k === 'delete' || k === 'backspace') && S.view2d) { if (!sch.cutHover() && S.sel) $('#del').click(); return; }
     if ((k === 'delete' || k === 'backspace') && S.selWire) { removeWire(S.selWire); renderWires(); updatePower(); changed(); return; }
     if ((k === 'delete' || k === 'backspace') && S.sel) $('#del').click();
   });
+}
+
+/* ---------- Palette de commandes : ce que font les boutons et les menus, au clavier (src/ui/commands.js) ---------- */
+function registerCommands() {
+  const click = sel => { const b = $(sel); if (b) b.click(); };
+  const shown = sel => { const b = $(sel); return !!b && !b.hidden && getComputedStyle(b).display !== 'none'; };
+  const elecOn = () => !document.body.classList.contains('logicOpen') && !document.body.classList.contains('pneuOpen');
+  const has = sp => spacesOf(S.kind).includes(sp);
+  const CATS = { proj: tl('Projet'), view: isEn ? 'View' : 'Vue', ins: tl('Inspecteur'), sim: tl('Simulation'), edit: isEn ? 'Edit' : 'Édition', res: tl('Ressources') };
+  const C = (cat, list) => list.map(([id, label, ic, run, extra]) => ({ id: `${cat}:${id}`, cat: CATS[cat], label, icon: ic, run, ...(extra || {}) }));
+  palette.register([
+    ...C('proj', [
+      ['home', tl('Accueil'), 'sparkle', () => showHome()],
+      ['new', tl('Nouveau projet'), 'filePlus', () => newProject(), { keys: shortcut('N') }],
+      ['open', tl('Ouvrir…'), 'folder', () => openProjectFile(), { keys: shortcut('O') }],
+      ['save', tl('Enregistrer'), 'save', () => saveProjectFile(false), { keys: shortcut('S') }],
+      ['saveAs', tl('Enregistrer sous…'), 'save', () => saveProjectFile(true), { keys: shortcut('S', true) }],
+      ['import', tl('Importer un projet Wokwi…'), 'upload', () => click('#importBtn'), { when: () => shown('#importBtn') }],
+      ['kind', tl('Changer le type de projet…'), 'swap', () => click('#kindBtn')],
+      ['update', tl('Rechercher les mises à jour…'), 'sparkle', () => click('#updBtn'), { when: () => shown('#updBtn') }],
+      ['logs', tl('Ouvrir le dossier des journaux'), 'folder', () => click('#logBtn'), { when: () => shown('#logBtn') }]
+    ]),
+    ...C('view', [
+      ['lib', tl('Afficher ou replier la bibliothèque'), 'box', () => setLibOpen(!libIsOpen()), { keys: shortcut('B') }],
+      ['dock', tl('Afficher ou fermer le panneau du bas'), 'sidebar', () => shell.dock.toggle(), { keys: shortcut('J') }],
+      ['problems', tl('Problèmes'), 'alert', () => shell.dock.show('problems'), { keys: shortcut('M', true) }],
+      ['output', isEn ? 'Output' : 'Sortie', 'terminal', () => shell.dock.show('output'), { keys: shortcut('U', true) }],
+      ['tab3d', tl('Montage 3D'), 'cube', () => shell.tabs.go('3d'), { keys: 'S', when: () => has('elec') }],
+      ['tab2d', tl('Schéma'), 'schematic', () => shell.tabs.go('2d'), { keys: 'S', when: () => has('elec') }],
+      ['tabCode', tl('Code'), 'code', () => shell.tabs.go('code'), { when: () => hasProgram(S.kind) }],
+      ['codeSplit', tl('Code côte à côte avec le montage'), 'split', () => setCodeView(codeMode === 'split' ? 'off' : 'split'), { when: () => hasProgram(S.kind) && elecOn() }],
+      ['serial', tl('Moniteur série'), 'terminal', () => shell.dock.show('serial'), { when: () => hasProgram(S.kind) }],
+      ['tabLogic', isEn ? 'Logic' : 'Logique', 'logic', () => shell.tabs.go('logic'), { when: () => has('logic') }],
+      ['tabPneu', tl('Pneumatique'), 'pneu', () => shell.tabs.go('pneu'), { when: () => has('pneu') }],
+      ['split', tl('Vue partagée'), 'split', () => click('.pnSplitBtn'), { when: () => shown('.pnSplitBtn') }],
+      ['frame', tl('Tout voir'), 'frame', () => click('#frameBtn'), { keys: 'F' }],
+      ['simple', tl('Rendu simple'), 'shapes', () => click('#renderSimple'), { when: elecOn }],
+      ['real', tl('Rendu réaliste'), 'cube', () => click('#renderReal'), { when: elecOn }],
+      ['quality', tl('Performances…'), 'zap', () => click('#qualityBtn'), { when: elecOn }],
+      ['bench', tl('Instruments de mesure'), 'gauge', () => click('#benchBtn'), { when: elecOn }],
+      ['tags', tl('Repères des composants'), 'tag', () => click('#tagsBtn'), { when: elecOn }],
+      ['tidy', tl('Fils rangés'), 'route', () => click('#wireTidy'), { when: elecOn }],
+      ['soft', tl('Fils souples'), 'curve', () => click('#wireSoft'), { when: elecOn }],
+      ['wide', tl('Agrandir l’inspecteur'), 'expand', () => click('#progWide'), { when: () => shown('#progMain') }],
+      ['light', tl('Thème clair'), 'sun', () => setTheme('light')],
+      ['dark', tl('Thème sombre'), 'moon', () => setTheme('dark')],
+      ['autoTheme', tl('Thème : suivre le système'), 'monitor', () => setTheme('auto')]
+    ]),
+    ...C('ins', [
+      ['wiring', tl('Câblage'), 'cable', () => setTab('wiring'), { when: () => shown('#tab-wiring') }],
+      ['prog', tl('Code'), 'code', () => setTab('prog'), { when: () => shown('#tab-prog') }],
+      ['sim', tl('Simulation'), 'zap', () => setTab('sim'), { when: () => shown('#tab-sim') }],
+      ['video', tl('Vidéo'), 'film', () => setTab('video'), { when: () => shown('#tab-video') }]
+    ]),
+    ...C('sim', [
+      ['start', tl('Lancer la simulation'), 'play', () => setSim(true), { when: () => !S.simOn && shown('#simBtn') }],
+      ['stop', tl('Arrêter la simulation'), 'stop', () => setSim(false), { when: () => S.simOn }],
+      ['check', tl('Vérifier le montage et le programme'), 'check', () => { if (chk) chk.open(); }, { keys: 'F7' }],
+      ['upload', tl('Téléverser sur la carte'), 'upload', () => click('#progRun'), { keys: shortcut(isEn ? 'Enter' : 'Entrée'), when: () => !!prog.current() }],
+      ['debug', tl('Déboguer (démarrer en pause)'), 'bug', () => click('#dbgRun'), { keys: 'F8', when: () => !!prog.current() }]
+    ]),
+    ...C('edit', [
+      ['undo', tl('Annuler'), 'undo', () => undo(), { keys: shortcut('Z') }],
+      ['redo', tl('Rétablir'), 'redo', () => redo(), { keys: shortcut('Z', true) }],
+      ['all', tl('Tout sélectionner'), 'pointer', () => { if (S.comps.length) setMulti(S.comps.slice()); }, { keys: shortcut('A'), when: elecOn }],
+      ['autoAll', tl('Câbler tout le circuit'), 'wand', () => click('#autoAll'), { when: elecOn }],
+      ['block', tl('Encadrer un bloc'), 'blockFrame', () => click('#blockTool'), { when: elecOn }],
+      ['del', tl('Supprimer la sélection'), 'trash', () => click('#del'), { keys: isEn ? 'Del' : 'Suppr', when: () => elecOn() && !!S.sel }]
+    ]),
+    ...C('res', [
+      ['ex', tl('Exemples'), 'layers', () => click('#exBtn'), { when: () => shown('#exBtn') }],
+      ['doc', tl('Documentation'), 'book', () => click('#docBtn'), { when: () => shown('#docBtn') }],
+      ['sch', tl('Schéma électrique à imprimer'), 'schematic', () => click('#schBtn'), { when: () => shown('#schBtn') }],
+      ['labs', tl('TP'), 'checklist', () => click('#labBtn'), { when: () => shown('#labBtn') }],
+      ['hub', tl('Classe'), 'school', () => click('#hubBtn'), { when: () => shown('#hubBtn') }],
+      ['tuto', tl('Tutoriel électropneumatique pas à pas'), 'graduation', () => { if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); }]
+    ])
+  ]);
+  // Entrées calculées à l'ouverture : « Exemple : Feu tricolore », « Ajouter : DHT22 » (plan électronique) ; les TP viennent de src/lab.
+  palette.provide(() => EXAMPLES.map((e, i) => ({
+    id: 'ex:' + e.file, cat: tl('Exemple'), icon: 'layers', label: e.data.name,
+    async run() {
+      if (S.dirty && !(await confirmDlg(tl('Exemples'), tl('Le projet en cours n’est pas enregistré : ouvrir un exemple le remplace. Continuer ?'), tl('Ouvrir l’exemple')))) return;
+      closeHome(); loadExample(i);
+    }
+  })));
+  palette.provide(() => (elecOn() ? LIBRARY.filter(e => libCats('').includes(e.cat)).map(e => ({
+    id: 'add:' + e.id, cat: tl('Ajouter'), icon: CAT_ICON[e.cat] || 'plus', label: e.name,
+    run() { closeHome(); if (S.anim) finishAnim(); const c = createComp(e.id); placeFree(c); select(c); refreshQuick(); changed(); frameComp(c); }
+  })) : []));
 }
 
 /* ---------- Éditions : modules optionnels ---------- */
@@ -3460,6 +4108,14 @@ const moduleApi = {
   history(hook) { S.histHook = hook || null; undoUI(); },
   historyUI: () => undoUI(),
   setLibOpen: on => setLibOpen(on), libOpen: () => libIsOpen(),
+  /** Panneau Sortie : une ligne de journal (kind : info, ok, warn, err, cmd). */
+  log(t, kind) { if (shell) shell.dock.log(t, kind); },
+  /** Panneau du bas : show('problems' | 'output'), toggle(). */
+  dock: { show: t => shell && shell.dock.show(t), toggle: t => shell && shell.dock.toggle(t) },
+  /** Palette de commandes : register(commande | [commandes]), provide(fn → [commandes]) (src/ui/commands.js). */
+  commands: { register: c => palette && palette.register(c), provide: f => palette && palette.provide(f) },
+  /** Thème : get() → 'dark' | 'light' affiché ; mode() → réglage ('dark', 'light', 'auto') ; set(mode). Événement window « jollof:theme ». */
+  theme: { get: () => uiTheme(), mode: () => themeMode(), set: m => setTheme(m) },
   codeBar(html) { $('#progRun').insertAdjacentHTML('beforebegin', html); const el = $('#progRun').previousElementSibling; hydrateIcons(el.parentElement); return el; },
   native
 };
@@ -3571,10 +4227,17 @@ async function start() {
   renderUI();
   renderLibrary();
   mark('library');
-  let data = null;
-  try { data = saved ? JSON.parse(saved) : null; } catch (e) { data = null; }
-  if (data && Array.isArray(data.comps) && data.comps.length) { await restore(data); setProjectName(data.name || tl('Sans titre'), data.path || null); }
-  else if (EXAMPLES.length) { await restore(EXAMPLES[0].data); setProjectName(EXAMPLES[0].data.name, null); }
+  // Premier lancement (ou aucun projet à reprendre) : l'accueil, sans projet ni exemple chargé d'avance, avec la
+  // présentation la première fois. Ensuite, le dernier projet se rouvre directement (menu du projet → Accueil y ramène).
+  try { startData = saved ? JSON.parse(saved) : null; } catch (e) { startData = null; }
+  if (!resumeInfo(startData)) startData = null;
+  // Lancé par un double-clic sur un .jollof : ce projet-là, ni l'accueil ni la session d'avant.
+  const launched = await native.takeLaunchFile();
+  let opened = false;
+  if (launched) { try { await openProjectText(launched); startData = null; opened = true; } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); } }
+  if (opened) { /* déjà ouvert */ }
+  else if (startData && onboarded()) { const d = startData; startData = null; await restore(d); setProjectName(d.name || tl('Sans titre'), d.path || null); S.projectPath = d.path || null; }
+  else { setProjectName(tl('Sans titre'), null); S.homeGuard = true; showHome({ firstRun: true }); }
   mark('project');
   frameAll(); resetHistory();
   requestAnimationFrame(tick);
@@ -3583,6 +4246,12 @@ async function start() {
   if (cadReady) cadReady.then(() => cadArrived());
   if (school) school.afterStart(); else moduleApi.sessions.recover();
   // Mises à jour (édition gratuite installée) : module chargé après le démarrage, première vérification quelques secondes plus tard.
+  if (native.isTauri()) {
+    native.onLaunchFile(openLaunchedFile).catch(e => console.warn(e));
+    openLaunchedFile(); // reçu entre le démarrage et l'écoute
+    const lb = $('#logBtn'); lb.hidden = false; $('#updSep').hidden = false;
+    lb.onclick = () => native.openLogDir().catch(e => status(String(e.message || e)));
+  }
   if (import.meta.env.VITE_EDITION !== 'pro' && native.isTauri()) setTimeout(() => import('./ui/update.js').then(m => m.initUpdates({ beforeRestart: autosave })).catch(e => console.warn(e)), 2000);
   if (import.meta.env.DEV) window.__jollof = { ...moduleApi, ai: S.ai,
     test: { // tests de l'interface : état du projet, blocs, composant posé à un point précis (comme un glisser-déposer)

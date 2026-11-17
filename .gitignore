@@ -17,3 +17,6 @@ qemu-build/
 
 # Vidéo de présentation : sorties et fichiers de travail (la vidéo publiée est copiée dans site/)
 brag-output/
+
+# ffmpeg livré avec l'application : préparé par scripts/ffmpeg.mjs (binaire et licence), jamais versionné
+src-tauri/binaries/

@@ -3,19 +3,31 @@
 // Analyse électrique du montage : regroupe les broches reliées en nœuds (nets),
 // repère alimentations, masses et GPIO, signale les courts-circuits, puis vérifie
 // broche par broche qu'un composant est câblé comme sa fiche le demande.
-import { BOARDS, SOURCES, DERIVED, NEED_CAPS, CAP_WORDS, base, volts, vrange, boardOf, isGnd } from './boards.js';
-import { NPNS, isContact } from './parts.js';
+import { BOARDS, SOURCES, DERIVED, NEED_CAPS, CAP_WORDS, base, volts, vrange, boardOf, isGnd, derivedOf } from './boards.js';
+import { NPNS, isContact, PARTS } from './parts.js';
 import { MOSFETS, ANALOG_PARTS } from './analog-parts.js';
-/** Broche de sortie d'un composant analogique qui fournit son propre signal (analog-parts.js, drives). */
-const drivesPin = m => { const sp = ANALOG_PARTS[m.comp.type], q = sp && sp.pins.find(x => x.pin === m.key); return !!(q && q.drives); };
+/** Broche de sortie d'un composant qui fournit son propre signal (drives : analog-parts.js, puces logiques de parts.js). */
+const drivesPin = m => { const sp = ANALOG_PARTS[m.comp.type] || PARTS[m.comp.type], q = sp && sp.pins && sp.pins.find(x => x.pin === m.key); return !!(q && q.drives); };
 import { pkgOhms, isResistor } from './pkgparts.js';
+import { hbridgeOuts, stepOuts, STEPPERS } from './motordrv.js';
+import { WEAK_PULL } from './chips.js';
 import { tl } from '../i18n/index.js';
+import { valueOf, familyOf } from './passives.js';
 
 /** Identifiant d'une broche, « id|clé » : clé des nœuds, du graphe (adj) et des courants du solveur. */
 export const pid = (c, k) => c.id + '|' + k;
 const EMPTY = { src: [], gnd: [], gpio: [] };
 // Broches répétées sur un même composant et reliées en interne (GND, GND (2)...).
 const DUP = new Set(['GND', '3V3', 'RST', 'COM', '5V', 'VIN']);
+// Modules dont plusieurs bornes sont la même piste. Alimentation : masses d'entrée et de sortie des convertisseurs ;
+// TP4056 : IN−, B− et OUT− (les MOSFET de protection du DW01 sont fermés tant que l'accu est sain), B+ et OUT+.
+const LINKS = {
+  lm2596: [['IN-', 'OUT-']], mt3608: [['IN-', 'OUT-']],
+  tp4056: [['IN-', 'B-', 'OUT-'], ['B+', 'OUT+']],
+  // Modules MAX7219 : le connecteur de sortie recopie VCC, CS et CLK de l'entrée (le module suivant s'y branche).
+  max7219m: [['VCC', 'VCC (2)'], ['CS', 'CS (2)'], ['CLK', 'CLK (2)']],
+  max7219s: [['VCC', 'VCC (2)'], ['CS', 'CS (2)'], ['CLK', 'CLK (2)']]
+};
 
 class UF {
   constructor() { this.p = new Map(); }
@@ -28,6 +40,8 @@ class UF {
   union(a, b) { const ra = this.find(a), rb = this.find(b); if (ra !== rb) this.p.set(ra, rb); }
 }
 
+/** Résistance d'un composant : sa valeur réglée (passives.js), sinon celle de son type ou de son paquet. */
+export const rOf = c => (familyOf(c.type) === 'R' ? valueOf(c) : ohms(c.type));
 export const isBreadboard = c => c.type === 'breadboard' || c.type === 'breadboard-mini';
 /** Valeur d'une résistance d'après son type : res-220, res-4k7, res-10k, res-1M…, résistance en paquet (0 si ce n'en est pas une). */
 export function ohms(type) {
@@ -35,10 +49,12 @@ export function ohms(type) {
   if (!m) return pkgOhms(type);
   return parseFloat(m[1] + '.' + (m[3] || '0')) * (m[2] === 'M' ? 1e6 : m[2] ? 1e3 : 1);
 }
-const isQ = c => !!NPNS[c.type];
+const isQ = c => !!NPNS[c.type] && !NPNS[c.type].pnp; // interrupteur côté masse : NPN (un PNP commande côté +)
 // Interrupteur côté masse : collecteur d'un NPN ou drain d'un MOSFET ; sa commande est la base ou la grille.
-const isLowSide = m => (isQ(m.comp) && m.key === 'C') || (!!MOSFETS[m.comp.type] && m.key === 'D');
+const isLowSide = m => (isQ(m.comp) && m.key === 'C') || (!!MOSFETS[m.comp.type] && !MOSFETS[m.comp.type].pch && m.key === 'D');
 const ctlKey = c => (MOSFETS[c.type] ? 'G' : 'B');
+// Interrupteur côté + : collecteur d'un PNP ou drain d'un MOSFET canal P ; sa commande est aussi la base ou la grille.
+const isHighSide = m => (!!NPNS[m.comp.type] && !!NPNS[m.comp.type].pnp && m.key === 'C') || (!!MOSFETS[m.comp.type] && !!MOSFETS[m.comp.type].pch && m.key === 'D');
 /**
  * Groupes de trous reliés d'une breadboard : rails (+ ou −, 25 trous) puis bandes de 5 trous.
  * Dans une bande a–e, le trou E est au bord de la rainure centrale.
@@ -59,6 +75,7 @@ function internal(c) {
   if (isBreadboard(c)) bbGroups(c).forEach(g => out.push(g.keys));
   const prof = boardOf(c);
   if (prof && prof.alias) out.push(...prof.alias);
+  if (LINKS[c.type]) out.push(...LINKS[c.type]);
   return out;
 }
 
@@ -120,15 +137,27 @@ export function analyze(comps, wires, opts = {}) {
     }
     return m;
   };
-  // Régulateurs alimentés : leur sortie devient une source.
+  // Régulateurs alimentés : leur sortie devient une source. Plusieurs passes : un régulateur peut en alimenter un autre
+  // (élévateur MT3608 puis AMS1117).
   let Sn = summarize(S);
-  let more = false;
-  for (const c of comps) {
-    const d = DERIVED[c.type]; if (!d || !c.pins[d.from] || !c.pins[d.out]) continue;
-    const n = Sn.get(S.find(pid(c, d.from)));
-    if (n && n.src.some(s => s.v >= d.min)) { roles.push({ i: pid(c, d.out), comp: c, key: d.out, kind: 'src', v: d.v }); more = true; }
+  const fed = new Set();
+  for (let pass = 0; pass < 4; pass++) {
+    let more = false;
+    for (const c of comps) {
+      const d = DERIVED[c.type]; if (!d || fed.has(c) || !c.pins[d.from] || !c.pins[d.out]) continue;
+      const n = Sn.get(S.find(pid(c, d.from)));
+      if (!n || !n.src.length) continue;
+      // Chargeur (soft) : un accu déjà relié à sa sortie l'alimente, le chargeur n'y ajoute pas une seconde source.
+      if (d.soft) { const o = Sn.get(S.find(pid(c, d.out))); if (o && o.src.length) continue; }
+      const vin = Math.max(...n.src.map(s => s.v)), v = derivedOf(d, 'v', c), min = derivedOf(d, 'min', c);
+      // Régulateur saturé (drop) : sous min, la sortie suit l'entrée moins sa chute ; élévateur : jamais sous l'entrée moins sa diode.
+      let out = vin >= min ? v : d.drop && !d.boost && vin >= (d.uvlo ?? min) ? Math.round((vin - d.drop) * 100) / 100 : null;
+      if (out != null && d.boost) out = Math.max(out, Math.round((vin - d.drop) * 100) / 100);
+      if (out != null && out > 0) { roles.push({ i: pid(c, d.out), comp: c, key: d.out, kind: 'src', v: out }); fed.add(c); more = true; }
+    }
+    if (!more) break;
+    Sn = summarize(S);
   }
-  if (more) Sn = summarize(S);
   const Wn = summarize(W);
 
   const members = uf => { const m = new Map(); for (const [i, r] of ref) { const root = uf.find(i); if (!m.has(root)) m.set(root, []); m.get(root).push(r); } return m; };
@@ -253,8 +282,32 @@ export function inspect(comp, A, spec) {
     out.pins[k] = { level: 'ok', msgs: [] };
     if (p.kind === 'nc' || p.kind === 'vin' || p.kind === 'contact') { out.pins[k].level = 'free'; continue; }
     if (p.kind === 'pwr' || p.kind === 'ext') {
+      // alt : entrée à tenir au niveau haut, par l'alimentation logique ou par une sortie de la carte (RESET et SLEEP d'un
+      // pilote pas à pas, STBY du TB6612FNG) ; reliée à une broche que le module tire lui-même au niveau haut (RESET de
+      // l'A4988 relié à son SLEEP), c'est voulu aussi.
+      if (p.alt && !n.src.length) {
+        const g = n.gpio.find(x => !out.board || x.comp === out.board);
+        if (g) {
+          if (n.gnd.length) set(k, 'err', tl('reliée directement à la masse'), 'togn', n.gnd[0]);
+          out.io[k] = g;
+          const miss = (NEED_CAPS[p.alt] || ['out']).filter(c => !g.g.caps.has(c));
+          if (miss.length) set(k, 'err', tl('{0} n’offre pas de {1}', g.key, miss.map(c => CAP_WORDS[c]).join(tl(' ni de '))), 'cap', g, { miss, need: p.alt });
+          continue;
+        }
+        if (!n.gnd.length && A.members(r).some(m => (m.comp !== comp || m.key !== k) && (WEAK_PULL[m.comp.type] || {})[m.key] === 1)) continue;
+      }
       let srcs = n.src;
       if (!srcs.length) { srcs = shut(r).src; if (srcs.length) out.flags.switched = true; }
+      // Alimentation commutée côté + : la charge reçoit le + par le collecteur d'un PNP (ou le drain d'un canal P).
+      if (!srcs.length) {
+        const q = A.members(r).find(isHighSide);
+        if (q) {
+          out.flags.switched = true;
+          const g = A.wnet({ comp: q.comp, key: ctlKey(q.comp) }).gpio[0];
+          if (g && !out.board) { out.board = g.comp; out.prof = g.prof; }
+          continue;
+        }
+      }
       if (!srcs.length) { set(k, 'err', tl('non alimentée'), 'nopower'); continue; }
       const top = srcs.reduce((a, b) => (b.v > a.v ? b : a)), v = top.v; out.v = Math.max(out.v ?? 0, v);
       const [lo, hi] = vrange(p.v, out.prof);
@@ -263,6 +316,17 @@ export function inspect(comp, A, spec) {
       continue;
     }
     if (p.kind === 'gnd') {
+      // alt : la broche peut aussi aller sur une sortie de la carte (OE du 74HC595 : à la masse, ou en PWM pour la luminosité).
+      if (p.alt && !n.gnd.length) {
+        const g = n.gpio.find(x => !out.board || x.comp === out.board);
+        if (g) {
+          if (n.src.length) set(k, 'err', tl('reliée directement à une alimentation'), 'topwr', n.src[0]);
+          out.io[k] = g;
+          const miss = (NEED_CAPS[p.alt] || ['out']).filter(c => !g.g.caps.has(c));
+          if (miss.length) set(k, 'err', tl('{0} n’offre pas de {1}', g.key, miss.map(c => CAP_WORDS[c]).join(tl(' ni de '))), 'cap', g, { miss, need: p.alt });
+          continue;
+        }
+      }
       const net = p.via ? wn : n;
       // Masse commutée : la charge rejoint la masse par le collecteur d'un transistor NPN, dont la base dit quelle carte la commande.
       const q = !net.gnd.length && (p.via ? A.wmembers : A.members)(r).find(isLowSide);
@@ -285,6 +349,8 @@ export function inspect(comp, A, spec) {
       // (masse, collecteur d'un transistor), directement ou à travers un interrupteur, un contact de relais, une résistance.
       const other = spec.pins.find(q => q.kind === 'drv' && q.pin !== k), mine = drvSide(A, r), theirs = other && comp.pins[other.pin] ? drvSide(A, { comp, key: other.pin }) : null;
       if (mine === 'drv' || (mine && theirs && (mine !== theirs || theirs === 'drv'))) continue;
+      // Moteur pas à pas : seulement par un pilote (les bobines se commandent l'une après l'autre).
+      if (STEPPERS[comp.type]) { set(k, 'err', tl('à relier à une sortie d’un pilote pas à pas (A4988, DRV8825)'), 'drvmissing'); continue; }
       set(k, 'err', mine ? tl('l’autre borne doit rejoindre {0}', mine === 'src' ? tl('la masse (ou le collecteur d’un transistor)') : tl('l’alimentation')) : tl('à relier à une alimentation : pile, pilote L298N, transistor ou relais'), 'drvmissing');
       continue;
     }
@@ -323,7 +389,7 @@ export function inspect(comp, A, spec) {
     if (p.pull && !n.src.length && !wn.src.length) { set(k, 'warn', tl('résistance de tirage manquante vers l’alimentation'), 'pullup', null); out.flags.nopull = true; }
     if (p.via && n.gpio.length) set(k, 'warn', tl('reliée sans résistance : courant non limité'), 'nores', n.gpio[0]);
     if (br) out.link[k] = br;
-    levels(p, g, br, out.v, (lv, text) => set(k, 'warn', text, lv, g));
+    levels(p, g, br, out.v, (lv, text, x) => set(k, 'warn', text, lv, g, x));
   }
   return out;
 }
@@ -336,7 +402,7 @@ const fmt = v => volts(Math.round(v * 100) / 100);
  * Niveaux logiques entre un module et la carte. lv5 : le module sort du 5 V vers une carte 3,3 V ; lv3 : module en
  * logique 3,3 V commandé par une carte 5 V. Accepté : pont diviseur dont le point milieu tombe dans la plage de
  * l'entrée (au plus logique + 0,3 V, au moins 70 % de la logique pour lire HIGH), ou voie d'adaptateur de niveau,
- * chaque côté à sa tension. report(code, texte).
+ * chaque côté à sa tension. report(code, texte, extra) ; extra.low : niveau haut trop faible (le reste abîme l'entrée).
  */
 function levels(p, g, br, vMod, report) {
   const logic = g.prof.logic;
@@ -345,7 +411,7 @@ function levels(p, g, br, vMod, report) {
     else if (br && br.kind === 'div' && br.tap === 'board') {
       const v = vMod * br.ratio;
       if (v > logic + 0.3) report('lv5', tl('le pont diviseur laisse {0} sur {1} (au plus {2}) : agrandissez la résistance du bas', fmt(v), g.key, fmt(logic + 0.3)));
-      else if (v < 0.7 * logic) report('lv5', tl('le pont diviseur ne laisse que {0} : la carte risque de lire LOW (il faut au moins {1})', fmt(v), fmt(0.7 * logic)));
+      else if (v < 0.7 * logic) report('lv5', tl('le pont diviseur ne laisse que {0} : la carte risque de lire LOW (il faut au moins {1})', fmt(v), fmt(0.7 * logic)), { low: true });
     } else report('lv5', tl('signal à {0} sur une carte 3,3 V : passez par un pont diviseur (4,7 kΩ / 10 kΩ) ou un adaptateur de niveau', volts(vMod)));
   }
   if (p.lv3 && FROM_BOARD.has(p.need) && logic > 4) {
@@ -353,7 +419,7 @@ function levels(p, g, br, vMod, report) {
     else if (br && br.kind === 'div' && br.tap === 'module') {
       const v = logic * br.ratio;
       if (v > 3.6) report('lv3', tl('le pont diviseur laisse {0} au module (au plus 3,6 V) : agrandissez la résistance du bas', fmt(v)));
-      else if (v < 2.3) report('lv3', tl('le pont diviseur ne laisse que {0} au module : il risque de lire LOW (il faut au moins 2,3 V)', fmt(v)));
+      else if (v < 2.3) report('lv3', tl('le pont diviseur ne laisse que {0} au module : il risque de lire LOW (il faut au moins 2,3 V)', fmt(v)), { low: true });
     } else report('lv3', tl('module en logique 3,3 V commandé par une carte 5 V : passez par un pont diviseur (4,7 kΩ / 10 kΩ) ou un adaptateur de niveau'));
   }
 }
@@ -373,17 +439,17 @@ export function bridge(A, r) {
     if (g) return { kind: 'shift', g, side: ch[1], sh: m.comp };
   }
   for (const m of mem) {
-    const top = ohms(m.comp.type);
+    const top = rOf(m.comp);
     if (!top || m.comp === r.comp) continue;
     const far = { comp: m.comp, key: m.key === '1' ? '2' : '1' }, fn = A.net(far), g = fn.gpio[0];
     if (!g || fn.src.length || fn.gnd.length) continue;
     // Résistance vers la masse sur l'un des deux nœuds : le bas du pont.
-    const down = list => list.map(x => (x.comp !== m.comp && ohms(x.comp.type) ? { x, o: { comp: x.comp, key: x.key === '1' ? '2' : '1' } } : null))
+    const down = list => list.map(x => (x.comp !== m.comp && rOf(x.comp) ? { x, o: { comp: x.comp, key: x.key === '1' ? '2' : '1' } } : null))
       .find(y => y && A.net(y.o).gnd.length);
     const atBoard = down(A.members(far)), atMod = !atBoard && down(mem);
     const bot = atBoard || atMod;
     if (!bot) return { kind: 'series', g, res: m.comp, top };
-    const b = ohms(bot.x.comp.type);
+    const b = rOf(bot.x.comp);
     return { kind: 'div', g, res: m.comp, top, bottom: b, ratio: b / (top + b), tap: atBoard ? 'board' : 'module' };
   }
   return null;
@@ -448,8 +514,9 @@ function inspectButton(comp, A, out, set) {
 /** Côté d'une borne de moteur : 'drv' (sortie de pilote), 'src' (alimentation), 'ret' (masse, collecteur) ou null. */
 function drvSide(A, r) {
   const m = A.reach ? A.reach(r, { closed: true, res: true }) : { src: A.net(r).src, gnd: A.net(r).gnd, members: A.members(r) };
-  if (m.members.some(x => x.comp.type === 'l298n' && /^OUT/.test(x.key))) return 'drv';
-  if (m.src.length) return 'src';
+  // Sortie d'un pont en H (L298N, L293D, TB6612FNG) ou d'un pilote pas à pas (A4988, DRV8825).
+  if (m.members.some(x => hbridgeOuts(x.comp.type).includes(x.key) || stepOuts(x.comp.type).includes(x.key))) return 'drv';
+  if (m.src.length || m.members.some(isHighSide)) return 'src'; // alimentation, ou PNP / canal P côté +
   if (m.gnd.length || m.members.some(isLowSide)) return 'ret';
   return null;
 }

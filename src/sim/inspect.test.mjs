@@ -51,7 +51,12 @@ const SNAPSHOT = {
     'err:undervolt|hcsr04_1|VCC',
     'warn:pullup|ds18b20_1|DQ'
   ],
-  '08-verin-electropneumatique.jollof': []
+  '08-verin-electropneumatique.jollof': [],
+  '09-ventilateur-pnp.jollof': [],
+  '10-regulateur-zener.jollof': [],
+  '11-analyseur-bus-i2c.jollof': [],
+  '12-feu-pietons-sequence.jollof': [],
+  '13-compteur-visiteurs.jollof': []
 };
 
 test('Instantané des erreurs : exemples, puis départ et solution de chaque TP', () => {

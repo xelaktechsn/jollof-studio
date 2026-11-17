@@ -117,7 +117,7 @@
    },
    {
     "id": "res-1k_scxh00",
-    "type": "res-1k",
+    "type": "res-220",
     "name": "R1",
     "x": 7,
     "z": 79,
@@ -550,8 +550,8 @@
     "en": "The Y1 driver stage"
    },
    "text": {
-    "fr": "Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (1 kΩ).\nAstuce : « Câbler tout le circuit » sait le faire, mais essayez d’abord à la main.",
-    "en": "In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (1 kΩ).\nTip: “Wire the whole circuit” can do it, but try by hand first."
+    "fr": "Dans l’onglet « Câblage », reliez :\n- le **+** de Y1 au **+** de PS1 et à la cathode **K** de la diode D1 ;\n- le **−** de Y1 au collecteur **C** de Q1 et à l’anode **A** de D1 ;\n- l’émetteur **E** de Q1 et le **−** de PS1 à la masse de la carte ;\n- la base **B** de Q1 à **D2** à travers **R1** (220 Ω).\nAstuce : « Câbler tout le circuit » sait le faire, mais essayez d’abord à la main.",
+    "en": "In the “Wiring” tab, connect:\n- Y1 **+** to PS1 **+** and to the cathode **K** of diode D1;\n- Y1 **−** to the collector **C** of Q1 and to the anode **A** of D1;\n- Q1’s emitter **E** and PS1 **−** to the board’s ground;\n- Q1’s base **B** to **D2** through **R1** (220 Ω).\nTip: “Wire the whole circuit” can do it, but try by hand first."
    },
    "keep": {
     "fr": "Une broche **commande**, elle n’**alimente** pas : 5 V et 20 mA au plus. La bobine prend son courant sur le 24 V, à travers le transistor ; la **diode de roue libre** est obligatoire sur toute bobine.",

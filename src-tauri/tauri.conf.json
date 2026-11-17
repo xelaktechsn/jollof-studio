@@ -24,8 +24,9 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self' data:; media-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost http: https: ws: wss: data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action about:",
-      "freezePrototype": false
+      "csp": "default-src 'self'; script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: http: https:; font-src 'self' data:; media-src 'self' blob: asset: http://asset.localhost; connect-src 'self' ipc: http://ipc.localhost http: https: ws: wss: data: blob:; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action about:",
+      "freezePrototype": false,
+      "assetProtocol": { "enable": true, "scope": ["$APPCACHE/renders/*.mp4", "$APPCACHE/renders/*.mov"] }
     }
   },
   "bundle": {
@@ -40,6 +41,24 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "fileAssociations": [
+      {
+        "ext": [
+          "jollof"
+        ],
+        "name": "Jollof Studio Project",
+        "description": "Projet Jollof Studio",
+        "role": "Editor",
+        "mimeType": "application/x-jollof",
+        "exportedType": {
+          "identifier": "sn.jollof.project",
+          "conformsTo": [
+            "public.json",
+            "public.data"
+          ]
+        }
+      }
     ],
     "windows": {
       "nsis": {

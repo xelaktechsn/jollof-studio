@@ -1,0 +1,141 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Automate (Ladder) : panneau du plan de travail pneumatique (src/plc/panel.js). Préfixe « pl ». */
+.plPanel { position: absolute; left: 12px; top: 52px; bottom: 52px; width: min(440px, calc(100% - 24px)); z-index: 3; display: flex; flex-direction: column; min-height: 0; border-radius: 12px; overflow: hidden; --plLine: #c9d3da; --plOn: #4ade80; }
+.plPanel[hidden] { display: none; }
+.pnHost.plOpen .pnSvg { left: 464px; width: calc(100% - 464px); }
+.pnHost.plOpen .pn3d:not(.placed) { left: 464px; width: auto; max-width: 620px; height: min(420px, 52%); } /* la machine à côté de l'automate : plus haute, jusqu'au dock de navigation */
+/* Vue partagée (plan étroit) : le panneau prend la place qu'il y a, le plan passe dessous. */
+.pnSplit .pnHost.plOpen .pnSvg { left: 0; width: 100%; }
+.pnSplit .plPanel { width: calc(100% - 24px); }
+@media (max-width: 1180px) { .plPanel { width: min(380px, calc(100% - 24px)); } .pnHost.plOpen .pnSvg { left: 404px; width: calc(100% - 404px); } .pnHost.plOpen .pn3d:not(.placed) { left: 404px; } }
+.plHead { display: flex; align-items: center; gap: 6px; padding: 8px 8px 6px 12px; border-bottom: 1px solid var(--line); }
+.plHead b { display: inline-flex; align-items: center; gap: 6px; font: 700 12px var(--sans); letter-spacing: .06em; text-transform: uppercase; }
+.plHead b .ic { width: 14px; height: 14px; color: var(--accent-hi); }
+.plHead .tb { width: 26px; height: 26px; }
+.plMode { font-size: 11px; color: var(--muted); }
+.plPanel.running .plMode { color: var(--plOn); }
+.plPupitre { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+.plInput { display: inline-flex; align-items: center; gap: 1px; }
+.plInput .tb { width: 20px; height: 22px; min-width: 0; padding: 0; }
+.plInput .tb .ic { width: 12px; height: 12px; }
+.plCycle { margin-left: auto; font: 500 10.5px var(--mono); color: var(--muted); }
+.plHalt { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: #e5484d22; border-bottom: 1px solid #e5484d66; color: var(--danger-ink); font-size: 12px; }
+.plHalt[hidden] { display: none; }
+.plHalt .ic { flex: none; width: 15px; height: 15px; }
+/* Table des variables */
+.plVars, .plMb { max-height: 34%; overflow: auto; border-bottom: 1px solid var(--line); }
+.plVars[hidden], .plMb[hidden] { display: none; }
+.plVars table, .plMb table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.plVars th, .plMb th { position: sticky; top: 0; padding: 5px 10px; text-align: left; font: 600 10px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: var(--panel); }
+.plVars td, .plMb td { padding: 4px 10px; border-top: 1px solid var(--line); }
+/* Serveur Modbus TCP : réglages, état, plan des adresses */
+.plMb { max-height: 46%; }
+.plMbHead { display: flex; align-items: center; gap: 8px; padding: 8px 10px 2px; }
+.plMbHead b { font: 600 12px var(--sans); }
+.plMbState { font: 500 11px var(--mono); color: var(--muted); }
+.plMbState.on { color: var(--plOn); }
+.plMbRow { display: flex; align-items: center; gap: 10px; padding: 6px 10px; flex-wrap: wrap; }
+.plMbRow .plNum { width: 74px; }
+.plMbLan { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--fg-2); cursor: pointer; }
+.plMbRow .btn .ic { width: 14px; height: 14px; }
+.plMbNote { margin: 0; padding: 0 10px 8px; font-size: 11.5px; line-height: 1.45; color: var(--fg-2); }
+.plMbNote .err { color: var(--err, var(--danger-ink)); }
+.plHead .tb[data-pl="mb"] { position: relative; }
+.plMbDot { position: absolute; top: 4px; right: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--plOn); box-shadow: 0 0 6px var(--plOn); }
+.plMbDot[hidden] { display: none; }
+.plVN { font: 600 12px var(--mono); color: var(--fg); }
+.plVA { font: 500 11.5px var(--mono); color: var(--accent-hi); }
+.plVC { color: var(--fg-2); }
+.plVV { display: flex; align-items: center; gap: 6px; font: 500 11px var(--mono); color: var(--fg-2); }
+.plVV i { width: 9px; height: 9px; border-radius: 50%; background: var(--pnC); }
+.plVV.on i { background: var(--plOn); box-shadow: 0 0 6px var(--plOn); }
+.plNone { margin: 0; padding: 8px 12px; font-size: 11.5px; color: var(--muted); }
+/* Réseaux */
+.plScroll { flex: 1 1 auto; min-height: 0; overflow: auto; padding: 8px 10px 6px; }
+.plEmpty { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 26px 18px; text-align: center; color: var(--fg-2); font-size: 12.5px; }
+.plEmpty .ic { width: 26px; height: 26px; color: var(--accent-hi); }
+.plEmpty b { color: var(--fg); }
+.plEmpty p { margin: 0; line-height: 1.4; }
+.plRung { margin-bottom: 10px; padding: 6px 6px 6px 8px; border-radius: 10px; border: 1px solid var(--line); background: #0e1317; }
+.plRung.err { border-color: #e5484d88; }
+.plRung.warn { border-color: #f2c94c66; }
+.plRungHead { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+.plNo { flex: none; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 6px; display: grid; place-items: center; font: 700 11px var(--mono); color: var(--accent-hi); background: #3b82f61f; }
+.plComment { flex: 1; min-width: 0; height: 22px; padding: 0 6px; border: 0; border-bottom: 1px dashed transparent; background: transparent; color: var(--fg-2); font: 500 11.5px var(--sans); }
+.plComment:hover, .plComment:focus { border-bottom-color: var(--line-2); outline: none; color: var(--fg); }
+.plMore { flex: 0 0 22px; width: 22px; height: 22px; min-width: 0; padding: 0; opacity: .6; }
+.plMore .ic { width: 14px; height: 14px; }
+.plRung:hover .plMore { opacity: 1; }
+.plNet { display: flex; align-items: flex-start; min-height: 44px; overflow-x: auto; padding-bottom: 2px; }
+.plRail { flex: none; align-self: stretch; width: 3px; min-height: 44px; background: var(--plLine); border-radius: 2px; }
+.plRail.r { margin-left: auto; }
+.plSer { display: flex; align-items: flex-start; flex-wrap: nowrap; flex: 1 1 auto; min-width: 0; }
+/* Un élément : nom au-dessus, symbole (le fil traverse), adresse ou réglage au-dessous. */
+.plEl { all: unset; box-sizing: border-box; position: relative; flex: none; display: flex; flex-direction: column; align-items: center; width: 48px; padding: 14px 0 2px; cursor: pointer; border-radius: 6px; color: var(--plLine); }
+.plEl.plB { width: 72px; }
+.plEl:hover { background: var(--hi-1); }
+.plEl.sel { background: #3b82f622; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.plEl.err { color: var(--danger-ink); }
+.plEl.warn .plLbl { color: var(--warn); }
+.plLbl { position: absolute; top: 0; left: 0; right: 0; text-align: center; font: 600 10.5px var(--mono); color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px; }
+.plSub { height: 12px; font: 500 9px var(--mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.plLive { position: absolute; right: 2px; top: 13px; font: 600 9px var(--mono); color: var(--warn); }
+.plG { display: block; width: 48px; height: 28px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.plG.plGb { width: 72px; }
+.plT { fill: currentColor; stroke: none; font: 700 11px var(--mono); text-anchor: middle; }
+.plT.plTb { font-size: 10px; }
+.plBox { fill: var(--panel); }
+.plFill { fill: #f2c94c33; stroke: none; }
+.plEl.on { color: var(--plOn); }
+.plEl.on .plLbl { color: var(--ok-ink); }
+.plEl.plO.lit .plG { filter: drop-shadow(0 0 4px #4ade8088); }
+/* Dérivation : branches l'une sous l'autre, rails verticaux aux deux bouts. */
+.plPar { position: relative; flex: none; display: flex; flex-direction: column; margin: 0 2px; padding: 0 8px; border-radius: 6px; }
+.plPar.sel { background: #3b82f614; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.plBr { position: relative; display: flex; align-items: flex-start; min-height: 44px; }
+.plBr::before, .plBr::after { content: ''; position: absolute; top: 0; bottom: 0; width: 2px; background: var(--plLine); }
+.plBr::before { left: -8px; } .plBr::after { right: -8px; }
+.plBr:first-child::before, .plBr:first-child::after { top: 28px; }
+.plBr:last-child::before, .plBr:last-child::after { bottom: calc(100% - 28px); }
+.plBr:first-child:last-child::before, .plBr:first-child:last-child::after { display: none; }
+.plWire { flex: 1 1 8px; min-width: 8px; height: 2px; margin-top: 27px; background: var(--plLine); }
+/* Fil entre la dérivation et ses voisins */
+.plPar::before, .plPar::after { content: ''; position: absolute; top: 27px; width: 8px; height: 2px; background: var(--plLine); }
+.plPar::before { left: 0; } .plPar::after { right: 0; }
+/* Bout de liste : insérer ici */
+.plSlot { all: unset; box-sizing: border-box; flex: none; width: 22px; height: 22px; margin: 16px 2px 0; display: grid; place-items: center; border-radius: 6px; border: 1px dashed var(--pnC); color: var(--muted); cursor: pointer; opacity: .55; }
+.plSlot .ic { width: 12px; height: 12px; }
+.plSlot:hover, .plSlot.sel { opacity: 1; border-color: var(--accent); color: var(--accent-hi); background: #3b82f61a; }
+.plSlot.sel { border-style: solid; }
+.plDiags { margin: 4px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.plDiags li { display: flex; gap: 6px; align-items: flex-start; font-size: 11px; line-height: 1.3; color: var(--fg-2); }
+.plDiags li .ic { flex: none; width: 12px; height: 12px; margin-top: 1px; }
+.plDiags li.error { color: var(--danger-ink); } .plDiags li.warning { color: var(--warn); }
+.plAdd { padding: 2px 0 6px 2px; }
+/* Pied : palette, réglage de l'élément choisi, état */
+.plFoot { display: flex; flex-direction: column; gap: 6px; padding: 7px 12px 8px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--fg-2); }
+.plPal { display: flex; flex-direction: column; gap: 6px; }
+.plPalHead { display: flex; align-items: baseline; gap: 7px; }
+.plPalHead b { font: 600 11px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--fg); }
+.plPalHead small { font-size: 11px; color: var(--muted); }
+.plChips { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.plChip { all: unset; box-sizing: border-box; display: inline-flex; flex-direction: column; align-items: center; gap: 0; width: 46px; padding: 2px 0 1px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--raise); color: var(--plLine); cursor: pointer; }
+.plChip:hover { border-color: var(--accent); background: #3b82f622; }
+.plChip svg { width: 36px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; }
+.plChip span { font: 500 9px var(--sans); color: var(--fg-2); white-space: nowrap; }
+.plSep { width: 1px; height: 24px; margin: 0 3px; background: var(--line-2); }
+.plEdit { display: flex; flex-direction: column; gap: 5px; padding: 6px 8px; border-radius: 8px; background: #3b82f60f; border: 1px solid #3b82f633; }
+.plEditRow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.plEditRow .inp { height: 26px; padding: 0 7px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--bg); color: var(--fg); font: 600 12px var(--mono); min-width: 0; flex: 1 1 90px; }
+.plEditRow .sel { height: 26px; max-width: 190px; }
+.plNum { flex: 0 0 64px !important; }
+.plF { display: inline-flex; align-items: center; gap: 4px; font: 600 10.5px var(--mono); color: var(--muted); }
+.plWhat { font: 500 11px var(--mono); color: var(--accent-hi); }
+.plHint { display: flex; gap: 7px; align-items: flex-start; margin: 0; font-size: 11.5px; line-height: 1.35; color: var(--muted); }
+.plHint .ic { flex: none; width: 14px; height: 14px; margin-top: 1px; color: var(--accent-hi); }
+.plStatus { display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
+.plStatus .ic { width: 13px; height: 13px; }
+.plStatus.ok { color: var(--ok); } .plStatus.warn { color: var(--warn); } .plStatus.err { color: var(--danger-ink); }
+.plDrive { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+@media (max-width: 760px) { .plPanel { left: 8px; right: 8px; width: auto; top: auto; bottom: 8px; height: 50%; } .pnHost.plOpen .pnSvg { left: 0; width: 100%; height: 50%; } }

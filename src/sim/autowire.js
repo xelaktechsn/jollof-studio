@@ -5,10 +5,11 @@
 // série), ajoute les résistances nécessaires et décrit chaque fil. `explain` relit le
 // montage existant et dit, broche par broche, à quoi elle sert et si elle est bien reliée.
 import { BOARDS, NEED_CAPS, base, volts, vrange, pickPower, pinName, codePin, boardOf, isGnd, SOURCES } from './boards.js';
-import { PARTS, partOf, motorPins, loadPins } from './parts.js';
+import { PARTS, partOf, motorPins, loadPins, MOTORS, COILS } from './parts.js';
 import { inspect, bbGroups, isBreadboard } from './circuit.js';
-import { boardLimits } from '../check/limits.js';
+import { boardLimits, SWITCHING } from '../check/limits.js';
 import { isResistor } from './pkgparts.js';
+import { HBRIDGES, STEP_DRIVERS, STEPPERS } from './motordrv.js';
 import { tl } from '../i18n/index.js';
 
 const COL = { pwr: '#e5484d', gnd: '#3a3f45', io: '#f2c94c', in: '#f2c94c', out: '#f2c94c', pullup: '#f2c94c', pwm: '#f08a3c', adc: '#3fb27f', sda: '#3b82f6', scl: '#9b7be0', sck: '#f08a3c', mosi: '#3fb27f', miso: '#3b82f6', ss: '#e9e9e6', rx: '#e9e9e6', tx: '#f08a3c', res: '#f08a3c', drv: '#f08a3c' };
@@ -185,6 +186,26 @@ function levelFix(p, prof, vMod, shiftAll) {
   if (shiftAll || BUS_NEED.has(p.need)) return 'shift';
   return down ? 'board' : 'module';
 }
+/**
+ * Résistance de base d'un étage à transistor : la plus grande qui sature le transistor (IB ≥ IC ÷ β forcé de sa fiche,
+ * vérificateur J0908) sans dépasser le courant conseillé de la broche ; à défaut, celle de la fiche du composant.
+ * IC : charge sous la tension de l'étage (moteur, bobine : leur résistance ; série éventuelle).
+ */
+function baseRes(st, comp, board, prof, vSup) {
+  const L = MOTORS[comp.type] || COILS[comp.type], bs = SWITCHING[st.q] && SWITCHING[st.q].betaSat;
+  if (!L || !bs || !(vSup > 0)) return st.base;
+  const rs = st.series ? (+(/^res-(\d+)/.exec(st.series) || [0, 0])[1]) : 0, ic = (vSup - 0.2) / (L.r + rs) * 1000, need = ic / bs;
+  const lim = boardLimits(board), warn = lim && lim.pin ? lim.pin.warn : 20;
+  // VBE ≈ 0,8 V et sortie de la broche (25 Ω) : estimation prudente du courant de base.
+  let best = st.base;
+  for (const [t, r] of [['res-1k', 1000], ['res-330', 330], ['res-220', 220]]) {
+    const ib = (prof.logic - 0.8) / (r + 25) * 1000;
+    if (ib > warn) break;
+    best = t;
+    if (ib >= need * 1.02) return t;
+  }
+  return best; // la broche ne peut pas saturer cette charge : la plus petite résistance admise (le vérificateur le dira)
+}
 /** Résistance série d'un haut-parleur : la plus petite qui garde la broche sous ses 95 % conseillés. */
 function speakerRes(board, prof) {
   const lim = boardLimits(board), warn = lim && lim.pin ? lim.pin.warn : 20;
@@ -263,7 +284,7 @@ export function planWiring(comp, cx) {
     if (!sup) return { error: tl('{0} : {1} ne fournit pas {2}.', comp.name, board.name, volts(st.v)) };
     const k = gpio(st.need, me(lm));
     if (!k) return { error: busErr || tl('{0} : plus de broche libre adaptée sur {1} ({2}). Câblage annulé : libérez une broche ou prenez une carte qui en a davantage.', comp.name, board.name, ROLE[st.need]) };
-    const q = helper(st.q), rb = helper(st.base), sv = tl('Alimentation {0}', volts(sup.v));
+    const q = helper(st.q), rb = helper(baseRes(st, comp, board, prof, sup.v)), sv = tl('Alimentation {0}', volts(sup.v));
     if (st.flyback) {
       const d = helper(st.flyback);
       if (st.series) {
@@ -287,12 +308,25 @@ export function planWiring(comp, cx) {
 
   // Moteur : passe par un pilote, qui sera câblé à son tour.
   if (spec.driver) {
+    const free = (c, ks) => ks.every(k => !A.deg({ comp: c, key: k }));
+    // Moteur pas à pas bipolaire : ses deux bobines sur les deux bobines d'un pilote (A4988 : A sur 1A-1B, B sur 2A-2B).
+    const sm = STEPPERS[comp.type], sd = STEP_DRIVERS[spec.driver];
+    if (sm && sd) {
+      const mine = sm.pins.flat(), outs = sd.coils.flat();
+      if (mine.some(wired)) return P;
+      const drv = cx.comps.find(c => c.type === spec.driver && free(c, outs));
+      let D;
+      if (drv) { D = k => ({ comp: drv, key: k }); P.then.push({ comp: drv }); } else { const id = helper(spec.driver); D = k => H(id, k); P.then.push({ h: id }); }
+      mine.forEach((k, i) => R.wire(me(k), D(outs[i]), COL.drv, tl('Bobine {0}', k[0])));
+      return P;
+    }
     const [mp, mm] = motorPins(comp) || ['M+', 'M-'];
     if (wired(mp) || wired(mm)) return P;
-    const free = (c, ks) => ks.every(k => !A.deg({ comp: c, key: k }));
-    const drv = cx.comps.find(c => c.type === spec.driver && (free(c, ['OUT1', 'OUT2']) || free(c, ['OUT3', 'OUT4'])));
-    let D, ch = ['OUT1', 'OUT2'];
-    if (drv) { if (!free(drv, ch)) ch = ['OUT3', 'OUT4']; D = k => ({ comp: drv, key: k }); P.then.push({ comp: drv }); }
+    // Pont en H : la première voie libre (OUT1-OUT2 puis OUT3-OUT4 pour le L298N).
+    const chans = (HBRIDGES[spec.driver] || HBRIDGES.l298n).chans.map(ch => ch.outs);
+    const drv = cx.comps.find(c => c.type === spec.driver && chans.some(ch => free(c, ch)));
+    let D, ch = chans[0];
+    if (drv) { ch = chans.find(x => free(drv, x)); D = k => ({ comp: drv, key: k }); P.then.push({ comp: drv }); }
     else { const id = helper(spec.driver); D = k => H(id, k); P.then.push({ h: id }); }
     R.wire(me(mp), D(ch[0]), COL.drv, tl('Moteur')); R.wire(me(mm), D(ch[1]), COL.drv, tl('Moteur'));
     return P;

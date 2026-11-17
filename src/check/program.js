@@ -16,8 +16,14 @@ const CTOR_PINS = {
   DHT: [[0, 'lib']], OneWire: [[0, 'lib']], Adafruit_NeoPixel: [[1, 'out']],
   Stepper: [[1, 'out'], [2, 'out'], [3, 'out'], [4, 'out']], SoftwareSerial: [[0, 'in'], [1, 'out']],
   MFRC522: [[0, 'out'], [1, 'out']], RF24: [[0, 'out'], [1, 'out']],
+  // Encoder(broche1, broche2) (Paul Stoffregen) : deux entrées, mises en INPUT_PULLUP par la bibliothèque.
+  Encoder: [[0, 'lib'], [1, 'lib']],
   // Keypad(makeKeymap(touches), lignes, colonnes, 4, 4) : tableaux de broches ; lignes en INPUT_PULLUP, colonnes balayées.
-  Keypad: [[1, 'rows'], [2, 'cols']]
+  Keypad: [[1, 'rows'], [2, 'cols']],
+  // Afficheurs à pilote : LedControl(DIN, CLK, CS, n), TM1637Display(CLK, DIO) ; écrans TFT (CS, DC, RESET) ou, en SPI
+  // logiciel, (CS, DC, MOSI, SCK, RESET).
+  LedControl: [[0, 'lib'], [1, 'lib'], [2, 'lib']], TM1637Display: [[0, 'lib'], [1, 'lib']],
+  Adafruit_ST7735: [[0, 'lib'], [1, 'lib'], [2, 'lib'], [3, 'lib'], [4, 'lib']], Adafruit_ILI9341: [[0, 'lib'], [1, 'lib'], [2, 'lib'], [3, 'lib'], [4, 'lib']]
 };
 // Sorties confiées à une bibliothèque : elle règle pinMode elle-même (pas d'avertissement « sans pinMode »).
 const LIB_WRITE = 'lib';
@@ -84,6 +90,7 @@ export function pinFacts(src, kind, prof) {
     f.at.push({ line: at.line, col: at.col, what });
   };
   const MODE = { 0: 'in', 1: 'out', 2: 'pullup', 3: 'pulldown' };
+  let loraPins = null, loraBegin = null;
   walk(p.items, n => {
     if (n.e === 'call' && n.f.e === 'id') {
       const a = n.args || [];
@@ -94,6 +101,9 @@ export function pinFacts(src, kind, prof) {
         case 'tone': case 'noTone': add(a[0], n, 'writes', 'tone', n.f.name); break;
         case 'digitalRead': case 'pulseIn': case 'pulseInLong': add(a[0], n, 'reads', 'd', n.f.name); break;
         case 'analogRead': add(a[0], n, 'reads', 'a', 'ar'); break;
+        // Registres à décalage : shiftOut écrit données et horloge ; shiftIn écrit l'horloge et lit les données.
+        case 'shiftOut': add(a[0], n, 'writes', 'd', 'shiftOut'); add(a[1], n, 'writes', 'd', 'shiftOut'); break;
+        case 'shiftIn': add(a[0], n, 'reads', 'd', 'shiftIn'); add(a[1], n, 'writes', 'd', 'shiftIn'); break;
         case 'attachInterrupt': add(a[0], n, 'reads', 'd', 'attachInterrupt'); break;
         case 'ledcAttachPin': case 'ledcAttach': add(a[0], n, 'writes', 'pwm', n.f.name); break;
       }
@@ -101,6 +111,12 @@ export function pinFacts(src, kind, prof) {
     // Serial2.begin(9600, SERIAL_8N1, 16, 17) (ESP32) : RX lue, TX tenue par le port série.
     if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'begin' && n.f.o.e === 'id' && /^Serial[123]$/.test(n.f.o.name) && (n.args || []).length >= 4) {
       add(n.args[2], n, 'reads', 'd', n.f.o.name + '.begin'); add(n.args[3], n, 'writes', LIB_WRITE, n.f.o.name + '.begin');
+    }
+    // LoRa.setPins(NSS, RESET, DIO0) (Sandeep Mistry) : sélection et reset tenus par la bibliothèque, DIO0 lue par son
+    // interruption. LoRa.begin() sans setPins() : broches par défaut de LoRa.h (10, 9, 2).
+    if (n.e === 'call' && n.f.e === 'mem' && n.f.o.e === 'id' && n.f.o.name === 'LoRa' && (n.f.name === 'setPins' || n.f.name === 'begin')) {
+      if (n.f.name === 'setPins') loraPins = n;
+      else if (!loraBegin) loraBegin = n;
     }
     // IrReceiver.begin(2) : la bibliothèque IRremote lit cette broche.
     if (n.e === 'call' && n.f.e === 'mem' && n.f.name === 'begin' && n.f.o.e === 'id' && n.f.o.name === 'IrReceiver') add((n.args || [])[0], n, 'reads', 'd', 'IrReceiver.begin');
@@ -115,6 +131,12 @@ export function pinFacts(src, kind, prof) {
       if (o && o.cls === 'HX711') { add(a[0], n, 'reads', 'd', 'HX711.begin'); add(a[1], n, 'writes', LIB_WRITE, 'HX711.begin'); }
     }
   });
+  if (loraPins || loraBegin) {
+    // Argument absent : valeur par défaut de setPins() ; -1 (pas de reset, pas de DIO0) : aucune broche.
+    const at = loraPins || loraBegin, a = loraPins ? loraPins.args || [] : [], D = [10, 9, 2].map(v => ({ e: 'num', v }));
+    const pin = i => { const e = a[i] || D[i], v = num(e); return v != null && v < 0 ? null : e; };
+    [['writes', LIB_WRITE], ['writes', LIB_WRITE], ['lib', null]].forEach(([field, v], i) => { const e = pin(i); if (e) add(e, at, field, v, 'LoRa'); });
+  }
   // Broches données au constructeur d'une bibliothèque.
   for (const [, o] of objs) {
     // Keypad k(…) ou Keypad k = Keypad(…).
@@ -122,6 +144,8 @@ export function pinFacts(src, kind, prof) {
     const spec = CTOR_PINS[o.cls]; if (!spec || !args) continue;
     for (const [i, use] of spec) {
       const a = args[i]; if (!a) continue;
+      // -1 : pas de broche (convention des bibliothèques : Adafruit_ST7735(CS, DC, -1) sans broche de reset).
+      const nv = num(a); if (nv != null && nv < 0) continue;
       if (use === 'rows' || use === 'cols') {
         const list = a.e === 'id' && arrays.get(a.name);
         if (!list) { add(a, o.d.at, 'writes', LIB_WRITE, o.cls); continue; } // tableau inconnu : broches calculées

@@ -73,7 +73,29 @@ function cleanMem(m) {
       for (const [k, e] of Object.entries(keys).slice(0, 500)) if (k && k.length <= 15 && Array.isArray(e) && PREF_TYPES.has(e[0])) kv[k] = [e[0], prefValue(e[0], e[1])];
       prefs[ns] = kv;
     }
-    out[id] = { ee: typeof v.ee === 'string' && /^[0-9a-f]*$/i.test(v.ee) ? v.ee.slice(0, 8192) : '', prefs };
+    // ee : EEPROM d'une carte (4 Ko au plus) ou d'un module AT24C256 (32 Ko) ; nv : RAM sauvegardée d'un DS1307 (56 octets).
+    out[id] = { ee: typeof v.ee === 'string' && /^[0-9a-f]*$/i.test(v.ee) ? v.ee.slice(0, 65536) : '', prefs };
+    if (typeof v.nv === 'string' && /^[0-9a-f]*$/i.test(v.nv)) out[id].nv = v.nv.slice(0, 112);
+    if (v.sd && typeof v.sd === 'object') out[id].sd = cleanSd(v.sd);
+  }
+  return out;
+}
+/**
+ * Fichiers d'une carte microSD (sim/sdcard.js) : { '/DOSSIER/NOM.EXT': base64, '/DOSSIER/': '' }, noms courts 8.3 en
+ * majuscules, 256 entrées et 512 Ko de contenu au plus.
+ */
+const SD_SEG = /^[A-Z0-9_~!#$%&'()@^`{}-]{1,8}(\.[A-Z0-9_~!#$%&'()@^`{}-]{1,3})?$/;
+function cleanSd(sd) {
+  const out = {};
+  let total = 0;
+  for (const [k, v] of Object.entries(sd).slice(0, 256)) {
+    const dir = k.endsWith('/'), segs = (dir ? k.slice(0, -1) : k).split('/');
+    if (segs[0] !== '' || segs.length < 2 || segs.length > 9 || !segs.slice(1).every(x => SD_SEG.test(x)) || typeof v !== 'string') continue;
+    if (dir) { out[k] = ''; continue; }
+    if (!/^[A-Za-z0-9+/]*={0,2}$/.test(v)) continue;
+    const n = Math.floor(v.length * 3 / 4);
+    if (total + n > 512 * 1024) continue;
+    total += n; out[k] = v;
   }
   return out;
 }

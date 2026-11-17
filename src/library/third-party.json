@@ -1,52 +1,56 @@
 {
- "generated": "2026-11-14",
+ "generated": "2026-11-17",
  "counts": {
-  "npm": 127,
-  "crates": 456,
+  "npm": 128,
+  "crates": 565,
   "models": 24,
-  "fonts": 2,
+  "fonts": 3,
   "firmware": 2
  },
  "licenses": {
   "(MIT OR Apache-2.0) AND Unicode-3.0": 1,
   "0BSD OR MIT OR Apache-2.0": 1,
-  "Apache-2.0": 4,
+  "Apache-2.0": 6,
   "Apache-2.0 / MIT": 1,
   "Apache-2.0 AND ISC": 1,
   "Apache-2.0 AND MIT": 1,
+  "Apache-2.0 OR BSL-1.0": 1,
   "Apache-2.0 OR ISC OR MIT": 3,
-  "Apache-2.0 OR MIT": 35,
+  "Apache-2.0 OR MIT": 57,
   "Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT": 5,
   "Apache-2.0/MIT": 3,
-  "BSD-2-Clause": 3,
+  "Apache-2.0/MIT/BSL-1.0/CC0-1.0": 1,
+  "BSD-2-Clause": 4,
   "BSD-2-Clause OR MIT OR Apache-2.0": 1,
   "BSD-3-Clause": 5,
   "BSD-3-Clause AND MIT": 1,
   "BSD-3-Clause OR MIT OR Apache-2.0": 2,
   "BSD-3-Clause/MIT": 1,
   "CC-BY-SA-4.0": 22,
+  "CC0-1.0": 11,
   "CC0-1.0 OR MIT-0 OR Apache-2.0": 2,
   "CDLA-Permissive-2.0": 2,
   "ISC": 5,
   "LGPL-2.1": 1,
-  "MIT": 214,
+  "LGPL-2.1-or-later": 1,
+  "MIT": 242,
   "MIT / Apache-2.0": 1,
   "MIT AND BSD-3-Clause": 1,
-  "MIT OR Apache-2.0": 216,
+  "MIT OR Apache-2.0": 267,
   "MIT OR Apache-2.0 OR LGPL-2.1-or-later": 2,
   "MIT OR Apache-2.0 OR Zlib": 1,
   "MIT OR GPL-3.0-only": 1,
   "MIT OR Zlib OR Apache-2.0": 2,
   "MIT-0": 1,
-  "MIT/Apache-2.0": 12,
-  "MPL-2.0": 6,
+  "MIT/Apache-2.0": 13,
+  "MPL-2.0": 7,
   "OFL-1.1": 4,
   "Python-2.0": 1,
   "Unicode-3.0": 18,
   "Unlicense OR MIT": 9,
-  "Unlicense/MIT": 2,
+  "Unlicense/MIT": 4,
   "Zlib": 2,
-  "Zlib OR Apache-2.0 OR MIT": 18
+  "Zlib OR Apache-2.0 OR MIT": 19
  },
  "notable": [
   {
@@ -75,9 +79,9 @@
    "url": "https://github.com/101arrowz/fflate"
   },
   {
-   "name": "mp4-muxer",
-   "license": "MIT",
-   "url": "https://github.com/Vanilagy/mp4-muxer"
+   "name": "mediabunny",
+   "license": "MPL-2.0",
+   "url": "https://github.com/Vanilagy/mediabunny"
   },
   {
    "name": "occt-import-js",
@@ -115,6 +119,11 @@
    "url": "https://github.com/JetBrains/JetBrainsMono"
   },
   {
+   "name": "Adafruit GFX classic 5x7 font (glcdfont.c)",
+   "license": "BSD-2-Clause",
+   "url": "https://github.com/adafruit/Adafruit-GFX-Library"
+  },
+  {
    "name": "RP2040 bootrom",
    "license": "BSD-3-Clause",
    "url": "https://github.com/raspberrypi/pico-bootrom"
@@ -123,6 +132,66 @@
    "name": "MicroPython (RPI_PICO)",
    "license": "MIT AND BSD-3-Clause",
    "url": "https://micropython.org/download/RPI_PICO/"
+  },
+  {
+   "name": "FFmpeg",
+   "license": "LGPL-2.1-or-later",
+   "url": "https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz"
+  },
+  {
+   "name": "Inspiration — FreePD",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Inventing Flight — Bryan Teoh",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Stereotype News — Rafael Krux",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Energizing — Kevin MacLeod",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Celebration — Alexander Nakarada",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Be Chillin — Alexander Nakarada",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Meditating Beat — Kevin MacLeod",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Drop Point — Bryan Teoh",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Painting Room — Kevin MacLeod",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "River Meditation — Jason Shaw",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
+  },
+  {
+   "name": "Big Eyes — FreePD",
+   "license": "CC0-1.0",
+   "url": "https://archive.org/details/abook-music-freepd-cc0"
   }
  ]
 }

@@ -10,13 +10,17 @@ import { tl, isEn } from '../i18n/index.js';
 export const KINDS = {
   elec: { icon: 'cpu', spaces: ['elec'], name: () => tl('Électronique'), text: () => tl('Une carte (Arduino, ESP32, Pico), des capteurs, des écrans, des moteurs : on câble, on programme, on simule.') },
   analog: { icon: 'activity', spaces: ['elec'], name: () => tl('Analogique'), text: () => tl('Sans carte ni programme : résistances, condensateurs, transistors, NE555, ampli-op, générateur de fonctions et oscilloscope.') },
-  pneu: { icon: 'pneu', spaces: ['pneu'], name: () => tl('Pneumatique'), text: () => tl('L’air comprimé seul : distributeurs, vérins, fins de course à galet, GRAFCET. Aucun montage électronique.') },
+  pneu: { icon: 'pneu', spaces: ['pneu'], name: () => tl('Pneumatique'), text: () => tl('L’air comprimé seul : distributeurs, vérins, fins de course à galet, GRAFCET ou automate en Ladder. Aucun montage électronique.') },
   epneu: { icon: 'split', spaces: ['elec', 'pneu'], name: () => tl('Électropneumatique'), text: () => tl('Une carte commande une machine pneumatique : électrovannes 24 V, capteurs de vérin, les deux plans de travail côte à côte.') },
   logic: { icon: 'logic', spaces: ['logic'], name: () => (isEn ? 'Logic' : 'Logique'), text: () => tl('Portes, bascules, compteurs : tables de vérité, chronogrammes, équations.') }
 };
 export const KIND_IDS = Object.keys(KINDS);
 export const spacesOf = k => (KINDS[k] || KINDS.elec).spaces;
-
+/**
+ * Le projet a une carte programmable : onglet Code, côte à côte, moniteur série, téléversement, débogueur. Analogique
+ * (sans carte), logique et pneumatique seule n'en ont pas : l'interface ne montre pas ce qu'ils ne peuvent pas utiliser.
+ */
+export const hasProgram = k => k === 'elec' || k === 'epneu' || !KINDS[k];
 /** Type d'un projet enregistré : celui qu'il déclare, sinon d'après son contenu (projets d'avant les types). */
 export function inferKind(data) {
   const set = (data && data.settings) || {};

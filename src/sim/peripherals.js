@@ -13,12 +13,15 @@ import { icon } from '../ui/icons.js';
 import { firstMsg } from './circuit.js';
 import { boardOf, kindOf, BOARDS } from './boards.js';
 import {
-  IR_KEYS, BADGES, KEYPAD_KEYS, PHONE, FAKE_HOSTS, hex2, periph, irPress, presentBadge, keypadDown, keypadUp, serialDevice, btSerial,
+  IR_KEYS, BADGES, KEYPAD_KEYS, PHONE, FAKE_HOSTS, hex2, periph, irPress, remotePress, presentBadge, keypadDown, keypadUp, serialDevice, btSerial,
   macOf, cleanHtml, parseUrl, parseQuery, fakeHttp
 } from './models.js';
+import { gpsSettings, gpsView, hc12Settings, hc12Freq } from './serialmods.js';
 
 const TYPES = ['ir', 'rc522', 'keypad', 'hc05', 'sim800'];
-const RESET = [...TYPES, 'nrf24'];
+const RESET = [...TYPES, 'nrf24', 'ky040'];
+// GPS NEO-6M (position, vitesse, démarrage à froid) et radio HC-12 (canal, trafic) : sim/serialmods.js.
+TYPES.push('neo6m', 'hc12'); RESET.push('neo6m', 'hc12', 'max485');
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /** Caractères invisibles d'une liaison série rendus lisibles (\r, \x1a…). */
 const shown = s => String(s).replace(/[\x00-\x08\x0b-\x1f\x7f]/g, c => (c === '\r' ? '' : `\\x${hex2(c.charCodeAt(0))}`));
@@ -50,7 +53,10 @@ export function installPeripherals(app) {
 
   /* ---------- Cartes : contenu ---------- */
   const WHAT = {
+    neo6m: tl('GPS simulé : réglez la position, la vitesse et le cap ; il envoie ses trames NMEA chaque seconde.'),
+    hc12: tl('Radio 433 MHz : elle parle aux autres HC-12 du montage réglés sur le même canal.'),
     ir: tl('Télécommande infrarouge : chaque touche envoie une trame NEC au récepteur.'),
+    irremote: tl('Télécommande « Car MP3 » : chaque touche envoie une trame NEC à tous les récepteurs infrarouges du montage.'),
     rc522: tl('Posez un badge sur le lecteur (cliquez à nouveau pour le retirer).'),
     keypad: tl('Appuyez sur les touches comme sur le vrai clavier.'),
     hc05: tl('Téléphone relié en Bluetooth : ce que vous écrivez arrive sur la broche RX de la carte.'),
@@ -67,7 +73,7 @@ export function installPeripherals(app) {
   function body(it) {
     const c = it.c, n = esc(c ? c.name : '');
     switch (it.kind) {
-      case 'ir': return `<div class="irRemote" role="group" aria-label="${tl('Télécommande de {0}', n)}">${IR_KEYS.map(k => `<button type="button" class="irKey${k.cmd === 0x45 || k.cmd === 0x46 || k.cmd === 0x47 ? ' ch' : ''}" data-ir="${k.cmd}" aria-label="${tl('Touche {0} (commande 0x{1})', esc(k.name), hex2(k.cmd))}">${esc(k.label)}</button>`).join('')}</div><p class="pxLast" aria-live="polite"></p>`;
+      case 'ir': case 'irremote': return `<div class="irRemote" role="group" aria-label="${tl('Télécommande de {0}', n)}">${IR_KEYS.map(k => `<button type="button" class="irKey${k.cmd === 0x45 || k.cmd === 0x46 || k.cmd === 0x47 ? ' ch' : ''}" data-ir="${k.cmd}" aria-label="${tl('Touche {0} (commande 0x{1})', esc(k.name), hex2(k.cmd))}">${esc(k.label)}</button>`).join('')}</div><p class="pxLast" aria-live="polite"></p>`;
       case 'rc522': return `<div class="rfBadges" role="group" aria-label="${tl('Badges RFID')}">${BADGES.map((b, i) => `<button type="button" class="rfBadge" data-badge="${i}" aria-pressed="false"><i style="background:${b.color}"></i><span>${esc(b.label)}</span><code>${b.uid.map(hex2).join(' ')}</code></button>`).join('')}</div><p class="pxLast" aria-live="polite"></p>`;
       case 'keypad': return `<div class="kpGrid" role="group" aria-label="${tl('Clavier 4×4 de {0}', n)}">${KEYPAD_KEYS.map((row, r) => [...row].map((k, col) => `<button type="button" class="kpKey${/[A-D]/.test(k) ? ' let' : /[*#]/.test(k) ? ' sym' : ''}" data-r="${r}" data-c="${col}" aria-label="${tl('Touche {0}', k)}">${k}</button>`).join('')).join('')}</div>`;
       case 'hc05': return `<p class="pxNote" data-mode></p>${chatForm(n)}`;
@@ -93,6 +99,11 @@ export function installPeripherals(app) {
           <button type="button" class="btn small" data-reload aria-label="${tl('Recharger la page')}">${icon('rotate')}</button></form>
         <p class="webStatus" aria-live="polite"></p>
         <iframe class="webView" sandbox="allow-same-origin allow-forms" referrerpolicy="no-referrer" title="${tl('Page servie par la carte')}"></iframe>`;
+      case 'neo6m': {
+        const g = gpsSettings(c), f = (k, label, v, step, unit) => `<label class="gpsF"><span>${label}</span><input type="number" data-gps="${k}" step="${step}" value="${v}" aria-label="${label}">${unit ? `<small>${unit}</small>` : ''}</label>`;
+        return `<div class="gpsForm">${f('gpsLat', tl('Latitude'), g.lat, 0.0001, '°')}${f('gpsLon', tl('Longitude'), g.lon, 0.0001, '°')}${f('gpsSpeed', tl('Vitesse'), g.speed, 1, 'km/h')}${f('gpsCourse', tl('Cap'), g.course, 5, '°')}${f('gpsCold', tl('Démarrage à froid'), g.cold, 1, 's')}</div><p class="pxLast gpsFix" aria-live="polite"></p>`;
+      }
+      case 'hc12': return `<p class="pxLast hcInfo" aria-live="polite"></p>`;
       case 'journal': return `<div class="jrnCharts" data-charts></div><button type="button" class="btn small" data-jclear>${icon('trash')}<span>${tl('Effacer le journal')}</span></button>`;
     }
     return '';
@@ -131,6 +142,16 @@ export function installPeripherals(app) {
       li.querySelector('[data-mode]').textContent = at ? tl('Mode commandes AT (EN au niveau haut au démarrage) : 38400 bauds, téléphone déconnecté.') : tl('Nom Bluetooth : {0}', dev.name);
       li.querySelectorAll('.chatForm input, .chatForm button, .chatForm select').forEach(el => { el.disabled = at; });
       renderChat(li, st, ins.board && ins.board.name);
+    }
+    if (c.type === 'neo6m') {
+      const v = gpsView(st), p6 = x => x.toFixed(6).replace('-', '−');
+      li.querySelector('.gpsFix').textContent = !v ? tl('En attente : la carte n’a pas encore ouvert la liaison série.') : v.fix
+        ? tl('Position trouvée : {0}, {1} · {2} satellites · {3} UTC', p6(v.lat), p6(v.lon), v.sats, new Date(v.utc).toISOString().slice(11, 19))
+        : tl('Recherche des satellites… position dans {0} s', v.left);
+    }
+    if (c.type === 'hc12') {
+      const h = hc12Settings(c), dev = serialDevice(c);
+      li.querySelector('.hcInfo').textContent = tl('Canal {0} ({1} MHz) · {2} bauds · {3} · {4} octets envoyés, {5} reçus', String(h.ch).padStart(3, '0'), String(hc12Freq(h.ch)).replace('.', ','), h.baud, dev.mode === 'at' ? tl('mode commandes AT (SET à LOW)') : tl('liaison transparente'), st.sent || 0, st.got || 0);
     }
     if (c.type === 'sim800') {
       const call = li.querySelector('[data-call]'), busy = !!(st.call || st.incoming);
@@ -284,6 +305,8 @@ export function installPeripherals(app) {
   function items() {
     const insMap = app.ins(), out = [];
     for (const c of app.comps()) { const ins = TYPES.includes(c.type) && insMap && insMap.get(c); if (ins && ins.board) out.push({ key: c.id, kind: c.type, c, ins }); }
+    // Télécommande seule : elle vise tous les récepteurs infrarouges du montage (il en faut au moins un).
+    if (app.comps().some(r => r.type === 'ir')) for (const c of app.comps()) if (c.type === 'irremote') out.push({ key: c.id, kind: 'irremote', c });
     for (const b of app.comps()) { const st = b.periph && b.periph.bt; if (st && st.on && boardOf(b)) out.push({ key: 'bt:' + b.id + ':' + st.name, kind: 'bt', b }); }
     if (app.comps().some(isWifiBoard)) out.push({ key: 'wifi', kind: 'wifi' });
     if (servers().length) out.push({ key: 'web', kind: 'web' });
@@ -307,7 +330,8 @@ export function installPeripherals(app) {
     }
     for (const it of its) {
       const li = list.querySelector(`li[data-key="${CSS.escape(it.key)}"]`); if (!li) continue;
-      if (it.c) updateModule(li, it);
+      if (it.kind === 'irremote') { const n = app.comps().filter(r => r.type === 'ir').length; level(li, 'ok', n > 1 ? tl('{0} récepteurs', n) : tl('1 récepteur'), ''); }
+      else if (it.c) updateModule(li, it);
       else if (it.kind === 'bt') { level(li, 'ok', it.b.name, ''); const o = btSerial(it.b).st; if (once(it.key, o.ver)) renderChat(li, o, it.b.name); }
       else if (it.kind === 'wifi') updateWifi(li);
       else if (it.kind === 'web') updateWeb(li);
@@ -322,9 +346,10 @@ export function installPeripherals(app) {
   function stopHold() { if (hold) { clearTimeout(hold.t); clearInterval(hold.i); if (hold.up) hold.up(); if (hold.el) hold.el.classList.remove('on'); hold = null; } }
   function irSend(el, c, repeatWhileHeld) {
     const cmd = +el.dataset.ir, k = IR_KEYS.find(x => x.cmd === cmd);
-    irPress(c, cmd);
+    const send = (r = false) => (c.type === 'irremote' ? remotePress(app.comps(), cmd, r) : irPress(c, cmd, r));
+    send();
     el.closest('li[data-key]').querySelector('.pxLast').textContent = tl('Envoyé : {0} · commande 0x{1}', k.name, hex2(cmd));
-    if (repeatWhileHeld) { el.classList.add('on'); hold = { el, t: setTimeout(() => { if (hold) hold.i = setInterval(() => irPress(c, cmd, true), REPEAT_MS); }, REPEAT_MS) }; }
+    if (repeatWhileHeld) { el.classList.add('on'); hold = { el, t: setTimeout(() => { if (hold) hold.i = setInterval(() => send(true), REPEAT_MS); }, REPEAT_MS) }; }
   }
   function keyDown(el, c, quick) {
     keypadDown(c, +el.dataset.r, +el.dataset.c);
@@ -361,6 +386,14 @@ export function installPeripherals(app) {
       const grid = e.target.closest('.kpGrid'); if (!grid || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
       const k = [...grid.querySelectorAll('.kpKey')].find(b => b.textContent === e.key.toUpperCase()), c = k && compOf(k); if (!c) return;
       e.preventDefault(); k.focus(); keyDown(k, c, true);
+    });
+    // Réglages du GPS : gardés sur le composant (c.inp), enregistrés avec le projet.
+    list.addEventListener('change', e => {
+      const k = e.target.dataset && e.target.dataset.gps, c = k && compOf(e.target); if (!c) return;
+      const v = parseFloat(String(e.target.value).replace(',', '.')); if (!Number.isFinite(v)) return;
+      if (!c.inp) c.inp = {};
+      c.inp[k] = v; e.target.value = gpsSettings(c)[{ gpsLat: 'lat', gpsLon: 'lon', gpsSpeed: 'speed', gpsCourse: 'course', gpsCold: 'cold' }[k]];
+      if (app.netChanged) app.netChanged();
     });
     list.addEventListener('change', e => { if (e.target.matches('[data-server]')) { nav.board = e.target.value; nav.path = '/'; go('/'); tick(); } });
     list.addEventListener('submit', e => {

@@ -9,13 +9,14 @@ import { LIBRARY, BY_ID, MINE } from '../library/catalog.js';
 import { PARTS } from '../sim/parts.js';
 import { BOARDS, boardOf, kindOf } from '../sim/boards.js';
 import { DOCS } from '../library/docs.js';
-import { SIGNALS, ACTIONS, signalOf, uid, defArg } from '../prog/rules.js';
-import { QUANT, ENV, INPUTS, MODELS } from '../sim/models.js';
+import { SIGNALS, ACTIONS, signalOf, uid, defArg, migrate, ident, varText, involves, srcSignal, termDefaults, SERIAL, SERIAL_ACTS } from '../prog/rules.js';
+import { QUANT, ENV, INPUTS, MODELS, encTurn, remotePress } from '../sim/models.js';
 import { compile } from '../prog/lang.js';
 import * as J from '../library/jpart.js';
 import * as P from '../library/packages.js';
 import { DEFS as PNEU, props as pneuProps, portsOf as pneuPorts } from '../pneu/elements.js';
 import { cylOf } from '../pneu/physics.js';
+import { CATALOG as TWIN, TEMPLATES as TWIN_TEMPLATES, ENUMS as TWIN_ENUMS } from '../twin/model.js';
 
 /** Erreur montrée à l'IA (texte clair, sans pile). */
 export class ToolError extends Error {}
@@ -39,7 +40,9 @@ export function createTools(H) {
       model: physical ? 'physical' : 'discrete',
       elements: c.elements.map(e => ({ id: e.id, type: e.type, name: PNEU[e.type] ? PNEU[e.type].name() : e.type, x: e.x, y: e.y, props: pneuProps(e), ports: pneuPorts(e).map(p => `${e.id}:${p.id}`) })),
       tubes: (c.tubes || []).map(t => ({ id: t.id, from: `${t.a[0]}:${t.a[1]}`, to: `${t.b[0]}:${t.b[1]}` })),
-      bench: Pn.bench(), problems: Pn.check().map(i => `${i.level}: ${i.text}`)
+      bench: Pn.bench(), problems: Pn.check().map(i => `${i.level}: ${i.text}`),
+      // Machine de la vue 3D (circuit.scene) : ses capteurs, compteurs, alarme et actions quand son procédé est simulé (magasin, embouteillage, barrière).
+      ...(Pn.machine && Pn.machine() ? { machine: Pn.machine() } : {})
     };
     if (withState && H.simOn() && c.elements.length) {
       const r1 = v => Math.round(v * 100) / 100;
@@ -67,6 +70,84 @@ export function createTools(H) {
     if (!c) fail(`no part named "${name}". Parts: ${all.map(x => x.name).join(', ') || '(none)'}`);
     return c;
   }
+  /* ---------- Règles décrites par l'IA → arbre des règles (src/prog/rules.js) ---------- */
+  const declNamed = (kind, name) => H.prog.ai.rules().find(x => x.kind === kind && x.name.toLowerCase() === String(name).toLowerCase()) || fail(`no ${kind === 'var' ? 'variable' : 'sequence'} named "${name}"`);
+  /** Source d'une valeur : { part, signal } | { variable } | { serial: true }. */
+  function source(x, prof) {
+    if (!x || typeof x !== 'object') fail('source expected: {"part","signal"} or {"variable"}');
+    if (x.variable) return { var: declNamed('var', x.variable).id };
+    if (x.serial) return { comp: SERIAL, sig: 'line' };
+    const c = part(x.part), sigs = SIGNALS[c.type];
+    if (!sigs) fail(`${c.name} measures nothing (no signals): see get_part`);
+    const key = x.signal || Object.keys(sigs)[0];
+    if (!sigs[key]) fail(`${c.name} has no signal "${key}". Signals: ${Object.keys(sigs).join(', ')}`);
+    void prof;
+    return { comp: c.id, sig: key };
+  }
+  /** Une condition. */
+  function term(w, prof) {
+    const t = {};
+    if (w.every_ms) t.src = { every: Math.max(1, Math.round(+w.every_ms)) };
+    else if (w.at_start) t.src = { start: true };
+    else if (w.sequence) { const q = declNamed('seq', w.sequence), s = q.steps.find(x => x.name.toLowerCase() === String(w.step).toLowerCase()); if (!s) fail(`no step "${w.step}" in ${q.name}`); t.src = { seq: q.id, step: s.id }; }
+    else t.src = source(w, prof);
+    if (t.src.every || t.src.start || t.src.seq) { t.op = '=='; t.v = 1; }
+    else {
+      const sig = srcSignal(t.src, id => H.prog.ai.rules().find(x => x.id === id) || comps().find(c => c.id === id), prof);
+      Object.assign(t, termDefaults(sig));
+      if (w.op) t.op = w.op;
+      const ok = sig.kind === 'text' ? ['==', '!=', 'has', 'any'] : sig.event ? ['==', 'any'] : sig.kind === 'bool' ? ['=='] : OPS_OK;
+      if (!ok.includes(t.op)) fail(`op must be one of ${ok.join(' ')}`);
+      if (sig.kind === 'bool') t.v = w.value === false || w.value === 0 || w.value === 'false' ? 0 : 1;
+      else if (sig.kind === 'text') t.v = String(w.value ?? '');
+      else if (sig.kind === 'time' && typeof w.value === 'string' && /^\d{1,2}:\d{2}$/.test(w.value)) { const [h, m] = w.value.split(':'); t.v = +h * 60 + +m; }
+      else if (w.value != null) { t.v = +w.value; if (!Number.isFinite(t.v)) fail('value must be a number'); }
+      if (sig.range) t.from = [...sig.range];
+      if (w.compare_to) t.vs = source(w.compare_to, prof);
+      if (w.hysteresis) t.hyst = Math.abs(+w.hysteresis);
+    }
+    if (w.edge) t.edge = true;
+    if (w.hold_ms) t.hold = Math.max(0, Math.round(+w.hold_ms));
+    if (w.not) t.not = true;
+    return t;
+  }
+  /** Un élément d'une branche ou d'une étape. */
+  function item(it, prof) {
+    if (!it || typeof it !== 'object') fail('item expected');
+    if (it.rule) return buildRule(it.rule, prof);
+    if (it.wait_ms != null) return { kind: 'wait', id: uid('a'), ms: Math.max(1, Math.round(+it.wait_ms)) };
+    if (it.sequence) { const q = declNamed('seq', it.sequence), s = it.step == null ? null : q.steps.find(x => x.name.toLowerCase() === String(it.step).toLowerCase()); if (it.step != null && !s) fail(`no step "${it.step}" in ${q.name}`); return { kind: 'goto', id: uid('a'), seq: q.id, step: s ? s.id : null }; }
+    if (it.variable) {
+      const d = declNamed('var', it.variable), o = { kind: 'set', id: uid('a'), var: d.id };
+      if (it.toggle) o.op = 'toggle'; else if (it.add != null) { o.op = '+'; o.v = +it.add; } else if (it.subtract != null) { o.op = '-'; o.v = +it.subtract; }
+      else if (it.set_from) { o.op = '='; o.src = source(it.set_from, prof); } else { o.op = '='; o.v = d.type === 'text' ? String(it.set ?? '') : d.type === 'bool' ? !!it.set : +it.set || 0; }
+      return o;
+    }
+    if (it.serial) {
+      if (!SERIAL_ACTS[it.serial]) fail('serial must be "print", "show" or "plot"');
+      const o = { kind: 'act', id: uid('a'), comp: SERIAL, act: it.serial, arg: it.serial === 'print' ? String(it.value ?? '') : null };
+      if (it.show) o.what = source(it.show, prof); else if (it.serial !== 'print') fail('give "show": the value to write');
+      return o;
+    }
+    const c = part(it.part), A = ACTIONS[c.type];
+    if (!A) fail(`${c.name} has no actions: see get_part`);
+    if (!A[it.action]) fail(`${c.name} has no action "${it.action}". Actions: ${Object.keys(A).join(', ')}`);
+    const o = { kind: 'act', id: uid('a'), comp: c.id, act: it.action, arg: it.value !== undefined ? it.value : defArg(c.type, it.action) };
+    if (it.show) o.what = source(it.show, prof);
+    if (it.line) o.line = +it.line;
+    return o;
+  }
+  function buildRule({ when, then = [], otherwise = [] }, prof) {
+    const r = { kind: 'rule', id: uid('r'), src: null, op: '>', v: 0, from: [0, 100], then: [], else: [] };
+    if (when) {
+      Object.assign(r, term(when, prof));
+      const more = [...(when.and || []).map(w => ({ ...term(w, prof), link: 'and' })), ...(when.or || []).map(w => ({ ...term(w, prof), link: 'or' }))];
+      if (more.length) r.more = more;
+    }
+    r.then = then.map(x => item(x, prof)); r.else = otherwise.map(x => item(x, prof));
+    return migrate(r);
+  }
+
   /** Broche « PART.PIN » (LED1.A, UNO.D13, ESP32.GND) → { comp, key }. */
   function pin(ref) {
     const s = String(ref ?? ''), i = s.lastIndexOf('.');
@@ -255,42 +336,26 @@ export function createTools(H) {
     },
     {
       name: 'add_rule',
-      description: 'Add a rule "when <signal> <op> <value> then <actions> otherwise <actions>" (no "when": always). The board program is then written from its rules (clean Arduino code). Signals and actions of each part are listed by get_part. Example: {"when":{"part":"DHT1","signal":"temp","op":">","value":28},"then":[{"part":"FAN1","action":"on"}],"otherwise":[{"part":"FAN1","action":"off"}]}. Use op "follow" to make an action follow a measurement (e.g. servo angle follows a potentiometer).',
+      description: 'Add a rule "when <conditions> then <items> otherwise <items>" (no "when": always). The board program is then written from its rules (robust Arduino code: no String, non-blocking millis() timing, sensor failures handled). Signals and actions of each part are listed by get_part. '
+        + 'Condition: {"part":"DHT1","signal":"temp","op":">","value":28} — or {"variable":"compteur","op":">=","value":10}, {"serial":true,"op":"==","value":"marche"} (a line received on the serial monitor; op "any" for any line), {"every_ms":2000} (true once every period), {"at_start":true} (first loop only), {"sequence":"Feu","step":"Rouge"} (that step is active). '
+        + 'Options on a condition: "edge":true (only the moment it becomes true, debounced: "dès que"), "hold_ms":2000 (true for at least that long), "hysteresis":2 (with > or <: turns false only 2 units back), "compare_to":{"part","signal"}|{"variable"} (instead of value), "not":true. Text signals (received message, RFID tag, key) use op "==", "!=", "has" (contains) or "any". '
+        + 'More conditions: "and":[conditions] or "or":[conditions] (evaluated left to right). Use op "follow" to make actions follow a measurement (servo angle follows a potentiometer). '
+        + 'Items (then/otherwise): {"part":"FAN1","action":"on","value":…} (displays and comm modules: "show":{"part","signal"}|{"variable"} chooses the value shown or sent, "line":2 the screen line), {"serial":"print","value":"text"} | {"serial":"show","show":{…}} | {"serial":"plot","show":{…}}, {"variable":"compteur","set":0} | {"variable":"compteur","add":1} | {"variable":"compteur","subtract":1} | {"variable":"alarme","toggle":true} | {"variable":"x","set_from":{"part","signal"}}, {"wait_ms":2000} ("then wait 2 s then…", non-blocking), {"sequence":"Feu","step":"Vert"} (go to that step; "step":null stops it), {"rule":{when,then,otherwise}} (nested). '
+        + 'Under a lasting condition, counting, writing to serial, sending and changing step happen once when it becomes true. Example: {"when":{"part":"BTN1","signal":"pressed","edge":true},"then":[{"variable":"compteur","add":1},{"part":"LED1","action":"on"},{"wait_ms":1000},{"part":"LED1","action":"off"}]}.',
       inputSchema: {
         type: 'object',
         properties: {
-          when: { type: 'object', properties: { part: { type: 'string' }, signal: { type: 'string' }, op: { type: 'string', enum: OPS_OK }, value: {} }, required: ['part'] },
-          then: { type: 'array', items: { type: 'object', properties: { part: { type: 'string' }, action: { type: 'string' }, value: {} }, required: ['part', 'action'] } },
-          otherwise: { type: 'array', items: { type: 'object', properties: { part: { type: 'string' }, action: { type: 'string' }, value: {} }, required: ['part', 'action'] } },
+          when: { type: 'object', description: 'condition (see description); "and"/"or": more conditions' },
+          then: { type: 'array', items: { type: 'object' } },
+          otherwise: { type: 'array', items: { type: 'object' } },
           use_rules: { type: 'boolean', description: 'if the board is in "code" or "blocks" mode, switch it back to rules (replaces hand-written code)' }
         },
         required: ['then']
       },
       run({ when, then = [], otherwise = [], use_rules }) {
-        const r = { kind: 'rule', id: uid('r'), src: null, op: '>', v: 0, from: [0, 100], then: [], else: [] };
-        let prof = null;
-        if (when) {
-          const c = part(when.part), sigs = SIGNALS[c.type];
-          if (!sigs) fail(`${c.name} measures nothing (no signals): see get_part`);
-          const key = when.signal || Object.keys(sigs)[0];
-          if (!sigs[key]) fail(`${c.name} has no signal "${key}". Signals: ${Object.keys(sigs).join(', ')}`);
-          const sb = boards()[0]; prof = sb ? boardOf(sb) : null;
-          const sig = signalOf(c.type, key, prof);
-          r.src = { comp: c.id, sig: key };
-          r.op = when.op || (sig.kind === 'bool' ? '==' : '>');
-          if (!OPS_OK.includes(r.op)) fail(`op must be one of ${OPS_OK.join(' ')}`);
-          r.v = sig.kind === 'bool' ? (when.value === false || when.value === 0 || when.value === 'false' ? 0 : 1) : when.value != null ? +when.value : sig.def;
-          if (!Number.isFinite(r.v)) fail('value must be a number');
-          r.from = sig.range ? [...sig.range] : [0, 100];
-        }
-        const act = it => {
-          const c = part(it.part), A = ACTIONS[c.type];
-          if (!A) fail(`${c.name} has no actions: see get_part`);
-          if (!A[it.action]) fail(`${c.name} has no action "${it.action}". Actions: ${Object.keys(A).join(', ')}`);
-          return { kind: 'act', id: uid('a'), comp: c.id, act: it.action, arg: it.value !== undefined ? it.value : defArg(c.type, it.action) };
-        };
-        r.then = then.map(act); r.else = otherwise.map(act);
-        if (!r.then.length && !r.else.length) fail('give at least one action in "then"');
+        const sb = boards()[0], prof = sb ? boardOf(sb) : null;
+        const r = buildRule({ when, then, otherwise }, prof);
+        if (!r.then.length && !r.else.length) fail('give at least one item in "then"');
         H.prog.ai.addRule(r);
         const out = { added: H.prog.ai.ruleText(r, boards()[0]) };
         const b = boards().find(x => H.prog.ai.state(x).rules.includes(r)) || boards()[0];
@@ -303,15 +368,50 @@ export function createTools(H) {
       }
     },
     {
+      name: 'add_variable',
+      description: 'Declare a variable that rules can set, count with, compare and show: {"name":"compteur","type":"int"|"dec"|"bool"|"text","initial":0,"max_length":16 (text),"persist":true (kept in EEPROM across power cycles, written at most every 5 s)}.',
+      inputSchema: { type: 'object', properties: { name: { type: 'string' }, type: { type: 'string', enum: ['int', 'dec', 'bool', 'text'] }, initial: {}, max_length: { type: 'number' }, persist: { type: 'boolean' } }, required: ['name'] },
+      run({ name, type = 'int', initial, max_length, persist }) {
+        const n = ident(String(name));
+        if (H.prog.ai.rules().some(x => x.kind === 'var' && x.name === n)) fail(`variable ${n} already exists`);
+        const d = migrate({ kind: 'var', id: uid('v'), name: n, type, init: initial, len: max_length, persist });
+        H.prog.ai.addRule(d);
+        return { added: varText(d) };
+      }
+    },
+    {
+      name: 'add_sequence',
+      description: 'Add a sequence (state machine, like a GRAFCET): one step active at a time; each step does its items when it is entered, then moves on by its transitions. {"name":"Feu","start":"boot"|"stopped","steps":[{"name":"Rouge","do":[items as in add_rule],"next":[{"after_ms":5000,"when":condition (optional),"to":"Vert"|null}]}]}. The first step is active at start ("stopped": until a rule items {"sequence":"Feu","step":"Rouge"}). Rules can test {"sequence":"Feu","step":"Rouge"} in a condition. Timing is non-blocking (millis()).',
+      inputSchema: { type: 'object', properties: { name: { type: 'string' }, start: { type: 'string', enum: ['boot', 'stopped'] }, steps: { type: 'array', items: { type: 'object' } } }, required: ['name', 'steps'] },
+      run({ name, start = 'boot', steps }) {
+        const sb = boards()[0], prof = sb ? boardOf(sb) : null;
+        const q = { kind: 'seq', id: uid('s'), name: ident(String(name)), start, steps: (steps || []).map(s => ({ kind: 'step', id: uid('e'), name: ident(String(s.name || 'etape')), do: [], go: [] })) };
+        if (!q.steps.length) fail('give at least one step');
+        H.prog.ai.addRule(q); // présente avant ses étapes : les éléments peuvent la nommer
+        try {
+          (steps || []).forEach((s, i) => {
+            const st = q.steps[i];
+            st.do = (s.do || []).map(it => item(it, prof));
+            st.go = (s.next || []).map(g => {
+              const to = g.to == null ? null : q.steps.find(x => x.name.toLowerCase() === ident(String(g.to)).toLowerCase());
+              if (g.to != null && !to) fail(`no step "${g.to}" in ${q.name}`);
+              return { kind: 'go', id: uid('g'), after: Math.max(0, +g.after_ms || 0), when: g.when ? term(g.when, prof) : null, to: to ? to.id : null };
+            });
+          });
+        } catch (e) { H.prog.ai.removeRules(x => x === q); throw e; }
+        H.prog.ai.addRule(null);
+        return { added: H.prog.ai.ruleText(q, boards()[0]) };
+      }
+    },
+    {
       name: 'remove_rules',
-      description: 'Remove rules: all of them, or the ones that use a given part.',
-      inputSchema: { type: 'object', properties: { part: { type: 'string' }, all: { type: 'boolean' } } },
+      description: 'Remove rules: all of them (variables and sequences too), the ones that use a given part, or a variable / sequence by name.',
+      inputSchema: { type: 'object', properties: { part: { type: 'string' }, all: { type: 'boolean' }, variable: { type: 'string' }, sequence: { type: 'string' } } },
       annotations: { destructiveHint: true },
-      run({ part: p, all }) {
-        if (!p && !all) fail('give "part", or "all": true');
+      run({ part: p, all, variable, sequence }) {
+        if (!p && !all && !variable && !sequence) fail('give "part", "variable", "sequence", or "all": true');
         const id = p ? part(p).id : null;
-        const uses = r => { let y = false; const walk = x => { if (x.kind === 'act' && x.comp === id) y = true; if (x.kind === 'rule') { if (x.src && x.src.comp === id) y = true; [...x.then, ...x.else].forEach(walk); } }; walk(r); return y; };
-        return { removed: H.prog.ai.removeRules(r => all || uses(r)) };
+        return { removed: H.prog.ai.removeRules(r => all || (id && involves(r, id)) || (variable && r.kind === 'var' && r.name === variable) || (sequence && r.kind === 'seq' && r.name === sequence)) };
       }
     },
     {
@@ -343,10 +443,18 @@ export function createTools(H) {
     },
     {
       name: 'set_part_input',
-      description: 'Operate an input part during the simulation: press a button ({"input":"pressed","value":true}), turn a potentiometer ({"input":"pos","value":0..100}), move a joystick ("x"/"y" -100..100, "sw").',
+      description: 'Operate an input part during the simulation: press a button ({"input":"pressed","value":true}), turn a potentiometer ({"input":"pos","value":0..100}), move a joystick ("x"/"y" -100..100, "sw"), turn a KY-040 rotary encoder by detents ({"input":"turn","value":3}, negative = counter-clockwise; "sw" presses its shaft), press a key of an IR remote ({"input":"key","value":"0x45"}: NEC command sent to every IR receiver).',
       inputSchema: { type: 'object', properties: { part: { type: 'string' }, input: { type: 'string' }, value: {} }, required: ['part', 'input', 'value'] },
       run({ part: p, input, value }) {
         const c = part(p), inp = c.inp || {};
+        if (c.type === 'ky040' && input === 'turn') {
+          const n = Math.trunc(+value); if (!n || !Number.isFinite(n)) fail('non-zero integer expected (detents)');
+          encTurn(c, Math.sign(n), Math.abs(n)); return { part: c.name, turned: n, position: c.periph.pos };
+        }
+        if (c.type === 'irremote' && input === 'key') {
+          const cmd = typeof value === 'string' ? parseInt(value, /^0x/i.test(value) ? 16 : 10) : +value; if (!(cmd >= 0 && cmd < 256)) fail('NEC command 0..255 expected');
+          return { part: c.name, command: cmd, receivers: remotePress(comps(), cmd) };
+        }
         if (!(input in inp)) fail(`${c.name} has no input "${input}". Inputs: ${Object.keys(inp).join(', ') || '(none)'}`);
         const v = typeof inp[input] === 'boolean' ? value === true || value === 1 || value === 'true' : +value;
         if (typeof v === 'number' && !Number.isFinite(v)) fail('number expected');
@@ -373,7 +481,7 @@ export function createTools(H) {
     /* ---------- Plan de travail pneumatique ---------- */
     {
       name: 'pneumatic_get',
-      description: 'The pneumatic circuit (Pneumatic workspace): model (discrete or physical), elements with their ports and settings, tubes, the solenoid coils (coil24 parts, tags Y1…) and contacts (cylsensor and pressostat parts, tags B1…, S1…) present on the electronics bench, problems found, and during simulation the state (valve positions, cylinder positions, pressures, forces, leaks). Valves are switched by the coil24 part whose name is the valve’s coil tag; cylinder end sensors and pressure switches close the bench contact with their tag.',
+      description: 'The pneumatic circuit (Pneumatic workspace): model (discrete or physical), elements with their ports and settings, tubes, "machine" (the 3D scene: kind, and for the simulated processes feeder / filler / barrier its sensors such as mag, pp, pb, niv, veh, pass, its counters, alarm and actions; sensors are read by the GRAFCET and the PLC by name, actions are triggered with pneumatic_press {"name": "car"}), the solenoid coils (coil24 parts, tags Y1…) and contacts (cylsensor and pressostat parts, tags B1…, S1…) present on the electronics bench, problems found, and during simulation the state (valve positions, cylinder positions, pressures, forces, leaks). Valves are switched by the coil24 part whose name is the valve’s coil tag; cylinder end sensors and pressure switches close the bench contact with their tag.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { readOnlyHint: true },
       run() { return pneuSummary(true); }
@@ -437,6 +545,33 @@ export function createTools(H) {
       }
     },
     {
+      name: 'plc_get',
+      description: 'The PLC program (Ladder, IEC 61131-3) of the pneumatic circuit: { name, drive, cycle, inputs: operator panel buttons [{ name, kind: "push"|"switch" }], rungs: [{ id, comment, items }] }. A rung is a series of items from the left rail to the right rail: contacts { t: "no"|"nc"|"p"|"n", v } (normally open, normally closed, rising edge, falling edge), comparison { t: "cmp", a, op, b } (a = counter or timer name, op in "=", "<>", "<", "<=", ">", ">=", b integer: counter value or timer elapsed seconds), coils { t: "coil"|"ncoil"|"set"|"reset", v }, timers { t: "ton"|"tof"|"tp", v, pt } (seconds; their Q is read by a contact with the same name), counters { t: "ctu"|"ctd", v, pv, r } (r = reset / load input name), parallel branches { t: "par", branches: [[items], [items]] } (OR). Variables: panel inputs, cylinder sensors and pressure switches of the circuit (a0, a1, B1, S1), bench buttons/sensors by name, GRAFCET steps (X3), the system bit INIT (true on the first scan only), and whatever coils write: valve coil tags (Y1, 1Y1) switch the valves, other names are internal memories (M1). Names are case-insensitive. Rungs run top to bottom each scan; a coil written in two rungs is a double coil (warning). drive: true when the PLC energises the solenoids. With the simulation running: scan count, true bits, timers, counters. problems: compile and name errors (an erroneous program does not run).',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { readOnlyHint: true },
+      run() { const Pn = pneu(); return { plc: Pn.plc(), state: Pn.plcState(), problems: Pn.check().filter(i => /^Automate/.test(i.text)).map(i => `${i.level}: ${i.text}`) }; }
+    },
+    {
+      name: 'plc_set',
+      description: 'Replace the PLC Ladder program of the pneumatic circuit (same format as plc_get; undoable; ids are optional). Example self-holding cylinder, Y1 = (dcy + Y1) . /a1: {"inputs":[{"name":"dcy","kind":"push"}],"rungs":[{"comment":"Y1 holds until a1","items":[{"t":"par","branches":[[{"t":"no","v":"dcy"}],[{"t":"no","v":"Y1"}]]},{"t":"nc","v":"a1"},{"t":"coil","v":"Y1"}]}]}. Give null rungs to remove the program. Returns the problems found: fix every error, the PLC does not run with errors.',
+      inputSchema: { type: 'object', properties: { rungs: { type: ['array', 'null'] }, inputs: { type: 'array' }, drive: { type: 'boolean' }, name: { type: 'string' }, cycle: { type: 'number' } }, required: ['rungs'] },
+      run({ rungs, inputs, drive, name, cycle }) {
+        const Pn = pneu();
+        if (!rungs) { Pn.setPlc(null); return { plc: null }; }
+        const cur = Pn.plc() || { inputs: [{ name: 'dcy', kind: 'push' }], drive: true, cycle: 10, name: 'API1' };
+        Pn.setPlc({ name: name || cur.name, drive: drive ?? cur.drive ?? true, cycle: cycle ?? cur.cycle, inputs: inputs || cur.inputs, rungs });
+        Pn.openPlc(); Pn.refresh();
+        return { plc: Pn.plc(), problems: Pn.check().filter(i => /^Automate/.test(i.text)).map(i => `${i.level}: ${i.text}`) };
+      }
+    },
+    {
+      name: 'plc_from_grafcet',
+      description: 'Write the PLC Ladder program from the GRAFCET of the pneumatic circuit, the way it is taught: one internal bit per step (X0, X1…), one rung per transition (upstream step contacts and receptivity → SET downstream steps, RESET upstream steps), a TON timer for each "5s/X2" delay, a P contact for each rising edge, one rung per action (steps that emit it in parallel → coil), INIT sets the initial steps. The GRAFCET then only observes (drive false): the PLC energises the solenoids. Refused with a reason for macro-steps, enclosing steps, partial GRAFCETs, forcing orders and counters. Replaces the current PLC program (undoable).',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { destructiveHint: true },
+      run() { const Pn = pneu(), r = Pn.plcFromGrafcet(); if (r.error) fail(r.error); Pn.openPlc(); Pn.refresh(); return { rungs: r.rungs, notes: r.notes, plc: Pn.plc(), problems: Pn.check().filter(i => /^Automate/.test(i.text)).map(i => `${i.level}: ${i.text}`) }; }
+    },
+    {
       name: 'pneumatic_link_bench',
       description: 'Electropneumatic projects: add to the electronics bench every part the pneumatic circuit names but the bench lacks, each named with its tag: a coil24 solenoid for each valve coil tag (Y1…), a cylsensor for each cylinder sensor tag (s0/s1: B1, B2…), a pressostat for each pressure switch tag (S1…). Each new part is then auto-wired to the board (solenoid: transistor stage, flyback diode and 24 V supply; contacts: INPUT_PULLUP pin and ground). Needs a board on the bench first (add_part uno). Returns the parts added and every link: tag, bench part, board pin.',
       inputSchema: { type: 'object', properties: { wire: { type: 'boolean', description: 'auto-wire the new parts (default true)' } } },
@@ -460,16 +595,38 @@ export function createTools(H) {
     },
     {
       name: 'pneumatic_press',
-      description: 'During the simulation, hold or release the push button of a pneumatic valve (act/left/right "push"): {"id":"e3","pressed":true}, or a button of the GRAFCET operator panel by its name ({"id":"dcy","pressed":true}). side "right" is the button on the 12 side of a 5/2 or 5/3 valve whose right is "push"; the default is the 14 side (or the only button of a 3/2).',
+      description: 'During the simulation, hold or release the push button of a pneumatic valve (act/left/right "push"): {"id":"e3","pressed":true}, or a button of the GRAFCET or PLC operator panel by its name ({"id":"dcy","pressed":true}). An action of the 3D machine process (see pneumatic_get.machine.actions: car, bottle, refill) is triggered with {"id":"car","pressed":true}. side "right" is the button on the 12 side of a 5/2 or 5/3 valve whose right is "push"; the default is the 14 side (or the only button of a 3/2).',
       inputSchema: { type: 'object', properties: { id: { type: 'string' }, pressed: { type: 'boolean' }, side: { type: 'string', enum: ['left', 'right'] } }, required: ['id', 'pressed'] },
       run({ id, pressed, side }) {
         const Pn = pneu(); if (!H.simOn()) fail('start the simulation first (simulate)');
         const e = Pn.editor.circuit().elements.find(x => x.id === id);
         if (!e && Pn.isGrafcetInput(id)) { Pn.press(id, !!pressed); Pn.refresh(); return { input: id, pressed: !!pressed }; }
+        if (!e && Pn.actLabel && Pn.actLabel(id)) { if (pressed !== false) Pn.act(id); return { action: id, label: Pn.actLabel(id), done: pressed !== false }; } // action du procédé de la machine 3D (une voiture, une bouteille, remplir)
         if (!e) fail(`no element or GRAFCET input "${id}"`);
         if (side === 'right' && !(e.type === 'v52' || e.type === 'v53')) fail('only a 5/2 or 5/3 valve has a right-side button');
         Pn.press(side === 'right' ? `${id}:R` : id, !!pressed); Pn.refresh();
         return { id, side: side === 'right' ? 'right' : 'left', pressed: !!pressed };
+      }
+    },
+    {
+      name: 'machine_get',
+      description: 'The 3D machine built from components (digital twin, circuit.scene of kind "twin"): its parts with position (m, Y up, floor at y = 0), rotation (° about Y), size, settings, bindings and parent, plus the problems found (unbound mover, duplicate signal…) and the component catalog. Components: ' + Object.entries(TWIN).map(([t, K]) => `${t} (${K.cat}; settings ${JSON.stringify(K.props)}; bindings ${K.bind.join('/') || 'none'}${K.sizable ? '; sizable' : ''}${K.mover ? '; moves with a cylinder' : ''})`).join('; ') + '. Choices: ' + JSON.stringify(TWIN_ENUMS) + '. Bindings: cyl = label or id of a circuit cylinder (the part follows its 0…1 position), out = output name read by the part (conveyor, lamp, gripper, dispenser; written by a GRAFCET action, a PLC coil or a bench coil24), signal = sensor name produced for the GRAFCET/PLC (IEC 61131-3 identifier), input = input pressed by a button. parent = id of a moving part that carries this one. Templates: ' + Object.keys(TWIN_TEMPLATES).join(', ') + '.',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { readOnlyHint: true },
+      run() { const Pn = pneu(), s = Pn.scene(); return { scene: s && s.kind === 'twin' ? { ...s, assets: s.assets ? Object.keys(s.assets) : undefined } : null, kind: s ? s.kind : null, problems: Pn.sceneProblems ? Pn.sceneProblems().map(p => `${p.level}: ${p.text}`) : [], templates: Object.keys(TWIN_TEMPLATES) };
+      }
+    },
+    {
+      name: 'machine_set',
+      description: 'Replace the 3D machine (undoable) with a scene of kind "twin": {"scene": {"name": "…", "parts": [{"id": "conv1", "type": "conveyor", "pos": [0, 0.8, 0], "rot": 0, "size": [2, 0.1, 0.4], "props": {"speed": 0.25}, "bind": {"out": "KM1"}}, …]}} (see machine_get for components, settings and bindings; unknown or out-of-range values are cleaned), or a template: {"template": "sorter"}. The 3D view opens on the machine; its sensors are then read by the GRAFCET and the PLC by name, its moving parts follow the bound cylinders, its outputs are driven by the program. Returns the cleaned scene and its problems.',
+      inputSchema: { type: 'object', properties: { scene: { type: 'object' }, template: { type: 'string', enum: Object.keys(TWIN_TEMPLATES) } } },
+      run({ scene, template }) {
+        const Pn = pneu(); if (!scene && !template) fail('give a scene or a template');
+        const cur = Pn.scene();
+        const s = template ? TWIN_TEMPLATES[template].scene() : { kind: 'twin', ...scene, assets: (scene && scene.assets) || (cur && cur.kind === 'twin' ? cur.assets : undefined) };
+        Pn.setScene(s); Pn.refresh();
+        const out = Pn.scene();
+        return { scene: { ...out, assets: out.assets ? Object.keys(out.assets) : undefined }, problems: Pn.sceneProblems ? Pn.sceneProblems().map(p => `${p.level}: ${p.text}`) : [] };
       }
     },
     {

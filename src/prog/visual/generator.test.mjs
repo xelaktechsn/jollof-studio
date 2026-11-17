@@ -118,7 +118,7 @@ test('clignotant (TP02) : pinMode automatique, pas de delay(10) caché, vérific
   const m = tpMount(tpOf('tp02-clignotant.json'));
   const ws = program({ loop: seq(dwrite('D8', 'HIGH'), delay(250), dwrite('D8', 'LOW'), delay(250)) });
   const { code, map } = gen(m, ws);
-  has(code, 'const int LED1 = 8;', 'Serial.begin(9600);', 'pinMode(LED1, OUTPUT);', 'digitalWrite(LED1, HIGH);', 'delay(250);', 'digitalWrite(LED1, LOW);');
+  has(code, 'constexpr uint8_t LED1 = 8;', 'Serial.begin(9600);', 'pinMode(LED1, OUTPUT);', 'digitalWrite(LED1, HIGH);', 'delay(250);', 'digitalWrite(LED1, LOW);');
   assert.equal(count(code, 'pinMode('), 1, 'un seul pinMode');
   assert.ok(!code.includes('delay(10)'), 'pas de delay(10)');
   assert.ok(code.indexOf('pinMode(LED1, OUTPUT);') < code.indexOf('void loop'), 'pinMode dans setup()');

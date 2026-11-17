@@ -3,7 +3,7 @@
 // Pont entre l'interface et le cœur Rust. Dans l'application Tauri, tout passe
 // par les commandes natives et les boîtes de dialogue du système. Lancé dans un
 // simple navigateur (`npm run dev`), chaque fonction a un repli web.
-import { invoke, Channel } from '@tauri-apps/api/core';
+import { invoke, Channel, convertFileSrc } from '@tauri-apps/api/core';
 import { tl } from './i18n/index.js';
 
 export const isTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
@@ -47,15 +47,38 @@ export async function openProject() {
   return { path, name: baseName(path), text: await invoke('read_text', { path }) };
 }
 
-/** Enregistre la vidéo exportée. Les octets partent en binaire brut vers Rust. */
-export async function saveVideo(blob, suggested) {
-  if (!isTauri()) { browserDownload(blob, suggested); return suggested; }
+/**
+ * Enregistre la vidéo exportée : `video.blob` (rendu en mémoire, octets bruts vers Rust) ou `video.file` (rendu déjà
+ * écrit dans le cache par renderSink, que Rust copie).
+ */
+export async function saveVideo(video, suggested) {
+  if (!isTauri()) { browserDownload(video.blob, suggested); return suggested; }
   const ext = suggested.split('.').pop();
   const path = await pickSave(suggested, tl('Vidéo'), [ext]);
   if (!path) return null;
-  const bytes = new Uint8Array(await blob.arrayBuffer());
+  if (video.file) { await invoke('render_save', { path }); return path; }
+  const bytes = new Uint8Array(await video.blob.arrayBuffer());
   await invoke('save_bytes', bytes, { headers: { 'x-path': encodeURIComponent(path) } });
   return path;
+}
+
+/**
+ * Rendu vidéo écrit au fil de l'eau dans le cache de l'application (Tauri) : un WritableStream qui reçoit les
+ * morceaux { type: 'write', data, position } du multiplexeur. Rend { path, url (lecture par le protocole asset:),
+ * writable, end(), discard() }, ou null hors de l'application (le rendu reste en mémoire).
+ */
+export async function renderSink() {
+  if (!isTauri()) return null;
+  const path = await invoke('render_begin');
+  const writable = new WritableStream({
+    write: chunk => invoke('render_write', chunk.data, { headers: { 'x-pos': String(chunk.position) } })
+  });
+  return {
+    path, writable,
+    url: () => convertFileSrc(path),
+    end: () => invoke('render_end'),
+    discard: () => invoke('render_discard').catch(() => {})
+  };
 }
 
 /** Enregistre un fichier binaire (PDF…) par la boîte de dialogue du système. */
@@ -173,7 +196,7 @@ export async function readBuild(ext) {
 }
 /* Émulateur de l'ESP32 (QEMU d'Espressif, programme à part) : installé à la première utilisation, lancé par Rust. */
 const u8 = m => (m instanceof ArrayBuffer ? new Uint8Array(m) : ArrayBuffer.isView(m) ? new Uint8Array(m.buffer, m.byteOffset, m.byteLength) : Uint8Array.from(m));
-/** { installed, available (paquet publié pour cette plateforme), dev, version, platform, desktop }. */
+/** { installed, available (paquet publié pour cette plateforme), dev, version, platform, chips (puces que l'émulateur installé fait tourner), desktop }. */
 export async function qemuStatus() {
   if (!isTauri()) return { installed: false, available: false, desktop: false };
   try { return { ...(await invoke('qemu_status')), desktop: true }; } catch (e) { return { installed: false, available: false, desktop: true, error: String(e) }; }
@@ -194,10 +217,10 @@ export function qemuTransport(id) {
   const ch = fn => { const c = new Channel(); c.onmessage = fn; return c; };
   const stamped = fn => m => { const b = u8(m); if (b.length < 4) return; fn(((b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0) / 100, b.subarray(4)); };
   return {
-    async start({ image, onUart, onSide, onTrace, onExit }) {
-      await invoke('qemu_flash', image, { headers: { 'x-board': board } });
+    async start({ image, chip = 'esp32', onUart, onSide, onTrace, onExit }) {
+      await invoke('qemu_flash', image, { headers: { 'x-board': board, 'x-chip': chip } });
       await invoke('qemu_start', {
-        board, onUart: ch(stamped(onUart)), onSide: ch(stamped(onSide)),
+        board, chip, onUart: ch(stamped(onUart)), onSide: ch(stamped(onSide)),
         onTrace: ch(m => {
           const b = u8(m), dv = new DataView(b.buffer, b.byteOffset, b.byteLength), recs = [];
           for (let o = 0; o + 12 <= b.length; o += 12) recs.push([dv.getUint32(o, true), dv.getUint32(o + 4, true), dv.getUint32(o + 8, true) / 100]);
@@ -222,3 +245,76 @@ export async function openExternal(url) {
   if (!isTauri()) { window.open(url, '_blank', 'noopener'); return; }
   try { await invoke('open_external', { url }); } catch (e) { console.error(e); }
 }
+
+/* ---------- Projet ouvert par le système (double-clic sur un .jollof) ---------- */
+/** Projet reçu du système et pas encore ouvert : { path, name, text }, ou null. */
+export async function takeLaunchFile() {
+  if (!isTauri()) return null;
+  try {
+    const path = await invoke('take_launch_file'); if (!path) return null;
+    return { path, name: baseName(path), text: await invoke('read_text', { path }) };
+  } catch (e) { console.warn(e); return null; }
+}
+/** fn() à chaque projet reçu pendant que l'application tourne (deuxième lancement, Finder) ; il se prend par takeLaunchFile. */
+export async function onLaunchFile(fn) {
+  if (!isTauri()) return;
+  const { listen } = await import('@tauri-apps/api/event');
+  await listen('open-file', () => fn());
+}
+
+/* ---------- Journal (fichier tournant écrit par Rust) ---------- */
+/** Message de la fenêtre vers le journal : level error | warn | info. */
+export function logToFile(level, message) {
+  if (!isTauri()) return;
+  invoke('log_js', { level, message: String(message).slice(0, 4000) }).catch(() => {});
+}
+export async function openLogDir() {
+  if (!isTauri()) return;
+  await invoke('open_log_dir');
+}
+
+/* ---------- Automate : export PLCopen XML, serveur Modbus TCP ---------- */
+/** Programme Ladder + table des variables → { xml, notes } (application seulement). */
+export async function plcExportXml(program, vars) {
+  if (!isTauri()) throw new Error('desktop-only');
+  return invoke('plc_export_xml', { program, vars });
+}
+/** Démarre le serveur Modbus TCP ; onWrite({ addr, value }) pour chaque bobine écrite par un client. */
+export async function modbusStart(port, lan, onWrite) {
+  if (!isTauri()) throw new Error('desktop-only');
+  const ch = new Channel(); ch.onmessage = m => onWrite(m);
+  return invoke('modbus_start', { port, lan, onWrite: ch });
+}
+export async function modbusStop() { if (isTauri()) await invoke('modbus_stop'); }
+export function modbusImage(img) { return invoke('modbus_image', img); }
+
+/* ---------- ESP32 : téléversement par espflash (sans esptool) ---------- */
+/** Puce branchée sur le port : { chip, revision, flash, mac, features }. */
+export async function espDetect(port) {
+  if (!isTauri()) throw new Error('desktop-only');
+  return invoke('esp_detect', { port });
+}
+/** Écrit la dernière image compilée ; onProgress({ stage, done, total, skipped }). */
+export async function espFlash(port, fqbn, onProgress) {
+  if (!isTauri()) throw new Error('desktop-only');
+  const ch = new Channel(); ch.onmessage = p => { if (onProgress) onProgress(p); };
+  return invoke('esp_flash', { port, fqbn, onProgress: ch });
+}
+
+/* ffmpeg à côté de l'application (src-tauri/src/ffmpeg.rs) : masters ProRes/DNxHR, repli du rendu web. */
+let ffInfo;
+/** { version, lgpl, encoders[] } ou null (navigateur, ou ffmpeg absent). Mis en cache. */
+export function ffmpegInfo() {
+  if (!isTauri()) return Promise.resolve(null);
+  if (!ffInfo) ffInfo = invoke('ffmpeg_info').catch(() => null);
+  return ffInfo;
+}
+/** Son (WAV) ou sous-titres (SRT) du prochain master. */
+export const masterAux = (kind, bytes) => invoke('master_aux', bytes, { headers: { 'x-kind': kind } });
+/** opts : { width, height, fpsNum, fpsDen, codec: 'prores'|'dnxhr'|'web', audio, subs, title, lang }. Rend l'extension. */
+export const masterBegin = opts => invoke('master_begin', { opts });
+export const masterFrame = bytes => invoke('master_frame', bytes);
+export const masterEnd = () => invoke('master_end');
+export const masterAbort = () => invoke('master_abort').catch(() => {});
+/** Adresse de lecture d'un rendu du cache (protocole asset:). */
+export const fileUrl = path => convertFileSrc(path);

@@ -6,10 +6,11 @@
 // modules et capteurs en blocs rectangulaires avec le nom de chaque broche.
 // Alimentations et masses se dessinent par leurs symboles, une liaison simple entre deux
 // broches par un fil, les autres liaisons par une étiquette au nom du nœud.
-import { Draw, textWidth } from './draw.js';
+import { Draw, textWidth, textBox } from './draw.js';
 import { boardOf, base } from '../sim/boards.js';
 import { analyze } from '../sim/circuit.js';
 import { tl } from '../i18n/index.js';
+import { valueText } from '../sim/passives.js'; // valeur réglée des résistances, condensateurs, bobines
 
 const G = 2.54; // pas de la grille (mm)
 const snap = v => Math.round(v / G) * G;
@@ -20,16 +21,16 @@ const LW = 0.3, WIRE = 0.25;
 const isBreadboard = c => /^breadboard/.test(c.type);
 const LED_COLOR = { 'led-red': tl('LED rouge'), 'led-green': tl('LED verte'), 'led-blue': tl('LED bleue'), 'led-yellow': tl('LED jaune'), 'led-white': tl('LED blanche') };
 // Composants analogiques : symbole et valeur affichée (le NE555 et le LM358 portent leur référence).
-const ANALOG_SYMBOL = { 'ind-10m': 'inductor', irlz44n: 'nmos', lm358: 'opamp', ne555: 'ic555', siggen: 'siggen' };
-const VALUE = { 'ind-10m': '10 mH', irlz44n: 'IRLZ44N', lm358: 'LM358', ne555: 'NE555', 'res-22': '22 Ω', 'res-220': '220 Ω', 'res-330': '330 Ω', 'res-1k': '1 kΩ', 'res-4k7': tl('4,7 kΩ'), 'res-10k': '10 kΩ', 'cap-100n': '100 nF', 'cap-100u': '100 µF', diode: '1N4007', npn: 'BC547', pn2222: 'PN2222A', bat9v: '9 V', bat18650: tl('3,7 V'), lm7805: 'LM7805', dcmotor: tl('Moteur CC'), buzzer: tl('Buzzer actif'), speaker: '8 Ω', fan: tl('Ventilateur 5 V'), pump: tl('Pompe 5 V'), vibro: tl('Vibreur 3 V') };
+const ANALOG_SYMBOL = { 'ind-10m': 'inductor', irlz44n: 'nmos', irf9540n: 'pmos', lm358: 'opamp', ne555: 'ic555', siggen: 'siggen' };
+const VALUE = { 'ind-10m': '10 mH', irlz44n: 'IRLZ44N', irf9540n: 'IRF9540N', pnp: 'BC557', pn2907: 'PN2907A', 'zener-3v3': tl('3,3 V'), 'zener-5v1': tl('5,1 V'), 'zener-12v': '12 V', lm358: 'LM358', ne555: 'NE555', 'res-22': '22 Ω', 'res-220': '220 Ω', 'res-330': '330 Ω', 'res-1k': '1 kΩ', 'res-4k7': tl('4,7 kΩ'), 'res-10k': '10 kΩ', 'cap-100n': '100 nF', 'cap-100u': '100 µF', diode: '1N4007', npn: 'BC547', pn2222: 'PN2222A', bat9v: '9 V', bat18650: tl('3,7 V'), lm7805: 'LM7805', dcmotor: tl('Moteur CC'), buzzer: tl('Buzzer actif'), speaker: '8 Ω', fan: tl('Ventilateur 5 V'), pump: tl('Pompe 5 V'), vibro: tl('Vibreur 3 V') };
 
 /* ---------------- Symboles ----------------
  * Chaque symbole : { box: [x0, y0, x1, y1] (corps et textes), body: [x0, y0, x1, y1] (obstacle pour les fils),
  *                    pins: { clé: { x, y, dir } } (extrémité de la broche, direction vers l'extérieur), draw(d) }.
  * Coordonnées locales en mm ; les extrémités de broches tombent sur la grille de 2,54 mm.
  */
-const refText = (d, c, x, y, a = 'm') => d.text(x, y, c.name, { s: 2.1, b: true, a });
-const valText = (d, v, x, y, a = 'm') => v && d.text(x, y, v, { s: 1.8, a });
+const refText = (d, c, x, y, a = 'm') => d.text(x, y, c.name, { s: 2.1, b: true, a, lab: 'ref' });
+const valText = (d, v, x, y, a = 'm') => v && d.text(x, y, v, { s: 1.8, a, lab: 'val' });
 function twoPin(c, value, body, o = {}) {
   const [pa, pb] = o.pins || ['1', '2'];
   return {
@@ -74,6 +75,8 @@ const SYMBOLS = {
     d.text(-1.6, -1.2, '+', { s: 1.8, a: 'm' });
   }, { pins: ['+', '-'], body: [-0.8, -2.2, 1.1, 2.2], refY: -3.1, valY: 4.6, top: -4.1 }),
   diode: (c, v) => twoPin(c, v, d => diodeBody(d, false), { pins: ['A', 'K'] }),
+  // Zener : barre de cathode aux extrémités repliées.
+  zener: (c, v) => twoPin(c, v, d => { diodeBody(d, false); d.line([[2.3, -2.0], [1.6, -1.6]], { w: LW }); d.line([[1.6, 1.6], [0.9, 2.0]], { w: LW }); }, { pins: ['A', 'K'] }),
   led: (c, v) => twoPin(c, v, d => diodeBody(d, true), { pins: ['A', 'K'], refY: -4.3, top: -5.3 }),
   button: (c, v) => twoPin(c, v, (d, st) => {
     d.line([[-2 * G, 0], [-2.4, 0]], { w: LW }); d.line([[2.4, 0], [2 * G, 0]], { w: LW });
@@ -162,6 +165,19 @@ const SYMBOLS = {
       refText(d, c, 5, -0.6, 'l'); valText(d, v, 5, 2, 'l');
     }
   }),
+  // PNP : émetteur en haut (vers le +), flèche vers la base ; collecteur en bas, vers la charge.
+  pnp: (c, v) => ({
+    pins: { B: { x: -2 * G, y: 0, dir: 'l' }, E: { x: G, y: -2 * G, dir: 'u' }, C: { x: G, y: 2 * G, dir: 'd' } },
+    spokes: { B: [[-2 * G, 0], [-0.6, 0]], E: [[G, -2 * G], [G, -2.6], [G - 0.2, -2.5], [-0.6, -0.9], [-0.6, 0]], C: [[G, 2 * G], [G, 2.6], [-0.6, 0.9], [-0.6, 0]] },
+    box: [-2 * G, -2 * G, 13, 2 * G], body: [-2.2, -3.4, 4.6, 3.4],
+    draw(d) {
+      d.circle(0.8, 0, 3.4, { w: LW });
+      d.line([[-2 * G, 0], [-0.6, 0]], { w: LW }); d.line([[-0.6, -1.9], [-0.6, 1.9]], { w: 0.5 });
+      d.line([[-0.6, 0.9], [G, 2.6], [G, 2 * G]], { w: LW });
+      d.line([[G, -2 * G], [G, -2.6], [G - 0.2, -2.5]], { w: LW }); arrow(d, G - 0.2, -2.5, -0.5, -0.95);
+      refText(d, c, 5, -0.6, 'l'); valText(d, v, 5, 2, 'l');
+    }
+  }),
   ledRgb: (c) => ({
     pins: { R: { x: -2 * G, y: -2 * G, dir: 'l' }, G: { x: -2 * G, y: 0, dir: 'l' }, B: { x: -2 * G, y: 2 * G, dir: 'l' }, GND: { x: 3 * G, y: 0, dir: 'r' } },
     spokes: { R: [[-2 * G, -2 * G], [G * 1.6, -2 * G], [G * 1.6, 0]], G: [[-2 * G, 0], [G * 1.6, 0]], B: [[-2 * G, 2 * G], [G * 1.6, 2 * G], [G * 1.6, 0]], GND: [[3 * G, 0], [G * 1.6, 0]] },
@@ -191,6 +207,20 @@ const SYMBOLS = {
       [[-1.9, -1.1], [-0.4, 0.4], [1.1, 1.9]].forEach(([a, b]) => d.line([[-0.4, a], [-0.4, b]], { w: 0.45 }));
       d.line([[-0.4, -1.5], [G, -1.5], [G, -2 * G]], { w: LW }); d.line([[-0.4, 1.5], [G, 1.5], [G, 2 * G]], { w: LW });
       arrow(d, G, 0, -0.3, 0); d.line([[G, 0], [G, 1.5]], { w: LW });
+      refText(d, c, 5, -0.6, 'l'); valText(d, v, 5, 2, 'l');
+    }
+  }),
+  // MOSFET canal P : le symbole du canal N retourné, source en haut (vers le +), flèche du canal vers la source.
+  pmos: (c, v) => ({
+    pins: { G: { x: -2 * G, y: 0, dir: 'l' }, S: { x: G, y: -2 * G, dir: 'u' }, D: { x: G, y: 2 * G, dir: 'd' } },
+    spokes: { G: [[-2 * G, 0], [-1.2, 0]], S: [[G, -2 * G], [G, -1.5], [-0.4, -1.5]], D: [[G, 2 * G], [G, 1.5], [-0.4, 1.5]] },
+    box: [-2 * G, -2 * G, 14, 2 * G], body: [-2.2, -3.4, 4.6, 3.4],
+    draw(d) {
+      d.circle(0.8, 0, 3.4, { w: LW });
+      d.line([[-2 * G, 0], [-1.2, 0]], { w: LW }); d.line([[-1.2, -1.8], [-1.2, 1.8]], { w: LW });
+      [[-1.9, -1.1], [-0.4, 0.4], [1.1, 1.9]].forEach(([a, b]) => d.line([[-0.4, a], [-0.4, b]], { w: 0.45 }));
+      d.line([[-0.4, -1.5], [G, -1.5], [G, -2 * G]], { w: LW }); d.line([[-0.4, 1.5], [G, 1.5], [G, 2 * G]], { w: LW });
+      arrow(d, -0.4, 0, G - 0.1, 0); d.line([[G, 0], [G, -1.5]], { w: LW });
       refText(d, c, 5, -0.6, 'l'); valText(d, v, 5, 2, 'l');
     }
   }),
@@ -253,8 +283,8 @@ const SYMBOLS = {
  * ci-dessous, avec sa valeur) ou { make(c) } (dessin du paquet ; null : bloc).
  */
 export const PKG_SYMBOLS = {};
-const SYMBOL_OF = type => (/^res-/.test(type) ? 'resistor' : type === 'cap-100n' ? 'cap' : type === 'cap-100u' ? 'capPol' : type === 'diode' ? 'diode' : LED_COLOR[type] ? 'led'
-  : type === 'led-rgb' ? 'ledRgb' : type === 'button' || type === 'cylsensor' || type === 'pressostat' ? 'button' : type === 'pot' ? 'pot' : type === 'npn' || type === 'pn2222' ? 'npn' : /^bat/.test(type) ? 'battery' : type === 'dcmotor' ? 'motor'
+const SYMBOL_OF = type => (/^res-/.test(type) ? 'resistor' : type === 'cap-100n' ? 'cap' : type === 'cap-100u' ? 'capPol' : type === 'diode' ? 'diode' : /^zener-/.test(type) ? 'zener' : LED_COLOR[type] ? 'led'
+  : type === 'led-rgb' ? 'ledRgb' : type === 'button' || type === 'cylsensor' || type === 'pressostat' ? 'button' : type === 'pot' ? 'pot' : type === 'npn' || type === 'pn2222' ? 'npn' : type === 'pnp' || type === 'pn2907' ? 'pnp' : /^bat/.test(type) ? 'battery' : type === 'dcmotor' ? 'motor'
   : type === 'buzzer' ? 'buzzer' : type === 'speaker' ? 'speaker' : type === 'fan' || type === 'pump' || type === 'vibro' ? type : ANALOG_SYMBOL[type] || null);
 
 /** Petits pictogrammes dans les blocs (relais, servo, pas à pas). */
@@ -279,9 +309,11 @@ const ICONS = {
     if (st && st.t != null) { const a = st.t * 2 * Math.PI - Math.PI / 2; act(d, () => d.circle(x + 2.4 * Math.cos(a), y + 2.4 * Math.sin(a), 0.5, { fill: '#000', w: 0.1 })); }
     // st.anim : vue en direct, le repère tourne par-dessus (live.js).
   },
-  l298n(d, x, y) { d.circle(x, y, 2.4, { w: 0.25 }); d.text(x, y + 0.9, 'H', { s: 2.4, b: true, a: 'm' }); }
+  l298n(d, x, y) { d.circle(x, y, 2.4, { w: 0.25 }); d.text(x, y + 0.9, 'H', { s: 2.4, b: true, a: 'm' }); },
+  // Pilote pas à pas : un escalier (les pas) dans un cercle.
+  stepdrv(d, x, y) { d.circle(x, y, 2.4, { w: 0.25 }); d.line([[x - 1.5, y + 1.1], [x - 0.5, y + 1.1], [x - 0.5, y], [x + 0.5, y], [x + 0.5, y - 1.1], [x + 1.5, y - 1.1]], { w: 0.25 }); }
 };
-const ICON_OF = { relay: 'relay', servo: 'servo', stepper: 'stepper', l298n: 'l298n' };
+const ICON_OF = { relay: 'relay', servo: 'servo', stepper: 'stepper', nema17: 'stepper', l298n: 'l298n', l293d: 'l298n', tb6612: 'l298n', a4988: 'stepdrv', drv8825: 'stepdrv' };
 
 /** Côtés des broches d'un bloc d'après leur place réelle sur la carte ou le module. */
 function physicalSides(c) {
@@ -340,10 +372,100 @@ function block(c, title, sub, faceRight) {
         else d.text(p.x + 0.55, H - 0.8, name(k), { s: fs, rot: -90 });
       }
       if (icon) icon(d, W / 2 + (wl - wr) / 2 * 0.5, H / 2, st);
-      d.text(0, top + 2.4, c.name, { s: 2.1, b: true });
-      d.text(0, H + (S.b.length ? G : 0) + 2.9, sub, { s: 1.7 });
+      d.text(0, top + 2.4, c.name, { s: 2.1, b: true, lab: 'ref' });
+      d.text(0, H + (S.b.length ? G : 0) + 2.9, sub, { s: 1.7, lab: 'val' });
     }
   };
+}
+
+/* ---------------- Orientation ----------------
+ * Un symbole pivote par quarts de tour (sens horaire) et peut être retourné en miroir (gauche-droite, avant la
+ * rotation) : broches, directions, chemins du courant, corps et dessin suivent ; les textes restent lisibles et
+ * le repère et la valeur restent à l'horizontale, rangés à côté du corps, du côté où ne sort aucune broche.
+ */
+const QUARTER = Math.PI / 2;
+/**
+ * Orientation d'un symbole : c.inp.schRot (0, 90, 180 ou 270°, sens horaire) et c.inp.schMir (miroir), enregistrés
+ * avec le projet. Sans réglage, un composant tourné sur le tapis l'est aussi sur le schéma (au quart de tour près) ;
+ * un bloc (carte, module) garde sa disposition de schéma, ses broches rangées de part et d'autre.
+ */
+export function schOrient(c, isBlock = false) {
+  const i = c.inp || {}, set = i.schRot != null && i.schRot !== '' && [0, 90, 180, 270].includes(+i.schRot);
+  const ry = (c.group && c.group.rotation && c.group.rotation.y) || 0;
+  const rot = set ? +i.schRot : isBlock ? 0 : (((Math.round(-ry / QUARTER) % 4) + 4) % 4) * 90;
+  return { rot, mir: !!i.schMir };
+}
+/**
+ * Quart de tour à l'écran (sens horaire) ou miroir gauche-droite du symbole de c, à partir de son orientation
+ * actuelle cur ({ rot, mir }) : le réglage est écrit dans c.inp (schRot, schMir), enregistré avec le projet.
+ */
+export function turnSymbol(c, cur, mirror = false) {
+  if (!c.inp) c.inp = {};
+  // Miroir à l'écran : M·R(θ) = R(−θ)·M ; quart de tour : R(90°)·R(θ) = R(θ + 90°).
+  const rot = mirror ? (360 - cur.rot) % 360 : (cur.rot + 90) % 360, mir = mirror ? !cur.mir : !!cur.mir;
+  c.inp.schRot = rot;
+  if (mir) c.inp.schMir = true; else delete c.inp.schMir;
+  return { rot, mir };
+}
+/** Matrice [a, b, c, d] : miroir gauche-droite (facultatif) puis rotation de rot degrés, sens horaire (y vers le bas). */
+const orientMatrix = (rot, mir) => { const q = ((rot / 90) % 4 + 4) % 4, cs = [1, 0, -1, 0][q], sn = [0, 1, 0, -1][q], mx = mir ? -1 : 1; return [cs * mx, -sn, sn * mx, cs]; };
+/** Symbole s orienté (rot, mir) : nouveau symbole, au même centre de corps (à la grille près), broches sur la grille. */
+export function orientSymbol(c, s, rot, mir) {
+  rot = (((rot || 0) % 360) + 360) % 360;
+  if (!rot && !mir) return { ...s, rot: 0, mir: false };
+  const [a, b, cc, dd] = orientMatrix(rot, mir);
+  const bc = [(s.body[0] + s.body[2]) / 2, (s.body[1] + s.body[3]) / 2];
+  const e = snap(bc[0] - (a * bc[0] + b * bc[1])), f = snap(bc[1] - (cc * bc[0] + dd * bc[1])), M = [a, b, cc, dd, e, f];
+  const T = (x, y) => [a * x + b * y + e, cc * x + dd * y + f];
+  const rect = r => { const p = T(r[0], r[1]), q = T(r[2], r[3]); return [Math.min(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[0], q[0]), Math.max(p[1], q[1])]; };
+  const turn = dir => { const [dx, dy] = DIR[dir], vx = a * dx + b * dy, vy = cc * dx + dd * dy; return vx > 0.5 ? 'r' : vx < -0.5 ? 'l' : vy > 0.5 ? 'd' : 'u'; };
+  const mapSpokes = sp => sp && Object.fromEntries(Object.entries(sp).map(([k, list]) => [k, list.map(p => T(p[0], p[1]))]));
+  const pins = Object.fromEntries(Object.entries(s.pins).map(([k, p]) => { const [x, y] = T(p.x, p.y); return [k, { ...p, x, y, dir: turn(p.dir) }]; }));
+  const body = rect(s.body);
+  // Dessin de repos, une fois, pour l'encombrement du symbole et ses textes de repère et de valeur.
+  const probe = new Draw(); probe.refName = c.name; probe.m = M; s.draw(probe);
+  const ext = [Infinity, Infinity, -Infinity, -Infinity], grow = (x0, y0, x1, y1) => { ext[0] = Math.min(ext[0], x0); ext[1] = Math.min(ext[1], y0); ext[2] = Math.max(ext[2], x1); ext[3] = Math.max(ext[3], y1); };
+  const labs = [];
+  for (const o of probe.ops) {
+    if (o.t === 'path') o.pts.forEach(p => grow(p[0], p[1], p[0], p[1]));
+    else if (o.t === 'circle') grow(o.x - o.r, o.y - o.r, o.x + o.r, o.y + o.r);
+    else if (o.lab) labs.push(o);
+    else grow(...textBox(o.x, o.y, o.str, o.s, o.a, o.rot, o.b));
+  }
+  Object.values(pins).forEach(p => grow(p.x, p.y, p.x, p.y));
+  if (!Number.isFinite(ext[0])) ext.splice(0, 4, ...body);
+  // Repère et valeur : à 180° ou en miroir, à leur place retournée ; à 90° ou 270°, empilés à l'horizontale à côté du corps.
+  let placed = labs.map(o => ({ x: o.x, y: o.y, str: o.str, s: o.s, b: o.b, a: o.a, rot: o.rot, color: o.color }));
+  let box = rect(s.box);
+  if (rot % 180) {
+    const used = new Set(Object.values(pins).map(p => p.dir));
+    // Côté où se trouvaient les textes avant rotation (sinon : ni l'un ni l'autre, comme au-dessus et au-dessous).
+    const lb = labs.map(o => textBox(o.x, o.y, o.str, o.s, o.a, o.rot, o.b));
+    const gx = lb.length ? (Math.min(...lb.map(r => r[0])) + Math.max(...lb.map(r => r[2]))) / 2 : 0, gy = lb.length ? (Math.min(...lb.map(r => r[1])) + Math.max(...lb.map(r => r[3]))) / 2 : 0;
+    const cb = T(bc[0], bc[1]), dx = gx - cb[0], dy = gy - cb[1];
+    const dom = Math.abs(dx) > Math.abs(dy) + 1 ? (dx > 0 ? 'r' : 'l') : Math.abs(dy) > Math.abs(dx) + 1 ? (dy > 0 ? 'd' : 'u') : null;
+    // Broches sur les quatre côtés (NE555, double ampli-op) : au milieu du corps, où ces symboles laissent de la place.
+    const side = [dom, 'r', 'l', 'd', 'u'].find(sd => sd && !used.has(sd)) || 'c';
+    const lh = o => 1.3 * o.s, Ht = labs.reduce((t, o) => t + lh(o), 0), gap = 0.9;
+    let y = side === 'd' ? ext[3] + gap : side === 'u' ? ext[1] - gap - Ht : cb[1] - Ht / 2 - (side === 'c' ? 0.2 : 0);
+    const x = side === 'r' ? ext[2] + gap : side === 'l' ? ext[0] - gap : cb[0], al = side === 'r' ? 'l' : side === 'l' ? 'r' : 'm';
+    placed = labs.map(o => { const t = { x, y: y + 0.85 * o.s, str: o.str, s: o.s, b: o.b, a: al, rot: 0, color: o.color }; y += lh(o); return t; });
+    box = [...ext];
+    placed.forEach(t => { const r = textBox(t.x, t.y, t.str, t.s, t.a, 0, t.b); box[0] = Math.min(box[0], r[0] - 0.3); box[1] = Math.min(box[1], r[1] - 0.3); box[2] = Math.max(box[2], r[2] + 0.3); box[3] = Math.max(box[3], r[3] + 0.3); });
+  }
+  const out = {
+    ...s, rot, mir: !!mir, pins, body, box, spokes: mapSpokes(s.spokes),
+    // Animation de la vue en direct : centre déplacé ; up : le « haut » du symbole (côté des ondes sonores).
+    anim: s.anim ? (([x, y]) => ({ ...s.anim, x, y, up: [-b, -dd] }))(T(s.anim.x, s.anim.y)) : s.anim,
+    draw(d, st) {
+      const m0 = d.m, r0 = d.refName, k0 = d.skipLab;
+      d.m = M; d.refName = c.name; d.skipLab = true;
+      try { s.draw(d, st); } finally { d.m = m0; d.refName = r0; d.skipLab = k0; }
+      for (const t of placed) d.text(t.x, t.y, t.str, { s: t.s, b: t.b, a: t.a, rot: t.rot, color: t.color });
+    }
+  };
+  if (s.spokesFor) out.spokesFor = st => mapSpokes(s.spokesFor(st));
+  return out;
 }
 
 /* ---------------- Nœuds ---------------- */
@@ -614,9 +736,11 @@ function layoutOf(o) {
   const syms = new Map();
   for (const c of comps) {
     const desc = o.describe(c), pk = PKG_SYMBOLS[c.type], kind = SYMBOL_OF(c.type) || (pk && pk.kind);
-    let s = pk && pk.make ? pk.make(c) : null;
-    if (s) { /* symbole dessiné par le paquet */ } else if (kind) s = SYMBOLS[kind](c, LED_COLOR[c.type] || VALUE[c.type] || (pk && pk.value) || '');
-    else { const mb = mainBoard(c); s = block(c, c.name, boardOf(c) ? boardOf(c).label : desc.title, mb && mb !== c ? pos(mb)[0] > pos(c)[0] : false); }
+    let s = pk && pk.make ? pk.make(c) : null, isBlock = false;
+    if (s) { /* symbole dessiné par le paquet */ } else if (kind) s = SYMBOLS[kind](c, LED_COLOR[c.type] || valueText(c) || VALUE[c.type] || (pk && pk.value) || '');
+    else { const mb = mainBoard(c); s = block(c, c.name, boardOf(c) ? boardOf(c).label : desc.title, mb && mb !== c ? pos(mb)[0] > pos(c)[0] : false); isBlock = true; }
+    // Orientation choisie sur le schéma (touche R), sinon celle du composant sur le tapis.
+    const or = schOrient(c, isBlock); s = orientSymbol(c, s, or.rot, or.mir);
     // Place réservée aux étiquettes et symboles d'alimentation, dans le prolongement des broches.
     const box = [...s.box];
     for (const [k, p] of Object.entries(s.pins)) {
@@ -849,7 +973,7 @@ export function buildSchematic(o) {
   if (o.lists) {
     const named = nets.filter(n => n.pins.length > 1).sort((a, b) => (a.kind === b.kind ? a.name.localeCompare(b.name, 'fr', { numeric: true }) : a.kind === 'pwr' ? -1 : b.kind === 'pwr' ? 1 : a.kind === 'gnd' ? -1 : 1));
     const parts = o.comps.filter(c => Object.keys(c.pins).length || c.custom).slice().sort((a, b) => a.name.localeCompare(b.name, 'fr', { numeric: true }));
-    const rowsN = parts.map(c => [c.name, o.describe(c).title, o.describe(c).value || VALUE[c.type] || (LED_COLOR[c.type] || '')]);
+    const rowsN = parts.map(c => [c.name, o.describe(c).title, o.describe(c).value || valueText(c) || VALUE[c.type] || (LED_COLOR[c.type] || '')]);
     const rowsC = named.map(n => [n.name, n.pins.map(p => `${p.comp.name}.${base(p.key)}`).join(', ')]);
     let pageNo = 2, pi = 0, ci = 0;
     const out = [];

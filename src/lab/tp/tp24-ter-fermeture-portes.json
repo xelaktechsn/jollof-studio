@@ -150,6 +150,7 @@
   ],
   "wires": [],
   "settings": {
+    "check": { "allow": [{ "code": "J0910", "comp": "servo_1", "reason": "Un seul SG90 qui ne déplace qu’une pièce légère : son pic de courant reste bref et le port USB le supporte. Avec plusieurs servos ou une vraie charge, alimentez-les à part (masse commune)." }] },
    "env": {
     "dist": 100
    }

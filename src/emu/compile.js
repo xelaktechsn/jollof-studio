@@ -6,8 +6,9 @@
 import { tl } from '../i18n/index.js';
 import * as native from '../native.js';
 
-import { FQBN, EMULATED } from './boards.js';
+import { FQBN, EMULATED, QEMU_KINDS } from './boards.js';
 import { esp32Refusal } from './esp32-limits.js';
+import { ESP32_LINK_PROPERTY } from './esp32-wraps.js';
 export { FQBN, EMULATED };
 const CORE_URLS = {
   'rp2040:rp2040': 'https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json',
@@ -19,8 +20,24 @@ export const LIBS = {
   'DHT.h': ['DHT sensor library', 'Adafruit Unified Sensor'], 'OneWire.h': ['OneWire'], 'DallasTemperature.h': ['DallasTemperature'],
   'Adafruit_BMP280.h': ['Adafruit BMP280 Library'], 'Adafruit_BME280.h': ['Adafruit BME280 Library'], 'BH1750.h': ['BH1750'], 'HX711.h': ['HX711 Arduino Library'], 'Adafruit_MPU6050.h': ['Adafruit MPU6050'], 'LiquidCrystal_I2C.h': ['LiquidCrystal I2C'],
   'Adafruit_SSD1306.h': ['Adafruit SSD1306', 'Adafruit GFX Library'], 'Adafruit_GFX.h': ['Adafruit GFX Library'], 'Servo.h': ['Servo'],
-  'Adafruit_NeoPixel.h': ['Adafruit NeoPixel'], 'Stepper.h': ['Stepper'], 'Keypad.h': ['Keypad'], 'IRremote.h': ['IRremote'],
-  'IRremote.hpp': ['IRremote'], 'MFRC522.h': ['MFRC522'], 'RF24.h': ['RF24'], 'ESP32Servo.h': ['ESP32Servo']
+  'Adafruit_NeoPixel.h': ['Adafruit NeoPixel'], 'Stepper.h': ['Stepper'], 'AccelStepper.h': ['AccelStepper'], 'Keypad.h': ['Keypad'], 'IRremote.h': ['IRremote'],
+  'IRremote.hpp': ['IRremote'], 'Encoder.h': ['Encoder'], 'MFRC522.h': ['MFRC522'], 'RF24.h': ['RF24'], 'ESP32Servo.h': ['ESP32Servo'],
+  // Circuits logiques (sim/chips.js) : extenseurs MCP23017 et PCF8574 (bibliothèque de Rob Tillaart), pilote PWM PCA9685.
+  'Adafruit_MCP23X17.h': ['Adafruit MCP23017 Arduino Library', 'Adafruit BusIO'], 'PCF8574.h': ['PCF8574'], 'Adafruit_PWMServoDriver.h': ['Adafruit PWM Servo Driver Library', 'Adafruit BusIO'],
+  // Afficheurs à pilote (sim/displays.js), horloges et mémoire I2C (sim/storage.js).
+  'LedControl.h': ['LedControl'], 'MD_MAX72xx.h': ['MD_MAX72XX'], 'MD_Parola.h': ['MD_Parola', 'MD_MAX72XX'], 'TM1637Display.h': ['TM1637'],
+  'RTClib.h': ['RTClib', 'Adafruit BusIO'], 'I2C_eeprom.h': ['I2C_EEPROM'],
+  // Écrans TFT (sim/tft.js) : ST7735 et ILI9341 en SPI, avec Adafruit GFX.
+  'Adafruit_ST7735.h': ['Adafruit ST7735 and ST7789 Library', 'Adafruit GFX Library', 'Adafruit BusIO'], 'Adafruit_ILI9341.h': ['Adafruit ILI9341', 'Adafruit GFX Library', 'Adafruit BusIO'],
+  // Carte microSD (sim/sdcard.js) : bibliothèque SD d'Arduino (le cœur du Pico apporte la sienne, prioritaire).
+  // Capteurs I2C (sim/i2csensors.js) : distance VL53L0X (Adafruit ou Pololu), oxymètre MAX30102, couleur TCS34725, air CCS811, BME680.
+  'Adafruit_VL53L0X.h': ['Adafruit_VL53L0X'], 'VL53L0X.h': ['VL53L0X'], 'MAX30105.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'], 'heartRate.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'],
+  'spo2_algorithm.h': ['SparkFun MAX3010x Pulse and Proximity Sensor Library'], 'Adafruit_TCS34725.h': ['Adafruit TCS34725'], 'Adafruit_CCS811.h': ['Adafruit CCS811 Library'], 'Adafruit_BME680.h': ['Adafruit BME680 Library', 'Adafruit Unified Sensor', 'Adafruit BusIO'],
+  'SD.h': ['SD'],
+  // GPS NEO-6M (sim/serialmods.js) : TinyGPSPlus de Mikal Hart (TinyGPS++.h ou TinyGPSPlus.h).
+  'TinyGPSPlus.h': ['TinyGPSPlus'], 'TinyGPS++.h': ['TinyGPSPlus'],
+  // Radio LoRa SX1278 (sim/lora.js) : bibliothèque de Sandeep Mistry.
+  'LoRa.h': ['LoRa']
 };
 
 /** Accès à arduino-cli : par défaut l'application de bureau ; les tests passent le leur. */
@@ -37,8 +54,12 @@ const urlArgs = core => (CORE_URLS[core] ? ['--additional-urls', CORE_URLS[core]
 const ok = r => r && r.code === 0;
 
 /** Fichiers de la carte et bibliothèques du programme : installés au premier besoin. */
+const READY = new Set(); // cœurs et bibliothèques déjà vérifiés pendant cette session : plus d'appel à arduino-cli
 export async function ensureToolchain(kind, code, log = () => {}, cli = nativeCli) {
   const fqbn = FQBN[kind], core = coreOf(fqbn);
+  const incs0 = [...new Set([...String(code).matchAll(/#include\s*[<"]([^>"]+)[>"]/g)].map(m => m[1]))];
+  const want = [core, ...new Set(incs0.flatMap(i => LIBS[i] || []))].sort().join('|');
+  if (READY.has(want)) return { ok: true };
   const list = await cli.run(['core', 'list', '--format', 'json']);
   let installed = [];
   try { const j = JSON.parse(list.stdout || '{}'); installed = (j.platforms || j || []).map(p => p.id || p.ID).filter(Boolean); } catch { /* sortie inattendue : on tente l'installation */ }
@@ -54,6 +75,7 @@ export async function ensureToolchain(kind, code, log = () => {}, cli = nativeCl
     const r = await cli.run(['lib', 'install', ...libs]);
     if (!ok(r)) return { ok: false, msg: tl('Bibliothèques impossibles à installer ({0}) : vérifiez la connexion Internet.', libs.join(', ')) };
   }
+  READY.add(want);
   return { ok: true };
 }
 
@@ -84,28 +106,37 @@ export function parseErrors(text) {
  * de compilation servent à toutes les cartes.
  */
 let queue = Promise.resolve();
+// Programmes déjà compilés (carte, code) : relancer la simulation ou changer le montage sans changer le code ne recompile
+// pas. Les plus anciens partent au-delà de 24.
+const BUILT = new Map();
 export function compileFirmware(code, kind, log = () => {}, cli = nativeCli) {
-  const job = queue.then(() => compileOne(code, kind, log, cli));
+  const key = cli === nativeCli ? kind + '\u0000' + code : null, hit = key && BUILT.get(key); // les tests passent leur arduino-cli : pas de cache
+  if (hit) { BUILT.delete(key); BUILT.set(key, hit); return Promise.resolve(hit); }
+  const job = queue.then(() => compileOne(code, kind, log, cli)).then(r => {
+    if (key && r && r.ok) { BUILT.set(key, r); while (BUILT.size > 24) BUILT.delete(BUILT.keys().next().value); }
+    return r;
+  });
   queue = job.catch(() => {});
   return job;
 }
 async function compileOne(code, kind, log, cli) {
-  if (!EMULATED.has(kind)) return { ok: false, errors: [{ line: 1, col: 1, msg: tl('Le mode fidèle n’existe pas encore pour cette carte.'), code: 'J1200' }] };
-  const esp32 = kind === 'esp32';
+  if (!EMULATED.has(kind)) return { ok: false, errors: [{ line: 1, col: 1, msg: tl('Pas encore de processeur émulé pour cette carte.'), code: 'J1200' }] };
+  const esp32 = QEMU_KINDS.has(kind); // ESP32, S3, C3 : QEMU, avec la cale
   const refusal = esp32 ? esp32Refusal(code) : null;
   if (refusal) return { ok: false, errors: [{ line: 1, col: 1, msg: refusal, code: 'J1200' }] };
-  if (!cli.available()) return { ok: false, errors: [{ line: 1, col: 1, msg: tl('Le mode fidèle compile le vrai programme avec arduino-cli : il demande l’application installée.'), code: 'J1200' }] };
+  if (!cli.available()) return { ok: false, errors: [{ line: 1, col: 1, msg: tl('Le programme se compile avec arduino-cli : il demande l’application installée.'), code: 'J1200', cli: true }] };
   let tc;
   try { tc = await ensureToolchain(kind, code, log, cli); } catch (e) { tc = { ok: false, msg: String((e && e.message) || e) }; }
   if (!tc.ok) {
-    const msg = /introuvable|not found/i.test(tc.msg || '') ? tl('arduino-cli est introuvable. Installez-le (https://arduino.github.io/arduino-cli/latest/installation/) puis relancez Jollof Studio.') : tc.msg;
-    return { ok: false, errors: [{ line: 1, col: 1, msg, code: 'J1200' }] };
+    const missing = /introuvable|not found/i.test(tc.msg || '');
+    const msg = missing ? tl('arduino-cli est introuvable : les cartes tournent sur le simulateur intégré. Installez-le (https://arduino.github.io/arduino-cli/latest/installation/) puis relancez Jollof Studio pour compiler les vrais programmes.') : tc.msg;
+    return { ok: false, errors: [{ line: 1, col: 1, msg, code: 'J1200', ...(missing ? { cli: true } : {}) }] };
   }
   log(tl('Compilation du programme (arduino-cli)…'));
   let out;
   try {
     const sketch = await cli.write(code, { shim: esp32 }), [, build] = await cli.paths();
-    out = await cli.run(['compile', '--fqbn', FQBN[kind], '--output-dir', build, sketch]);
+    out = await cli.run(['compile', '--fqbn', FQBN[kind], ...(esp32 ? ['--build-property', ESP32_LINK_PROPERTY] : []), '--output-dir', build, sketch]);
   } catch (e) {
     return { ok: false, errors: [{ line: 1, col: 1, msg: String((e && e.message) || e), code: 'J1200' }] };
   }

@@ -2,6 +2,8 @@
 /* Copyright (C) 2026 Mamadou Sarr */
 /* Pneumatique : plan de travail, symboles, bibliothèque, onglet de l'inspecteur, vignette sur le banc. */
 :root { --pnLine: #c9d3da; --pnP: #3b82f6; --pnE: #6b7680; --pnC: #3a434b; --pnOn: #4ade80; --pnLeak: #f05252; }
+/* Thème clair (src/ui/theme.js) : symboles en encre sombre, échappement et fermé en gris clair. */
+:root[data-theme="light"] { --pnLine: #1f2a35; --pnE: #94a3b8; --pnC: #cbd5e1; --pnOn: #16a34a; }
 .wsSwitch .segBtn[data-ws="pneu"][aria-pressed="true"] .ic { color: var(--pnP); }
 
 /* ---------- Disposition en mode Pneumatique ---------- */
@@ -13,11 +15,12 @@
 .app.pneuMode #importBtn, .app.pneuMode .abImportSep, .app.pneuMode #schBtn { display: none; }
 .app.pneuMode .stage > :not(.pnHost):not(.alert) { visibility: hidden; }
 .app.pneuMode .stage { isolation: isolate; }
+.app.pneuMode.tlOpen { grid-template-rows: 48px auto minmax(0, 1fr) auto 28px; } /* la timeline, cachée ici, ne garde pas sa rangée */
 
 /* ---------- Plan de travail ---------- */
-.pnHost { position: absolute; inset: 0; background: #0f1418; }
+.pnHost { position: absolute; inset: 0; background: var(--stage); }
 .pnSvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; outline: none; cursor: default; user-select: none; -webkit-user-select: none; touch-action: none; }
-.pnDot { fill: #ffffff1c; }
+.pnDot { fill: var(--hi-2); }
 .pnGridBg { pointer-events: all; }
 .pnBox, .pnStroke, .pnSvg line, .pnMiniSvg line { fill: none; stroke: var(--pnLine); stroke-width: 1.3; vector-effect: non-scaling-stroke; }
 .pnBox.on, .pnStroke.on { stroke: var(--pnOn); }
@@ -25,30 +28,30 @@
 .pnFill { fill: var(--pnLine); stroke: none; }
 .pnExh { stroke: var(--pnE); }
 .pnTxt, .pnSub, .pnTag { fill: var(--pnLine); font: 600 8px var(--sans); }
-.pnSub { fill: #8b97a1; font-weight: 500; }
-.pnTag { fill: #f2c94c; font: 700 8px var(--mono); }
+.pnSub { fill: var(--muted); font-weight: 500; }
+.pnTag { fill: var(--warn); font: 700 8px var(--mono); }
 .pnTag.on { fill: var(--pnOn); }
 .pnTag.pnId { fill: var(--pnLine); opacity: .85; }
-.pnPiston { fill: #8b97a1; }
-.pnRod { fill: #aab4bc; }
-.pnRodEnd { fill: #c9d3da; }
-.pnNeedle { stroke: #f2c94c !important; stroke-width: 1.6 !important; }
-.pnSensor { fill: #2a3138; stroke: #f2c94c; stroke-width: 0.8; }
+.pnPiston { fill: var(--muted); }
+.pnRod { fill: var(--pnE); }
+.pnRodEnd { fill: var(--pnLine); }
+.pnNeedle { stroke: var(--warn) !important; stroke-width: 1.6 !important; }
+.pnSensor { fill: #2a3138; stroke: var(--warn); stroke-width: 0.8; }
 .pnSensor.on { fill: var(--pnOn); stroke: var(--pnOn); }
-.pnSpring { stroke: #8b97a1; }
+.pnSpring { stroke: var(--muted); }
 .pnHit { fill: transparent; stroke: none; cursor: grab; }
 .pnEl.sel .pnHit { stroke: var(--accent); stroke-width: 1; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; }
 .pnEl.leak .pnHit { stroke: var(--pnLeak); stroke-width: 1.5; stroke-dasharray: none; }
 .pnShift { transition: transform .12s ease-out; }
-.pnTube { fill: none; stroke: #7d8891; stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.pnTube { fill: none; stroke: var(--muted); stroke-width: 2; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
 .pnTube.pnP { stroke: var(--pnP); stroke-width: 2.6; }
 .pnTube.pnE { stroke: var(--pnE); stroke-dasharray: 5 4; }
 .pnTube.pnC { stroke: var(--pnC); }
-.pnTube.pnM { stroke: #93c5fd; stroke-width: 2.2; } /* modèle physique : pression intermédiaire */
-.pnPort.pnM { fill: #93c5fd; stroke: #93c5fd; }
+.pnTube.pnM { stroke: var(--accent-hi); stroke-width: 2.2; } /* modèle physique : pression intermédiaire */
+.pnPort.pnM { fill: var(--accent-hi); stroke: var(--accent-hi); }
 .pnTubeHit { fill: none; stroke: transparent; stroke-width: 10; vector-effect: non-scaling-stroke; cursor: pointer; }
 .pnTubeG.sel .pnTube { stroke: var(--accent); }
-.pnPort { fill: #0f1418; stroke: #9aa6af; stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: crosshair; }
+.pnPort { fill: var(--stage); stroke: var(--pnE); stroke-width: 1.2; vector-effect: non-scaling-stroke; cursor: crosshair; }
 .pnPort:hover { fill: var(--accent); stroke: var(--accent); }
 .pnPort.pnP { fill: var(--pnP); stroke: var(--pnP); }
 .pnRubber { fill: none; stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; vector-effect: non-scaling-stroke; pointer-events: none; }
@@ -61,13 +64,13 @@
 .pnLegend { display: flex; gap: 12px; padding: 6px 10px; border-radius: 10px; font-size: 11.5px; color: var(--fg-2); }
 .pnLegend span { display: inline-flex; align-items: center; gap: 6px; }
 .pnLegend i { width: 18px; height: 0; border-top: 2.6px solid var(--pnP); }
-.pnLegend i.pnE { border-top: 2px dashed var(--pnE); } .pnLegend i.pnC { border-top: 2px solid var(--pnC); } .pnLegend i.pnM { border-top: 2.2px solid #93c5fd; }
+.pnLegend i.pnE { border-top: 2px dashed var(--pnE); } .pnLegend i.pnC { border-top: 2px solid var(--pnC); } .pnLegend i.pnM { border-top: 2.2px solid var(--accent-hi); }
 .pnLegend .pnLegM { display: none; } .pnHost.phys .pnLegend .pnLegM { display: inline-flex; }
 .pnHost.running .pnRunHint { display: none; }
 .pnRunHint { padding: 6px 10px; border-radius: 10px; font-size: 11.5px; color: var(--muted); }
 .pnEmpty { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; }
 .pnEmpty[hidden] { display: none; }
-.pnEmptyCard { pointer-events: auto; max-width: 440px; text-align: center; padding: 22px 24px; border-radius: 16px; background: #141a20e6; border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.pnEmptyCard { pointer-events: auto; max-width: 440px; text-align: center; padding: 22px 24px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .pnEmptyCard > .ic { width: 30px; height: 30px; color: var(--pnP); }
 .pnEmptyCard p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--fg-2); }
 
@@ -115,8 +118,8 @@
 .pnLive { font-style: normal; font-size: 11px; color: var(--muted); }
 .pnLive.on { color: var(--pnOn); font-weight: 600; }
 .pnIssues li { font-size: 12px; line-height: 1.45; padding: 6px 8px; border-radius: 8px; }
-.pnIssues li.error { background: #e5484d14; color: #ffb3b5; }
-.pnIssues li.warning { background: #f2c94c0f; color: #f2dc8c; }
+.pnIssues li.error { background: #e5484d14; color: var(--danger-ink); }
+.pnIssues li.warning { background: #f2c94c0f; color: var(--warn-ink); }
 
 /* ---------- Vignette pendant la simulation ---------- */
 .pnMini { position: absolute; right: 14px; bottom: 60px; width: 330px; z-index: 4; border-radius: 12px; overflow: hidden; }
@@ -124,11 +127,11 @@
 .pnMini header { display: flex; align-items: center; gap: 6px; padding: 6px 8px 4px 10px; font-size: 12px; }
 .pnMini header .ic { width: 14px; height: 14px; color: var(--pnP); }
 .pnMini .tb { width: 24px; height: 24px; }
-.pnMini svg.pnMiniSvg { display: block; width: 100% !important; height: 190px !important; background: #0f1418cc; } /* pas la taille d'une icône */
+.pnMini svg.pnMiniSvg { display: block; width: 100% !important; height: 190px !important; background: var(--glass); } /* pas la taille d'une icône */
 .pnLib svg.pnThumb { width: 100% !important; height: 48px !important; }
 
 /* ---------- TP de pneumatique (src/lab/pneu) ---------- */
-.tpCard.pneu .tpLevel, .kind.lab.pneu { color: #60a5fa; }
+.tpCard.pneu .tpLevel, .kind.lab.pneu { color: var(--accent-hi); }
 .tpCard.pneu:hover { border-color: #60a5faaa; }
 .labPanel.pneuLab .spHead { background: linear-gradient(180deg, #3b82f60f, transparent); }
 /* Étape « watch » : message, puis les boutons de distributeur à maintenir (commande bimanuelle…). */
@@ -151,15 +154,15 @@
 .pnSeq h4 { margin: 0; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .pnMoves { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .pnMoves b { font: 600 11.5px var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--raise); color: var(--fg); }
-.pnMoves b:last-child { background: #3b82f626; color: #93c5fd; }
-.sqSvg { max-width: 100%; height: auto; background: #0f1418; border-radius: 8px; border: 1px solid var(--line); }
+.pnMoves b:last-child { background: #3b82f626; color: var(--accent-hi); }
+.sqSvg { max-width: 100%; height: auto; background: var(--stage); border-radius: 8px; border: 1px solid var(--line); }
 .sqGrid { stroke: #2a333b; stroke-width: 1; stroke-dasharray: 2 3; }
-.sqLine { fill: none; stroke: #60a5fa; stroke-width: 2; stroke-linejoin: round; }
+.sqLine { fill: none; stroke: var(--accent-hi); stroke-width: 2; stroke-linejoin: round; }
 .sqName { fill: var(--fg); font: 700 11px var(--mono); }
-.sqLv, .sqNum { fill: #8b97a1; font: 500 8.5px var(--mono); }
+.sqLv, .sqNum { fill: var(--muted); font: 500 8.5px var(--mono); }
 
 /* ---------- GRAFCET ---------- */
-.pnGfBtn[aria-pressed="true"] { color: #fff; }
+.pnGfBtn[aria-pressed="true"], .pnPlcBtn[aria-pressed="true"] { color: #fff; }
 /* Panneau GRAFCET ouvert : le plan occupe la place à sa droite (cadrage, pointeur). */
 .pnHost.gfOpen .pnSvg { left: 368px; width: calc(100% - 368px); }
 @media (max-width: 1180px) { .pnHost.gfOpen .pnSvg { left: 324px; width: calc(100% - 324px); } }
@@ -198,20 +201,20 @@
 .gfStepRow.noTop .gfCol::before { top: 50%; }
 .gfTrRow.jump .gfCol::before { bottom: 0; }
 .gfTrRow.jump + .gfAltRow .gfCol::before, .gfAltRow .gfCol::before { display: none; }
-.gfStep { position: relative; z-index: 1; width: 34px; height: 34px; display: grid; place-items: center; background: #11171c; border: 1.5px solid var(--gfLine); }
-.gfStep.init { box-shadow: 0 0 0 3px #11171c, 0 0 0 4.5px var(--gfLine); }
+.gfStep { position: relative; z-index: 1; width: 34px; height: 34px; display: grid; place-items: center; background: var(--panel); border: 1.5px solid var(--gfLine); }
+.gfStep.init { box-shadow: 0 0 0 3px var(--panel), 0 0 0 4.5px var(--gfLine); }
 .gfStep.on { border-color: var(--pnOn); }
-.gfStep.on.init { box-shadow: 0 0 0 3px #11171c, 0 0 0 4.5px var(--pnOn); }
+.gfStep.on.init { box-shadow: 0 0 0 3px var(--panel), 0 0 0 4.5px var(--pnOn); }
 .gfStep.on::after { content: ''; position: absolute; bottom: 3px; left: 50%; width: 6px; height: 6px; margin-left: -3px; border-radius: 50%; background: var(--pnOn); } /* jeton */
 .gfNum { all: unset; width: 30px; text-align: center; font: 700 13px var(--mono); color: var(--fg); }
 .gfHook { flex: 0 0 10px; height: 1.5px; margin-left: -12px; background: var(--gfLine); }
 .gfIn { flex: 1 1 auto; min-width: 0; height: 28px; padding: 0 8px; font: 500 12px var(--mono); color: var(--fg); background: transparent; border: 1.5px solid var(--gfLine); border-radius: 0; }
 .gfIn:focus { outline: none; border-color: var(--accent); background: #0b1014; }
-.gfIn.err { border-color: var(--danger); color: #ffb3b5; }
-.gfAct.on { background: #4ade8022; border-color: var(--pnOn); color: #bbf7d0; }
-.gfAct:placeholder-shown { border-style: dashed; border-color: #3a434b; }
-.gfR { border: 0; border-bottom: 1px dashed #3a434b; height: 24px; padding-left: 4px; }
-.gfTrRow.true .gfR, .gfAltRow.true .gfR { color: #bbf7d0; }
+.gfIn.err { border-color: var(--danger); color: var(--danger-ink); }
+.gfAct.on { background: #4ade8022; border-color: var(--pnOn); color: var(--ok-ink); }
+.gfAct:placeholder-shown { border-style: dashed; border-color: var(--pnC); }
+.gfR { border: 0; border-bottom: 1px dashed var(--pnC); height: 24px; padding-left: 4px; }
+.gfTrRow.true .gfR, .gfAltRow.true .gfR { color: var(--ok-ink); }
 .gfTrRow.ready .gfBar, .gfAltRow.ready .gfOr { background: var(--pnOn); }
 .gfBar { position: relative; z-index: 1; width: 20px; height: 3px; background: var(--gfLine); }
 .gfOr { position: relative; z-index: 1; font: 600 10px var(--sans); color: var(--muted); padding: 1px 4px; border-radius: 4px; }
@@ -231,8 +234,8 @@
 .gfAddIn .ic { width: 12px; height: 12px; }
 .gfBranch:hover .gfAddIn, .gfExp:hover .gfAddIn { opacity: 1; }
 /* Macro-étape : carré barré d'un trait en haut et en bas ; repères E et S de son expansion. */
-.gfStep.gfMacro { display: flex; align-items: center; justify-content: center; gap: 0; background: linear-gradient(var(--gfLine), var(--gfLine)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, #11171c; }
-.gfStep.gfMacro.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, #11171c; }
+.gfStep.gfMacro { display: flex; align-items: center; justify-content: center; gap: 0; background: linear-gradient(var(--gfLine), var(--gfLine)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, var(--panel); }
+.gfStep.gfMacro.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 0 4px / 100% 1.5px no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) 0 calc(100% - 4px) / 100% 1.5px no-repeat, var(--panel); }
 .gfM { font: 700 12px var(--mono); font-style: normal; color: var(--fg); }
 .gfMacro .gfNum { width: 16px; text-align: left; }
 .gfBadge { position: absolute; right: -15px; bottom: -3px; font: 700 10px var(--mono); font-style: normal; color: var(--pnP); }
@@ -264,15 +267,15 @@
 .gfTmForm > span { font-size: 11.5px; color: var(--fg-2); }
 .gfRead { margin: 2px 0 0; padding: 5px 8px; border-radius: 7px; background: #3b82f614; font-size: 11.5px; color: var(--fg-2); }
 .gfRead b { color: var(--fg); font-weight: 600; }
-.gfRead.err { background: #e5484d1a; color: #ffb3b5; }
+.gfRead.err { background: #e5484d1a; color: var(--danger-ink); }
 /* Temporisation d'une transition : chronomètre, retard, étape suivie ; pendant la simulation, barre et temps écoulé. */
 .gfTimerRow { min-height: 26px; }
 .gfTimerRow.jump .gfCol::before { display: none; }
-.gfTimer { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; background: #f2c94c14; border: 1px solid #f2c94c55; color: #f2c94c; font: 600 11px var(--mono); }
+.gfTimer { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 11px; background: #f2c94c14; border: 1px solid #f2c94c55; color: var(--warn); font: 600 11px var(--mono); }
 .gfTimer .ic { width: 13px; height: 13px; }
 .gfTimer small { font: 500 10.5px var(--sans); color: var(--fg-2); }
-.gfTBar { position: relative; display: inline-block; width: 46px; height: 5px; border-radius: 3px; background: #ffffff14; overflow: hidden; }
-.gfTBar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: #f2c94c; border-radius: 3px; transition: width .1s linear; }
+.gfTBar { position: relative; display: inline-block; width: 46px; height: 5px; border-radius: 3px; background: var(--hi-1); overflow: hidden; }
+.gfTBar > i { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--warn); border-radius: 3px; transition: width .1s linear; }
 .gfTimer em { min-width: 34px; font-style: normal; font-size: 10.5px; }
 .gfTimer.run { background: #f2c94c26; box-shadow: 0 0 0 3px #f2c94c14; }
 .gfTimer.run .ic { animation: gfTick 1s steps(4) infinite; }
@@ -283,28 +286,32 @@
 @media (max-width: 1180px) { .gfPanel { width: 300px; } }
 
 /* Étape encapsulante (traits verticaux dans le carré), GRAFCET partiels, forçage, compteurs. */
-.gfStep.gfEncl { background: linear-gradient(var(--gfLine), var(--gfLine)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, #11171c; }
-.gfStep.gfEncl.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, #11171c; }
+.gfStep.gfEncl { background: linear-gradient(var(--gfLine), var(--gfLine)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--gfLine), var(--gfLine)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, var(--panel); }
+.gfStep.gfEncl.on { background: linear-gradient(var(--pnOn), var(--pnOn)) 4px 0 / 1.5px 100% no-repeat, linear-gradient(var(--pnOn), var(--pnOn)) calc(100% - 4px) 0 / 1.5px 100% no-repeat, var(--panel); }
 .gfEnclNote { min-height: 18px; font-size: 11px; font-style: italic; color: var(--muted); }
 .gfExp h4 small { margin-left: 6px; font: 500 10px var(--mono); text-transform: none; letter-spacing: 0; color: var(--muted); }
 .gfPart { margin-top: 18px; padding-top: 10px; border-top: 1px solid var(--line-2); }
 .gfPartHead { display: flex; align-items: center; gap: 6px; margin: 0 4px 8px 12px; font: 600 11px var(--sans); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
 .gfPName { width: 70px; height: 22px; padding: 0 6px; border-radius: 5px; border: 1px solid var(--line-2); background: transparent; color: var(--fg); font: 700 12px var(--mono); text-transform: none; }
-.gfForced { font: 700 10px var(--sans); font-style: normal; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; color: #1a1205; background: #f2c94c; }
-.gfPartHead.forced .gfPName { border-color: #f2c94c; }
-.gfVars i.gfCnt { color: #93c5fd; border-color: #3b82f655; }
+.gfForced { font: 700 10px var(--sans); font-style: normal; letter-spacing: .04em; padding: 1px 6px; border-radius: 999px; color: #1a1205; background: var(--warn); }
+.gfPartHead.forced .gfPName { border-color: var(--warn); }
+.gfVars i.gfCnt { color: var(--accent-hi); border-color: #3b82f655; }
 .gfAddPart { padding-top: 14px; }
 
 /* ---------- Machine 3D (src/pneu/machine.js, chargée à la demande) ---------- */
 .pn3dBtn[aria-pressed="true"] { color: #fff; background: var(--accent); }
 .pn3d { position: absolute; right: 56px; bottom: 52px; z-index: 3; width: 480px; height: 330px; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden; }
 .pn3d[hidden] { display: none; }
+/* Fenêtre étroite (à côté du panneau Automate) : les commandes gardent leur icône et leur infobulle, le texte s'efface. */
+.pn3d { container-type: inline-size; }
+@container (max-width: 400px) { .pn3dCtl .btn span { display: none; } .pn3dCtl .btn { padding: 0 7px; } .pn3dHud { font-size: 11px; gap: 3px 4px; } }
 .pn3d.big { width: min(900px, calc(100% - 400px)); height: calc(100% - 116px); min-width: 480px; }
-.pn3dHead { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 64px 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
+.pn3dHead { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 92px 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
 .pn3dHead > * { flex-shrink: 0; }
 .pn3dHead .sel { flex-shrink: 1; min-width: 70px; }
 /* Agrandir et fermer restent en haut à droite ; les commandes de la scène passent sur une deuxième ligne si la place
    manque (fenêtre étroite, trois boutons), puis se serrent. Vérins des rôles : à plat dans l'en-tête. */
+.pn3dHead [data-m3="home"] { position: absolute; top: 6px; right: 62px; }
 .pn3dHead [data-m3="big"] { position: absolute; top: 6px; right: 34px; }
 .pn3dHead [data-m3="close"] { position: absolute; top: 6px; right: 6px; }
 .pn3dCyls { display: contents; }
@@ -324,11 +331,21 @@
 .pn3dHead .btn { height: 26px; padding: 0 8px; font-size: 12px; -webkit-user-select: none; user-select: none; touch-action: none; }
 .pn3dHead .btn .ic { width: 13px; height: 13px; }
 .pn3dHead .tb { width: 26px; height: 26px; }
-.pn3dView { position: relative; flex: 1 1 auto; min-height: 0; background: #0f1418; }
+.pn3dView { position: relative; flex: 1 1 auto; min-height: 0; background: var(--stage); }
 .pn3dCanvas { position: absolute; inset: 0; width: 100% !important; height: 100% !important; display: block; cursor: grab; }
 .pn3dCanvas:active { cursor: grabbing; }
-.pn3dHint { position: absolute; left: 10px; bottom: 8px; z-index: 1; margin: 0; padding: 4px 9px; border-radius: 8px; font-size: 11.5px; color: #e4e7e8; background: #0f1418cc; pointer-events: none; }
+.pn3dHint { position: absolute; left: 10px; bottom: 8px; z-index: 1; margin: 0; padding: 4px 9px; border-radius: 8px; font-size: 11.5px; color: var(--fg); background: var(--glass); pointer-events: none; }
 .pn3dHint[hidden] { display: none; }
+/* Bandeau du procédé (machines industrielles) : capteurs de la machine, compteurs, alarme. */
+.pn3dHud { position: absolute; left: 8px; right: 8px; top: 8px; z-index: 1; display: flex; flex-wrap: wrap; gap: 4px 6px; pointer-events: none; font-size: 11.5px; }
+.pn3dHud[hidden] { display: none; }
+.pn3dHud > span { display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px; background: var(--glass); color: var(--fg); line-height: 16px; }
+.pn3dHud .hudSens i { width: 8px; height: 8px; border-radius: 50%; background: #39424a; flex: none; }
+.pn3dHud .hudSens.on i { background: #4ade80; box-shadow: 0 0 6px #4ade80; }
+.pn3dHud .hudVal b { font-weight: 700; }
+.pn3dHud .hudVal.warn b { color: #f59e0b; }
+.pn3dHud .hudAlarm { background: #b91c1cee; color: #fff; font-weight: 600; }
+.pn3dHud .hudAlarm .ic { width: 13px; height: 13px; flex: none; }
 @media (max-width: 1180px) { .pn3d { width: 400px; height: 280px; } }
 /* Avec le panneau GRAFCET ouvert (à gauche), la vue 3D prend la place à sa droite. */
 .pnHost.gfOpen .pn3d { left: 368px; width: auto; max-width: 560px; }
@@ -337,12 +354,11 @@
 
 /* ---------- Vue partagée : le montage (à gauche) et le circuit pneumatique (à droite) ---------- */
 .pnSplitBtn[hidden], .pnSplit { display: none; }
-.pnSplitBtn[aria-pressed="true"] { color: #93c5fd; background: #3b82f61f; border-color: #3b82f655; }
+.pnSplitBtn[aria-pressed="true"] { color: var(--accent-hi); background: #3b82f61f; border-color: #3b82f655; }
 .pnSplitBtn[aria-pressed="true"] .ic { color: var(--pnP); }
-.app.pnSplitOn { grid-template-columns: var(--libW) minmax(0, var(--pnBenchFr, 1fr)) minmax(0, var(--pnSplitFr, 1fr)) var(--insW); }
+.app.pnSplitOn { grid-template-columns: 48px var(--libW) minmax(0, var(--pnBenchFr, 1fr)) minmax(0, var(--pnSplitFr, 1fr)) var(--insW); } /* barre d'activité | bibliothèque | montage | circuit | inspecteur */
 .app.pnSplitOn.pnDragging { transition: none; }
-.app.pnSplitOn .pnSplit { display: block; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #0f1418; border-left: 1px solid var(--line-2); }
-.app.pnSplitOn.tlOpen > .pnSplit { grid-row: 2 / 4; }
+.app.pnSplitOn .pnSplit { display: block; grid-column: 4; grid-row: 2 / -2; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--stage); border-left: 1px solid var(--line-2); }
 .app.pnSplitOn .pnTab { display: inline-flex !important; }
 .pnSplit > .pnHost { inset: 40px 0 0 0; container: pnhost / size; }
 .pnSplitGrip { position: absolute; left: -3px; top: 0; bottom: 0; width: 7px; z-index: 6; cursor: col-resize; touch-action: none; }
@@ -358,14 +374,14 @@
 .pnChip[hidden] { display: none; }
 .pnChip:hover, .pnChip:focus-visible { border-color: var(--accent); }
 .pnChip small { font: 500 10.5px var(--mono); color: var(--muted); }
-.pnChip .pnLed { width: 7px; height: 7px; border-radius: 50%; background: #3a434b; transition: background .12s, box-shadow .12s; }
+.pnChip .pnLed { width: 7px; height: 7px; border-radius: 50%; background: var(--pnC); transition: background .12s, box-shadow .12s; }
 .pnChip.on .pnLed { background: var(--pnOn); box-shadow: 0 0 6px var(--pnOn); }
 .pnChip.coil.on { border-color: #4ade8066; }
-.pnChip.sensor.on .pnLed { background: #f2c94c; box-shadow: 0 0 6px #f2c94c; }
-.pnChip.bad { border-style: dashed; color: #ffa3a5; }
+.pnChip.sensor.on .pnLed { background: var(--warn); box-shadow: 0 0 6px var(--warn); }
+.pnChip.bad { border-style: dashed; color: var(--danger-ink); }
 .pnChip.info { cursor: default; padding: 0 9px; }
 .pnChip.info b { font-size: 10.5px; letter-spacing: .04em; color: var(--muted); }
-.pnChip.info small { color: #93c5fd; }
+.pnChip.info small { color: var(--accent-hi); }
 /* Circuit étroit (vue partagée) : le GRAFCET passe sous le plan, la vue 3D se fait plus petite. */
 @container pnhost (max-width: 760px) {
   .gfPanel { left: 8px; right: 8px; width: auto; top: auto; bottom: 8px; height: 46%; }
@@ -376,10 +392,10 @@
 }
 @media (prefers-reduced-motion: reduce) { .pnChip .pnLed { transition: none; } }
 /* Temporisateur : cadran au-dessus de sa commande (temps écoulé pendant la simulation). */
-.pnTimerFace { fill: #0f1418; stroke: #9aa6af; stroke-width: 1.2; vector-effect: non-scaling-stroke; }
+.pnTimerFace { fill: var(--stage); stroke: var(--pnE); stroke-width: 1.2; vector-effect: non-scaling-stroke; }
 .pnTimerFill { fill: #f2c94c55; stroke: none; }
-.pnTimer.run .pnTimerFace { stroke: #f2c94c; }
-.pnTimer.run .pnTimerTxt { fill: #f2c94c; }
+.pnTimer.run .pnTimerFace { stroke: var(--warn); }
+.pnTimer.run .pnTimerTxt { fill: var(--warn); }
 .pnTimer.done .pnTimerFace { stroke: var(--pnOn); }
 .pnTimer.done .pnTimerFill { fill: color-mix(in srgb, var(--pnOn) 40%, transparent); }
 .pnTimer.done .pnTimerTxt { fill: var(--pnOn); }
@@ -388,7 +404,7 @@
 .pn3dHead { cursor: grab; touch-action: none; }
 .pn3d.dragging, .pn3d.dragging .pn3dHead { cursor: grabbing; user-select: none; -webkit-user-select: none; }
 .pn3d.placed { box-shadow: 0 18px 50px #000a; }
-.pn3dGrip { position: absolute; right: 2px; bottom: 2px; z-index: 5; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, #ffffff55 50%, #ffffff55 58%, transparent 58%, transparent 70%, #ffffff55 70%, #ffffff55 78%, transparent 78%); border-radius: 0 0 10px 0; }
+.pn3dGrip { position: absolute; right: 2px; bottom: 2px; z-index: 5; width: 16px; height: 16px; cursor: nwse-resize; touch-action: none; background: linear-gradient(135deg, transparent 50%, var(--hi-3) 50%, var(--hi-3) 58%, transparent 58%, transparent 70%, var(--hi-3) 70%, var(--hi-3) 78%, transparent 78%); border-radius: 0 0 10px 0; }
 .pn3d.big .pn3dGrip { display: none; }
 .pn3dMove { display: inline-flex; align-items: center; gap: 5px; }
 .pn3dDots { width: 8px; height: 14px; background: radial-gradient(circle, #ffffff70 1.2px, transparent 1.6px) 0 0 / 4px 4.6px; opacity: .8; }

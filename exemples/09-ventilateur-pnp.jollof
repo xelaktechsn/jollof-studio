@@ -1,0 +1,199 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Ventilateur commandé côté + (PNP)",
+ "description": "Arduino Uno, un ventilateur 5 V commandé « côté + » par un transistor PNP PN2907A (600 mA, assez pour le courant de démarrage du ventilateur) : son émetteur est au 5 V, sa base reçoit la broche D9 à travers 330 Ω, son collecteur alimente le ventilateur. Un PNP conduit quand sa base est tirée vers la masse : LOW met le ventilateur en marche, HIGH l’arrête. Programme : une règle « quand BTN1 est appuyé, le ventilateur tourne », traduite en code qui écrit LOW pour la marche. Lancez la simulation et regardez le courant de démarrage du ventilateur retomber à mesure qu’il prend de la vitesse (onglet Simulation).",
+ "en": {
+  "name": "Fan switched on the + side (PNP)",
+  "description": "Arduino Uno and a 5 V fan switched on the “+ side” by a PN2907A PNP transistor (600 mA, enough for the fan’s start-up current): its emitter is on 5 V, its base gets pin D9 through 330 Ω, its collector feeds the fan. A PNP conducts when its base is pulled toward ground: LOW turns the fan on, HIGH turns it off. Program: a rule “when BTN1 is pressed, the fan turns”, turned into code that writes LOW for on. Start the simulation and watch the fan’s start-up current drop as it gains speed (Simulation tab)."
+ },
+ "comps": [
+  {
+   "id": "uno_1",
+   "type": "uno",
+   "name": "UNO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "pn2907_1",
+   "type": "pn2907",
+   "name": "Q1",
+   "x": 52,
+   "z": 40,
+   "r": 0
+  },
+  {
+   "id": "res-1k_1",
+   "type": "res-330",
+   "name": "R1",
+   "x": 30,
+   "z": 54,
+   "r": 0
+  },
+  {
+   "id": "fan_1",
+   "type": "fan",
+   "name": "FAN1",
+   "x": 84,
+   "z": 40,
+   "r": 0
+  },
+  {
+   "id": "button_1",
+   "type": "button",
+   "name": "BTN1",
+   "x": -30,
+   "z": 50,
+   "r": 0,
+   "inp": {
+    "pressed": false
+   }
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "uno_1",
+    "5V"
+   ],
+   "b": [
+    "pn2907_1",
+    "E"
+   ],
+   "color": "#e5484d",
+   "role": "Émetteur au 5 V"
+  },
+  {
+   "a": [
+    "uno_1",
+    "D9"
+   ],
+   "b": [
+    "res-1k_1",
+    "1"
+   ],
+   "color": "#f2c94c",
+   "role": "Commande (LOW = marche)"
+  },
+  {
+   "a": [
+    "res-1k_1",
+    "2"
+   ],
+   "b": [
+    "pn2907_1",
+    "B"
+   ],
+   "color": "#f08a3c",
+   "role": "Résistance de base"
+  },
+  {
+   "a": [
+    "pn2907_1",
+    "C"
+   ],
+   "b": [
+    "fan_1",
+    "+"
+   ],
+   "color": "#e5484d",
+   "role": "Collecteur vers le ventilateur"
+  },
+  {
+   "a": [
+    "fan_1",
+    "-"
+   ],
+   "b": [
+    "uno_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Ventilateur vers la masse"
+  },
+  {
+   "a": [
+    "uno_1",
+    "D2"
+   ],
+   "b": [
+    "button_1",
+    "1"
+   ],
+   "color": "#3b82f6",
+   "role": "Entrée (INPUT_PULLUP)"
+  },
+  {
+   "a": [
+    "button_1",
+    "2"
+   ],
+   "b": [
+    "uno_1",
+    "GND (2)"
+   ],
+   "color": "#3a3f45",
+   "role": "Bouton vers la masse"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "id": "r_btn",
+     "src": {
+      "comp": "button_1",
+      "sig": "pressed"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "kind": "rule",
+     "then": [
+      {
+       "kind": "act",
+       "id": "a_r_btn_0",
+       "comp": "fan_1",
+       "act": "on",
+       "arg": null
+      }
+     ],
+     "else": [
+      {
+       "kind": "act",
+       "id": "a_r_btn_1",
+       "comp": "fan_1",
+       "act": "stop",
+       "arg": null
+      }
+     ]
+    }
+   ],
+   "boards": {
+    "uno_1": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {}
+  }
+ }
+}

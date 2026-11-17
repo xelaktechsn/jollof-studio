@@ -1,0 +1,450 @@
+{
+ "id": "pn18-barriere-parking",
+ "level": "lycee",
+ "minutes": 45,
+ "series": "dakar",
+ "title": {
+  "fr": "Barrière du parking-relais : temporisation et sécurité en Ladder",
+  "en": "Park-and-ride barrier: timer and safety in ladder"
+ },
+ "summary": {
+  "fr": "L’entrée d’un parking-relais de gare, en 3D : une voiture arrive et attend à la boucle de détection, le conducteur présente son badge, le vérin lève la lisse ; deux secondes après le passage, elle redescend. Le programme Ladder apprend la mémoire (badge → ouvert), la temporisation TON (refermer) et la sécurité : ne jamais refermer sur une voiture.",
+  "en": "The entrance of a station park-and-ride, in 3D: a car arrives and waits at the detection loop, the driver presents a badge, the cylinder raises the arm; two seconds after the car has passed, it comes down. The ladder program teaches the memory (badge → open), the TON timer (close again) and safety: never close on a car."
+ },
+ "objectives": [
+  {
+   "fr": "Mémoriser une commande fugitive (le badge) avec S et R",
+   "en": "Latch a brief command (the badge) with S and R"
+  },
+  {
+   "fr": "Refermer après un délai avec une temporisation TON",
+   "en": "Close again after a delay with a TON timer"
+  },
+  {
+   "fr": "Lire des capteurs de l’installation (veh, pass) et en faire une sécurité",
+   "en": "Read the installation’s sensors (veh, pass) and turn them into a safety"
+  },
+  {
+   "fr": "Tester un programme sur une machine simulée qui réagit",
+   "en": "Test a program on a simulated machine that reacts"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Le badge dure un instant ; la lisse doit rester levée : une mémoire M1 (S par badge, R pour refermer) et Y1 = M1.",
+   "en": "The badge lasts an instant; the arm must stay up: a memory M1 (S by badge, R to close) and Y1 = M1."
+  },
+  {
+   "fr": "Une TON compte tant que son entrée est vraie et retombe à zéro dès qu’elle est fausse : la condition « a1 · /pass » armée 2 s dit « lisse en haut et personne dessous depuis 2 s ».",
+   "en": "A TON counts while its input is true and drops to zero as soon as it is false: the condition “a1 · /pass” armed 2 s means “arm up and nobody underneath for 2 s”."
+  },
+  {
+   "fr": "La sécurité est dans la condition de fermeture, pas dans un ajout : sans /pass, la lisse redescend sur une voiture qui suit la première de près.",
+   "en": "Safety lives in the closing condition, not in an afterthought: without /pass, the arm comes down on a car tailgating the first."
+  },
+  {
+   "fr": "Le bandeau de la machine (veh, pass, voitures passées, chocs) sert à vérifier le programme comme on le ferait sur l’installation.",
+   "en": "The machine strip (veh, pass, cars passed, hits) is used to check the program as you would on the real installation."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "TP – Barrière de parking",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "pneu",
+   "modules": {
+    "pneu": {
+     "circuit": {
+      "elements": [
+       {
+        "id": "A",
+        "type": "cyl2",
+        "x": 0,
+        "y": 0,
+        "p": {
+         "label": "A",
+         "s1": "a1"
+        }
+       },
+       {
+        "id": "v1",
+        "type": "v52",
+        "x": -8,
+        "y": 12,
+        "p": {
+         "left": "sol",
+         "right": "spring",
+         "coilL": "Y1",
+         "label": "1V1"
+        }
+       },
+       {
+        "id": "src",
+        "type": "supply",
+        "x": 1,
+        "y": 22,
+        "p": {}
+       }
+      ],
+      "scene": {
+       "kind": "barrier",
+       "lift": "A",
+       "badge": "badge"
+      },
+      "tubes": [],
+      "plc": {
+       "name": "API1",
+       "drive": true,
+       "cycle": 10,
+       "inputs": [
+        {
+         "name": "badge",
+         "kind": "push"
+        }
+       ],
+       "rungs": []
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "wires": [],
+  "pneu": {
+   "tubes": [
+    {
+     "id": "t1",
+     "a": [
+      "src",
+      "1"
+     ],
+     "b": [
+      "v1",
+      "1"
+     ]
+    },
+    {
+     "id": "t2",
+     "a": [
+      "v1",
+      "4"
+     ],
+     "b": [
+      "A",
+      "1"
+     ]
+    },
+    {
+     "id": "t3",
+     "a": [
+      "v1",
+      "2"
+     ],
+     "b": [
+      "A",
+      "2"
+     ]
+    }
+   ],
+   "plc": {
+    "name": "API1",
+    "drive": true,
+    "cycle": 10,
+    "inputs": [
+     {
+      "name": "badge",
+      "kind": "push"
+     }
+    ],
+    "rungs": [
+     {
+      "id": "r1",
+      "comment": "Badge présenté : ouvrir",
+      "items": [
+       {
+        "t": "no",
+        "id": "k1",
+        "v": "badge"
+       },
+       {
+        "t": "set",
+        "id": "k2",
+        "v": "M1"
+       }
+      ]
+     },
+     {
+      "id": "r2",
+      "comment": "Lisse levée tant que M1",
+      "items": [
+       {
+        "t": "no",
+        "id": "k3",
+        "v": "M1"
+       },
+       {
+        "t": "coil",
+        "id": "k4",
+        "v": "Y1"
+       }
+      ]
+     },
+     {
+      "id": "r3",
+      "comment": "Lisse en haut et personne sous elle depuis 2 s (sécurité : le contact pass)",
+      "items": [
+       {
+        "t": "no",
+        "id": "k5",
+        "v": "a1"
+       },
+       {
+        "t": "nc",
+        "id": "k6",
+        "v": "pass"
+       },
+       {
+        "t": "ton",
+        "id": "k7",
+        "v": "T1",
+        "pt": 2
+       }
+      ]
+     },
+     {
+      "id": "r4",
+      "comment": "Refermer",
+      "items": [
+       {
+        "t": "no",
+        "id": "k8",
+        "v": "T1"
+       },
+       {
+        "t": "reset",
+        "id": "k9",
+        "v": "M1"
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le parking-relais",
+    "en": "The park-and-ride"
+   },
+   "text": {
+    "fr": "Inspiré des parkings-relais d’une gare de TER : la vue 3D montre la voie d’entrée, la **ligne d’arrêt** et sa **boucle de détection** (capteur **veh** : une voiture attend), l’**armoire** de la barrière et sa **lisse** levée par le vérin **A** (capteur a1 : lisse en haut), la zone sous la lisse (capteur **pass** : une voiture est dessous), le **lecteur de badge** et le feu. Le bouton « Une voiture » fait arriver une voiture, qui attend tant que la lisse n’est pas levée. Le pupitre de l’automate a un bouton **badge**.\nSi la vue 3D n’est pas ouverte, cliquez le bouton **3D** ; ouvrez aussi le panneau **Automate**.",
+    "en": "Inspired by the park-and-ride lots of a TER station: the 3D view shows the entry lane, the **stop line** and its **detection loop** (sensor **veh**: a car is waiting), the barrier **cabinet** and its **arm** raised by cylinder **A** (sensor a1: arm up), the zone under the arm (sensor **pass**: a car is underneath), the **badge reader** and the light. The “A car” button makes a car arrive; it waits as long as the arm is not up. The PLC’s control panel has a **badge** button.\nIf the 3D view is not open, click the **3D** button; also open the **PLC** panel."
+   },
+   "check": {
+    "type": "ui",
+    "need": [
+     "3d",
+     "plc"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tuyaux",
+    "en": "The tubes"
+   },
+   "text": {
+    "fr": "Raccordez la source à l’orifice 1 de **1V1**, son orifice 4 à la chambre arrière (1) du vérin A et son orifice 2 à la chambre avant (2). Y1 excitée : la tige sort et lève la lisse ; sans Y1, le ressort la rentre.",
+    "en": "Connect the supply to port 1 of **1V1**, its port 4 to the rear chamber (1) of cylinder A and its port 2 to the front chamber (2). Y1 energised: the rod extends and raises the arm; without Y1 the spring retracts it."
+   },
+   "check": {
+    "type": "pneu-tube",
+    "tubes": [
+     [
+      "src:1",
+      "v1:1"
+     ],
+     [
+      "v1:4",
+      "A:1"
+     ],
+     [
+      "v1:2",
+      "A:2"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Ouvrir au badge",
+    "en": "Open on badge"
+   },
+   "text": {
+    "fr": "Le badge n’est présenté qu’un instant ; la lisse doit rester levée. Écrivez :\n- Réseau : contact `badge` → **S M1** (ouverture mémorisée)\n- Réseau : contact `M1` → bobine **Y1**\nLe panneau avertit « M1 est mise à 1 mais jamais remise à 0 » : c’est pour l’étape suivante.",
+    "en": "The badge is presented only for an instant; the arm must stay up. Write:\n- Rung: contact `badge` → **S M1** (latched opening)\n- Rung: contact `M1` → coil **Y1**\nThe panel warns “M1 is set but never reset”: that is for the next step."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "M1",
+     "Y1"
+    ],
+    "reads": [
+     "badge"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : la lisse se lève",
+    "en": "Test: the arm goes up"
+   },
+   "text": {
+    "fr": "Lancez la simulation, faites arriver une voiture (bouton « Une voiture »), puis une impulsion sur **badge** : la lisse se lève, le feu passe au vert, la voiture passe… et la lisse reste levée.",
+    "en": "Run the simulation, make a car arrive (“A car” button), then pulse **badge**: the arm goes up, the light turns green, the car drives through… and the arm stays up."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "badge": "pulse",
+     "car": "click"
+    },
+    "expect": [
+     "A+"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Quand refermer ?",
+    "en": "When to close?"
+   },
+   "text": {
+    "fr": "Quelle condition doit remettre M1 à 0 ?",
+    "en": "Which condition should reset M1?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Dès que le badge est relâché",
+      "en": "As soon as the badge is released"
+     },
+     {
+      "fr": "Lisse en haut et aucune voiture sous elle (/pass) depuis 2 s",
+      "en": "Arm up and no car underneath (/pass) for 2 s"
+     },
+     {
+      "fr": "Dès que veh retombe",
+      "en": "As soon as veh drops"
+     },
+     {
+      "fr": "Jamais : le gardien la referme",
+      "en": "Never: the attendant closes it"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Refermer : une TON et un R",
+    "en": "Close: a TON and an R"
+   },
+   "text": {
+    "fr": "Ajoutez :\n- Réseau : `a1` · `/pass` → **TON T1**, durée 2 s (lisse en haut et personne dessous depuis 2 s)\n- Réseau : contact `T1` → **R M1**\nLa TON compte tant que sa condition est vraie et repart de zéro dès qu’une voiture passe sous la lisse.",
+    "en": "Add:\n- Rung: `a1` · `/pass` → **TON T1**, 2 s (arm up and nobody underneath for 2 s)\n- Rung: contact `T1` → **R M1**\nThe TON counts while its condition is true and restarts from zero as soon as a car is under the arm."
+   },
+   "hint": {
+    "fr": "La temporisation est dans la palette (TON) ; sa durée se règle dans le champ « Présélection ». Le contact T1 lit sa sortie.",
+    "en": "The timer is in the palette (TON); its duration is set in the “Preset” field. The T1 contact reads its output."
+   },
+   "check": {
+    "type": "ladder",
+    "outputs": [
+     "M1",
+     "Y1"
+    ],
+    "reads": [
+     "badge",
+     "a1",
+     "pass",
+     "T1"
+    ],
+    "minRungs": 4
+   }
+  },
+  {
+   "title": {
+    "fr": "Essai : ouverture et fermeture",
+    "en": "Test: open and close"
+   },
+   "text": {
+    "fr": "Simulation en marche : une voiture, impulsion sur **badge**. La lisse se lève, la voiture passe (pass s’allume), et 2 s après la lisse redescend. Le compteur « Passées » marque 1 et aucun choc.",
+    "en": "Simulation running: a car, pulse **badge**. The arm goes up, the car passes (pass lights up), and 2 s later the arm comes down. The “Passed” counter shows 1 and no hit."
+   },
+   "check": {
+    "type": "pneu-seq",
+    "when": {
+     "badge": "pulse",
+     "car": "click"
+    },
+    "expect": [
+     "A+",
+     "A-"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Deux voitures de près",
+    "en": "Two cars close together"
+   },
+   "text": {
+    "fr": "Sans le contact `/pass` dans la temporisation, deux voitures se suivent de près après un seul badge. Que risque-t-il d’arriver ?",
+    "en": "Without the `/pass` contact in the timer, two cars follow closely after a single badge. What is likely to happen?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "La lisse redescend 2 s après l’ouverture, sur la seconde voiture : choc",
+      "en": "The arm comes down 2 s after opening, onto the second car: hit"
+     },
+     {
+      "fr": "Rien : la seconde voiture attend",
+      "en": "Nothing: the second car waits"
+     },
+     {
+      "fr": "La TON refuse de compter",
+      "en": "The TON refuses to count"
+     },
+     {
+      "fr": "Le programme ne compile plus",
+      "en": "The program no longer compiles"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Voir la sécurité agir",
+    "en": "Watch the safety work"
+   },
+   "text": {
+    "fr": "Essayez : retirez le contact `/pass` du réseau de la temporisation, lancez deux voitures à une seconde d’intervalle et un badge : « Choc ! » s’affiche dans la vue 3D et le bandeau compte le choc. Remettez `/pass` : les deux voitures passent, la lisse attend que la zone soit libre. Ctrl+Z annule vos essais.",
+    "en": "Try it: remove the `/pass` contact from the timer rung, send two cars one second apart and a badge: “Hit!” appears in the 3D view and the strip counts the hit. Put `/pass` back: both cars pass, the arm waits until the zone is clear. Ctrl+Z undoes your trials."
+   },
+   "check": {
+    "type": "info"
+   }
+  }
+ ]
+}

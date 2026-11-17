@@ -23,6 +23,8 @@ import { cleanCircuit } from './clean.js';
 import { blockIo, syncBlocks, usesBlock, removeBlock } from './blocks.js';
 export { cleanCircuit };
 
+import { logicIssues } from './issues.js'; // vérifications du circuit, pour le vérificateur du projet (codes J08xx)
+
 const STYLE_KEY = 'jollof-logic-style';
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -65,7 +67,7 @@ export function installLogic(app) {
     changed(kind) {
       // Bloc modifié : les blocs posés ailleurs suivent tout de suite (broches, nom).
       if (kind === 'struct' && stack.length && syncBlocks(circuit)) renderLib();
-      app.markDirty(); changeHooks.forEach(f => f(kind)); if (kind === 'struct') counts();
+      app.markDirty(); if (app.recheck) app.recheck(); changeHooks.forEach(f => f(kind)); if (kind === 'struct') counts();
     },
     status: (msg, kind) => app.status(msg, kind),
     menu: (anchor, items) => popMenu(anchor, items),
@@ -387,6 +389,20 @@ export function installLogic(app) {
   return {
     isOn: () => on, setMode, editor: ed, panels,
     circuit: () => circuit, style: () => style,
+    /** Vérificateur du projet (src/check) : les vérifications du circuit logique racine, codes J08xx (panneau Problèmes, rapport). */
+    diags() {
+      if (!circuit.elements.length) return [];
+      let sim = null;
+      try { sim = stack.length ? new LogicSim(circuit) : ed.sim(); } catch (e) { console.error(e); return []; }
+      if (!sim) return [];
+      return logicIssues(circuit, sim).map(i => ({ code: i.code, level: i.kind === 'err' ? 'error' : 'warning', title: i.text, key: 'lg:' + i.code + ':' + (i.id || i.text), where: tl('plan logique'), space: 'logic', el: i.id || null, loc: {} }));
+    },
+    /** Montre le plan logique et, s'il est donné, l'élément en cause (depuis le rapport ou le panneau Problèmes). */
+    reveal(id) {
+      if (!on) setMode(true);
+      if (stack.length) goTo(0);
+      if (id && circuit.elements.some(e => e.id === id)) { ed.select([id]); ed.fitSel(); }
+    },
     onChange(fn) { changeHooks.add(fn); return () => changeHooks.delete(fn); },
     /** Projet (format .jollof) qui ouvre un circuit logique : pour les TP. */
     project: (c, name) => ({ app: 'jollof-studio', version: 1, name, comps: [], wires: [], settings: { modules: { logic: { view: 'logic', style, circuit: JSON.parse(JSON.stringify(c)) } } } }),

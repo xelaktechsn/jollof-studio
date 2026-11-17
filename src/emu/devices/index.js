@@ -6,13 +6,14 @@
 // périphériques et vérificateur ne voient aucune différence entre les deux modes.
 //
 // Un modèle est un module qui exporte { types: ['lcd1602', …], bus: 'i2c' | 'spi' | 'pins', create(comp, io) }.
-//   i2c  : create rend { start?(write), write(octet) → acquitté, read(ack) → octet, stop?(), frame?() }
+//   i2c  : create rend { start?(write, adresse) → false si pas d'acquittement, write(octet) → acquitté, read(ack) → octet, stop?(), frame?() }
 //   spi  : create rend { cs: 'SDA' (broche de sélection du module), select?(), transfer(octet) → octet, deselect?(), frame?() }
 //   pins : create rend { frame?(), dispose?() } et se branche sur les broches par io (ci-dessous).
 // io, donné à create : { cpu, MHZ, hw, comp, pin(clé du module) → clé de la carte ou null, level(clé carte),
 //   onEdge(clé carte, fn(niveau, cycle)) → désabonnement, drive(clé carte, niveau | null), after(cycles, fn), data(),
 //   rec(clé carte) → fiche de la broche (px…), now() → cycle courant, us(µs) → cycles,
-//   uart : { onTx(fn(octet, cycle)) → désabonnement, inject(octets), baud() } (port série matériel D0/D1) }.
+//   uart : { onTx(fn(octet, cycle)) → désabonnement, inject(octets), baud() } (port série matériel D0/D1),
+//   uarts : [{ name, rx, tx, api }] (tous les ports série matériels, clés de leurs broches RX et TX ; api comme uart) }.
 // drive(clé, null) relâche la ligne : elle reprend le niveau du montage (résistance de tirage câblée), sinon le
 // tirage interne de la carte (INPUT_PULLUP), sinon LOW.
 import lcd from './lcd.js';
@@ -28,13 +29,22 @@ import hcsr04 from './hcsr04.js';
 import ws2812 from './ws2812.js';
 import keypad from './keypad.js';
 import irnec from './irnec.js';
+import ky040 from './ky040.js';
 import mfrc522 from './mfrc522.js';
 import nrf24 from './nrf24.js';
 import uart from './uart.js';
+import chips from './chips.js';
+import stepdrv from './stepdrv.js';
+import tft from './tft.js';
+import sdcard from './sdcard.js';
+import displays from './displays.js';
+import storage from './storage.js';
+import i2csensors from './i2csensors.js';
+import sx1278 from './sx1278.js';
 import { pkgI2cModel, pkgSpiModel, pkgPulseModel } from './pkg.js';
 
 // Modules en paquet : leurs types se lisent à chaque rattachement (paquets installés pendant la simulation).
-export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht, ds18b20, hcsr04, ws2812, keypad, irnec, mfrc522, nrf24, uart].filter(m => m.types.length).concat([pkgI2cModel, pkgSpiModel, pkgPulseModel]);
+export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht, ds18b20, hcsr04, ws2812, keypad, ky040, irnec, mfrc522, nrf24, uart, ...chips, stepdrv, sdcard, tft, ...displays, storage, i2csensors, sx1278].filter(m => m.types.length).concat([pkgI2cModel, pkgSpiModel, pkgPulseModel]);
 
 /**
  * Branche les modèles sur un processeur émulé. ctx : { cpu, MHZ, twi, spi, hw, pinApi, uart } (avr8js). Un autre
@@ -44,7 +54,9 @@ export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht
  * cpu n'est plus qu'un identifiant de la carte (bus 1-Wire partagé). Rend { frame() }.
  */
 export function attachDevices(ctx) {
-  const { cpu, twi, spi, hw, pinApi, MHZ, uart } = ctx;
+  const { cpu, twi, spi, hw, pinApi, MHZ, uart, uarts } = ctx;
+  const probe = hw && hw.probe ? hw.probe : null; // analyseur de bus (src/sim/buslog.js)
+  let names = new Map(); // adresse I2C → repère du module (analyseur de bus)
   const now = ctx.now || (() => cpu.cycles);
   const after = ctx.after || ((cycles, fn) => cpu.addClockEvent(fn, Math.max(1, Math.round(cycles))));
   const live = new Map(); // id du composant → { model, comp, dev, keyMap }
@@ -68,12 +80,12 @@ export function attachDevices(ctx) {
       rec: key => (pinApi.rec ? pinApi.rec(key) : null),
       now,
       us: n => n * MHZ / 1e6,
-      uart
+      uart, uarts
     };
   }
   /** Modules présents sur cette carte (refait de temps en temps : le montage peut changer pendant la simulation). */
   function bind() {
-    const seen = new Set(), nextI2c = new Map(), nextSpi = [];
+    const seen = new Set(), nextI2c = new Map(), nextSpi = [], nextNames = new Map();
     for (const model of MODELS) {
       const comps = model.bus === 'i2c' ? (hw.bus ? hw.bus(model.types).map(x => ({ comp: x.comp, addr: x.addr })) : [])
         : (hw.comps ? hw.comps(model.types) : []).map(comp => ({ comp }));
@@ -86,28 +98,31 @@ export function attachDevices(ctx) {
           e = { model, comp, sig, dev: model.create(comp, ioFor(comp, keyMap)) };
           live.set(comp.id, e);
         }
-        if (model.bus === 'i2c') for (const a of addr || []) nextI2c.set(a, e.dev);
-        if (model.bus === 'spi' && keyMap.get(e.dev.cs)) nextSpi.push({ dev: e.dev, cs: keyMap.get(e.dev.cs) });
+        if (model.bus === 'i2c') for (const a of addr || []) { nextI2c.set(a, e.dev); nextNames.set(a, comp.name); }
+        if (model.bus === 'spi' && keyMap.get(e.dev.cs)) nextSpi.push({ dev: e.dev, cs: keyMap.get(e.dev.cs), name: comp.name });
       }
     }
     for (const [id, e] of live) if (!seen.has(id)) { if (e.dev.dispose) e.dev.dispose(); live.delete(id); }
-    i2c = nextI2c;
+    i2c = nextI2c; names = nextNames;
     // SPI : le module dont la broche de sélection passe à LOW reçoit les octets suivants.
     for (const s of spiDevs) if (s.off) s.off();
     spiDevs = nextSpi.map(s => ({ ...s, off: pinApi.onEdge(s.cs, lv => {
-      if (!lv) { selected = s.dev; if (s.dev.select) s.dev.select(); }
-      else if (selected === s.dev) { if (s.dev.deselect) s.dev.deselect(); selected = null; }
+      if (!lv) { selected = s.dev; if (s.dev.select) s.dev.select(); if (probe) probe.spiSelect(s.name); }
+      else if (selected === s.dev) { if (s.dev.deselect) s.dev.deselect(); selected = null; if (probe) probe.spiDeselect(); }
     }) }));
   }
 
   // Bus I2C : chaque adresse est servie par son module ; une adresse vide n'est pas acquittée.
+  // Module dont le programme vient de changer l'adresse (VL53L0X : setAddress) : il répond avant le prochain rattachement.
+  const answering = addr => { for (const e of live.values()) if (e.dev.answers && e.dev.answers(addr)) return e.dev; return null; };
   let cur = null;
   const bus = {
-    start() { cur = null; },
-    connect(addr, write) { cur = i2c.get(addr) || null; if (cur && cur.start) cur.start(write); return !!cur; },
-    write(v) { return cur ? cur.write(v & 0xff) !== false : false; },
-    read(ack) { return cur ? cur.read(ack) & 0xff : 0xff; },
-    stop() { if (cur && cur.stop) cur.stop(); cur = null; }
+    start() { cur = null; if (probe) probe.i2cStart(); },
+    // start(écriture, adresse) rend false quand le module n'acquitte pas (EEPROM en cycle d'écriture).
+    connect(addr, write) { cur = i2c.get(addr) || answering(addr); if (cur && cur.start && cur.start(write, addr) === false) cur = null; if (probe) probe.i2cConnect(addr, write, !!cur, names.get(addr) || null); return !!cur; },
+    write(v) { const ok = cur ? cur.write(v & 0xff) !== false : false; if (probe) probe.i2cByte(v, ok); return ok; },
+    read(ack) { const v = cur ? cur.read(ack) & 0xff : 0xff; if (probe) probe.i2cByte(v, ack); return v; },
+    stop() { if (cur && cur.stop) cur.stop(); cur = null; if (probe) probe.i2cStop(); }
   };
   if (ctx.i2c) ctx.i2c.setHandler(bus);
   else twi.eventHandler = { // TWI d'avr8js
@@ -118,7 +133,7 @@ export function attachDevices(ctx) {
     readByte(ack) { twi.completeRead(bus.read(ack)); }
   };
   // Bus SPI : octet échangé avec le module sélectionné ; personne : la ligne MISO reste haute (0xFF).
-  const transfer = v => (selected ? selected.transfer(v & 0xff) & 0xff : 0xff);
+  const transfer = v => { const r = selected ? selected.transfer(v & 0xff) & 0xff : 0xff; if (probe) probe.spiByte(v, r); return r; };
   if (ctx.spiBus) ctx.spiBus.onTransfer(transfer); else spi.onTransfer = transfer;
 
   return {
@@ -128,6 +143,8 @@ export function attachDevices(ctx) {
       if (now - lastBind > 500) { lastBind = now; bind(); }
       for (const e of live.values()) if (e.dev.frame) e.dev.frame();
     },
+    /** Modules rattachés tout de suite (ESP32 : un port série vient de recevoir ses broches). */
+    rebind() { lastBind = performance.now(); bind(); },
     live
   };
 }

@@ -1,0 +1,382 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Feu piétons (séquence)",
+ "description": "Une séquence de trois étapes (vert, orange, rouge) sans un seul delay() : le bouton d’appel « dès que » mémorise la demande dans une variable, le vert dure au moins 2 s, le rouge fait biper le buzzer pendant 4 s puis compte les passages.",
+ "en": {
+  "name": "Pedestrian crossing (sequence)",
+  "description": "A three-step sequence (green, amber, red) without a single delay(): the call button (\"as soon as\") stores the request in a variable, green lasts at least 2 s, red beeps the buzzer for 4 s and counts the crossings."
+ },
+ "comps": [
+  {
+   "id": "uno_0",
+   "type": "uno",
+   "name": "UNO1",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "traffic_1",
+   "type": "traffic",
+   "name": "FEU1",
+   "x": 56,
+   "z": 1,
+   "r": 0
+  },
+  {
+   "id": "button_2",
+   "type": "button",
+   "name": "BTN1",
+   "x": -22,
+   "z": -38,
+   "r": 0,
+   "inp": {
+    "pressed": false
+   }
+  },
+  {
+   "id": "buzzer_3",
+   "type": "buzzer",
+   "name": "BZ1",
+   "x": 9,
+   "z": -47,
+   "r": 0
+  },
+  {
+   "id": "npn_4",
+   "type": "npn",
+   "name": "Q1",
+   "x": -9,
+   "z": -36,
+   "r": 0
+  },
+  {
+   "id": "res-1k_5",
+   "type": "res-1k",
+   "name": "R1",
+   "x": 32,
+   "z": -51,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "traffic_1",
+    "GND"
+   ],
+   "b": [
+    "uno_0",
+    "GND (3)"
+   ]
+  },
+  {
+   "a": [
+    "traffic_1",
+    "R"
+   ],
+   "b": [
+    "uno_0",
+    "D2"
+   ]
+  },
+  {
+   "a": [
+    "traffic_1",
+    "Y"
+   ],
+   "b": [
+    "uno_0",
+    "D4"
+   ]
+  },
+  {
+   "a": [
+    "traffic_1",
+    "G"
+   ],
+   "b": [
+    "uno_0",
+    "D3"
+   ]
+  },
+  {
+   "a": [
+    "button_2",
+    "2"
+   ],
+   "b": [
+    "uno_0",
+    "GND"
+   ]
+  },
+  {
+   "a": [
+    "button_2",
+    "1"
+   ],
+   "b": [
+    "uno_0",
+    "D8"
+   ]
+  },
+  {
+   "a": [
+    "buzzer_3",
+    "+"
+   ],
+   "b": [
+    "uno_0",
+    "5V"
+   ]
+  },
+  {
+   "a": [
+    "buzzer_3",
+    "-"
+   ],
+   "b": [
+    "npn_4",
+    "C"
+   ]
+  },
+  {
+   "a": [
+    "npn_4",
+    "E"
+   ],
+   "b": [
+    "uno_0",
+    "GND (2)"
+   ]
+  },
+  {
+   "a": [
+    "npn_4",
+    "B"
+   ],
+   "b": [
+    "res-1k_5",
+    "2"
+   ]
+  },
+  {
+   "a": [
+    "res-1k_5",
+    "1"
+   ],
+   "b": [
+    "uno_0",
+    "D7"
+   ]
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [
+    {
+     "kind": "var",
+     "id": "v1",
+     "name": "appel",
+     "type": "bool",
+     "init": false,
+     "persist": false
+    },
+    {
+     "kind": "var",
+     "id": "v2",
+     "name": "passages",
+     "type": "int",
+     "init": 0,
+     "persist": false
+    },
+    {
+     "kind": "seq",
+     "id": "qj",
+     "name": "Feu",
+     "steps": [
+      {
+       "kind": "step",
+       "id": "e3",
+       "name": "Vert",
+       "do": [
+        {
+         "kind": "act",
+         "id": "a6",
+         "comp": "traffic_1",
+         "act": "green",
+         "arg": null
+        },
+        {
+         "kind": "act",
+         "id": "a7",
+         "comp": "@serial",
+         "act": "print",
+         "arg": "Feu vert pour les voitures"
+        }
+       ],
+       "go": [
+        {
+         "kind": "go",
+         "id": "t8",
+         "after": 2000,
+         "when": {
+          "src": {
+           "var": "v1"
+          },
+          "op": "==",
+          "v": 1
+         },
+         "to": "e4"
+        }
+       ]
+      },
+      {
+       "kind": "step",
+       "id": "e4",
+       "name": "Orange",
+       "do": [
+        {
+         "kind": "act",
+         "id": "a9",
+         "comp": "traffic_1",
+         "act": "yellow",
+         "arg": null
+        }
+       ],
+       "go": [
+        {
+         "kind": "go",
+         "id": "ta",
+         "after": 1500,
+         "when": null,
+         "to": "e5"
+        }
+       ]
+      },
+      {
+       "kind": "step",
+       "id": "e5",
+       "name": "Rouge",
+       "do": [
+        {
+         "kind": "act",
+         "id": "ab",
+         "comp": "traffic_1",
+         "act": "red",
+         "arg": null
+        },
+        {
+         "kind": "set",
+         "id": "sc",
+         "var": "v1",
+         "op": "=",
+         "v": false
+        },
+        {
+         "kind": "set",
+         "id": "sd",
+         "var": "v2",
+         "op": "+",
+         "v": 1
+        },
+        {
+         "kind": "act",
+         "id": "ae",
+         "comp": "buzzer_3",
+         "act": "beep",
+         "arg": 250
+        },
+        {
+         "kind": "wait",
+         "id": "wf",
+         "ms": 4000
+        },
+        {
+         "kind": "act",
+         "id": "ag",
+         "comp": "buzzer_3",
+         "act": "off",
+         "arg": null
+        },
+        {
+         "kind": "act",
+         "id": "ah",
+         "comp": "@serial",
+         "act": "show",
+         "arg": null,
+         "what": {
+          "var": "v2"
+         }
+        }
+       ],
+       "go": [
+        {
+         "kind": "go",
+         "id": "ti",
+         "after": 5000,
+         "when": null,
+         "to": "e3"
+        }
+       ]
+      }
+     ],
+     "start": "boot"
+    },
+    {
+     "kind": "rule",
+     "id": "rm",
+     "src": {
+      "comp": "button_2",
+      "sig": "pressed"
+     },
+     "op": "==",
+     "v": 1,
+     "from": [
+      0,
+      100
+     ],
+     "then": [
+      {
+       "kind": "set",
+       "id": "sk",
+       "var": "v1",
+       "op": "=",
+       "v": true
+      },
+      {
+       "kind": "act",
+       "id": "al",
+       "comp": "@serial",
+       "act": "print",
+       "arg": "Appel pieton"
+      }
+     ],
+     "else": [],
+     "edge": true
+    }
+   ],
+   "boards": {
+    "uno_0": {
+     "code": "",
+     "auto": true
+    }
+   },
+   "states": {}
+  }
+ }
+}

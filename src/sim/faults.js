@@ -183,7 +183,7 @@ export function collectFaults(comps, wires, A, cx) {
         where: `${nm(r)} → ${cul ? nm(cul) : ins.io[k] ? nm(ins.io[k]) : wired ? tl('ne mène à rien') : tl('non reliée')}`,
         why: typeof T.why === 'function' ? T.why(m, c) : T.why, fix: fixText(m.code, k, cul, sug, m, c),
         pins: [r], culprits: cul ? [cul] : [], wires: cutAt ? [...A.wiresAt(r), ...cutAt] : cul ? A.path(r, cul) : A.wiresAt(r), fx: T.fx || null,
-        comp: c, suggest: sug && { from: r, to: sug }, actions, other, cutWire: cutAt ? cutAt[0] : null
+        comp: c, suggest: sug && { from: r, to: sug }, actions, other, cutWire: cutAt ? cutAt[0] : null, low: !!m.low
       });
     }
   }

@@ -6,6 +6,8 @@
   --lgBody: #151c22; --lgInk: #c9d3da; --lgKnob: #e6e9eb; --lgOff: #262e35; --lgMut: #7d8891; --lgNote: #b6bec4;
   --lgGrid: #ffffff14; --lgBus: #c4b5fd;
 }
+/* Thème clair (src/ui/theme.js) : symboles en encre sombre sur blanc, fils à 0 en gris, à 1 en vert lisible. */
+:root[data-theme="light"] { --lg1: #16a34a; --lg0: #94a3b8; --lgBody: #ffffff; --lgInk: #1f2a35; --lgKnob: #334155; --lgOff: #cbd5e1; --lgMut: #64748b; --lgNote: #475569; --lgGrid: #00000014; --lgBus: #7c3aed; }
 
 /* ---------- Sélecteur Électronique / Logique ---------- */
 .wsSwitch { background: var(--bg); border-color: var(--line); }
@@ -22,9 +24,7 @@
 .app.logicMode #libPanel, .app.logicMode .tlDock { display: none !important; }
 .app.logicMode .panel.right .tabs .tab:not(.lgTab):not(.sessTab) { display: none; }
 .app.logicMode #simBtn, .app.logicMode #simState, .app.logicMode #importBtn, .app.logicMode .abImportSep, .app.logicMode #schBtn, .app.logicMode #exBtn { display: none; }
-.app.logicMode.tlOpen { grid-template-rows: 48px minmax(0, 1fr) 28px; }
-.app.logicMode.tlOpen > .panel { grid-row: 2; }
-.app.logicMode.tlOpen > .statusbar { grid-row: 3; }
+.app.logicMode.tlOpen { grid-template-rows: 48px auto minmax(0, 1fr) auto 28px; } /* la timeline, cachée ici, ne garde pas sa rangée */
 .app.logicMode.wide, .app.logicMode.wide.libClosed { --insW: clamp(300px, var(--insUser, var(--insDef)), 62vw); } /* « Agrandir » sert au code */
 .app.logicMode .stage > :not(.lgHost):not(.alert) { visibility: hidden; }
 .app.logicMode .stage { isolation: isolate; } /* le plan de travail logique reste sous les bulles d'aide de la barre d'application */
@@ -41,7 +41,7 @@
 .lgRailItem:hover { background: var(--raise); }
 .lgRailItem .lgThumb { width: 100%; height: 100%; }
 .lgGrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; padding: 2px 4px 6px; }
-.lgItem { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; min-height: 74px; border-radius: 9px; border: 1px solid transparent; background: #141a20; cursor: grab; text-align: center; touch-action: none; }
+.lgItem { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px 6px; min-height: 74px; border-radius: 9px; border: 1px solid transparent; background: var(--panel-2); cursor: grab; text-align: center; touch-action: none; }
 .lgItem:hover { border-color: var(--line-2); background: var(--raise); }
 .lgItem:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .lgItem .lgThumb { width: 100%; height: 36px; }
@@ -54,9 +54,9 @@
 .lgLib .pfoot .btn { flex: 1; }
 
 /* ---------- Plan de travail ---------- */
-.lgHost { position: absolute; inset: 0; z-index: 5; background: #0d1114; }
+.lgHost { position: absolute; inset: 0; z-index: 5; background: var(--stage); }
 .lgView { position: absolute; inset: 0; overflow: hidden; touch-action: none;
-  background-color: #0d1114;
+  background-color: var(--stage);
   background-image: radial-gradient(circle, var(--lgGrid) 1.1px, transparent 1.3px);
   background-size: var(--gk, 18px) var(--gk, 18px); background-position: var(--gx, 0) var(--gy, 0); }
 .lgView.grab, .lgView.panning { cursor: grab; }
@@ -81,14 +81,14 @@
 .lgDot.bus, .lgPin.bus { fill: var(--lgBus); stroke: none; }
 .lgPin.open.busPin { stroke: var(--lgBus); stroke-width: 2px; }
 .lgWHit { fill: none; stroke: transparent; stroke-width: 12px; vector-effect: non-scaling-stroke; cursor: pointer; }
-.lgWHit:hover { stroke: #ffffff10; }
+.lgWHit:hover { stroke: var(--hi-1); }
 .lgDot.lv1 { fill: var(--lg1); } .lgDot.lv0 { fill: var(--lg0); } .lgDot.lvX { fill: var(--lgX); } .lgDot.lvZ { fill: var(--lgZ); }
 .lgEl { cursor: move; }
 .lgEl.t-switch, .lgEl.t-button, .lgEl.t-dip, .lgEl.t-numin, .lgEl.t-keypad { cursor: pointer; }
 .lgHit { fill: transparent; }
 .lgEl.hov .lgHit { fill: #ffffff07; }
 .lgPin { stroke-width: 1.4px; vector-effect: non-scaling-stroke; pointer-events: none; }
-.lgPin.open { fill: #0d1114; stroke: var(--lgInk); }
+.lgPin.open { fill: var(--stage); stroke: var(--lgInk); }
 .lgPin.open.warn { stroke: var(--warn); }
 .lgPin.lv1 { fill: var(--lg1); stroke: none; } .lgPin.lv0 { fill: var(--lg0); stroke: var(--lg1); } .lgPin.lvX { fill: var(--lgX); stroke: none; } .lgPin.lvZ { fill: var(--lgZ); stroke: none; }
 .lgPin.hot { fill: var(--accent); stroke: #fff; }
@@ -99,9 +99,9 @@
 .lgVia { fill: var(--accent); }
 .lgGhost { opacity: .55; pointer-events: none; }
 .lgWatch { fill: none; stroke: var(--info); stroke-width: 0.12; }
-.lgTip { position: absolute; z-index: 4; pointer-events: none; padding: 4px 9px; border-radius: 7px; background: #0d1013f0; border: 1px solid var(--line-2); box-shadow: 0 6px 18px #0007; font: 500 11.5px var(--mono); white-space: nowrap; display: flex; gap: 8px; align-items: center; }
+.lgTip { position: absolute; z-index: 4; pointer-events: none; padding: 4px 9px; border-radius: 7px; background: var(--overlay); border: 1px solid var(--line-2); box-shadow: 0 6px 18px #0007; font: 500 11.5px var(--mono); white-space: nowrap; display: flex; gap: 8px; align-items: center; }
 .lgTip small { color: var(--muted); font-family: var(--sans); }
-.lgTip b.lv1 { color: var(--lg1); } .lgTip b.lv0 { color: #7fbf98; } .lgTip b.lvX { color: var(--lgX); } .lgTip b.lvZ { color: var(--lgZ); } .lgTip b.lvB { color: var(--lgBus); }
+.lgTip b.lv1 { color: var(--lg1); } .lgTip b.lv0 { color: var(--ok-ink); } .lgTip b.lvX { color: var(--lgX); } .lgTip b.lvZ { color: var(--lgZ); } .lgTip b.lvB { color: var(--lgBus); }
 .ov { text-decoration: overline; }
 
 /* Barres flottantes */
@@ -110,7 +110,7 @@
 .lgBar.top { top: 12px; }
 .lgBar.bottom { bottom: 12px; align-items: flex-end; }
 .lgRun { display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 12px; border: 1px solid var(--line); }
-.glass { background: #11151ae6; box-shadow: 0 6px 20px #0006; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.glass { background: var(--glass); box-shadow: 0 6px 20px #0006; -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
 .lgRun .btn.small { height: 28px; }
 .lgRun .lgPlay { min-width: 92px; }
 .lgRun .lgPlay.on { background: var(--raise-2); border-color: var(--lg1); color: var(--lg1); }
@@ -126,7 +126,7 @@
 @container stage (max-width: 600px) { .lgLegend { display: none; } }
 .lgEmpty { position: absolute; inset: 0; display: none; place-items: center; pointer-events: none; z-index: 2; }
 .lgView.empty ~ .lgEmpty { display: grid; }
-.lgEmptyCard { pointer-events: auto; max-width: 420px; padding: 24px 26px; border-radius: 16px; background: #11151af0; border: 1px solid var(--line-2); box-shadow: var(--shadow); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.lgEmptyCard { pointer-events: auto; max-width: 420px; padding: 24px 26px; border-radius: 16px; background: var(--glass); border: 1px solid var(--line-2); box-shadow: var(--shadow); text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .lgEmptyCard > .ic { width: 40px; height: 40px; color: var(--lg1); stroke-width: 1.4; }
 .lgEmptyCard b { font-size: 16px; }
 .lgEmptyCard p { margin: 0 0 8px; color: var(--fg-2); line-height: 1.5; }
@@ -150,7 +150,7 @@
 .lgSel h3 { font-size: 15px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
 .lgSelHead { display: flex; gap: 12px; align-items: center; }
 .lgSelHead small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
-.lgSelThumb { flex: 0 0 64px; height: 52px; border-radius: 10px; background: #0d1114; border: 1px solid var(--line); display: grid; place-items: center; padding: 6px; }
+.lgSelThumb { flex: 0 0 64px; height: 52px; border-radius: 10px; background: var(--stage); border: 1px solid var(--line); display: grid; place-items: center; padding: 6px; }
 .lgSelThumb .lgThumb { width: 100%; height: 100%; }
 .lgDoc { margin: 0; color: var(--fg-2); line-height: 1.5; -webkit-user-select: text; user-select: text; }
 .lgProps { display: grid; gap: 8px; }
@@ -167,7 +167,7 @@
 .lgPinRow > span { font: 600 12px var(--mono); }
 .lgPinRow small { color: var(--muted); }
 .lgLv { display: inline-grid; place-items: center; min-width: 22px; height: 20px; padding: 0 5px; border-radius: 5px; font: 650 11.5px var(--mono); background: var(--raise-2); color: var(--fg-2); }
-.lgLv.lv1 { background: #4ade8026; color: var(--lg1); } .lgLv.lv0 { background: #23573b55; color: #8cc5a3; } .lgLv.lvX { background: #f0525226; color: var(--lgX); } .lgLv.lvZ { background: #60a5fa22; color: var(--lgZ); }
+.lgLv.lv1 { background: #4ade8026; color: var(--lg1); } .lgLv.lv0 { background: #23573b55; color: var(--ok-ink); } .lgLv.lvX { background: #f0525226; color: var(--lgX); } .lgLv.lvZ { background: #60a5fa22; color: var(--lgZ); }
 .lgActs { display: flex; gap: 6px; flex-wrap: wrap; }
 .lgActs .btn[aria-pressed="true"] { border-color: var(--info); color: var(--info); }
 .btn.danger:hover { color: var(--danger); border-color: #e5484d66; }
@@ -179,11 +179,11 @@
 .lgIoT { width: 38px; height: 24px; display: grid; place-items: center; }
 .lgIoT .lgThumb { width: 100%; height: 100%; }
 .lgIssues { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.lgIssues li { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.45; background: #f2c94c10; color: #f4d982; cursor: default; }
+.lgIssues li { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 8px; font-size: 12.5px; line-height: 1.45; background: #f2c94c10; color: var(--warn-ink); cursor: default; }
 .lgIssues li[data-pick] { cursor: pointer; }
-.lgIssues li.err { background: #e5484d14; color: #ffa3a5; }
+.lgIssues li.err { background: #e5484d14; color: var(--danger-ink); }
 .lgIssues .ic { flex: 0 0 auto; margin-top: 1px; width: 14px; height: 14px; }
-.lgOk { display: flex; gap: 8px; align-items: center; margin: 0; color: #8fdcb7; }
+.lgOk { display: flex; gap: 8px; align-items: center; margin: 0; color: var(--ok-ink); }
 .lgHelp { margin: 0; padding-left: 18px; color: var(--fg-2); display: flex; flex-direction: column; gap: 6px; line-height: 1.45; }
 .lgHelp b { color: var(--fg); }
 
@@ -197,10 +197,10 @@
 .lgTT td.o.lv1 { color: var(--lg1); font-weight: 650; } .lgTT td.o.lvX { color: var(--lgX); } .lgTT td.o.lvZ { color: var(--lgZ); }
 .lgTT .sep { width: 1px; padding: 0; background: var(--line-2); }
 .lgTT tbody tr { cursor: pointer; }
-.lgTT tbody tr:hover td { background: #ffffff06; }
+.lgTT tbody tr:hover td { background: var(--hi-0); }
 .lgTT tr.cur td { background: #3b82f61f; box-shadow: inset 0 1px 0 #3b82f655, inset 0 -1px 0 #3b82f655; }
 .lgEqs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
-.lgEqs li { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: #141a20; font: 500 14px var(--mono); }
+.lgEqs li { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; padding: 8px 10px; border-radius: 8px; background: var(--panel-2); font: 500 14px var(--mono); }
 .lgEqN { color: var(--lg1); font-weight: 650; }
 .lgEqV { flex: 1; min-width: 0; word-break: break-word; -webkit-user-select: text; user-select: text; }
 .lgEqs small { flex-basis: 100%; font-family: var(--sans); font-size: 11px; color: var(--warn); }
@@ -208,7 +208,7 @@
 .lgEqs .iconBtn:hover { color: var(--fg); background: var(--raise-2); }
 .lgKWrap { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
 .lgK { max-width: 100%; height: auto; }
-.lgK .kc { fill: #141a20; stroke: var(--line-2); stroke-width: 1; }
+.lgK .kc { fill: var(--panel-2); stroke: var(--line-2); stroke-width: 1; }
 .lgK .kc.one { fill: #4ade8014; }
 .lgK .kt { font: 600 13px var(--mono); fill: var(--muted); }
 .lgK .kt.one { fill: var(--lg1); }
@@ -221,7 +221,7 @@
 .lgWave { padding: 12px 0; }
 .lgWaveBar { display: flex; align-items: center; gap: 8px; padding: 0 16px 10px; }
 .lgTime { font: 500 12px var(--mono); color: var(--fg-2); }
-.lgWaveBox { position: relative; margin: 0 8px; min-height: 120px; border-radius: 10px; background: #0d1114; border: 1px solid var(--line); overflow: hidden; }
+.lgWaveBox { position: relative; margin: 0 8px; min-height: 120px; border-radius: 10px; background: var(--stage); border: 1px solid var(--line); overflow: hidden; }
 .lgWaveBox canvas { display: block; width: 100%; }
 .lgWaveEmpty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 26px 20px; color: var(--fg-2); }
 .lgWaveEmpty .ic { width: 28px; height: 28px; color: var(--muted); }

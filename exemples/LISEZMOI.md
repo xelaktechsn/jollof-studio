@@ -11,6 +11,11 @@ Ces montages s’ouvrent depuis le bouton « Exemples » de Jollof Studio, ou av
 | `05-arrosage-automatique.jollof` | Humidité du sol, DHT11 et relais de pompe | ESP32 | Règles imbriquées : sol trop sec → pompe, sauf au-dessus de 35 °C ; pompe arrêtée par défaut |
 | `06-moteur-vitesse.jollof` | Moteur avec pilote L298N et pile 9 V, et potentiomètre de vitesse | Arduino Uno | Règle : le potentiomètre fait varier la vitesse |
 | `07-a-corriger.jollof` | **Montage à corriger** : erreurs volontaires à trouver | ESP32 | — |
+| `09-ventilateur-pnp.jollof` | Ventilateur commandé côté + par un transistor PNP (PN2907A) : LOW le met en marche ; courant de démarrage visible | Arduino Uno | Règle : quand BTN1 est appuyé, le ventilateur tourne |
+| `10-regulateur-zener.jollof` | Régulateur à diode Zener 5,1 V et sa résistance série, sans carte (projet analogique) ; changez la valeur de R1 | — | — |
+| `11-analyseur-bus-i2c.jollof` | BMP280 et écran OLED sur le même bus I2C, à suivre dans l’analyseur de bus (NACK en rouge) | Raspberry Pi Pico | Écrit à la main : scanner I2C puis lecture du BMP280 |
+| `12-feu-pietons-sequence.jollof` | Feu tricolore, bouton d’appel et buzzer (derrière un transistor) | Arduino Uno | Séquence vert → orange → rouge, temporisée sans delay() ; « dès que » le bouton est appuyé, une variable retient l’appel ; « puis attendre » arrête le bip |
+| `13-compteur-visiteurs.jollof` | Capteur d’obstacle infrarouge, bouton, écran LCD 16×2 et LED | Arduino Uno | Variable gardée dans l’EEPROM, affichée sur le LCD ; remise à zéro par appui de 2 s ou par « zero » envoyé au moniteur série |
 
 ## Le montage à corriger
 

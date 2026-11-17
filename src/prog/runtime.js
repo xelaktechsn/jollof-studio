@@ -8,12 +8,28 @@
 import { BOARD_CONSTS, AVR_INFO, isEsp32 } from './api.js';
 import { createI2c, createSpi } from '../sim/pkgbus.js';
 import { pkgI2c, pkgSpi } from '../sim/pkgparts.js';
+import { SHIFT_TYPES, I2C_CHIPS, CHIPS, isChip, chipI2c, chipOut, shiftEdges, nextEdge } from '../sim/chips.js';
+import { isStepDriver, stepEdge } from '../sim/motordrv.js';
+import { STORE_I2C, storeI2c } from '../sim/storage.js';
+import { SENSOR_I2C, sensorI2c } from '../sim/i2csensors.js';
+import { createSensorLibs } from './sensorlibs.js';
+import { SERIAL_PINS, SERIAL_TYPES } from '../sim/serialmods.js';
+import { createGpsLib } from './gpslib.js';
+import { createDevLibs } from './devlibs.js';
+import { createInputLibs } from './inputlibs.js';
+import { createSdLib } from '../sim/sdcard.js';
+import { createLoraLib } from './loralib.js';
+import { TftGfx } from '../sim/tft.js';
 import { periph, serialDevice, btSerial, macOf, hashBytes, fakeHttp, parseUrl, parseQuery, NET_DEFAULT, FAKE_HOSTS, BADGES, hex2 } from '../sim/models.js';
-import { tl } from '../i18n/index.js';
+import { tl, quote } from '../i18n/index.js';
 
 export class RunError extends Error {}
 const err = msg => { throw new RunError(msg); };
 const SLICE = 6; // ms de calcul par image au plus
+// Un programme qui calcule sans s'endormir (boucle active, loop() sans delay()) avance le temps virtuel d'une milliseconde
+// tous les CHUNK tours de boucle (environ 5 µs par tour, l'ordre de grandeur d'un tour de loop() sur un Uno) : millis()
+// progresse milliseconde par milliseconde, comme sur la carte, sans occuper le processeur de l'ordinateur pour rien.
+const CHUNK = 200;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 
 /** Numéro de broche du code → nom de la broche sur la carte (D7, A0, GP15…). */
@@ -26,16 +42,40 @@ export function pinMap(prof, kind) {
   return map;
 }
 
-/** Texte d'un nombre comme l'écrit Serial.print. */
-function fmt(x, f, tag) {
-  if (x === undefined) return '';
+/**
+ * Nombre à virgule comme Print::printFloat du cœur Arduino : arrondi de 0,5 sur le dernier chiffre, partie entière,
+ * puis les décimales une à une ; « nan », « inf », « ovf » au-delà de 4294967040. f32 : calcul en float (sur un AVR,
+ * double fait 32 bits).
+ */
+export function printFloat(x, digits = 2, f32 = false) {
+  const R = f32 ? Math.fround : v => v;
+  let n = R(+x);
+  if (Number.isNaN(n)) return 'nan';
+  if (!Number.isFinite(n)) return 'inf';
+  if (n > 4294967040 || n < -4294967040) return 'ovf';
+  let s = '';
+  if (n < 0) { s = '-'; n = -n; }
+  let r = R(0.5);
+  for (let i = 0; i < digits; i++) r = R(r / 10);
+  n = R(n + r);
+  const ip = Math.min(4294967295, Math.trunc(n));
+  let rem = R(n - R(ip));
+  s += String(ip);
+  if (digits > 0) s += '.';
+  while (digits-- > 0) { rem = R(rem * 10); const d = Math.trunc(rem); s += d; rem = R(rem - d); }
+  return s;
+}
+/** Texte d'un nombre comme l'écrit Serial.print (f32 : flottants de 32 bits, cartes AVR). */
+function fmtVal(x, f, tag, f32) {
+  if (x === undefined || x === null) return '';
   if (typeof x === 'string') return x;
+  if (x instanceof CBuf) return ctext(cbytes(x));
   if (typeof x === 'boolean') x = x ? 1 : 0;
   if (typeof x !== 'number') return String(x);
   if (tag === 'c' && f === undefined) return String.fromCharCode(x & 255);
+  if (tag === 'f' || (tag === '?' && !Number.isInteger(x))) return printFloat(x, f === undefined ? 2 : clamp(f | 0, 0, 20), f32);
   if (Number.isNaN(x)) return 'nan';
   if (!Number.isFinite(x)) return x > 0 ? 'inf' : '-inf';
-  if (tag === 'f' || (tag === '?' && !Number.isInteger(x))) return x.toFixed(f === undefined ? 2 : clamp(f | 0, 0, 20));
   if (f === undefined || f === 10) return String(Math.trunc(x));
   if (f === 16 || f === 8 || f === 2) return (x < 0 ? x >>> 0 : Math.trunc(x)).toString(f).toUpperCase();
   return String(Math.trunc(x));
@@ -65,6 +105,153 @@ function sprintf(f, args) {
   });
 }
 
+/* ---------- Chaînes du C ---------- */
+// Un tableau de char (char ligne[17]) est un tampon d'octets de taille fixe, comme sur la carte : écrire '\0' coupe le
+// texte, les octets qui suivent restent en place ; le texte (jusqu'au premier 0) se lit à la demande. char : Int8Array
+// (signé, comme sur un AVR), byte / uint8_t : Uint8Array.
+export class CBuf { constructor(n, signed = true) { this.b = signed ? new Int8Array(Math.max(0, n | 0)) : new Uint8Array(Math.max(0, n | 0)); } }
+const ENC = new TextEncoder();
+/** Octets d'un texte JS jusqu'au premier \0 : un octet par caractère jusqu'à 0xFF ((char)223, « é »), UTF-8 au-delà. */
+function sbytes(s) {
+  const out = [];
+  for (let i = 0; i < s.length; i++) {
+    const c = s.charCodeAt(i);
+    if (c === 0) break;
+    if (c < 256) { out.push(c); continue; }
+    const cp = s.codePointAt(i); if (cp > 0xffff) i++;
+    for (const b of ENC.encode(String.fromCodePoint(cp))) out.push(b);
+  }
+  return out;
+}
+/** Octets d'un tampon jusqu'au premier 0 (sans signe). */
+function cbytes(buf) { const b = buf.b, out = []; for (let i = 0; i < b.length; i++) { const c = b[i] & 255; if (!c) break; out.push(c); } return out; }
+/** Texte JS d'une suite d'octets : l'inverse de sbytes (UTF-8 seulement pour les caractères au-delà de 0xFF). */
+function ctext(a) {
+  let s = '';
+  for (let i = 0; i < a.length; i++) {
+    const c = a[i];
+    if (c >= 0xc4 && c < 0xf5) {
+      const n = c < 0xe0 ? 2 : c < 0xf0 ? 3 : 4;
+      let cp = c & (0xff >> (n + 1)), ok = i + n <= a.length;
+      for (let k = 1; ok && k < n; k++) { if ((a[i + k] & 0xc0) !== 0x80) ok = false; else cp = (cp << 6) | (a[i + k] & 0x3f); }
+      if (ok && cp > 0xff && cp <= 0x10ffff) { s += String.fromCodePoint(cp); i += n - 1; continue; }
+    }
+    s += String.fromCharCode(c);
+  }
+  return s;
+}
+/** a ≥ 0 avec P décimales, arrondi comme printf : au plus proche, et au chiffre pair pour une égalité exacte (21.25 → 21.2). */
+function fixed(a, P) {
+  const s = a.toFixed(P);
+  if (P > 75) return s;
+  const x = a.toFixed(P + 25);
+  if (!/^50*$/.test(x.slice(-25))) return s;
+  const d = x.slice(0, -25).replace(/\.$/, '');
+  return +d[d.length - 1] % 2 === 0 ? d : s;
+}
+/** Flottant pour printf (%f %e %g), sans le signe. */
+function ffmt(v, c, P, alt) {
+  const lc = c.toLowerCase(), up = c !== lc;
+  let s;
+  if (!Number.isFinite(v)) s = Number.isNaN(v) ? 'nan' : 'inf';
+  else {
+    const a = Math.abs(v), exp = (x, p) => x.toExponential(Math.min(100, p)).replace(/e([+-])(\d)$/, 'e$10$2');
+    if (lc === 'f') s = fixed(a, Math.min(100, P));
+    else if (lc === 'e') s = exp(a, P);
+    else {
+      const p = P === 0 ? 1 : P, X = a === 0 ? 0 : +a.toExponential(p - 1).split('e')[1];
+      s = p > X && X >= -4 ? fixed(a, p - 1 - X) : exp(a, p - 1);
+      if (!alt) s = s.replace(/\.?0+(e|$)/, '$1').replace(/(\.\d*?)0+(e|$)/, '$1$2');
+    }
+  }
+  return up ? s.toUpperCase() : s;
+}
+const FSPEC = /%([-+ #0]*)(\*|\d+)?(?:\.(\*|\d*))?(hh|h|ll|l|z|j|t|L)?([diouxXcsSpfFeEgG%])/g;
+/**
+ * printf de la carte : f le format, args et tags (type C de chaque argument : i int, l long, L long long, f double,
+ * s texte, ? inconnu). Les arguments forment, comme sur la pile, une suite d'octets (int et pointeur : 2 octets sur un AVR,
+ * 4 ailleurs ; double : 4 octets sur un AVR, 8 ailleurs) que le format lit dans l'ordre : %d d'un long sur un Uno lit sa
+ * moitié basse, puis le %d suivant la moitié haute, comme la vraie carte. o : { avr, warn(msg), name, label }.
+ * Sur un AVR, %f %e %g écrivent « ? » (printf sans virgule flottante d'avr-libc).
+ */
+export function cfmt(f, args, tags, o) {
+  const W = o.avr ? 2 : 4, FD = o.avr ? 4 : 8, bytes = [], at = new Map(), strs = new Map();
+  const push = (v, n) => { let x = BigInt.asUintN(n * 8, BigInt(Math.trunc(Number.isFinite(+v) ? +v : 0))); for (let i = 0; i < n; i++) { bytes.push(Number(x & 255n)); x >>= 8n; } };
+  args.forEach((a, i) => {
+    const t = tags ? tags[i] || '?' : typeof a === 'number' ? (Number.isInteger(a) ? '?' : 'f') : 's', p0 = bytes.length;
+    let k = t;
+    if (t === 's' || typeof a === 'string' || a === null || a instanceof CBuf) { k = 's'; strs.set(p0, a instanceof CBuf ? ctext(cbytes(a)) : a); push(0, W); }
+    else if (t === 'f') { const dv = new DataView(new ArrayBuffer(8)); if (o.avr) dv.setFloat32(0, +a, true); else dv.setFloat64(0, +a, true); for (let j = 0; j < FD; j++) bytes.push(dv.getUint8(j)); }
+    else push(a, t === 'L' ? 8 : t === 'l' ? 4 : W);
+    at.set(p0, { i, k, n: bytes.length - p0 });
+  });
+  let p = 0, told = false;
+  const tell = msg => { if (!told) { told = true; o.warn(msg); } };
+  const NAME = { i: 'int', l: 'long', L: 'long long', f: 'double', s: 'char*' };
+  /** Lit n octets de la suite pour une conversion de genre k (i, f, s) ; prévient si l'argument n'y correspond pas. */
+  const take = (n, k, spec) => {
+    const a = at.get(p), p0 = p;
+    if (p + n > bytes.length) tell(tl('{0} : il manque des arguments pour le format {1}', o.name, quote(f)));
+    else if (!a || a.n !== n || (a.k !== '?' && (a.k === 's') !== (k === 's')) || (a.k !== '?' && (a.k === 'f') !== (k === 'f'))) {
+      const b = a ? NAME[a.k] || '?' : '?';
+      tell(a && a.k === 'l' && k === 'i' ? tl('{0} : {1} reçoit un long (argument {2}) : sur {3}, écrivez %l{4}', o.name, spec, a.i + 1, o.label, spec.slice(-1))
+        : tl('{0} : le format {1} ne correspond pas à l’argument {2} ({3})', o.name, spec, a ? a.i + 1 : '?', b));
+    }
+    p += n;
+    return p0;
+  };
+  const rd = (p0, n, signed) => { let x = 0n; for (let i = n - 1; i >= 0; i--) x = (x << 8n) | BigInt(bytes[p0 + i] ?? 0); return signed ? BigInt.asIntN(n * 8, x) : x; };
+  const intArg = () => Number(rd(take(W, 'i', '*'), W, true));
+  const s = String(f).replace(FSPEC, (m, flags, w, pr, len, c) => {
+    if (c === '%') return '%';
+    let width = w === '*' ? intArg() : w ? +w : 0, left = flags.includes('-');
+    if (width < 0) { left = true; width = -width; }
+    let P = pr === undefined ? null : pr === '*' ? intArg() : +pr || 0;
+    if (P !== null && P < 0) P = null;
+    let body = '', sign = '', pre = '', zero = false;
+    if ('diouxXc'.includes(c)) {
+      const n = len === 'll' || len === 'j' ? 8 : len === 'l' ? 4 : W, sg = c === 'd' || c === 'i';
+      let v = rd(take(n, 'i', m), n, sg);
+      if (len === 'h') v = sg ? BigInt.asIntN(16, v) : BigInt.asUintN(16, v);
+      if (len === 'hh') v = sg ? BigInt.asIntN(8, v) : BigInt.asUintN(8, v);
+      if (c === 'c') body = String.fromCharCode(Number(v & 255n));
+      else {
+        if (v < 0n) { sign = '-'; v = -v; } else if (sg && flags.includes('+')) sign = '+'; else if (sg && flags.includes(' ')) sign = ' ';
+        body = v.toString(c === 'o' ? 8 : c === 'x' || c === 'X' ? 16 : 10);
+        if (c === 'X') body = body.toUpperCase();
+        if (P !== null) body = P === 0 && v === 0n ? '' : body.padStart(P, '0');
+        if (flags.includes('#') && v !== 0n && (c === 'x' || c === 'X')) pre = c === 'x' ? '0x' : '0X';
+        if (flags.includes('#') && c === 'o' && body[0] !== '0') body = '0' + body;
+        zero = P === null;
+      }
+    } else if (c === 's' || c === 'S') {
+      const p0 = take(W, 's', m);
+      let t = strs.has(p0) ? strs.get(p0) : '';
+      t = t == null ? '(null)' : String(t);
+      if (P !== null) t = ctext(sbytes(t).slice(0, P));
+      body = t;
+    } else if (c === 'p') { take(W, 's', m); body = '0x0'; }
+    else {
+      const p0 = take(FD, 'f', m);
+      if (o.avr) { body = '?'; o.warn(tl('{0} : %{1} n’affiche pas les nombres à virgule sur {2} (le printf des cartes AVR écrit « ? ») : convertissez d’abord le nombre en texte avec dtostrf()', o.name, c, o.label)); }
+      else {
+        const dv = new DataView(new ArrayBuffer(8)); for (let j = 0; j < 8; j++) dv.setUint8(j, bytes[p0 + j] ?? 0);
+        const v = dv.getFloat64(0, true);
+        if (v < 0 || Object.is(v, -0)) sign = '-'; else if (flags.includes('+')) sign = '+'; else if (flags.includes(' ')) sign = ' ';
+        body = ffmt(v, c, P === null ? 6 : P, flags.includes('#'));
+        zero = Number.isFinite(v);
+      }
+    }
+    const len0 = sign.length + pre.length + body.length;
+    if (len0 >= width) return sign + pre + body;
+    if (left) return (sign + pre + body).padEnd(width);
+    if (zero && flags.includes('0')) return sign + pre + body.padStart(width - sign.length - pre.length, '0');
+    return (sign + pre + body).padStart(width);
+  });
+  if (p < bytes.length) tell(tl('{0} : {1} argument(s) de trop pour le format {2}', o.name, args.length - [...at.keys()].filter(k => k < p).length, quote(f)));
+  return s;
+}
+
 /** Petite suite pseudo-aléatoire : randomSeed(n) rend les tirages reproductibles. */
 function prng(seed) {
   let a = seed >>> 0;
@@ -73,7 +260,7 @@ function prng(seed) {
 
 class Wait { constructor(ms, v) { this.ms = ms; this.v = v; } }
 /** Attente jusqu'à ce que fn() rende une valeur non nulle (keypad.waitForKey()). */
-class Poll { constructor(fn) { this.fn = fn; } }
+class Poll { constructor(fn, step = 10) { this.fn = fn; this.step = step; } }
 
 /* ---------- Copie octet par octet ---------- */
 // Une valeur passée par adresse (&donnee) arrive comme { get, set, d } : d décrit son type C++ (entier : bits et
@@ -87,6 +274,7 @@ function sizeOfD(d, v) {
     case 'b': return 1;
     case 's': case 'S': return d.n || String(v ?? '').length + 1;
     case 'a': return Array.isArray(v) ? v.reduce((t, x) => t + sizeOfD(d.of, x), 0) : 0;
+    case 'c': return v instanceof CBuf ? v.b.length : 0;
     default: return 0;
   }
 }
@@ -100,7 +288,8 @@ function encode(d, v, out) {
     case 'f': DV.setFloat32(0, +v || 0, true); for (let i = 0; i < 4; i++) out.push(DV.getUint8(i)); return;
     case 'b': out.push(v ? 1 : 0); return;
     case 's': case 'S': { const t = String(v ?? ''), n = sizeOfD(d, t); for (let i = 0; i < n; i++) out.push(i < t.length ? t.charCodeAt(i) & 255 : 0); return; }
-    case 'a': if (Array.isArray(v)) for (const x of v) encode(d.of, x, out);
+    case 'a': if (Array.isArray(v)) for (const x of v) encode(d.of, x, out); return;
+    case 'c': if (v instanceof CBuf) for (const x of v.b) out.push(x & 255);
   }
 }
 function decode(d, b, p, cur) {
@@ -114,7 +303,8 @@ function decode(d, b, p, cur) {
     case 'f': for (let i = 0; i < 4; i++) DV.setUint8(i, b[p.i + i] || 0); p.i += 4; return DV.getFloat32(0, true);
     case 'b': return !!b[p.i++];
     case 's': case 'S': { const n = sizeOfD(d, cur); let t = ''; for (let i = 0; i < n; i++) { const c = b[p.i + i] || 0; if (!c) break; t += String.fromCharCode(c); } p.i += n; return t; }
-    case 'a': if (Array.isArray(cur)) for (let i = 0; i < cur.length; i++) { const v = decode(d.of, b, p, cur[i]); if (d.of.k !== 'a') cur[i] = v; } return cur;
+    case 'a': if (Array.isArray(cur)) for (let i = 0; i < cur.length; i++) { const v = decode(d.of, b, p, cur[i]); if (d.of.k !== 'a' && d.of.k !== 'c') cur[i] = v; } return cur;
+    case 'c': if (cur instanceof CBuf) { for (let i = 0; i < cur.b.length; i++) cur.b[i] = b[p.i + i] || 0; p.i += cur.b.length; } return cur;
   }
   return cur;
 }
@@ -134,7 +324,7 @@ function refStore(r, bytes, len) {
   const n = Math.min(len == null ? bytes.length : len, buf.length, bytes.length);
   for (let i = 0; i < n; i++) buf[i] = bytes[i];
   const v = decode(r.d, buf, { i: 0 }, cur);
-  if (r.d.k === 'a') return true;
+  if (r.d.k === 'a' || r.d.k === 'c') return true;
   if (!r.set) return false;
   r.set(v); return true;
 }
@@ -187,6 +377,7 @@ function badgeMem(i) {
 export function showValue(x, type = 'auto') {
   if (x === undefined) return '—';
   if (x === null) return 'null';
+  if (x instanceof CBuf) return showValue(ctext(cbytes(x)));
   if (Array.isArray(x)) {
     const el = /\[\]$/.test(type) ? type.slice(0, -2) : 'auto';
     const items = x.slice(0, 16).map(v => showValue(v, el)), s = `(${x.length}) {${items.join(', ')}${x.length > 16 ? ', …' : ''}}`;
@@ -219,6 +410,8 @@ export function showValue(x, type = 'auto') {
  */
 export function createRuntime(js, hw, meta = {}) {
   const prof = hw.prof, keys = pinMap(prof, hw.kind), consts = BOARD_CONSTS[hw.kind] || {}, avr = AVR_INFO[hw.kind];
+  // Nombres affichés comme sur cette carte : sur un AVR, float et double font 32 bits.
+  const fmt = (x, f, tag) => fmtVal(x, f, tag, !!avr);
   const pins = new Map(), warnings = new Map(), irqs = [], ledc = new Map();
   let out = '', serialIn = '', T = 0, vt = 0, wake = null, state = 'run', error = null, irqOn = true, started = false;
   // analogRead() rend prof.adcRead bits par défaut : 10 sur le Pico (cœur arduino-pico), dont l'ADC fait 12 bits
@@ -230,7 +423,7 @@ export function createRuntime(js, hw, meta = {}) {
   // freq : tone() ; ledc : fréquence de la PWM de l'ESP32 (pour l'oscilloscope, pas un son).
   const traced = (k, p) => { if (trace) trace(k, { d: p.d, pwm: p.pwm, freq: p.freq || (p.pwm != null ? p.ledc : 0) || 0 }, vt); };
   // d : profondeur d'appel, n : nombre d'appels, irq : interruption en cours, D : arrêt du débogueur (ou null).
-  const $ = { l: 0, b: 2000, O: {}, C: {}, d: 0, n: 0, irq: 0, D: null };
+  const $ = { l: 0, b: CHUNK, O: {}, C: {}, d: 0, n: 0, irq: 0, D: null };
 
   const warn = (msg, line = $.l) => { const w = warnings.get(msg); if (w) w.n++; else warnings.set(msg, { line, n: 1, msg }); };
   const pinState = k => { let p = pins.get(k); if (!p) pins.set(k, (p = { mode: 0, d: 0, pwm: null, freq: 0, ledc: 0, toneEnd: 0, servo: null, px: null, stepper: null, weak: false, dac: null })); return p; };
@@ -255,7 +448,26 @@ export function createRuntime(js, hw, meta = {}) {
     if (p.mode === 3) return { d: 0, v: 0 };
     return null;
   };
+  // Puces logiques : niveau du montage sur une de leurs broches (hw.node), pour ce que la carte ne commande pas.
+  let devs = null; // bibliothèques des afficheurs et horloges (devlibs.js), créées avec les classes
+  let lora = null; // bibliothèque LoRa (loralib.js)
+  let inLib = null; // encodeur KY-040 (inputlibs.js) : niveaux de CLK, DT, SW et bibliothèque Encoder
+  const chipRead = (c, pin) => (hw.node ? hw.node(c, pin) : hw.level ? hw.level(c, pin) : null);
+  /** Front écrit sur une broche reliée à un registre à décalage (74HC595, 74HC165) : la puce le voit aussitôt. */
+  const shiftChip = (k, lv) => { const list = at(k).filter(x => SHIFT_TYPES.includes(x.comp.type)); if (list.length) shiftEdges(list, lv, nextEdge(), chipRead); };
+  /** Niveau écrit sur une broche reliée au STEP d'un pilote pas à pas (A4988, DRV8825, sim/motordrv.js), à l'heure virtuelle. */
+  const stepChip = (k, lv) => { for (const x of at(k)) if (x.pin === 'STEP' && isStepDriver(x.comp.type)) stepEdge(x.comp, lv, vt, p => chipRead(x.comp, p)); };
+  /** Sortie de puce reliée à cette entrée (Q7 d'un 74HC165) : son niveau, lu sans attendre le calcul du circuit. */
+  const chipIn = k => {
+    for (const x of at(k)) {
+      const m = isChip(x.comp.type) && CHIPS[x.comp.type]; if (!m || !m.outs.includes(x.pin)) continue;
+      const o = chipOut(x.comp, x.pin, m.oe ? chipRead(x.comp, m.oe) || 0 : 0); if (o) return o.d;
+    }
+    return null;
+  };
   const digitalIn = k => {
+    if (pinState(k).mode !== 1 && inLib) { const e = inLib.level(k); if (e != null) return e; }
+    if (pinState(k).mode !== 1) { const c = chipIn(k); if (c != null) return c; }
     const r = input(k);
     if (r && r.hz > 0) return Math.floor(vt * r.hz / 500) % 2; // signal carré d'un module à impulsions
     if (r) return r.d != null ? r.d : +(r.v > prof.logic / 2);
@@ -289,8 +501,22 @@ export function createRuntime(js, hw, meta = {}) {
       p.dac = null;
       if (p.d !== hi || wasPwm) { p.d = hi; p.weak = false; traced(k, p); } else p.weak = false;
       spiChip(k, hi);
+      shiftChip(k, hi);
+      if (devs) devs.edge(k, hi); // MAX7219 (src/sim/displays.js) : DIN, CLK, CS écrits par le programme
+      stepChip(k, hi);
     },
     digitalRead(n) { const k = keyOf(n); return k ? digitalIn(k) : 0; },
+    // shiftOut / shiftIn du cœur Arduino : huit fois données puis impulsion d'horloge, par digitalWrite (le 74HC595 et le
+    // 74HC165 voient chaque front). shiftIn lit après chaque front montant, comme le vrai.
+    shiftOut(dp, cp, order, val) {
+      val = (val | 0) & 255;
+      for (let i = 0; i < 8; i++) { $.digitalWrite(dp, order === 0 ? (val >> i) & 1 : (val >> (7 - i)) & 1); $.digitalWrite(cp, 1); $.digitalWrite(cp, 0); }
+    },
+    shiftIn(dp, cp, order) {
+      let v = 0;
+      for (let i = 0; i < 8; i++) { $.digitalWrite(cp, 1); const b = $.digitalRead(dp) ? 1 : 0; v |= order === 0 ? b << i : b << (7 - i); $.digitalWrite(cp, 0); }
+      return v;
+    },
     analogRead(n) {
       const k = keyOf(n, 'adc'); if (!k) return 0;
       if (!caps(k).has('adc')) { warn(tl('{0} n’est pas une entrée analogique : analogRead() n’y lit rien d’utile', k)); return 0; }
@@ -339,9 +565,11 @@ export function createRuntime(js, hw, meta = {}) {
       if (level) warn(tl('pulseIn({0}) n’a reçu aucune impulsion : la fonction attend {1} ms puis renvoie 0', n, Math.round(timeout / 1000)));
       return none();
     },
+    // map() calcule en long (32 bits) : arguments tronqués, produit qui peut déborder, division entière.
     map(x, a, b, c, d) {
+      [x, a, b, c, d] = [x, a, b, c, d].map(v => Math.trunc(+v || 0) | 0);
       if (b === a) { warn(tl('map() : les deux bornes de départ sont égales (division par zéro)')); return c; }
-      return Math.trunc((x - a) * (d - c) / (b - a)) + c;
+      return (Math.trunc(Math.imul(x - a, d - c) / (b - a)) + c) | 0;
     },
     constrain: (x, a, b) => (x < a ? a : x > b ? b : x),
     min: (a, b) => (b < a ? b : a), max: (a, b) => (b > a ? b : a), abs: x => (x < 0 ? -x : x), sq: x => x * x,
@@ -349,6 +577,16 @@ export function createRuntime(js, hw, meta = {}) {
     log: Math.log, log10: Math.log10, fabs: Math.abs, floor: Math.floor, ceil: Math.ceil, trunc: Math.trunc, pow: Math.pow, atan2: Math.atan2,
     fmod: (a, b) => a % b, hypot: Math.hypot,
     round: x => Math.sign(x) * Math.round(Math.abs(x)), isnan: x => Number.isNaN(x), isinf: x => Math.abs(x) === Infinity,
+    // Variantes float de math.h, fmin/fmax (un NaN est ignoré), lround (arrondi au plus loin de zéro).
+    sqrtf: Math.sqrt, sinf: Math.sin, cosf: Math.cos, tanf: Math.tan, expf: Math.exp, logf: Math.log, log10f: Math.log10, fabsf: Math.abs,
+    floorf: Math.floor, ceilf: Math.ceil, truncf: Math.trunc, cbrt: Math.cbrt, powf: Math.pow, atan2f: Math.atan2, fmodf: (a, b) => a % b,
+    labs: x => Math.abs(x | 0) | 0, roundf: x => Math.sign(x) * Math.round(Math.abs(x)), lround: x => Math.sign(x) * Math.round(Math.abs(x)) | 0, lroundf: x => Math.sign(x) * Math.round(Math.abs(x)) | 0,
+    fmin: (a, b) => (Number.isNaN(a) ? b : Number.isNaN(b) ? a : Math.min(a, b)), fmax: (a, b) => (Number.isNaN(a) ? b : Number.isNaN(b) ? a : Math.max(a, b)),
+    fminf: (a, b) => $.fmin(a, b), fmaxf: (a, b) => $.fmax(a, b), isfinite: x => Number.isFinite(x),
+    isdigit: c => +(c >= 48 && c <= 57), isalpha: c => +((c | 32) >= 97 && (c | 32) <= 122), isalnum: c => +($.isdigit(c) || $.isalpha(c)),
+    isspace: c => +(c === 32 || (c >= 9 && c <= 13)), isupper: c => +(c >= 65 && c <= 90), islower: c => +(c >= 97 && c <= 122),
+    isxdigit: c => +($.isdigit(c) || ((c | 32) >= 97 && (c | 32) <= 102)), ispunct: c => +(c > 32 && c < 127 && !$.isalnum(c)), isprint: c => +(c >= 32 && c < 127),
+    toupper: c => (c >= 97 && c <= 122 ? c - 32 : c), tolower: c => (c >= 65 && c <= 90 ? c + 32 : c),
     random(a, b) { if (b === undefined) { b = a; a = 0; } return b <= a ? a : Math.floor(rnd() * (b - a)) + a; },
     randomSeed(s) { rnd = prng(+s || 0); },
     bit: n => 2 ** n, bitRead: (x, n) => Math.floor(x / 2 ** n) & 1, highByte: x => (x >> 8) & 255, lowByte: x => x & 255,
@@ -412,9 +650,9 @@ export function createRuntime(js, hw, meta = {}) {
     i64: x => Math.trunc(+x) || 0,
     post: a => a,
     ck(a, i) { if (!(i >= 0 && i < a.length)) err(tl('Indice {0} hors du tableau (cases 0 à {1})', Number.isFinite(i) ? Math.trunc(i) : i, a.length - 1)); return i | 0; },
-    arr(dims, fill) { const mk = d => Array.from({ length: Math.max(0, dims[d] | 0) }, () => (d + 1 < dims.length ? mk(d + 1) : fill)); return mk(0); },
+    arr(dims, fill) { const mk = d => Array.from({ length: Math.max(0, dims[d] | 0) }, () => (d + 1 < dims.length ? mk(d + 1) : typeof fill === 'function' ? fill() : fill)); return mk(0); },
     pad(list, n, mk) { if (list.length > n) err(tl('Trop de valeurs pour un tableau de {0} cases', n)); while (list.length < n) list.push(mk()); return list; },
-    sizeof(a, s) { const count = x => (Array.isArray(x) ? x.reduce((t, y) => t + count(y), 0) : 1); return count(a) * s; },
+    sizeof(a, s) { const count = x => (Array.isArray(x) ? x.reduce((t, y) => t + count(y), 0) : x instanceof CBuf ? x.b.length : 1); return count(a) * s; },
     fstr: x => fmt(x, undefined, 'f'), astr: x => fmt(x, undefined, '?'),
     String(x, f, tag) { if (f !== undefined && tag !== 'f' && typeof x === 'number') return (x < 0 ? x >>> 0 : Math.trunc(x)).toString(f); return fmt(x, f, tag); },
     charAt: (s, i) => s.charCodeAt(i) || 0, substring: (s, a, b) => s.substring(a, b),
@@ -427,10 +665,146 @@ export function createRuntime(js, hw, meta = {}) {
       if (r instanceof Wait) { if (r.ms > 0) yield r.ms; return r.v; }
       // Méthode qui exécute une fonction du programme (gestionnaire d'un serveur web) : elle s'exécute ici, delay() compris.
       if (r && typeof r === 'object' && typeof r.next === 'function' && typeof r[Symbol.iterator] === 'function') return yield* r;
-      if (r instanceof Poll) for (;;) { const v = r.fn(); if (v) return v; yield 10; }
+      if (r instanceof Poll) for (;;) { const v = r.fn(); if (v) return v; yield r.step; }
       return r;
     }
   });
+
+  /* ---------- Chaînes du C : string.h, stdlib.h, stdio.h, avr/pgmspace.h ---------- */
+  // Les tableaux de char sont des CBuf ; un texte constant ("…", F(), String) arrive en texte JS.
+  const IB = avr ? 16 : 32; // taille de int
+  const wrapS = (v, b) => Number(BigInt.asIntN(b, BigInt(v))), wrapU = (v, b) => Number(BigInt.asUintN(b, BigInt(v)));
+  const txt = x => (x instanceof CBuf ? cbytes(x) : x == null ? [] : sbytes(String(x)));
+  /** Écrit des octets dans le tableau à partir de at, puis le 0 final. Au-delà de sa taille : erreur (sur la carte, les variables voisines seraient écrasées). */
+  const store = (d, bytes, at, what, nul = true) => {
+    const need = at + bytes.length + (nul ? 1 : 0);
+    if (need > d.b.length) err(tl('{0} : {1} octets à écrire dans un tableau de {2} octets. Ce débordement écraserait d’autres variables sur la carte : agrandissez le tableau ou utilisez {3}', what, need, d.b.length, /cat/.test(what) ? 'strlcat()' : /printf/.test(what) ? 'snprintf()' : 'strlcpy()'));
+    for (let i = 0; i < bytes.length; i++) d.b[at + i] = bytes[i];
+    if (nul) d.b[at + bytes.length] = 0;
+  };
+  /** Comparaison octet par octet (sans signe), comme strcmp : différence des premiers octets différents. */
+  const cmp = (a, b, n = Infinity, low = false) => {
+    for (let i = 0; i < n; i++) {
+      let x = i < a.length ? a[i] : 0, y = i < b.length ? b[i] : 0;
+      if (low) { if (x >= 65 && x <= 90) x += 32; if (y >= 65 && y <= 90) y += 32; }
+      if (x !== y || !x) return x - y;
+    }
+    return 0;
+  };
+  const find = (a, b, last) => {
+    let hit = -1;
+    for (let i = 0; i + b.length <= a.length; i++) { let ok = true; for (let j = 0; j < b.length && ok; j++) ok = a[i + j] === b[j]; if (ok) { hit = i; if (!last) break; } }
+    return hit;
+  };
+  /** Nombre en texte (itoa, ltoa…). AVR : signe seulement en base 10, sinon la valeur sans signe ; ailleurs : signe et valeur absolue. */
+  const radix = (v, base, bits, unsigned) => {
+    base = clamp(base | 0, 2, 36);
+    v = Math.trunc(+v || 0);
+    if (unsigned) return wrapU(v, bits).toString(base);
+    v = wrapS(v, bits);
+    if (v < 0 && (base === 10 || !avr)) return '-' + (-v).toString(base);
+    return (v < 0 ? wrapU(v, bits) : v).toString(base);
+  };
+  /** Nombre au début d'un texte (atoi, strtol) : espaces, signe, chiffres de la base ; null s'il n'y en a pas. */
+  const leadInt = (s, base) => {
+    const t = ctext(txt(s)), m = /^[\t\n\v\f\r ]*([+-]?)(0[xX])?([0-9a-zA-Z]*)/.exec(t);
+    let b = base | 0, digits = m[3], hex = !!m[2];
+    if (b === 0) b = hex ? 16 : /^0/.test(digits) ? 8 : 10;
+    if (hex && b !== 16) { digits = '0'; hex = false; }
+    let v = 0n, n = 0;
+    for (const ch of digits) { const d = parseInt(ch, 36); if (!(d < b)) break; v = v * BigInt(b) + BigInt(d); n++; }
+    if (!n && !hex) return null;
+    return m[1] === '-' ? -v : v;
+  };
+  const leadFloat = s => { const m = /^[\t\n\v\f\r ]*([+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?|[+-]?inf(inity)?|[+-]?nan)/i.exec(ctext(txt(s))); return m ? (/inf/i.test(m[1]) ? (m[1][0] === '-' ? -Infinity : Infinity) : /nan/i.test(m[1]) ? NaN : parseFloat(m[1])) : 0; };
+  const pf = name => ({ avr: !!avr, warn: s => warn(s), name, label: hw.label });
+  const cfns = {
+    cbuf(n, init, el) {
+      const bytes = Array.isArray(init) ? init.map(x => x & 255) : sbytes(init == null ? '' : String(init));
+      const b = new CBuf(n > 0 ? n : bytes.length + (Array.isArray(init) ? 0 : 1), el !== 'u');
+      for (let i = 0; i < Math.min(b.b.length, bytes.length); i++) b.b[i] = bytes[i];
+      return b;
+    },
+    cs: b => (b instanceof CBuf ? ctext(cbytes(b)) : b == null ? '' : String(b)),
+    strlen: s => txt(s).length,
+    strcmp: (a, b) => cmp(txt(a), txt(b)), strncmp: (a, b, n) => cmp(txt(a), txt(b), Math.max(0, n | 0)),
+    strcasecmp: (a, b) => cmp(txt(a), txt(b), Infinity, true), strncasecmp: (a, b, n) => cmp(txt(a), txt(b), Math.max(0, n | 0), true),
+    strcpy(d, s) { store(d, txt(s), 0, 'strcpy()'); return $.cs(d); },
+    strncpy(d, s, n) {
+      const t = txt(s); n = Math.max(0, n | 0);
+      if (n > d.b.length) store(d, new Array(n).fill(1), 0, 'strncpy()', false);
+      for (let i = 0; i < n; i++) d.b[i] = i < t.length ? t[i] : 0; // sans 0 final si le texte remplit n octets
+      return $.cs(d);
+    },
+    strlcpy(d, s, n) {
+      const t = txt(s); n = n | 0;
+      if (n > d.b.length) warn(tl('{0} : la taille donnée ({1}) dépasse celle du tableau ({2} octets) : passez sizeof(tableau)', 'strlcpy()', n, d.b.length));
+      if (n > 0) store(d, t.slice(0, n - 1), 0, 'strlcpy()');
+      return t.length;
+    },
+    strcat(d, s) { store(d, txt(s), cbytes(d).length, 'strcat()'); return $.cs(d); },
+    strncat(d, s, n) { store(d, txt(s).slice(0, Math.max(0, n | 0)), cbytes(d).length, 'strncat()'); return $.cs(d); },
+    strlcat(d, s, n) {
+      const t = txt(s); n = n | 0;
+      let dl = 0; while (dl < n && dl < d.b.length && d.b[dl]) dl++;
+      if (n > d.b.length) warn(tl('{0} : la taille donnée ({1}) dépasse celle du tableau ({2} octets) : passez sizeof(tableau)', 'strlcat()', n, d.b.length));
+      if (dl < n) store(d, t.slice(0, Math.max(0, n - dl - 1)), dl, 'strlcat()');
+      return dl + t.length;
+    },
+    strstr(h, n) { const a = txt(h), i = find(a, txt(n)); return i < 0 ? null : ctext(a.slice(i)); },
+    strchr(s, c) { const a = txt(s), k = c & 255; if (!k) return ''; const i = a.indexOf(k); return i < 0 ? null : ctext(a.slice(i)); },
+    strrchr(s, c) { const a = txt(s), k = c & 255; if (!k) return ''; const i = a.lastIndexOf(k); return i < 0 ? null : ctext(a.slice(i)); },
+    memcmp(a, b, n) { n = Math.max(0, n | 0); const x = refBytes(a, n), y = refBytes(b, n); for (let i = 0; i < n; i++) if (x[i] !== y[i]) return x[i] - y[i]; return 0; },
+    atoi(s) { const v = leadInt(s, 10); return v == null ? 0 : wrapS(v, IB); },
+    atol(s) { const v = leadInt(s, 10); return v == null ? 0 : wrapS(v, 32); },
+    /** strtol : la valeur sature à LONG_MIN / LONG_MAX ; strtoul : un texte négatif repasse par 0 (comme la bibliothèque C). */
+    strtol(s, end, base = 10) { const v = leadInt(s, base); if (v == null) return 0; return Number(v > 2147483647n ? 2147483647n : v < -2147483648n ? -2147483648n : v); },
+    strtoul(s, end, base = 10) { const v = leadInt(s, base); if (v == null) return 0; const a = v < 0n ? -v : v; if (a > 4294967295n) return 4294967295; return v < 0n ? wrapU(v, 32) : Number(v); },
+    atof: s => leadFloat(s), strtod: s => leadFloat(s),
+    itoa(v, d, base) { store(d, sbytes(radix(v, base, IB, false)), 0, 'itoa()'); return $.cs(d); },
+    ltoa(v, d, base) { store(d, sbytes(radix(v, base, 32, false)), 0, 'ltoa()'); return $.cs(d); },
+    utoa(v, d, base) { store(d, sbytes(radix(v, base, IB, true)), 0, 'utoa()'); return $.cs(d); },
+    ultoa(v, d, base) { store(d, sbytes(radix(v, base, 32, true)), 0, 'ultoa()'); return $.cs(d); },
+    /**
+     * dtostrf(valeur, largeur, décimales, tampon) : le nombre avec ses décimales, calé à droite sur largeur caractères
+     * (largeur négative : à gauche, sur AVR). Rend le tampon.
+     */
+    dtostrf(v, w, p, d) {
+      v = avr ? Math.fround(+v) : +v; w = Math.trunc(+w || 0); p = clamp(Math.trunc(+p || 0), 0, avr ? 255 : 100);
+      // avr-libc ne calcule que 8 chiffres significatifs : les décimales suivantes sont des 0 (dtostrf(1.0 / 3, 0, 10) → 0.3333333400).
+      const e = v ? Math.floor(Math.log10(Math.abs(v))) : 0, x = avr && e + 1 + p > 8 ? +v.toPrecision(8) : v;
+      let s = Number.isNaN(v) ? 'nan' : !Number.isFinite(v) ? (v < 0 ? '-inf' : 'inf') : x.toFixed(Math.min(p, 100));
+      if (s.length < Math.abs(w)) s = w < 0 && avr ? s.padEnd(-w) : s.padStart(Math.abs(w));
+      store(d, sbytes(s), 0, 'dtostrf()');
+      return $.cs(d);
+    },
+    snprintf(d, n, f, args, tags) {
+      const b = sbytes(cfmt(ctext(txt(f)), args, tags, pf('snprintf()')).replace(/\0[\s\S]*$/, '')); n = n | 0;
+      if (n > d.b.length) warn(tl('{0} : la taille donnée ({1}) dépasse celle du tableau ({2} octets) : passez sizeof(tableau)', 'snprintf()', n, d.b.length));
+      if (n > 0) store(d, b.slice(0, n - 1), 0, 'snprintf()');
+      return b.length;
+    },
+    sprintf(d, f, args, tags) { const b = sbytes(cfmt(ctext(txt(f)), args, tags, pf('sprintf()'))); store(d, b, 0, 'sprintf()'); return b.length; },
+    /* ---------- avr/sleep.h ---------- */
+    // Mode IDLE : le processeur s'arrête jusqu'à la prochaine interruption ; celle du Timer0 (millis) revient toutes les
+    // millisecondes environ : sleep_mode() rend la main à la milliseconde suivante, ou plus tôt sur une interruption.
+    // Modes plus profonds (PWR_DOWN…) : le Timer0 s'arrête, seule une interruption externe (attachInterrupt) réveille.
+    set_sleep_mode(m) { sleepM = m | 0; },
+    sleep_enable() { sleepEn = true; }, sleep_disable() { sleepEn = false; },
+    sleep_cpu() { return sleepEn ? nap() : undefined; },
+    sleep_mode() { return nap(); }
+  };
+  cfns.sprintf_P = cfns.sprintf; cfns.snprintf_P = cfns.snprintf; cfns.strlen_P = cfns.strlen; cfns.strcmp_P = cfns.strcmp; cfns.strncmp_P = cfns.strncmp;
+  cfns.strcasecmp_P = cfns.strcasecmp; cfns.strncasecmp_P = cfns.strncasecmp; cfns.strstr_P = cfns.strstr; cfns.memcmp_P = cfns.memcmp;
+  cfns.strcpy_P = cfns.strcpy; cfns.strncpy_P = cfns.strncpy; cfns.strlcpy_P = cfns.strlcpy; cfns.strcat_P = cfns.strcat; cfns.strncat_P = cfns.strncat; cfns.strlcat_P = cfns.strlcat;
+  Object.assign($, cfns);
+  let sleepM = 0, sleepEn = false, wakes = 0;
+  const nap = () => {
+    if (sleepM === 0) { const f = Math.floor(vt) + 1 - vt; return new Wait(f > 1e-9 ? f : 1); }
+    if (!irqs.length) warn(tl('sleep_mode() en veille profonde sans interruption attachée (attachInterrupt) : rien ne réveillera la carte'));
+    const w0 = wakes;
+    return new Poll(() => (wakes !== w0 ? 1 : 0), 1);
+  };
 
   /* ---------- Ports série ---------- */
   // Serial : le moniteur série (USB). Sur l'Uno, le Nano, l'ESP32 et le NodeMCU, il partage les broches RX0/TX0, où un
@@ -440,14 +814,14 @@ export function createRuntime(js, hw, meta = {}) {
   // (CDC), il ne touche aucune broche. Ports Serial1/Serial2 par défaut du cœur arduino-esp32 (HardwareSerial.h).
   const SERIAL0 = { uno: [0, 1], nano: [0, 1], mega: [0, 1], esp32: [3, 1], esp32s3: [44, 43], nodemcu: [3, 1] };
   const UARTS = { esp32: { Serial1: [9, 10], Serial2: [16, 17] }, esp32s3: { Serial1: [15, 16], Serial2: [19, 20] }, esp32c3: { Serial1: [18, 19] }, pico: { Serial1: [1, 0], Serial2: [9, 8] }, nodemcu: { Serial1: [null, 2] }, mega: { Serial1: [19, 18], Serial2: [17, 16], Serial3: [15, 14] } };
-  const LINKED = ['hc05', 'sim800'];
+  const LINKED = SERIAL_TYPES; // hc05, sim800 ; neo6m, hc12, max485 (sim/serialmods.js)
   class HardwareSerial {
     constructor(name) { this.name = name; this.label = name || 'Serial'; this.main = name === 'Serial'; this.baud = 0; this.rx = ''; this.link = null; }
     /** begin(bauds) ; sur l'ESP32 : begin(bauds, SERIAL_8N1, broche RX, broche TX). */
     begin(b, cfg, rx, tx) {
       this.baud = +b || 0;
       let p = this.main ? SERIAL0[hw.kind] : (UARTS[hw.kind] || {})[this.name];
-      if (!this.main && isEsp32(hw.kind) && rx >= 0 && tx >= 0) p = [rx, tx];
+      if (!this.main && isEsp32(hw.kind) && rx >= 0) p = [rx, tx >= 0 ? tx : null]; // TX à -1 : réception seule (GPS)
       if (!this.main && !p) warn(tl('{0} n’existe pas sur {1} : utilisez SoftwareSerial', this.name, hw.label));
       this.connect(p && p.map(n => (n == null ? null : keys.get(n) || null)));
     }
@@ -458,11 +832,14 @@ export function createRuntime(js, hw, meta = {}) {
       if (!p) return;
       const onRx = at(p[0]).filter(x => LINKED.includes(x.comp.type)), onTx = at(p[1]).filter(x => LINKED.includes(x.comp.type));
       const c = (onRx[0] || onTx[0] || {}).comp; if (!c) return;
-      const hear = onRx.some(x => x.comp === c && x.pin === 'TXD'), talk = onTx.some(x => x.comp === c && x.pin === 'RXD');
-      if (!hear && !talk) { warn(tl('{0} : TXD et RXD de {1} sont inversés. Les liaisons série se croisent : TXD du module va sur la broche RX de la carte, RXD sur sa broche TX', this.label, c.name)); return; }
-      if (!hear) warn(tl('{0} : TXD de {1} n’est pas relié à la broche RX de la carte, la carte ne recevra rien du module', this.label, c.name));
-      if (!talk) warn(tl('{0} : RXD de {1} n’est pas relié à la broche TX de la carte, le module ne recevra rien', this.label, c.name));
+      const P = SERIAL_PINS[c.type], classic = P.out === 'TXD';
+      const hear = onRx.some(x => x.comp === c && x.pin === P.out), talk = onTx.some(x => x.comp === c && x.pin === P.in);
+      if (!hear && !talk) { warn(classic ? tl('{0} : TXD et RXD de {1} sont inversés. Les liaisons série se croisent : TXD du module va sur la broche RX de la carte, RXD sur sa broche TX', this.label, c.name) : tl('{0} : {1} et {2} de {3} sont inversés. {1} du module va sur la broche RX de la carte, {2} sur sa broche TX', this.label, P.out, P.in, c.name)); return; }
+      if (!hear) warn(classic ? tl('{0} : TXD de {1} n’est pas relié à la broche RX de la carte, la carte ne recevra rien du module', this.label, c.name) : tl('{0} : {1} de {2} n’est pas relié à la broche RX de la carte, la carte ne recevra rien du module', this.label, P.out, c.name));
+      if (!talk && !P.oneWay) warn(classic ? tl('{0} : RXD de {1} n’est pas relié à la broche TX de la carte, le module ne recevra rien', this.label, c.name) : tl('{0} : {1} de {2} n’est pas relié à la broche TX de la carte, le module ne recevra rien', this.label, P.in, c.name));
       const dev = serialDevice(c);
+      // HC-12, MAX485 : autres modules du montage, niveau de SET / DE / RE, nœuds A et B.
+      if (dev.bind) dev.bind({ peers: types => (hw.peers ? hw.peers(types) : []), level: k => (hw.level ? hw.level(c, k) : null), linked: k => (hw.linked ? hw.linked(c, k) : []) });
       // HC-05 : EN (KEY) au niveau haut quand la liaison s'ouvre (mise sous tension avec la carte) → mode commandes AT, 38400 bauds.
       if (dev.power) dev.power(hw.level ? hw.level(c, 'EN') === 1 : false);
       if (dev.baud && this.baud && this.baud !== dev.baud) warn(tl('{0} : {1} communique à {2} bauds, mais la liaison est réglée à {3} bauds. Les caractères arrivent déformés', this.label, c.name, dev.baud, this.baud));
@@ -480,7 +857,7 @@ export function createRuntime(js, hw, meta = {}) {
     /** Ce que le module a envoyé arrive dans le tampon de réception. */
     pull() {
       const L = this.link && this.link.hear ? this.alive() : null; if (!L) return this.buf;
-      const s = L.dev.drain(this.baud, vt); if (s) { let b = this.buf + s; if (b.length > 4096) b = b.slice(-4096); this.buf = b; }
+      const s = L.dev.drain(this.baud, vt); if (s) { let b = this.buf + s; if (b.length > 4096) b = b.slice(-4096); this.buf = b; if (probe) for (const ch of s) probe.uart(this.label, 'rx', ch.charCodeAt(0)); }
       return this.buf;
     }
     emit(s, ln) {
@@ -489,6 +866,7 @@ export function createRuntime(js, hw, meta = {}) {
         else warn(tl('{0}.begin() n’a pas été appelé : rien n’est envoyé', this.label));
         return;
       }
+      if (probe) for (const ch of s) probe.uart(this.label, 'tx', ch.charCodeAt(0));
       if (this.main) {
         out += s;
         if (out.length > 200000) out = out.slice(-100000);
@@ -526,9 +904,28 @@ export function createRuntime(js, hw, meta = {}) {
   // Un module en paquet (.jpart) répond par ses registres et ses commandes déclarés (sim/pkgbus.js) ; les modules
   // de la bibliothèque passent par leurs bibliothèques simulées (LiquidCrystal_I2C…) et rendent 0 en lecture directe.
   const i2cAt = a => (hw.i2c ? hw.i2c() : []).some(d => d.addr.includes(a));
+  const probe = hw.probe || null; // analyseur de bus (src/sim/buslog.js)
+  const i2cName = a => { const d = (hw.i2c ? hw.i2c() : []).find(x => x.addr.includes(a)); return d ? d.comp.name : null; };
   const busDevs = new Map();
   const i2cDev = a => {
     const hit = (hw.i2c ? hw.i2c() : []).find(d => d.addr.includes(a)), spec = hit && pkgI2c(hit.comp.type);
+    // Puce I2C de la bibliothèque (MCP23017, PCF8574, PCA9685) : ses registres, d'après sa fiche (sim/chips.js).
+    if (hit && I2C_CHIPS.includes(hit.comp.type)) {
+      if (!busDevs.has(hit.comp.id)) busDevs.set(hit.comp.id, chipI2c(hit.comp, { node: k => chipRead(hit.comp, k) }));
+      return busDevs.get(hit.comp.id);
+    }
+    // Horloges DS3231, DS1307 et mémoire AT24C256 (sim/storage.js) : registres d'après leur fiche, temps virtuel du programme.
+    if (hit && STORE_I2C.includes(hit.comp.type)) {
+      const c = hit.comp;
+      if (!busDevs.has(c.id)) busDevs.set(c.id, storeI2c(c, { clock: () => vt / 1000, temp: () => { const d = hw.data(c); return d ? d.temp : null; }, mem: () => (hw.compMem ? hw.compMem(c) : null), changed: () => { if (hw.memChanged) hw.memChanged(); } }));
+      return busDevs.get(c.id);
+    }
+    // Capteurs VL53L0X, MAX30102, TCS34725, CCS811, BME680 (sim/i2csensors.js) : leurs registres, au temps virtuel du programme.
+    if (hit && SENSOR_I2C.includes(hit.comp.type)) {
+      const c = hit.comp;
+      if (!busDevs.has(c.id)) busDevs.set(c.id, sensorI2c(c, { clock: () => vt / 1000, data: () => hw.data(c), level: k => (hw.level ? hw.level(c, k) : null) }));
+      return busDevs.get(c.id);
+    }
     if (!spec) return null;
     if (!busDevs.has(hit.comp.id)) busDevs.set(hit.comp.id, createI2c(spec, () => hw.data(hit.comp)));
     return busDevs.get(hit.comp.id);
@@ -545,16 +942,20 @@ export function createRuntime(js, hw, meta = {}) {
     },
     endTransmission(stop = true) {
       const a = this.addr; this.addr = -1;
-      if (a < 0 || !i2cAt(a)) return 2;
-      const d = i2cDev(a);
-      if (d) { d.start(true); this.tx.forEach(b => d.write(b)); if (stop !== false && stop !== 0) d.stop(); }
+      // Un module peut ne pas acquitter son adresse (EEPROM en cycle d'écriture) : start() rend alors false.
+      const d = a >= 0 && i2cAt(a) ? i2cDev(a) : null, ok = a >= 0 && i2cAt(a) && !(d && d.start(true, a) === false);
+      if (a >= 0 && probe) { probe.i2cStart(); probe.i2cConnect(a, true, ok, ok ? i2cName(a) : null); if (ok) this.tx.forEach(b => probe.i2cByte(b, true)); if (stop !== false && stop !== 0) probe.i2cStop(); }
+      if (!ok) return 2;
+      if (d) { this.tx.forEach(b => d.write(b)); if (stop !== false && stop !== 0) d.stop(); }
       return 0;
     },
     requestFrom(a, n) {
       a = (a | 0) & 127; n = Math.max(0, Math.min(255, n | 0)); this.rx = [];
       if (!i2cAt(a)) return 0;
       const d = i2cDev(a);
-      if (d) { d.start(false); for (let i = 0; i < n; i++) this.rx.push(d.read()); d.stop(); } else this.rx = new Array(n).fill(0);
+      if (d && d.start(false, a) === false) { if (probe) { probe.i2cStart(); probe.i2cConnect(a, false, false, i2cName(a)); probe.i2cStop(); } return 0; }
+      if (d) { for (let i = 0; i < n; i++) this.rx.push(d.read()); d.stop(); } else this.rx = new Array(n).fill(0);
+      if (probe) { probe.i2cStart(); probe.i2cConnect(a, false, true, i2cName(a)); this.rx.forEach((b, i) => probe.i2cByte(b, i < n - 1)); probe.i2cStop(); }
       return n;
     },
     available() { return this.rx.length; },
@@ -568,11 +969,11 @@ export function createRuntime(js, hw, meta = {}) {
     if (!hit) return;
     if (!busDevs.has(hit.comp.id)) busDevs.set(hit.comp.id, createSpi(pkgSpi(hit.comp.type), () => hw.data(hit.comp)));
     const d = busDevs.get(hit.comp.id);
-    if (!level) { d.select(); spiSel = d; } else { d.deselect(); if (spiSel === d) spiSel = null; }
+    if (!level) { d.select(); spiSel = d; if (probe) probe.spiSelect(hit.comp.name); } else { d.deselect(); if (spiSel === d) { spiSel = null; if (probe) probe.spiDeselect(); } }
   }
   $.O.SPI = {
     begin() {}, end() {}, beginTransaction() {}, endTransaction() {},
-    transfer: b => (spiSel ? spiSel.transfer((b | 0) & 255) : 0),
+    transfer: b => { if (devs && devs.spi(b)) { if (probe) probe.spiByte(b, 0xff); return 0xff; } const r = spiSel ? spiSel.transfer((b | 0) & 255) : 0; if (probe) probe.spiByte(b, r); return r; },
     transfer16(w) { const hi = this.transfer((w >> 8) & 255), lo = this.transfer(w & 255); return (hi << 8) | lo; }
   };
 
@@ -760,9 +1161,10 @@ export function createRuntime(js, hw, meta = {}) {
   }
   class LiquidCrystal_I2C {
     constructor(addr, cols = 16, rows = 2) { this.addr = addr; this.cols = cols; this.rows = rows; this.buf = Array.from({ length: rows }, () => ' '.repeat(cols)); this.cx = 0; this.cy = 0; this.light = false; this.on = true; }
-    init() { this.c = busDevice(['lcd1602'], this.addr, tl('Écran LCD')); this.clear(); this.push(); }
+    init() { this.c = busDevice(['lcd1602', 'lcd2004'], this.addr, tl('Écran LCD')); this.clear(); this.push(); }
     begin() { this.init(); }
-    push() { if (this.c) this.c.progScreen = { lines: this.light && this.on ? this.buf.slice(0, 2) : [], ver: (this.c.progScreen ? this.c.progScreen.ver : 0) + 1 }; }
+    // Ce que montre l'écran câblé : 2 lignes de 16 (LCD 1602) ou 4 lignes de 20 (LCD 2004), quel que soit le format déclaré.
+    push() { if (!this.c) return; const big = this.c.type === 'lcd2004', W = big ? 20 : 16; this.c.progScreen = { lines: this.light && this.on ? this.buf.slice(0, big ? 4 : 2).map(l => l.slice(0, W).padEnd(W)).concat(big && this.rows < 4 ? Array(4 - Math.min(4, this.rows)).fill(' '.repeat(W)) : []) : [], ver: (this.c.progScreen ? this.c.progScreen.ver : 0) + 1 }; }
     backlight() { this.light = true; this.push(); } noBacklight() { this.light = false; this.push(); } setBacklight(v) { this.light = !!v; this.push(); }
     display() { this.on = true; this.push(); } noDisplay() { this.on = false; this.push(); }
     clear() { this.buf = this.buf.map(() => ' '.repeat(this.cols)); this.cx = 0; this.cy = 0; this.push(); }
@@ -779,9 +1181,115 @@ export function createRuntime(js, hw, meta = {}) {
       return s.length;
     }
     print(x, f, tag) { return this.put(fmt(x, f, tag)); }
-    println(x, f, tag) { warn(tl('lcd.println() affiche des caractères parasites sur un vrai LCD : préférez setCursor() puis print()')); return this.put(fmt(x, f, tag)); }
+    println(x, f, tag) { warn(tl('lcd.println() affiche des caractères parasites sur un vrai LCD : préférez setCursor() puis print()')); return this.put(fmt(x, f, tag)) + 2; }
     write(x) { return this.put(typeof x === 'number' ? String.fromCharCode(x) : String(x)); }
     blink() {} noBlink() {} cursor() {} noCursor() {} createChar() {} scrollDisplayLeft() {} scrollDisplayRight() {}
+  }
+  /* ---------- Puces I2C (sim/chips.js) : la bibliothèque passe par Wire, registre par registre, comme la vraie ---------- */
+  const W = () => $.O.Wire;
+  const ackAt = a => { const w = W(); w.beginTransmission(a); return w.endTransmission() === 0; };
+  const regWrite = (a, reg, bytes) => { const w = W(); w.beginTransmission(a); w.write(reg); for (const b of bytes) w.write(b & 255); return w.endTransmission() === 0; };
+  const regRead = (a, reg, n) => {
+    const w = W(); w.beginTransmission(a); w.write(reg);
+    if (w.endTransmission(false) !== 0) return null;
+    w.requestFrom(a, n);
+    return Array.from({ length: n }, () => w.read() & 255);
+  };
+  /** Adafruit_MCP23X17 (Adafruit MCP23017 Arduino Library) : broches 0 à 15 (GPA0 à GPB7), registres IOCON.BANK = 0. */
+  class Adafruit_MCP23X17 {
+    constructor() { this.a = 0x20; }
+    begin_I2C(addr = 0x20) { this.a = (addr | 0) & 127; const ok = ackAt(this.a); if (!ok) busDevice(['mcp23017'], this.a, 'MCP23017'); return ok; }
+    reg(r) { const v = regRead(this.a, r, 1); return v ? v[0] : 0; }
+    bit(r, b, on) { const v = this.reg(r); regWrite(this.a, r, [on ? v | (1 << b) : v & ~(1 << b)]); }
+    pinMode(pin, mode) { pin &= 15; this.bit(pin >> 3, pin & 7, mode !== 1); this.bit(0x0c + (pin >> 3), pin & 7, mode === 2); }
+    digitalWrite(pin, v) { pin &= 15; this.bit(0x12 + (pin >> 3), pin & 7, !!v); }
+    digitalRead(pin) { pin &= 15; return (this.reg(0x12 + (pin >> 3)) >> (pin & 7)) & 1; }
+    readGPIO(port = 0) { return this.reg(port ? 0x13 : 0x12); }
+    writeGPIO(v, port = 0) { regWrite(this.a, port ? 0x13 : 0x12, [v]); }
+    readGPIOA() { return this.readGPIO(0); } writeGPIOA(v) { this.writeGPIO(v, 0); }
+    readGPIOB() { return this.readGPIO(1); } writeGPIOB(v) { this.writeGPIO(v, 1); }
+    readGPIOAB() { const v = regRead(this.a, 0x12, 2); return v ? v[0] | (v[1] << 8) : 0; }
+    writeGPIOAB(v) { regWrite(this.a, 0x12, [v & 255, (v >> 8) & 255]); }
+    setupInterrupts(mirror, od, pol) { const v = this.reg(0x0a) & ~0x46; regWrite(this.a, 0x0a, [v | (mirror ? 0x40 : 0) | (od ? 0x04 : 0) | (pol ? 0x02 : 0)]); }
+    setupInterruptPin(pin, mode = 1) {
+      warn(tl('MCP23017 : les interruptions (INTA, INTB) ne sont pas simulées ; lisez les entrées dans loop()'));
+      pin &= 15; const p = pin >> 3, b = pin & 7;
+      this.bit(0x04 + p, b, true); this.bit(0x08 + p, b, mode !== 1); this.bit(0x06 + p, b, mode === 0);
+    }
+    disableInterruptPin(pin) { pin &= 15; this.bit(0x04 + (pin >> 3), pin & 7, false); }
+    clearInterrupts() { this.getCapturedInterrupt(); }
+    getLastInterruptPin() { const f = [this.reg(0x0e), this.reg(0x0f)]; for (let i = 0; i < 16; i++) if ((f[i >> 3] >> (i & 7)) & 1) return i; return 255; }
+    getCapturedInterrupt() { const v = regRead(this.a, 0x10, 2); return v ? v[0] | (v[1] << 8) : 0; }
+    enableAddrPins() {}
+  }
+  /**
+   * PCF8574 : bibliothèque de Rob Tillaart (write, read, write8, read8, toggle…), et pinMode, digitalWrite, digitalRead
+   * de celle de Renzo Mischianti (mêmes trames I2C : un octet écrit, un octet lu).
+   */
+  class PCF8574 {
+    constructor(addr = 0x20) { this.a = (addr | 0) & 127; this.out = 0xff; this.in = 0; this.err = 0; this.mask = 0xff; }
+    isConnected() { return ackAt(this.a); }
+    begin(v = 0xff) { if (!this.isConnected()) { busDevice(['pcf8574'], this.a, 'PCF8574'); return false; } this.write8(this.modes ? this.out : v); return true; }
+    setAddress(a) { this.a = (a | 0) & 127; return this.isConnected(); }
+    getAddress() { return this.a; }
+    read8() { const w = W(); if (w.requestFrom(this.a, 1) !== 1) { this.err = 0x82; return this.in; } this.in = w.read() & 255; this.err = 0; return this.in; }
+    read(pin) { if (pin > 7) { this.err = 0x81; return 0; } this.read8(); return (this.in >> pin) & 1; }
+    value() { return this.in; }
+    write8(v) { this.out = v & 255; const w = W(); w.beginTransmission(this.a); w.write(this.out); this.err = w.endTransmission(); }
+    write(pin, v) { if (pin > 7) { this.err = 0x81; return; } this.write8(v ? this.out | (1 << pin) : this.out & ~(1 << pin)); }
+    valueOut() { return this.out; }
+    readButton8(mask = this.mask) { const keep = this.out; this.write8(this.out | mask); const r = this.read8(); this.write8(keep); return r & mask; }
+    readButton(pin) { if (pin > 7) return 0; return (this.readButton8(1 << pin) >> pin) & 1; }
+    setButtonMask(m) { this.mask = m & 255; }
+    getButtonMask() { return this.mask; }
+    toggle(pin) { if (pin < 8) this.toggleMask(1 << pin); }
+    toggleMask(m = 0xff) { this.write8(this.out ^ m); }
+    shiftRight(n = 1) { if (!n || !this.out) return; this.write8(n > 7 ? 0 : this.out >> n); }
+    shiftLeft(n = 1) { if (!n || !this.out) return; this.write8(n > 7 ? 0 : (this.out << n) & 255); }
+    rotateRight(n = 1) { const r = n & 7; if (r) this.write8(((this.out >> r) | (this.out << (8 - r))) & 255); }
+    rotateLeft(n = 1) { this.rotateRight(8 - (n & 7)); }
+    reverse() { let r = 0; for (let i = 0; i < 8; i++) if ((this.out >> i) & 1) r |= 1 << (7 - i); this.write8(r); }
+    select(pin) { this.write8(pin < 8 ? 1 << pin : 0); }
+    selectN(pin) { this.write8(pin < 8 ? (2 << pin) - 1 : 0xff); }
+    selectNone() { this.write8(0); } selectAll() { this.write8(0xff); }
+    lastError() { const e = this.err; this.err = 0; return e; }
+    // Bibliothèque de Renzo Mischianti : une entrée garde son 1 (faible tirage), une sortie démarre à son niveau de départ.
+    pinMode(pin, mode, start = 1) { if (pin > 7) return; this.modes = true; this.out = mode !== 1 || start ? this.out | (1 << pin) : this.out & ~(1 << pin); }
+    digitalWrite(pin, v) { this.write(pin, v); return this.err === 0; }
+    digitalRead(pin) { return this.read(pin); }
+  }
+  /** Adafruit_PWMServoDriver (Adafruit PWM Servo Driver Library) : registres du PCA9685, horloge de 25 MHz. */
+  class Adafruit_PWMServoDriver {
+    constructor(addr = 0x40) { this.a = (addr | 0) & 127; this.osc = 25e6; }
+    w8(r, v) { regWrite(this.a, r, [v]); }
+    r8(r) { const v = regRead(this.a, r, 1); return v ? v[0] : 0; }
+    begin(pre = 0) {
+      if (!ackAt(this.a)) { busDevice(['pca9685'], this.a, 'PCA9685'); return false; }
+      this.reset(); this.osc = 25e6;
+      if (pre) this.setExtClk(pre); else this.setPWMFreq(1000);
+      return true;
+    }
+    reset() { this.w8(0, 0x80); }
+    sleep() { this.w8(0, this.r8(0) | 0x10); }
+    wakeup() { this.w8(0, this.r8(0) & ~0x10); }
+    setExtClk(pre) { const nm = (this.r8(0) & ~0x80) | 0x10 | 0x40; this.w8(0, nm & ~0x40); this.w8(0, nm); this.w8(0xfe, pre); this.w8(0, (nm & ~0x10) | 0xa0); }
+    setPWMFreq(freq) {
+      freq = clamp(+freq || 0, 1, 3500);
+      const pre = Math.trunc(clamp(this.osc / (freq * 4096) + 0.5 - 1, 3, 255)), old = this.r8(0), nm = (old & ~0x80) | 0x10;
+      this.w8(0, nm); this.w8(0xfe, pre); this.w8(0, old); this.w8(0, old | 0xa0);
+    }
+    setOutputMode(totem) { const o = this.r8(1); this.w8(1, totem ? o | 0x04 : o & ~0x04); }
+    readPrescale() { return this.r8(0xfe); }
+    getPWM(n, off = false) { const v = regRead(this.a, 6 + 4 * (n & 15) + (off ? 2 : 0), 2); return v ? v[0] | (v[1] << 8) : 0; }
+    setPWM(n, on, off) { on &= 0xffff; off &= 0xffff; return regWrite(this.a, 6 + 4 * (n & 15), [on, on >> 8, off, off >> 8]) ? 0 : 1; }
+    setPin(n, val, inv = false) {
+      val = Math.min(val & 0xffff, 4095);
+      if (inv) { if (val === 0) this.setPWM(n, 4096, 0); else if (val === 4095) this.setPWM(n, 0, 4096); else this.setPWM(n, 0, 4095 - val); }
+      else if (val === 4095) this.setPWM(n, 4096, 0); else if (val === 0) this.setPWM(n, 0, 4096); else this.setPWM(n, 0, val);
+    }
+    writeMicroseconds(n, us) { const per = 1e6 * (this.readPrescale() + 1) / this.osc; this.setPWM(n, 0, Math.trunc((+us || 0) / per)); }
+    setOscillatorFrequency(f) { this.osc = +f || 25e6; }
+    getOscillatorFrequency() { return this.osc; }
   }
   const OPS_MAX = 4000;
   class Adafruit_SSD1306 {
@@ -812,7 +1320,7 @@ export function createRuntime(js, hw, meta = {}) {
       return s.length;
     }
     print(x, f, tag) { return this.put(fmt(x, f, tag)); }
-    println(x, f, tag) { return this.put(fmt(x, f, tag) + '\n'); }
+    println(x, f, tag) { return this.put(fmt(x, f, tag) + '\n') + 1; } // \r\n : deux caractères comptés
     write(x) { return this.put(typeof x === 'number' ? String.fromCharCode(x) : String(x)); }
     drawPixel(x, y, c) { this.ops.push({ t: 'rect', x, y, w: 1, h: 1, fill: true, c }); }
     drawLine(x0, y0, x1, y1, c) { this.ops.push({ t: 'line', x0, y0, x1, y1, c }); }
@@ -866,6 +1374,27 @@ export function createRuntime(js, hw, meta = {}) {
     invertDisplay(i) { this.inv = !!i; }
     width() { return this.w; } height() { return this.h; } setRotation() {} cp437() {} dim() {}
   }
+  /*
+   * Écrans TFT en SPI (sim/tft.js) : Adafruit_ST7735(CS, DC, RST) ou (CS, DC, MOSI, SCLK, RST), Adafruit_ILI9341(CS, DC,
+   * RST…). L'écran est celui dont la broche CS est reliée à la broche CS donnée ; le dessin passe par son contrôleur
+   * (fenêtres CASET / RASET et pixels), comme celui d'un vrai programme : rotations et couleurs identiques.
+   */
+  const tftHost = (type, label, args) => ({
+    tl, fmt, warn: m => warn(m),
+    find() {
+      const pins = [args[0], args[1]].filter(n => n != null && Math.trunc(+n) >= 0);
+      for (const [i, n] of pins.entries()) {
+        const k = keys.get(Math.trunc(+n)), hit = k ? at(k).find(x => (x.pin === (i ? 'DC' : 'CS')) && (x.comp.type === 'st7735' || x.comp.type === 'ili9341')) : null;
+        if (!hit) continue;
+        if (hit.comp.type !== type) warn(tl('Le code déclare un écran {0} mais le module câblé est un {1} : l’image serait fausse', label, hit.comp.type === 'st7735' ? 'ST7735' : 'ILI9341'));
+        return hit.comp;
+      }
+      warn(tl('{0} : aucun écran TFT n’a sa broche CS sur la broche {1} (vérifiez CS, DC, SCK et SDA/MOSI)', label, args[0]));
+      return null;
+    }
+  });
+  class Adafruit_ST7735 extends TftGfx { constructor(...a) { super('st7735', tftHost('st7735', 'ST7735', a), a); } }
+  class Adafruit_ILI9341 extends TftGfx { constructor(...a) { super('ili9341', tftHost('ili9341', 'ILI9341', a), a); } }
   // Servo : l'angle commandé devient une impulsion entre min et max µs (544 et 2400 par défaut, attach(broche, min, max)
   // avec ESP32Servo) ; le servo simulé, un SG90, va de 0° à 544 µs à 180° à 2400 µs.
   const SERVO_US = [544, 2400];
@@ -936,6 +1465,123 @@ export function createRuntime(js, hw, meta = {}) {
       return new Wait(ms);
     }
     version() { return 5; }
+  }
+
+  /**
+   * AccelStepper (Mike McCauley, 1.64) : mêmes calculs que la bibliothèque (rampe d'accélération de David Austin,
+   * équations 13 à 16). Un vrai programme appelle run() des milliers de fois par seconde ; ici le temps virtuel n'avance
+   * pas dans une boucle sans delay(), alors chaque appel rattrape les pas échus depuis le précédent, chacun à son heure
+   * exacte (le pilote, sim/motordrv.js, voit la vraie cadence). Interfaces : DRIVER (STEP, DIR) pour l'A4988 et le
+   * DRV8825 ; FULL4WIRE et HALF4WIRE font tourner le 28BYJ-48 (sa carte ULN2003).
+   */
+  class AccelStepper {
+    constructor(iface = 4, p1 = 2, p2 = 3, p3 = 4, p4 = 5, enable = true) {
+      if (typeof iface === 'function') { iface = 0; enable = false; }
+      Object.assign(this, { iface, pin: [p1, p2, p3, p4], cur: 0, target: 0, sp: 0, maxSp: 0, acc: 0, si: 0, minPulse: 1, enPin: 0xff, last: 0, seen: vt * 1000,
+        inv: [0, 0, 0, 0], enInv: 0, n: 0, c0: 0, cn: 0, cmin: 1, cw: 0 });
+      if (enable) this.enableOutputs();
+      this.setAcceleration(1); this.setMaxSpeed(1);
+    }
+    /** Écrit sur une broche à l'instant t (µs de temps virtuel) : le pilote et l'oscilloscope voient l'heure du pas. */
+    out(i, v, t) { const keep = vt; vt = t / 1000; try { $.digitalWrite(this.pin[i], v ^ this.inv[i]); } finally { vt = keep; } }
+    pins(mask, t) { const n = this.iface === 4 || this.iface === 8 ? 4 : this.iface === 3 || this.iface === 6 ? 3 : 2; for (let i = 0; i < n; i++) this.out(i, (mask >> i) & 1, t); }
+    step(t) {
+      const d = this.cw;
+      switch (this.iface) {
+        case 1: this.pins(d ? 0b10 : 0b00, t); this.pins(d ? 0b11 : 0b01, t); this.pins(d ? 0b10 : 0b00, t + this.minPulse); break;
+        case 2: this.pins([0b10, 0b11, 0b01, 0b00][this.cur & 3], t); break;
+        case 3: this.pins([0b100, 0b001, 0b010][((this.cur % 3) + 3) % 3], t); break;
+        case 4: this.pins([0b0101, 0b0110, 0b1010, 0b1001][this.cur & 3], t); break;
+        case 6: this.pins([0b100, 0b101, 0b001, 0b011, 0b010, 0b110][((this.cur % 6) + 6) % 6], t); break;
+        case 8: this.pins([0b0001, 0b0101, 0b0100, 0b0110, 0b0010, 0b1010, 0b1000, 0b1001][this.cur & 7], t); break;
+      }
+      // 28BYJ-48 sur sa carte ULN2003 : 2048 pas entiers par tour (4096 demi-pas), affichés comme Stepper.step().
+      if (this.iface === 4 || this.iface === 8) {
+        const k = keyOf(this.pin[0]), per = this.iface === 8 ? 4096 : 2048;
+        if (k) { const p = pinState(k), from = p.stepper ? p.stepper.to : (this.cur - (this.cw ? 1 : -1)) / per; p.stepper = { from, to: this.cur / per, t0: t / 1000, t1: t / 1000 }; }
+      }
+    }
+    /** Pas échus entre l'appel précédent et maintenant (accel : run(), avec la rampe ; to : runSpeedToPosition()). */
+    catchUp(accel, to = false) {
+      const now = vt * 1000;
+      let moved = false;
+      for (let guard = 0; guard < 200000; guard++) {
+        if (to) { if (this.target === this.cur) break; this.cw = this.target > this.cur ? 1 : 0; }
+        if (!this.si) break;
+        const t = Math.max(this.last + this.si, this.seen);
+        if (t > now) break;
+        this.cur += this.cw ? 1 : -1;
+        this.step(t); this.last = t; moved = true;
+        if (accel) this.compute();
+        else if (!to) continue;
+      }
+      this.seen = now;
+      return moved;
+    }
+    compute() {
+      const dist = this.target - this.cur, toStop = Math.trunc((this.sp * this.sp) / (2 * this.acc));
+      if (dist === 0 && toStop <= 1) { this.si = 0; this.sp = 0; this.n = 0; return 0; }
+      if (dist > 0) { if (this.n > 0) { if (toStop >= dist || !this.cw) this.n = -toStop; } else if (this.n < 0) { if (toStop < dist && this.cw) this.n = -this.n; } }
+      else if (dist < 0) { if (this.n > 0) { if (toStop >= -dist || this.cw) this.n = -toStop; } else if (this.n < 0) { if (toStop < -dist && !this.cw) this.n = -this.n; } }
+      if (this.n === 0) { this.cn = this.c0; this.cw = dist > 0 ? 1 : 0; }
+      else { this.cn = this.cn - (2 * this.cn) / (4 * this.n + 1); this.cn = Math.max(this.cn, this.cmin); }
+      this.n++;
+      this.si = Math.trunc(this.cn); this.sp = 1e6 / this.cn; if (!this.cw) this.sp = -this.sp;
+      return this.si;
+    }
+    /** Départ d'un moteur à l'arrêt : pas de pas « échus » avant l'ordre (un ordre répété ne change rien). */
+    touch() { if (!this.si) this.seen = Math.max(this.seen, vt * 1000); }
+    moveTo(p) { p = Math.trunc(+p || 0); if (this.target !== p) { this.touch(); this.target = p; this.compute(); } }
+    move(r) { this.moveTo(this.cur + Math.trunc(+r || 0)); }
+    run() { this.catchUp(true); return this.sp !== 0 || this.target !== this.cur; }
+    runSpeed() { return this.catchUp(false); }
+    runSpeedToPosition() { return this.catchUp(false, true); }
+    runToPosition() { return new Poll(() => !this.run()); }
+    runToNewPosition(p) { this.moveTo(p); return this.runToPosition(); }
+    setMaxSpeed(v) {
+      v = Math.abs(+v || 0); if (this.maxSp === v) return;
+      if (!v) { warn(tl('AccelStepper : setMaxSpeed(0) arrête tout, le moteur ne bougera plus')); }
+      this.maxSp = v; this.cmin = v ? 1e6 / v : Infinity;
+      if (this.n > 0) { this.n = Math.trunc((this.sp * this.sp) / (2 * this.acc)); this.compute(); }
+    }
+    maxSpeed() { return this.maxSp; }
+    setAcceleration(a) {
+      a = Math.abs(+a || 0); if (!a || this.acc === a) return;
+      this.n = this.acc ? Math.trunc(this.n * (this.acc / a)) : 0; this.c0 = 0.676 * Math.sqrt(2 / a) * 1e6; this.acc = a; this.compute();
+    }
+    acceleration() { return this.acc; }
+    setSpeed(v) {
+      v = +v || 0; if (v === this.sp) return; this.touch();
+      v = clamp(v, -this.maxSp, this.maxSp);
+      if (v === 0) this.si = 0; else { this.si = Math.abs(1e6 / v); this.cw = v > 0 ? 1 : 0; }
+      this.sp = v;
+    }
+    speed() { return this.sp; }
+    distanceToGo() { return this.target - this.cur; }
+    targetPosition() { return this.target; }
+    currentPosition() { return this.cur; }
+    setCurrentPosition(p) { this.target = this.cur = Math.trunc(+p || 0); this.n = 0; this.si = 0; this.sp = 0; }
+    stop() { if (this.sp !== 0) { const n = Math.trunc((this.sp * this.sp) / (2 * this.acc)) + 1; this.move(this.sp > 0 ? n : -n); } }
+    isRunning() { return !(this.sp === 0 && this.target === this.cur); }
+    stepForward() { this.cur += 1; this.cw = 1; this.step(vt * 1000); this.last = vt * 1000; return this.cur; }
+    stepBackward() { this.cur -= 1; this.cw = 0; this.step(vt * 1000); this.last = vt * 1000; return this.cur; }
+    setMinPulseWidth(us) { this.minPulse = Math.max(0, +us || 0); }
+    setEnablePin(p = 0xff) { this.enPin = p; if (p !== 0xff) { $.pinMode(p, 1); $.digitalWrite(p, 1 ^ this.enInv); } }
+    setPinsInverted(...a) {
+      if (a.length >= 4) { this.inv = a.slice(0, 4).map(x => (x ? 1 : 0)); this.enInv = a[4] ? 1 : 0; }
+      else { this.inv[0] = a[1] ? 1 : 0; this.inv[1] = a[0] ? 1 : 0; this.enInv = a[2] ? 1 : 0; } // (sens, pas, validation)
+    }
+    enableOutputs() {
+      if (!this.iface) return;
+      const n = this.iface === 4 || this.iface === 8 ? 4 : this.iface === 3 || this.iface === 6 ? 3 : 2;
+      for (let i = 0; i < n; i++) $.pinMode(this.pin[i], 1);
+      if (this.enPin !== 0xff) { $.pinMode(this.enPin, 1); $.digitalWrite(this.enPin, 1 ^ this.enInv); }
+    }
+    disableOutputs() {
+      if (!this.iface) return;
+      this.pins(0, vt * 1000);
+      if (this.enPin !== 0xff) { $.pinMode(this.enPin, 1); $.digitalWrite(this.enPin, 0 ^ this.enInv); }
+    }
   }
 
   /* ---------- Infrarouge (IRremote) ---------- */
@@ -1217,7 +1863,7 @@ export function createRuntime(js, hw, meta = {}) {
     constructor() { this.store = null; this.ram = null; this.size = FLASH ? 0 : avr.ee; this.w0 = 0; this.wn = 0; }
     flash() {
       if (!this.store) {
-        const hex = memSt().ee || '', cap = FLASH ? 4096 : 1024;
+        const hex = memSt().ee || '', cap = FLASH ? 4096 : avr.ee;
         this.store = new Array(cap).fill(255);
         for (let i = 0; i < Math.min(cap, hex.length >> 1); i++) this.store[i] = parseInt(hex.substr(2 * i, 2), 16) & 255;
       }
@@ -1258,7 +1904,7 @@ export function createRuntime(js, hw, meta = {}) {
       bytes.forEach((x, i) => { if (this.buf()[a + i] !== x) this.set(a + i, x); }); // comme update() : seules les cases changées
       return isRef(r) ? r.get() : r;
     }
-    length() { return FLASH ? this.size : 1024; }
+    length() { return FLASH ? this.size : avr.ee; }
     commit() {
       if (!FLASH) return true;
       if (!this.ram) { warn(tl('EEPROM.commit() avant EEPROM.begin(taille)')); return false; }
@@ -1604,21 +2250,41 @@ export function createRuntime(js, hw, meta = {}) {
     },
     /** memcpy(&destination, source, n) : copie octet par octet (ESP-NOW : données reçues → variable). */
     memcpy(dst, src, n) { if (!refStore(dst, refBytes(src, n), n)) warn(tl('memcpy() : la destination ne peut pas être modifiée')); },
-    memset(dst, v, n) { refStore(dst, new Array(Math.max(0, n | 0)).fill(v & 255), n); }
+    memset(dst, v, n) { refStore(dst, new Array(Math.max(0, n | 0)).fill(v & 255), n); },
+    /** Objet pris comme condition : if (fichier) est faux pour un File qui n'a pas pu s'ouvrir (SD.open). */
+    bool: v => v != null && (typeof v.__bool === 'function' ? v.__bool() : !!v)
   });
+  // Carte microSD (sim/sdcard.js) : SD et File, directement sur les fichiers gardés avec le projet.
+  const { SDClass, File } = createSdLib({ hw, keyOf, warn, fmt, tl, ss: consts.SS ?? (hw.kind === 'pico' ? 17 : null) });
+  devs = createDevLibs({ hw, keyOf, warn, tl, at, wire: () => $.O.Wire, refBytes, refStore });
+  // Capteurs I2C (prog/sensorlibs.js, puces de sim/i2csensors.js) : VL53L0X, MAX30102, TCS34725, CCS811, BME680.
+  const sens = createSensorLibs({ hw, warn, tl, wire: () => $.O.Wire, now: () => vt, find: busDevice, avr: !!avr });
+  Object.assign($, sens.fns);
+  // Radio LoRa SX1278 (prog/loralib.js, puce de sim/lora.js) : l'objet global LoRa.
+  lora = createLoraLib({ hw, keyOf, warn, tl, at, now: () => vt, later, Wait, fmt, stat, pin: { mode: (n, m) => $.pinMode(n, m), write: (n, v) => $.digitalWrite(n, v) } });
+  // GPS (TinyGPSPlus, prog/gpslib.js) : trames NMEA lues caractère par caractère, millis() de la carte.
+  const { TinyGPSPlus } = createGpsLib({ now: () => vt });
+  inLib = createInputLibs({ at, keyOf, warn, tl, stat, clock: () => vt, pass: () => pass, digitalRead: n => $.digitalRead(n), pinMode: (n, m) => $.pinMode(n, m) });
+  const { LedControl, MD_MAX72XX, TM1637Display, DateTime, TimeSpan, RTC_DS3231, RTC_DS1307, I2C_eeprom } = devs;
   $.C = {
-    HardwareSerial, SoftwareSerial, DHT, OneWire, DallasTemperature, Adafruit_BMP280, Adafruit_BME280, BH1750, HX711, Adafruit_MPU6050, LiquidCrystal_I2C, Adafruit_SSD1306, Servo, ESP32PWM,
-    Adafruit_NeoPixel, Stepper, IRrecv, decode_results, MFRC522, Uid, MIFARE_Key, Keypad, RF24, MPU6050, EEPROMClass, Preferences, BluetoothSerial,
+    Encoder: inLib.Encoder,
+    ...sens.classes,
+    LedControl, MD_MAX72XX, TM1637Display, DateTime, TimeSpan, RTC_DS3231, RTC_DS1307, I2C_eeprom,
+    TinyGPSPlus,
+    HardwareSerial, SoftwareSerial, DHT, OneWire, DallasTemperature, Adafruit_BMP280, Adafruit_BME280, BH1750, HX711, Adafruit_MPU6050, LiquidCrystal_I2C, Adafruit_SSD1306, Adafruit_ST7735, Adafruit_ILI9341, Servo, ESP32PWM,
+    Adafruit_MCP23X17, PCF8574, Adafruit_PWMServoDriver,
+    SDClass, File, LoRaClass: lora.LoRaClass,
+    Adafruit_NeoPixel, Stepper, AccelStepper, IRrecv, decode_results, MFRC522, Uid, MIFARE_Key, Keypad, RF24, MPU6050, EEPROMClass, Preferences, BluetoothSerial,
     WiFiClass, IPAddress, MDNSResponder, WebServer, ESP8266WebServer: WebServer, HTTPClient, WiFiClient,
     esp_now_peer_info_t: class { constructor() { this.peer_addr = new Array(6).fill(0); this.channel = 0; this.encrypt = false; this.ifidx = 0; } },
     esp_now_recv_info_t: class { constructor() { this.src_addr = new Array(6).fill(0); this.des_addr = new Array(6).fill(0); } },
     wifi_tx_info_t: class { constructor() { this.des_addr = new Array(6).fill(0); this.src_addr = new Array(6).fill(0); } }
   };
   $.O.IrReceiver = new IRrecv();
-  $.O.EEPROM = new EEPROMClass(); $.O.WiFi = new WiFiClass(); $.O.MDNS = new MDNSResponder();
+  $.O.EEPROM = new EEPROMClass(); $.O.WiFi = new WiFiClass(); $.O.MDNS = new MDNSResponder(); $.O.SD = new SDClass(); $.O.LoRa = new lora.LoRaClass();
 
   /* ---------- Ordonnanceur ---------- */
-  let mod, gen, pass = 0;
+  let mod, gen, pass = 0, spun = false; // spun : la tranche s'est arrêtée au milieu d'une boucle active (pas dans un delay())
   try {
     mod = new Function('$', js)($);
     gen = (function* main() { yield* mod.init(); yield* mod.setup(); for (;;) { pass++; yield* mod.loop(); if (--$.b < 0) yield -1; } })();
@@ -1637,19 +2303,29 @@ export function createRuntime(js, hw, meta = {}) {
   const runCb = (fn, args = []) => {
     const line = $.l, saved = $.b, d = $.d, calls = $.n, g = fn(...args);
     let r, n = 0;
-    $.irq++;
+    $.irq++; wakes++;
     try { do { $.b = 2000; r = g.next(); } while (!r.done && ++n < 200); } catch (e) { $.irq--; fault(e); return false; } finally { $.d = d; $.n = calls; }
     $.irq--;
     if (!r.done) warn(tl('Fonction d’interruption trop longue : elle ne doit contenir ni delay() ni longue boucle'));
     $.l = line; $.b = saved;
     return true;
   };
+  /** Front d'un encodeur sur une broche d'interruption, à l'heure t : l'interruption s'exécute à cette heure-là. */
+  const encIrq = (q, v, t) => {
+    if (!(q.mode === 1 || ((q.mode === 2 || q.mode === 0) && !v) || (q.mode === 3 && v))) return true;
+    const saved = vt; vt = Math.min(saved, t);
+    const ok = runCb(q.fn); vt = saved; return ok;
+  };
   /** Interruptions : un front sur la broche lance la fonction attachée, jusqu'au bout. Puis les rappels en attente. */
   const runIrq = () => {
     if (!irqOn) return;
     pollCb();
+    if (lora) lora.poll(); // LoRa : émissions terminées, paquets arrivés (DIO0), rappels onReceive / onTxDone
     while (cbq.length) { const c = cbq.shift(); if (!runCb(c.fn, c.args)) return; }
+    // Encodeur KY-040 : chaque front de CLK ou DT lance l'interruption à son heure exacte (inputlibs.js).
+    if (inLib && irqs.length && !inLib.irqs(irqs, encIrq)) return;
     for (const q of irqs) {
+      if (q.enc) continue;
       // Module à impulsions : les fronts sont comptés exactement depuis le dernier passage (fréquence × temps),
       // quelle que soit la fréquence à laquelle le programme laisse la main.
       const r = input(q.k);
@@ -1711,7 +2387,7 @@ export function createRuntime(js, hw, meta = {}) {
       if (state !== 'run') return;
       dbg.skip = null;
       // Sans arrêts possibles, ou endormie dans un delay() : arrêt immédiat, sur la ligne en cours.
-      if (!hooks || (wake !== null && wake > T)) { halt(null); return; }
+      if (!hooks || (wake !== null && wake > T && !spun)) { halt(null); return; }
       dbg.mode = 'pause'; syncD();
     },
     resume() { if (state === 'paused') go(null); },
@@ -1753,17 +2429,23 @@ export function createRuntime(js, hw, meta = {}) {
     vt = wake !== null ? wake : T; wake = null;
     const deadline = performance.now() + SLICE;
     for (;;) {
-      $.b = 2000;
+      $.b = CHUNK;
       runIrq(); if (state !== 'run') return;
       let r;
       try { r = gen.next(); } catch (e) { fault(e); return; }
       if (r.done) { state = 'done'; return; }
       const v = r.value;
-      if (v === -1) { if (performance.now() > deadline) return; continue; }
+      if (v === -1) {
+        // Boucle active : une milliseconde de plus. Au-delà de la tranche, la suite attend la tranche suivante.
+        if (performance.now() > deadline) return;
+        const w = vt + 1;
+        if (w <= T) { vt = w; continue; }
+        wake = w; spun = true; return;
+      }
       if (typeof v === 'object') { halt(v); return; } // arrêt du débogueur
       const w = vt + v;
       if (w <= T && performance.now() <= deadline) { vt = w; continue; }
-      wake = w; return;
+      wake = w; spun = false; return;
     }
   }
   return {

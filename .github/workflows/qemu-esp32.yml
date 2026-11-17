@@ -24,7 +24,7 @@ permissions:
 
 env:
   # Doit correspondre à QEMU_TAG + JOLLOF_REV de build-qemu.sh et à VERSION / RELEASE_URL de src-tauri/src/qemu.rs.
-  QEMU_RELEASE: qemu-esp32-9.2.2-20250817-j1
+  QEMU_RELEASE: qemu-esp32-9.2.2-20250817-j2
 
 jobs:
   build:
@@ -47,7 +47,7 @@ jobs:
           - platform: x86_64-w64-mingw32
             runs-on: windows-2022
     runs-on: ${{ matrix.runs-on }}
-    timeout-minutes: 60
+    timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
 
@@ -101,16 +101,20 @@ jobs:
       - name: Essai de l'émulateur (sans Homebrew ni bibliothèques de développement dans le chemin)
         if: runner.os != 'Windows'
         run: |
-          Q=qemu-build/pkg/qemu/bin/qemu-system-xtensa
-          env -i PATH=/usr/bin:/bin "$Q" --version
-          env -i PATH=/usr/bin:/bin "$Q" -machine help | grep -q '^esp32 '
-          if [ "$RUNNER_OS" = macOS ]; then otool -L "$Q" qemu-build/pkg/qemu/lib/*.dylib | grep -E '/(usr/local|opt/homebrew)/' && exit 1 || true; fi
-          if [ "$RUNNER_OS" = Linux ]; then ldd "$Q" | grep 'not found' && exit 1 || true; fi
+          X=qemu-build/pkg/qemu/bin/qemu-system-xtensa R=qemu-build/pkg/qemu/bin/qemu-system-riscv32
+          env -i PATH=/usr/bin:/bin "$X" --version
+          env -i PATH=/usr/bin:/bin "$X" -machine help | grep -q '^esp32 '
+          env -i PATH=/usr/bin:/bin "$X" -machine help | grep -q '^esp32s3 '
+          env -i PATH=/usr/bin:/bin "$R" -machine help | grep -q '^esp32c3 '
+          if [ "$RUNNER_OS" = macOS ]; then otool -L "$X" "$R" qemu-build/pkg/qemu/lib/*.dylib | grep -E '/(usr/local|opt/homebrew)/' && exit 1 || true; fi
+          if [ "$RUNNER_OS" = Linux ]; then ldd "$X" "$R" | grep 'not found' && exit 1 || true; fi
 
       - name: Essai de l'émulateur (Windows)
         if: runner.os == 'Windows'
         shell: msys2 {0}
-        run: qemu-build/pkg/qemu/bin/qemu-system-xtensa.exe -machine help | grep -q '^esp32 '
+        run: |
+          qemu-build/pkg/qemu/bin/qemu-system-xtensa.exe -machine help | grep -q '^esp32s3 '
+          qemu-build/pkg/qemu/bin/qemu-system-riscv32.exe -machine help | grep -q '^esp32c3 '
 
       - uses: actions/upload-artifact@v4
         with:

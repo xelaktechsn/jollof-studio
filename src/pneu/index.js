@@ -12,12 +12,17 @@ import './pneu.css';
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { createNavDock } from '../ui/navdock.js';
-import { menu as popMenu, confirm as confirmDlg, toast } from '../school/ui.js';
+import { menu as popMenu, confirm as confirmDlg, toast, clearToasts } from '../school/ui.js';
 import { PNEU_EXAMPLES } from './examples.js';
 import VERIN from '../../exemples/08-verin-electropneumatique.jollof?raw'; // projet entier : carte, électrovanne, capteurs
 import { DEFS, G, props, camText, delayOf } from './elements.js';
 import { cylOf } from './physics.js';
-import { createRunner, runStep, compiled, inputKey, liveReceptivities, readVar } from './run.js';
+import { createRunner, runStep, compiled, compiledPlc, inputKey, liveReceptivities, readVar, readPlcVar } from './run.js';
+import { actProcess, processHud, processOf, processSensorNames, processControls, processOutputNames, sensorName } from './process.js';
+import { isTwin, TEMPLATES, cleanTwin, validateTwin } from '../twin/model.js';
+import { createPlcPanel } from '../plc/panel.js';
+import { ladderFromGrafcet } from '../plc/fromgrafcet.js';
+import { cleanPlc } from '../plc/ladder.js';
 import { cleanGrafcet } from './grafcet.js';
 import { createGrafcetPanel } from './grafview.js';
 import { phaseSvg, moveText } from './seq.js';
@@ -61,10 +66,11 @@ const ACT32 = () => ({ ...ACT(), roller: tl('Galet (fin de course d’un vérin)
 export function installPneu(app) {
   const $ = s => document.querySelector(s), appEl = $('.app');
   // R : simulation en cours (état du circuit R.st, GRAFCET R.g, relevé des mouvements R.rec) ; st et simRes la suivent.
-  let on = false, fitted = false, R = createRunner(), st = R.st, simRes = null, lastDraw = 0, lastPane = 0, lastGf = 0, lastChain = 0;
+  let on = false, fitted = false, R = createRunner(), st = R.st, simRes = null, lastDraw = 0, lastPane = 0, lastGf = 0, lastPl = 0, lastChain = 0;
   let split = false; // vue partagée : montage et circuit côte à côte
   const resetRun = () => { R = createRunner(); st = R.st; simRes = null; };
   let gfReady = false; // panneau GRAFCET créé (après l'éditeur)
+  let plReady = false; // panneau Automate (Ladder) créé
   const pushed = new Set();
   // Type du projet : le circuit n'est simulé que dans un projet pneumatique ou électropneumatique, et il n'échange
   // avec le montage (bobines, capteurs, boutons) que dans un projet électropneumatique.
@@ -86,7 +92,7 @@ export function installPneu(app) {
   $('#stage').appendChild(host);
   let nav = null; // barre de navigation (créée après l'éditeur)
   const ed = createPneuEditor(host, {
-    changed() { app.markDirty(); if (ed.circuit().elements.length && app.ensureSpace) app.ensureSpace('pneu'); if (app.recheck) app.recheck(); counts(); renderPane(); if (gfReady && gf.isOpen()) gf.render(); if (gfReady) { refresh3d(); paintSplitBtn(); if (split) paintChain(); } },
+    changed() { app.markDirty(); if (ed.circuit().elements.length && app.ensureSpace) app.ensureSpace('pneu'); if (app.recheck) app.recheck(); counts(); renderPane(); if (gfReady && gf.isOpen()) gf.render(); if (plReady && pl.isOpen()) pl.render(); if (gfReady) { refresh3d(); paintSplitBtn(); if (split) paintChain(); } },
     status: (m, k) => app.status(m, k),
     sim: () => (simOn() ? st : null),
     press(id, v) { if (v) pushed.add(id); else pushed.delete(id); },
@@ -94,7 +100,7 @@ export function installPneu(app) {
     view: () => { if (nav) nav.update(); }
   });
   host.insertAdjacentHTML('beforeend', `
-    <div class="pnBar top"><button type="button" class="btn glass small pnGfBtn" data-grafcet aria-pressed="false" data-tip="${tl('GRAFCET : la partie commande du circuit, comme un automate')}">${icon('list')}<span>GRAFCET</span></button><button type="button" class="btn glass small pn3dBtn" data-m3open aria-pressed="false" data-tip="${tl('Vue 3D de la machine')}">${icon('box')}<span>3D</span></button><span class="grow"></span></div>
+    <div class="pnBar top"><button type="button" class="btn glass small pnGfBtn" data-grafcet aria-pressed="false" data-tip="${tl('GRAFCET : la partie commande du circuit, comme un automate')}">${icon('list')}<span>GRAFCET</span></button><button type="button" class="btn glass small pnPlcBtn" data-plc aria-pressed="false" data-tip="${tl('Automate programmable : le circuit commandé en Ladder (IEC 61131-3)')}">${icon('cpu')}<span>${tl('Automate')}</span></button><button type="button" class="btn glass small pn3dBtn" data-m3open aria-pressed="false" data-tip="${tl('Vue 3D de la machine')}">${icon('box')}<span>3D</span></button><span class="grow"></span></div>
     <div class="pnBar bottom"><div class="pnLegend glass"><span><i class="pnP"></i>${tl('sous pression')}</span><span><i class="pnE"></i>${tl('à l’échappement')}</span><span class="pnLegM"><i class="pnM"></i>${tl('pression intermédiaire')}</span><span><i class="pnC"></i>${tl('fermé')}</span></div><span class="grow"></span><span class="pnRunHint glass">${tl('La simulation est celle du montage : lancez-la avec « Simuler ».')}</span></div>
     <div class="pnEmpty"><div class="pnEmptyCard">${icon('pneu')}<b>${tl('Plan de travail pneumatique')}</b>
       <p>${tl('Glissez une source d’air, un distributeur et un vérin depuis la bibliothèque, puis tirez des tuyaux d’orifice en orifice. Une électrovanne 24 V du montage électronique (repère Y1) commande le distributeur qui porte ce repère ; les capteurs de vérin (B1, B2) renvoient la position du piston à la carte.')}</p>
@@ -127,13 +133,23 @@ export function installPneu(app) {
     if (e.target.closest('[data-labs]') && app.openLabs) app.openLabs('pneu');
     if (e.target.closest('[data-tuto]') && app.openTutorial) app.openTutorial(TUTORIAL);
     if (e.target.closest('[data-grafcet]')) { if (gf.isOpen()) gf.close(); else gf.open(); }
+    if (e.target.closest('[data-plc]')) { if (pl.isOpen()) pl.close(); else pl.open(); }
     if (e.target.closest('[data-m3open]')) { if (m3.hidden) open3d(); else close3d(); }
   });
 
   /* ---------- GRAFCET ---------- */
   // Bouton du pupitre (dcy…) : clé « @dcy » ; un identifiant d'élément du plan reste celui d'un distributeur.
   const grafInput = n => { const g = ed.circuit().grafcet; return g && g.inputs.find(x => x.name.toLowerCase() === String(n).replace(/^@/, '').toLowerCase()); };
-  const keyOf = k => (String(k).startsWith('@') ? String(k).toLowerCase() : ed.circuit().elements.some(e => e.id === String(k).replace(/:R$/, '')) ? k : grafInput(k) ? inputKey(k) : k);
+  const plcInput = n => { const p = ed.circuit().plc; return p && p.inputs.find(x => x.name.toLowerCase() === String(n).replace(/^@/, '').toLowerCase()); };
+  const keyOf = k => (String(k).startsWith('@') ? String(k).toLowerCase() : ed.circuit().elements.some(e => e.id === String(k).replace(/:R$/, '')) ? k : grafInput(k) || plcInput(k) ? inputKey(k) : k);
+  // Projet électropneumatique : une entrée du pupitre du GRAFCET (dcy…) et le bouton du montage du même nom ne font
+  // qu'un. La carte lit le bouton, le GRAFCET son entrée : appuyer sur l'un (pupitre, machine 3D, montage) appuie sur l'autre.
+  const twinOf = n => { if (!linked()) return null; const l = String(n).replace(/^@/, '').toLowerCase(); return app.comps().find(c => c.type === 'button' && c.name.toLowerCase() === l && c.inp) || null; };
+  function setInput(n, v) {
+    const k = inputKey(String(n).replace(/^@/, '')); if (v) pushed.add(k); else pushed.delete(k);
+    const t = twinOf(n); if (t && !!t.inp.pressed !== !!v) { t.inp.pressed = !!v; app.invalidate(300); }
+  }
+  const inputOn = n => pushed.has(inputKey(String(n).replace(/^@/, ''))) || !!(twinOf(n) && twinOf(n).inp.pressed);
   const gfLive = () => {
     const c = ed.circuit(), C = compiled(c.grafcet); if (!simOn() || !C) return null;
     const names = [...C.vars].filter(v => !C.inputNames.has(v)).sort();
@@ -145,24 +161,62 @@ export function installPneu(app) {
     get: () => ed.circuit().grafcet || null,
     set: g => ed.setCircuitProp('grafcet', cleanGrafcet(g)),
     sim: simOn, live: gfLive,
-    press: (n, v) => { const k = inputKey(n); if (v) pushed.add(k); else pushed.delete(k); },
-    pressed: n => pushed.has(inputKey(n)),
+    press: (n, v) => setInput(n, v),
+    pressed: n => inputOn(n),
     code: () => writeProgram(),
-    opened: () => { paintGf(); refit(); }, closed: () => { paintGf(); refit(); },
+    opened: () => { if (plReady && pl.isOpen()) pl.close(); paintGf(); refit(); }, closed: () => { paintGf(); refit(); },
     /** Repères du circuit pour la palette du GRAFCET : capteurs (fins de course, pressostats) et bobines. */
-    names() {
-      const els = ed.circuit().elements, P = e => props(e), uniq = a => [...new Set(a.filter(Boolean))];
-      const sensors = uniq(els.flatMap(e => (e.type === 'cyl1' || e.type === 'cyl2' ? [P(e).s0, P(e).s1] : e.type === 'pswitch' ? [P(e).sensor] : [])));
-      const coils = uniq(els.flatMap(e => (e.type === 'v32' ? [P(e).act === 'sol' && P(e).coil] : e.type === 'v52' || e.type === 'v53' ? [P(e).left === 'sol' && P(e).coilL, P(e).right === 'sol' && P(e).coilR] : [])));
-      return { sensors, coils };
-    }
+    names: () => gfNames()
   });
+  function gfNames() {
+    const els = ed.circuit().elements, P = e => props(e), uniq = a => [...new Set(a.filter(Boolean))];
+    const sensors = uniq([...els.flatMap(e => (e.type === 'cyl1' || e.type === 'cyl2' ? [P(e).s0, P(e).s1] : e.type === 'pswitch' ? [P(e).sensor] : [])), ...processSensorNames(ed.circuit().scene)]); // dont les capteurs du procédé de la machine
+    const coils = uniq([...els.flatMap(e => (e.type === 'v32' ? [P(e).act === 'sol' && P(e).coil] : e.type === 'v52' || e.type === 'v53' ? [P(e).left === 'sol' && P(e).coilL, P(e).right === 'sol' && P(e).coilR] : [])), ...processOutputNames(ed.circuit().scene)]); // dont les sorties lues par la machine construite (convoyeur, voyant…)
+    return { sensors, coils };
+  }
   // Le plan se décale à droite du panneau GRAFCET ouvert : on le recadre.
   const refit = () => requestAnimationFrame(() => { if (on) ed.fit(); });
   gfReady = true;
   const paintGf = () => { const b = host.querySelector('[data-grafcet]'); b.setAttribute('aria-pressed', String(gf.isOpen())); b.classList.toggle('primary', gf.isOpen()); };
   /** Circuit ouvert ou remplacé : le panneau GRAFCET s'ouvre s'il y a un GRAFCET, se ferme sinon. */
   function syncGrafcet() { const g = ed.circuit().grafcet; if (g && g.steps.length) gf.open(); else if (gf.isOpen() && !g) gf.close(); paintGf(); }
+
+  /* ---------- Automate (Ladder) : la partie commande écrite en langage à contacts, src/plc ---------- */
+  /** Noms connus de l'automate : entrées (pupitres, capteurs du plan, montage), sorties (bobines du plan et du montage), étapes du GRAFCET. */
+  function plcKnown() {
+    const c = ed.circuit(), nm = gfNames(), g = compiled(c.grafcet);
+    const uniq = a => [...new Set(a.filter(Boolean))];
+    return {
+      inputs: uniq([...((c.plc && c.plc.inputs) || []).map(x => x.name), ...((c.grafcet && c.grafcet.inputs) || []).map(x => x.name), ...nm.sensors, ...benchOf('button', 'cylsensor', 'pressostat')]),
+      outputs: uniq([...nm.coils, ...benchOf('coil24')]),
+      steps: g ? g.steps : null
+    };
+  }
+  const plLive = () => (simOn() && compiledPlc(ed.circuit().plc) ? { run: R.p, out: R.pOut, read: n => readPlcVar(R, ed.circuit(), io, n) } : null);
+  const pl = createPlcPanel(host, {
+    get: () => ed.circuit().plc || null,
+    set: p => ed.setCircuitProp('plc', p ? cleanPlc(p) : null),
+    sim: simOn, live: plLive, known: plcKnown,
+    press: (n, v) => setInput(n, v),
+    pressed: n => inputOn(n),
+    fromGrafcet: () => ladderFromGrafcet(ed.circuit().grafcet),
+    grafcetDrive(v) { const g = ed.circuit().grafcet; if (g && (g.drive !== false) !== !!v) ed.setCircuitProp('grafcet', cleanGrafcet({ ...g, drive: !!v })); },
+    status: (m, k) => app.status(m, k),
+    opened: () => { if (gf.isOpen()) gf.close(); paintPl(); refit(); makeRoom(); }, closed: () => { paintPl(); refit(); }
+  });
+  plReady = true;
+  const paintPl = () => { const b = host.querySelector('[data-plc]'); b.setAttribute('aria-pressed', String(pl.isOpen())); b.classList.toggle('primary', pl.isOpen()); };
+  /**
+   * Circuit ouvert ou remplacé (après syncGrafcet) : le panneau Automate s'ouvre s'il y a un programme et que c'est lui
+   * qui commande (pas de GRAFCET, ou un GRAFCET en observation) ; il se ferme si le programme a disparu.
+   */
+  function syncPlc() {
+    const p = ed.circuit().plc, g = ed.circuit().grafcet, hasG = !!(g && g.steps.length);
+    if (p && p.rungs.length && (!hasG || (g.drive === false && p.drive !== false))) pl.open();
+    else if (pl.isOpen() && !p) pl.close();
+    else if (pl.isOpen()) pl.render();
+    paintPl();
+  }
   /**
    * Programme Arduino du GRAFCET pour la carte du montage : il remplace le programme de la carte, le GRAFCET observe.
    * silent : sans confirmation ni message (assistants IA). Rend { board, missingIn, missingOut, lines } ou { error }.
@@ -181,24 +235,71 @@ export function installPneu(app) {
     say(miss.length ? tl('Programme écrit dans l’onglet Code. Sans équivalent dans le montage (nommez un bouton, un capteur ou une électrovanne pareil) : {0}.', miss.join(', ')) : tl('Programme écrit dans l’onglet Code : lancez la simulation, la carte suit le GRAFCET.'), miss.length ? 'warn' : 'ok', 9000);
     return { board: r.board.name, missingIn: r.missingIn, missingOut: r.missingOut, lines: r.code.split('\n').length };
   }
-  /** Exemples : circuits pneumatiques (remplacent le plan, annulable) et projet électropneumatique avec carte. */
+  /** Exemple qui a une partie électrique : des électrovannes ou des capteurs de vérin (repères Y1, A0…). */
+  // (Un exemple commandé par l'automate Ladder reste tout pneumatique : l'automate remplace la carte.)
+  const electric = ex => { const c = ex.circuit(), plcDrives = c.plc && c.plc.rungs && c.plc.rungs.length && c.plc.drive !== false; return !plcDrives && tagsOf(c).length > 0; };
+  /**
+   * Exemple électropneumatique ouvert comme un projet complet, à la place du projet en cours : le circuit pneumatique,
+   * et au montage une carte Arduino Uno, l'alimentation 24 V, une électrovanne par bobine et un capteur par fin de
+   * course (câblés par le câblage automatique), un bouton par entrée du pupitre (dcy…), puis le programme de la carte
+   * écrit d'après le GRAFCET, qui observe. Rien à câbler ni à écrire : on lance la simulation et on appuie sur dcy.
+   */
+  async function openElectroExample(ex) {
+    if (!(await confirmDlg(ex.name(), tl('Ouvrir cet exemple à la place du projet en cours ? Il arrive avec son montage : carte Arduino, alimentation 24 V, électrovannes et capteurs câblés, et le programme écrit d’après le GRAFCET. Pensez à enregistrer votre travail.'), tl('Ouvrir')))) return;
+    if (app.simOn()) app.setSim(false);
+    const circuit = clean(ex.circuit());
+    clearToasts();
+    const ok = await app.openProject({ name: ex.name(), description: ex.text(), comps: [], wires: [], settings: { kind: 'epneu', modules: { pneu: { circuit } } } }, ex.name());
+    if (ok === false) return;
+    app.addComp('uno');
+    const r = linkBench({ animate: false });
+    if (r.error) { toast(r.error, 'warn', 8000); return; }
+    const g = ed.circuit().grafcet;
+    for (const x of (g && g.inputs) || []) { const b = app.addComp('button', { name: x.name }); app.autoWire(b, { animate: false }); }
+    if (app.settle) app.settle();
+    const prog = g && g.steps.length ? await writeProgram({ silent: true }) : null;
+    // Projet repris tel quel : historique vide, rien à enregistrer, scène cadrée sur le montage.
+    await app.openProject(app.projectData(), ex.name());
+    setSplit(true); setPref(SPLIT_KEY, 'auto'); splitWas = null;
+    setTimeout(() => { ed.fit(); if (app.frame) app.frame(); }, 250); // une fois la place partagée : tout le montage visible
+    const ins = ((g && g.inputs) || []).map(x => x.name).join(', ');
+    const warn = (prog && prog.error) || (r.unwired && r.unwired.length ? tl('Pas de broche libre pour {0}.', r.unwired.join(', ')) : '');
+    toast(warn || tl('Montage prêt : la carte Arduino commande les électrovannes avec le programme écrit d’après le GRAFCET, qui observe. Lancez la simulation, puis appuyez sur {0} : pupitre du GRAFCET, bouton du montage ou machine 3D.', ins || 'dcy'), warn ? 'warn' : 'ok', 10000);
+  }
+  /** Exemples : circuits pneumatiques (remplacent le plan, annulable) et projets électropneumatiques complets (montage compris). */
   async function examplesMenu(anchor) {
-    const v = await popMenu(anchor, [...PNEU_EXAMPLES.map(x => ({ label: x.name(), icon: 'pneu', value: x.id })), { label: tl('Vérin électropneumatique avec Arduino (projet complet)'), icon: 'cpu', value: 'project' }]);
+    const v = await popMenu(anchor, [...PNEU_EXAMPLES.map(x => ({ label: x.name(), icon: electric(x) ? 'cpu' : 'pneu', value: x.id })), { label: tl('Vérin électropneumatique avec Arduino (projet complet)'), icon: 'cpu', value: 'project' },
+      ...(linked() ? [{ label: tl('Montages d’électronique…'), icon: 'layers', value: 'elec' }] : [])]);
     if (!v) return;
+    if (v === 'elec') { elecExamples = true; try { $('#exBtn').click(); } finally { elecExamples = false; } return; }
     if (v === 'project') {
       if (!(await confirmDlg(tl('Vérin électropneumatique'), tl('Ouvrir ce projet d’exemple à la place du projet en cours ? Pensez à enregistrer votre travail.'), tl('Ouvrir')))) return;
       const d = JSON.parse(VERIN), en = d.en; delete d.en;
       if (isEn && en) { d.name = en.name; d.description = en.description; }
-      await app.openProject(d, d.name); setMode(true); requestAnimationFrame(() => ed.fit());
-      toast(isEn && en ? en.description : d.description, 'ok', 8000); return;
+      if (app.simOn()) app.setSim(false);
+      clearToasts(); await app.openProject(d, d.name);
+      setSplit(true); setPref(SPLIT_KEY, 'auto'); splitWas = null; // le montage et le circuit côte à côte, comme les autres exemples électropneumatiques
+      setTimeout(() => { ed.fit(); if (app.frame) app.frame(); }, 250);
+      toast(tl('Montage prêt : la carte Arduino commande l’électrovanne Y1 et lit les capteurs B1 et B2. Lancez la simulation, puis appuyez sur BTN1 : la tige sort lentement, puis rentre.'), 'ok', 10000); return;
     }
     const ex = PNEU_EXAMPLES.find(x => x.id === v); if (!ex) return;
+    if (electric(ex)) { await openElectroExample(ex); return; }
+    // Projet électropneumatique : un exemple tout pneumatique s'ouvre comme un nouveau projet pneumatique (sans montage).
+    if (linked()) {
+      if (!(await confirmDlg(ex.name(), tl('Ouvrir cet exemple comme un nouveau projet pneumatique, à la place du projet en cours ? Il n’a pas de partie électronique. Pensez à enregistrer votre travail.'), tl('Ouvrir')))) return;
+      if (app.simOn()) app.setSim(false);
+      clearToasts(); await app.openProject({ name: ex.name(), description: ex.text(), comps: [], wires: [], settings: { kind: 'pneu', modules: { pneu: { circuit: clean(ex.circuit()) } } } }, ex.name());
+      setMode(true); fitted = true; requestAnimationFrame(() => ed.fit());
+      toast(ex.text(), 'ok', 8000); return;
+    }
     if (ed.circuit().elements.length && !(await confirmDlg(ex.name(), tl('Remplacer le circuit pneumatique actuel par cet exemple ? Ctrl+Z permet de revenir en arrière.'), tl('Remplacer')))) return;
-    ed.replace(clean(ex.circuit())); resetRun(); pushed.clear(); fitted = true; syncGrafcet(); ed.fit(); counts(); renderPane(); sync3d();
+    ed.replace(clean(ex.circuit())); resetRun(); pushed.clear(); fitted = true; syncGrafcet(); syncPlc(); ed.fit(); counts(); renderPane(); sync3d();
     toast(ex.text(), 'ok', 8000);
   }
   // Mode pneumatique : le bouton « Exemples » de la barre d'application propose les exemples de pneumatique.
-  document.addEventListener('click', e => { const b = on && e.target.closest('#exBtn'); if (!b) return; e.preventDefault(); e.stopImmediatePropagation(); examplesMenu(b); }, true);
+  // Projet électropneumatique : même sur le montage, il propose les exemples électropneumatiques (et les montages d'électronique).
+  let elecExamples = false;
+  document.addEventListener('click', e => { const b = !elecExamples && (on || split || linked()) && e.target.closest('#exBtn'); if (!b) return; e.preventDefault(); e.stopImmediatePropagation(); examplesMenu(b); }, true);
 
   /* ---------- Bibliothèque ---------- */
   const lib = document.createElement('aside');
@@ -323,8 +424,13 @@ export function installPneu(app) {
     // reconstruire le panneau à chaque image (les listes, boutons et champs restent stables sous le pointeur).
     html += `<section class="pnSec pnSimSec" hidden><h3>${icon('activity')}${tl('Simulation')}</h3><ul class="pnLinks pnCyls"></ul><ul class="pnLinks pnBtns"></ul><ul class="pnIssues pnLeaks"></ul><div class="pnSeq" hidden></div></section>`;
     // Le champ en cours de saisie garde le focus (et son curseur) après la reconstruction.
+    // Atelier de la machine 3D : son inspecteur (élément gardé par l'éditeur) prend la tête du panneau, après le
+    // formulaire de l'élément du plan choisi s'il y en a un.
+    const building = twinEd && twinEd.isOpen(), twHost = '<div class="twPaneHost"></div>';
+    if (building) html = e || (s && s.tube) ? html.replace('</section>', '</section>' + twHost) : html.replace('<section', twHost + '<section');
     const a = document.activeElement, keep = a && pane.contains(a) && a.matches('[data-k], [data-model]') ? { sel: a.dataset.k ? `[data-k="${a.dataset.k}"]` : '[data-model]', start: a.selectionStart, end: a.selectionEnd } : null;
     pane.innerHTML = html;
+    if (building) twinEd.mount(pane.querySelector('.twPaneHost'));
     if (keep) { const f = pane.querySelector(keep.sel); if (f) { f.focus(); try { if (keep.start != null) f.setSelectionRange(keep.start, keep.end); } catch (e) { /* champ sans sélection (nombre, liste) */ } } }
     updateLive();
   }
@@ -404,24 +510,26 @@ export function installPneu(app) {
   // d'ouverture, obstacle, deux mains, départ cycle…) viennent du registre SCENES de machine.js : chaque commande est
   // liée à une entrée du GRAFCET, au bouton d'un distributeur ou à un bouton du montage du même nom.
   const m3 = document.createElement('section'); m3.className = 'pn3d glass'; m3.hidden = true; m3.setAttribute('aria-label', tl('Machine 3D'));
-  m3.innerHTML = `<header class="pn3dHead"><b class="pn3dMove" title="${tl('Machine 3D')}"><i class="pn3dDots" aria-hidden="true"></i>${icon('box')}3D</b><select class="sel" data-m3="kind" aria-label="${tl('Scène')}" hidden></select><span class="pn3dCyls"></span><span class="grow"></span>
-      <span class="pn3dCtl"></span><button type="button" class="tb" data-m3="big" aria-label="${tl('Agrandir')}">${icon('expand')}</button><button type="button" class="tb" data-m3="close" aria-label="${tl('Fermer la vue 3D')}">${icon('x')}</button></header>
-    <div class="pn3dView"><p class="pn3dHint"></p></div>`;
+  m3.innerHTML = `<header class="pn3dHead"><b class="pn3dMove" title="${tl('Machine 3D')}"><i class="pn3dDots" aria-hidden="true"></i>${icon('box')}3D</b><select class="sel" data-m3="kind" aria-label="${tl('Scène')}" hidden></select><span class="pn3dCyls"></span><button type="button" class="btn small" data-m3="build" hidden aria-pressed="false" data-tip="${tl('Construire la machine : poser des composants 3D et les lier au circuit')}">${icon('wrench')}<span>${tl('Construire')}</span></button><span class="grow"></span>
+      <span class="pn3dCtl"></span><button type="button" class="tb" data-m3="home" aria-label="${tl('Recentrer la vue')}" data-tip="${tl('Recentrer la vue')}">${icon('focus')}</button><button type="button" class="tb" data-m3="big" aria-label="${tl('Agrandir')}">${icon('expand')}</button><button type="button" class="tb" data-m3="close" aria-label="${tl('Fermer la vue 3D')}">${icon('x')}</button></header>
+    <div class="pn3dView"><p class="pn3dHint"></p><div class="pn3dHud" hidden></div></div>`;
   host.appendChild(m3);
   let view = null, viewKey = '', last3d = 0, loading3d = null, M3 = null; // M3 : machine.js une fois chargé
   const sceneCfg = () => ed.circuit().scene || { kind: 'cylinders' };
   const sceneDef = () => (M3 ? M3.SCENES[M3.sceneId(sceneCfg())] : null);
-  const ctlOf = role => { const d = sceneDef(); return (d && d.controls.find(c => c.role === role)) || null; };
+  // Commandes : celles de la machine construite (boutons et sources de la scène), puis celles du registre SCENES.
+  const ctlOf = role => { const d = sceneDef(); return processControls(sceneCfg()).find(c => c.role === role) || (d && d.controls.find(c => c.role === role)) || null; };
   const cylsOf = () => ed.circuit().elements.filter(e => e.type === 'cyl1' || e.type === 'cyl2');
   const benchIn = n => app.comps().find(c => c.name.toLowerCase() === String(n).toLowerCase() && c.inp && 'pressed' in c.inp);
   /** Ce que désigne un nom : bouton du pupitre du GRAFCET, distributeur à bouton du plan, bouton du montage. */
-  const namedKind = n => (!n ? null : grafInput(n) ? 'input' : ed.circuit().elements.some(e => e.id === n) ? 'valve' : benchIn(n) ? 'bench' : null);
+  const namedKind = n => (!n ? null : grafInput(n) || plcInput(n) ? 'input' : ed.circuit().elements.some(e => e.id === n) ? 'valve' : benchIn(n) ? 'bench' : null);
   function pressNamed(n, v) {
     const k = namedKind(n);
-    if (k === 'input' || k === 'valve') { const key = k === 'input' ? inputKey(n) : n; if (v) pushed.add(key); else pushed.delete(key); }
+    if (k === 'input') setInput(n, v);
+    if (k === 'valve') { if (v) pushed.add(n); else pushed.delete(n); }
     if (k === 'bench') { benchIn(n).inp.pressed = !!v; app.invalidate(300); }
   }
-  const isPressedNamed = n => { const k = namedKind(n); return k === 'input' ? pushed.has(inputKey(n)) : k === 'valve' ? pushed.has(n) : k === 'bench' ? !!benchIn(n).inp.pressed : false; };
+  const isPressedNamed = n => { const k = namedKind(n); return k === 'input' ? inputOn(n) :  k === 'valve' ? pushed.has(n) : k === 'bench' ? !!benchIn(n).inp.pressed : false; };
   /**
    * Nom lié à une commande de la scène : son réglage (circuit.scene[rôle]), sinon le premier de ses noms par défaut
    * que le circuit connaît (porte : dcy, obs), sinon le bouton du montage de son rang (porte : le premier).
@@ -447,12 +555,19 @@ export function installPneu(app) {
     const n = roleName(role);
     if (c.mode === 'auto') { if (down && namedKind(n)) { pressNamed(n, true); auto3d.set(role, n); } return; }
     if (c.mode === 'toggle') { if (down && n) pressNamed(n, !isPressedNamed(n)); }
-    else { if (n) pressNamed(n, down); if (c.mode === 'click' && down && view) view.act(role); }
+    else { if (n) pressNamed(n, down); if (c.mode === 'click' && down) actRole(role); }
     paint3d(); if (view) view.update(st3());
   }
-  /** Capteur par son repère (sans tenir compte de la casse), d'après la position des vérins et des pressostats. */
+  /** Action d'une commande du procédé (une voiture, une bouteille, remplir le magasin) ou de la vue (un colis) ; le procédé n'avance qu'en simulation. */
+  function actRole(role) {
+    if (R.proc) actProcess(R.proc, role);
+    if (view) view.act(role);
+    if (!simOn()) toast(tl('Lancez la simulation pour voir la machine réagir.'), 'warn', 3000);
+  }
+  /** Capteur par son repère (sans tenir compte de la casse) : capteurs du dernier pas (fins de course, pressostats, procédé), sinon d'après la position des vérins. */
   function sensorOn(n) {
     const l = String(n).toLowerCase();
+    if (simRes) for (const [k, v] of simRes.sensors) if (String(k).toLowerCase() === l) return !!v;
     for (const e of ed.circuit().elements) {
       const P = props(e), x = st.x[e.id] || 0;
       if ((e.type === 'cyl1' || e.type === 'cyl2') && String(P.s0).toLowerCase() === l && x <= 0.02) return true;
@@ -461,7 +576,7 @@ export function installPneu(app) {
     }
     return false;
   }
-  const st3 = () => ({ running: simOn(), t: R.t, x: id => st.x[id] || 0, press: (id, p) => (st.press || {})[`${id}:${p}`], sensor: sensorOn, coil: n => !!io.coil(n) || R.out.has(String(n).toUpperCase()), input: n => isPressedNamed(n), role: roleOn });
+  const st3 = () => ({ running: simOn(), t: R.t, proc: R.proc, x: id => st.x[id] || 0, press: (id, p) => (st.press || {})[`${id}:${p}`], sensor: sensorOn, coil: n => !!io.coil(n) || R.out.has(String(n).toUpperCase()), input: n => isPressedNamed(n), role: roleOn });
   const setHtml = (el, h) => { if (el._h !== h) { el._h = h; el.innerHTML = h; } }; // pas de bouton recréé sous le doigt
   /**
    * En-tête : scènes du registre, un vérin par rôle (si le circuit a plus de vérins que la machine n'en demande),
@@ -472,8 +587,9 @@ export function installPneu(app) {
     const cfg = sceneCfg(), def = sceneDef(), names = cylsOf().map(e => props(e).label || e.id), kSel = m3.querySelector('[data-m3="kind"]'), id = M3 ? M3.sceneId(cfg) : '';
     kSel.hidden = !M3;
     setHtml(kSel, M3 ? Object.entries(M3.SCENES).map(([v, s]) => `<option value="${v}"${id === v ? ' selected' : ''}>${esc(s.name())}</option>`).join('') : '');
+    const bb = m3.querySelector('[data-m3="build"]'); bb.hidden = !M3 || !isTwin(cfg); bb.setAttribute('aria-pressed', String(!!(twinEd && twinEd.isOpen()))); bb.classList.toggle('primary', !!(twinEd && twinEd.isOpen()));
     setHtml(m3.querySelector('.pn3dCyls'), def && names.length > Math.max(1, def.cyls.length) ? def.cyls.map((r, i) => { const cur = names.includes(cfg[r.key]) ? cfg[r.key] : names[i] || names[0]; return `<select class="sel" data-m3="cyl" data-key="${r.key}" data-cur="${esc(cur)}" aria-label="${esc(r.label())}" title="${esc(r.label())}">${names.map(n => `<option value="${esc(n)}"${cur === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>`; }).join('') : '');
-    setHtml(m3.querySelector('.pn3dCtl'), def ? def.controls.map(c => {
+    setHtml(m3.querySelector('.pn3dCtl'), def ? [...processControls(cfg), ...def.controls].map(c => {
       const n = roleName(c.role);
       if (c.mode === 'auto' || (c.mode !== 'click' && !namedKind(n))) return ''; // tenue par la vue, ou liée à rien : pas de bouton
       const on = !!namedKind(n) && isPressedNamed(n), text = esc(c.label(n || ''));
@@ -483,17 +599,28 @@ export function installPneu(app) {
     kSel.value = id; for (const c of m3.querySelectorAll('.pn3dCyls select')) c.value = c.dataset.cur; // listes déjà peintes : la valeur suit le circuit (annulation)
     const hint = m3.querySelector('.pn3dHint'); hint.hidden = simOn(); hint.textContent = tl('Simulation arrêtée : lancez-la avec « Simuler » pour voir la machine bouger.');
     m3.querySelector('[data-m3="big"]').innerHTML = icon(m3.classList.contains('big') ? 'shrink' : 'expand');
+    paintHud();
+  }
+  /** Bandeau du procédé dans la vue : capteurs de la machine (allumés quand ils voient), compteurs, alarme. */
+  function paintHud() {
+    const hud = m3.querySelector('.pn3dHud'), c = ed.circuit(), D = processOf(c.scene);
+    if (!D) { hud.hidden = true; setHtml(hud, ''); return; }
+    hud.hidden = false;
+    const sens = D.sensors.map(d => { const n = sensorName(c.scene, d); return `<span class="hudSens${simOn() && sensorOn(n) ? ' on' : ''}" title="${esc(d.label())}"><i></i>${esc(n)}</span>`; }).join('');
+    const rows = processHud(c.scene, R.proc).map(h => (h.alarm ? `<span class="hudAlarm">${icon('alert')}${esc(h.alarm)}</span>` : `<span class="hudVal${h.warn ? ' warn' : ''}">${esc(h.label)} <b>${esc(h.value)}</b></span>`)).join('');
+    setHtml(hud, sens + rows);
   }
   /** Reconstruit la scène si le circuit a changé ce qu'elle montre (vérins, repères, réglages de la scène). */
   function refresh3d(force = false) {
     if (!view || m3.hidden) return;
-    const c = ed.circuit(), key = JSON.stringify([sceneCfg(), cylsOf().map(e => [e.id, props(e).label, props(e).s0, props(e).s1, props(e).bore]), c.elements.filter(e => /^v/.test(e.type)).map(e => [props(e).coil, props(e).coilL])]);
+    const c = ed.circuit(), key = JSON.stringify([{ ...sceneCfg(), assets: undefined }, cylsOf().map(e => [e.id, props(e).label, props(e).s0, props(e).s1, props(e).bore]), c.elements.filter(e => /^v/.test(e.type)).map(e => [props(e).coil, props(e).coilL])]); // sans les modèles glTF (lourds, sans effet sur la pose)
     if (force || key !== viewKey) { viewKey = key; view.build(sceneCfg(), c); }
     view.update(st3()); paint3d();
+    if (twinEd && twinEd.isOpen()) twinEd.refresh();
   }
   async function open3d() {
     if (!on) setMode(true);
-    m3.hidden = false; keep3d(); paint3d(); host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'true');
+    m3.hidden = false; keep3d(); paint3d(); host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'true'); makeRoom();
     if (!view) {
       loading3d = loading3d || import('./machine.js');
       M3 = await loading3d;
@@ -503,14 +630,76 @@ export function installPneu(app) {
     }
     refresh3d();
   }
+  /**
+   * Panneau Automate et machine 3D ouverts ensemble dans un plan étroit : la bibliothèque se replie une fois pour leur
+   * laisser la place (Ctrl+B ou son bouton la rouvrent) ; une fenêtre 3D placée à la main n'est pas touchée.
+   */
+  let roomMade = false;
+  function makeRoom() {
+    if (roomMade || m3.hidden || !plReady || !pl.isOpen() || m3.classList.contains('placed') || !app.libOpen || !app.libOpen() || host.clientWidth >= 1000) return;
+    roomMade = true; app.setLibOpen(false);
+    toast(tl('Bibliothèque repliée pour laisser la place à l’automate et à la machine 3D (Ctrl+B la rouvre).'), 'ok', 5000);
+  }
   /** Circuit ouvert : la vue 3D s'ouvre s'il a une scène (porte de TER…), à l'entrée dans le plan pneumatique. */
   let pending3d = false;
   function sync3d() { if (ed.circuit().scene) { if (on) open3d(); else pending3d = true; } else { pending3d = false; if (!m3.hidden) close3d(); } }
-  function close3d() { m3.hidden = true; host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'false'); if (view) { view.dispose(); view = null; } }
+  function close3d() { if (twinEd && twinEd.isOpen()) twinEd.close(); m3.hidden = true; host.querySelector('[data-m3open]').setAttribute('aria-pressed', 'false'); if (view) { view.dispose(); view = null; } }
+  /* ---------- Machine construite (jumeau, src/twin) : mode « Construire » dans la fenêtre 3D, chargé à la première entrée ---------- */
+  let twinEd = null, loadingTw = null, placedBefore = null;
+  const twinApi = {
+    view: () => view,
+    scene: () => (isTwin(ed.circuit().scene) ? JSON.parse(JSON.stringify(ed.circuit().scene)) : null),
+    set: s => ed.setCircuitProp('scene', s),
+    circuit: () => ed.circuit(),
+    /** Noms du circuit pour l'inspecteur : vérins (repères), capteurs du plan (hors machine), entrées et sorties connues. */
+    known() {
+      const c = ed.circuit(), nm = gfNames(), proc = new Set(processSensorNames(c.scene)), pk = plcKnown(), P = compiledPlc(c.plc), G = compiled(c.grafcet), uniq = a => [...new Set(a.filter(Boolean))];
+      return { cyls: cylsOf().map(e => props(e).label || e.id), sensors: nm.sensors.filter(n => !proc.has(n)), inputs: pk.inputs, outputs: uniq([...pk.outputs, ...(P ? [...P.written.values()].map(w => w.name) : []), ...(G ? [...G.outputs] : [])]) };
+    },
+    leave: () => closeBuild(),
+    /** L'inspecteur de la machine vit dans l'onglet Pneumatique du panneau de droite. */
+    paneHost: () => pane.querySelector('.twPaneHost'),
+    showPane() { app.setTab('pneu'); if (app.ensureSpace) app.ensureSpace('pneu'); renderPane(); },
+    /** Plan montré à côté de la machine (bouton « Plan » de l'atelier) ; par défaut la machine le couvre. Mémorisé. */
+    planShown: () => host.classList.contains('twPlan'),
+    setPlan(on) { host.classList.toggle('twPlan', !!on); setPref(TW_PLAN, on ? '1' : ''); refit(); },
+    /** Le plan est-il caché (couvert par la machine, ou sous un panneau ouvert) pendant la construction ? (aide de l'atelier) */
+    planHidden: () => !host.classList.contains('twPlan') || host.querySelector('.pnSvg').getBoundingClientRect().width < 150,
+    /** Largeur du plan à gauche de la machine (px ; null : garder) ; save : mémoriser. */
+    setLeft(px, save) { if (px != null) host.style.setProperty('--twLeft', Math.round(px) + 'px'); if (save) setPref(TW_LEFT, host.style.getPropertyValue('--twLeft')); },
+    version: typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : '',
+    project: () => (app.projectName ? app.projectName() : '')
+  };
+  const TW_LEFT = 'jollof-tw-left', TW_PLAN = 'jollof-tw-plan';
+  async function openBuild() {
+    if (!isTwin(ed.circuit().scene)) return;
+    if (!view) await open3d(); if (!view) return;
+    if (!twinEd) { loadingTw = loadingTw || import('../twin/editor.js'); const mod = await loadingTw; if (!twinEd) twinEd = mod.createTwinEditor(m3, twinApi); }
+    if (twinEd.isOpen()) return;
+    // Atelier : le plan garde la gauche (largeur mémorisée), la machine prend la droite ; la place choisie à la main
+    // pour la fenêtre est rendue à la sortie. L'inspecteur de la machine s'ouvre dans le panneau de droite.
+    placedBefore = m3.classList.contains('placed') ? rect3d() : null;
+    m3.classList.remove('placed'); ['left', 'top', 'width', 'height', 'right', 'bottom', 'maxWidth'].forEach(k => (m3.style[k] = ''));
+    host.classList.add('twBuild'); host.classList.toggle('twPlan', !!pref(TW_PLAN)); const left = pref(TW_LEFT); if (left) host.style.setProperty('--twLeft', left);
+    twinEd.open(); // puis le panneau de droite, qui accueille l'inspecteur dès qu'il est ouvert
+    app.setTab('pneu'); if (app.ensureSpace) app.ensureSpace('pneu'); renderPane();
+    // Plan étroit : la bibliothèque se replie une fois pour que le plan et la machine tiennent côte à côte.
+    if (!roomMade && app.libOpen && app.libOpen() && host.clientWidth < 1000) { roomMade = true; app.setLibOpen(false); toast(tl('Bibliothèque repliée pour laisser la place au plan et à la machine (Ctrl+B la rouvre).'), 'ok', 5000); }
+    paint3d(); refit();
+  }
+  function closeBuild() {
+    if (!twinEd || !twinEd.isOpen()) return;
+    twinEd.close(); host.classList.remove('twBuild', 'twPlan'); host.style.removeProperty('--twLeft');
+    if (placedBefore) place3d(placedBefore, false); placedBefore = null;
+    renderPane(); paint3d(); refit(); if (view) requestAnimationFrame(() => view.resize());
+  }
+  function toggleBuild() { if (twinEd && twinEd.isOpen()) closeBuild(); else openBuild(); }
   m3.addEventListener('change', e => {
     const k = e.target.dataset.m3; if (!k || !M3) return;
-    const cfg = { ...sceneCfg() };
+    const cur = sceneCfg(), cfg = isTwin(cur) ? {} : { ...cur }; // on quitte une machine construite : ses pièces ne suivent pas
     if (k === 'kind') {
+      // Machine construite : une scène de départ, et le mode construction s'ouvre.
+      if (e.target.value === 'twin') { if (isTwin(cur)) return; ed.setCircuitProp('scene', TEMPLATES.empty.scene()); refresh3d(true); openBuild(); return; }
       // Scène choisie : ses réglages (porte de bus : kind 'door', skin 'bus'), un vérin par rôle s'il n'est pas choisi.
       const d = M3.SCENES[e.target.value]; if (!d) return;
       delete cfg.skin; Object.assign(cfg, d.cfg || { kind: e.target.value });
@@ -524,6 +713,8 @@ export function installPneu(app) {
     if (t) { press3(t.dataset.m3toggle, true); return; }
     if (!b) return;
     if (b.dataset.m3 === 'close') close3d();
+    if (b.dataset.m3 === 'home' && view) view.home();
+    if (b.dataset.m3 === 'build') toggleBuild();
     if (b.dataset.m3 === 'big') { m3.classList.toggle('big'); unplace3d(); paint3d(); if (view) requestAnimationFrame(() => view.resize()); }
   });
   // Boutons maintenus de l'en-tête (ouvrir, départ cycle, envoyer un colis) : appuyés tant que le clic est maintenu.
@@ -603,6 +794,7 @@ export function installPneu(app) {
     if ((!on && !(split && host.contains(document.activeElement))) || busyUi()) return;
     const a = document.activeElement;
     if (a && (/INPUT|SELECT|TEXTAREA/.test(a.tagName) || a.isContentEditable)) return;
+    if (twinEd && twinEd.isOpen() && twinEd.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; } // construction de la machine 3D : Suppr, Échap, W/E/R, Ctrl+D
     const mod = e.ctrlKey || e.metaKey;
     if (mod && !['a', 'c', 'x', 'v', 'd'].includes(e.key.toLowerCase())) return; // enregistrer, ouvrir, annuler, bibliothèque : application
     if (!mod && nav.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
@@ -617,7 +809,7 @@ export function installPneu(app) {
   // Le GRAFCET du plan lit aussi les boutons et capteurs du montage (par leur nom) ; ses boutons sont « @nom ».
   const io = {
     coil: n => { if (!linked()) return false; const c = app.comps().find(x => x.name === n && x.type === 'coil24'); return !!(c && c.coilOn); },
-    pushed: id => pushed.has(id),
+    pushed: id => (String(id).startsWith('@') ? inputOn(id) : pushed.has(id)),
     input: n => { if (!linked()) return false; const c = app.comps().find(x => x.name.toLowerCase() === n && x.inp && 'pressed' in x.inp); return !!(c && c.inp.pressed); }
   };
   app.onSimFrame(dt => {
@@ -633,16 +825,19 @@ export function installPneu(app) {
     const shown = on || split; // plan affiché : plein écran ou dans la vue partagée
     if (shown && !pane.hidden && now - lastPane > 150) { lastPane = now; try { updateLive(); } catch (e) { console.error(e); } } // le panneau ne bloque jamais la simulation
     if (shown && gf.isOpen() && now - lastGf > 100) { lastGf = now; try { gf.live(); } catch (e) { console.error(e); } }
-    if (shown && view && !m3.hidden && now - last3d > 33) { last3d = now; try { view.update(st3()); } catch (e) { console.error(e); } }
+    if (shown && pl.isOpen() && now - lastPl > 100) { lastPl = now; try { pl.live(); } catch (e) { console.error(e); } }
+    if (shown && view && !m3.hidden && now - last3d > 33) { last3d = now; try { view.update(st3()); paintHud(); } catch (e) { console.error(e); } }
     if (split && now - lastChain > 100) { lastChain = now; try { liveChain(); } catch (e) { console.error(e); } }
   });
   app.onSimState(running => {
+    if (!running) for (const x of [...((ed.circuit().grafcet && ed.circuit().grafcet.inputs) || []), ...((ed.circuit().plc && ed.circuit().plc.inputs) || [])]) { const t = twinOf(x.name); if (t) t.inp.pressed = false; } // interrupteur du pupitre resté fermé
     resetRun(); pushed.clear(); host.classList.toggle('running', running);
     // Projet électropneumatique : la vue partagée s'ouvre au lancement (sauf si on l'a fermée), et la disposition
     // d'avant revient à l'arrêt.
     if (running && !split && mixed() && pref(SPLIT_KEY) !== 'off' && !(app.logic && app.logic.isOn())) { const was = on ? 'pneu' : 'elec'; setSplit(true); splitWas = was; if (!splitTold) { splitTold = true; toast(tl('Vue partagée : le montage et le circuit pneumatique ensemble pendant la simulation. Fermez-la (×) pour qu’elle ne s’ouvre plus d’elle-même.'), 'ok', 7000); } }
     else if (!running && splitWas) { const was = splitWas; splitWas = null; if (was === 'pneu') setMode(true); else setSplit(false); }
     if (gf.isOpen()) gf.render(); // pupitre actif pendant la simulation
+    if (pl.isOpen()) pl.render();
     if (view && !m3.hidden) refresh3d();
     if (running && on) app.setTab('pneu');
     if (split) paintChain(true);
@@ -824,9 +1019,9 @@ export function installPneu(app) {
 
   /* ---------- Données du projet ---------- */
   app.register('pneu', {
-    save: () => { const c = ed.circuit(); return c.elements.length || (c.grafcet && c.grafcet.steps.length > 1) ? { circuit: JSON.parse(JSON.stringify(c)) } : null; },
+    save: () => { const c = ed.circuit(); return c.elements.length || (c.grafcet && c.grafcet.steps.length > 1) || (c.plc && c.plc.rungs.length) ? { circuit: JSON.parse(JSON.stringify(c)) } : null; },
     load(d) {
-      ed.setCircuit(clean(d && d.circuit)); resetRun(); fitted = false; syncGrafcet(); sync3d();
+      ed.setCircuit(clean(d && d.circuit)); resetRun(); fitted = false; syncGrafcet(); syncPlc(); sync3d();
       if (split && !ed.circuit().elements.length) setSplit(false);
       host.querySelector('.pnEmpty').hidden = ed.circuit().elements.length > 0;
       if (on || split) { requestAnimationFrame(() => ed.fit()); counts(); renderPane(); }
@@ -847,8 +1042,8 @@ export function installPneu(app) {
       const c = ed.circuit(); if (!c.elements.length) return [];
       const where = tl('plan pneumatique');
       const out = checkPneu(c, { coils: benchOf('coil24'), sensors: benchOf('cylsensor', 'pressostat'), inputs: benchOf('button', 'cylsensor', 'pressostat') }).map(i => {
-        const g = /^GRAFCET/.test(i.text), err = i.level === 'error';
-        return { code: err ? (g ? 'J0703' : 'J0701') : 'J0702', level: err ? 'error' : 'warning', title: i.text, key: 'pn:' + i.text, where: g ? 'GRAFCET' : where, space: 'pneu', loc: {} };
+        const g = /^GRAFCET/.test(i.text), a = /^Automate/.test(i.text), err = i.level === 'error';
+        return { code: a ? (err ? 'J0705' : 'J0706') : err ? (g ? 'J0703' : 'J0701') : 'J0702', level: err ? 'error' : 'warning', title: i.text, key: 'pn:' + i.text, where: a ? tl('Automate') : g ? 'GRAFCET' : where, space: 'pneu', loc: {} };
       });
       if (linked()) {
         const tags = new Set(tagsOf(c).map(t => t.name.toUpperCase()));
@@ -857,8 +1052,8 @@ export function installPneu(app) {
       return out;
     },
     /** Bouton d'un distributeur (identifiant, « id:R » côté 12) ou du pupitre du GRAFCET (son nom). */
-    press(id, v) { const k = keyOf(id); if (v) pushed.add(k); else pushed.delete(k); },
-    isPushed: k => pushed.has(keyOf(k)),
+    press(id, v) { const k = keyOf(id); if (k.startsWith('@')) setInput(k, v); else if (v) pushed.add(k); else pushed.delete(k); },
+    isPushed: k => { const key = keyOf(k); return key.startsWith('@') ? inputOn(key) : pushed.has(key); },
     resetState() { resetRun(); },
     /** Mouvements relevés depuis le début de la simulation ({ name, dir, t0, t1 }) et temps de simulation (s). */
     moves: () => R.rec.moves, simTime: () => R.t,
@@ -866,11 +1061,30 @@ export function installPneu(app) {
     grafcet: () => ed.circuit().grafcet || null,
     setGrafcet(g) { ed.setCircuitProp('grafcet', g ? cleanGrafcet(g) : null); syncGrafcet(); },
     grafcetState: () => (simOn() && R.g.X ? { active: [...R.g.X].sort((a, b) => a - b), outputs: [...R.gOut].sort(), unstable: !!R.g.unstable } : null),
-    isGrafcetInput: n => !!grafInput(n),
+    isGrafcetInput: n => !!grafInput(n) || !!plcInput(n),
+    /** Automate (Ladder) : lecture, remplacement (annulable), état pendant la simulation, panneau, traduction du GRAFCET. */
+    plc: () => ed.circuit().plc || null,
+    setPlc(p) { ed.setCircuitProp('plc', p ? cleanPlc(p) : null); syncPlc(); },
+    plcState: () => (simOn() && compiledPlc(ed.circuit().plc) ? { cycle: R.p.scan, halted: !!R.p.halted, outputs: [...R.pOut].sort(), bits: Object.fromEntries([...R.p.bits].filter(([, v]) => v).map(([k]) => [k, true])), timers: Object.fromEntries([...R.p.timers].map(([k, t]) => [k, { et: Math.round(t.et * 100) / 100, q: t.q }])), counters: Object.fromEntries([...R.p.counters].map(([k, c]) => [k, { cv: c.cv, q: c.q }])) } : null),
+    plcOpen: () => pl.isOpen(), openPlc() { if (!on && !split) setMode(true); pl.open(); },
+    plcFromGrafcet() { const r = ladderFromGrafcet(ed.circuit().grafcet); if (r.error) return r; ed.setCircuitProp('plc', cleanPlc(r.plc)); const g = ed.circuit().grafcet; if (g && g.drive !== false) ed.setCircuitProp('grafcet', cleanGrafcet({ ...g, drive: false })); syncPlc(); return { rungs: r.plc.rungs.length, notes: r.notes }; },
     openGrafcet() { if (!on && !split) setMode(true); gf.open(); },
     refresh() { counts(); renderPane(); if (on || split) ed.render(); if (split) paintChain(); },
     /** Vue partagée (montage et circuit côte à côte), panneau GRAFCET, vue 3D : ouverts ? */
-    isSplit: () => split, setSplit: v => setSplit(v), grafcetOpen: () => gf.isOpen(), is3dOpen: () => !m3.hidden,
+    isSplit: () => split, setSplit: v => setSplit(v), grafcetOpen: () => gf.isOpen(), is3dOpen: () => !m3.hidden, open3d() { open3d(); },
+    /** Procédé de la machine 3D : action d'une commande (une voiture, une bouteille, remplir…), son libellé, état (capteurs, compteurs, alarme). */
+    act(role) { actRole(role); paint3d(); },
+    actLabel(role) { const D = processOf(ed.circuit().scene), a = D && D.acts.find(x => x.role === role); return a ? a.label() : null; },
+    machine() {
+      const c = ed.circuit(), D = processOf(c.scene); if (!c.scene) return null;
+      const hud = processHud(c.scene, R.proc);
+      return { kind: c.scene.kind, ...(D ? { sensors: Object.fromEntries(D.sensors.map(d => { const n = sensorName(c.scene, d); return [n, simOn() ? sensorOn(n) : null]; })), counters: Object.fromEntries(hud.filter(h => h.label).map(h => [h.label, h.value])), alarm: (hud.find(h => h.alarm) || {}).alarm || null, actions: D.acts.map(a => a.role) } : {}) };
+    },
+    /** Machine construite (jumeau 3D, scène « twin ») : lecture (copie), remplacement (annulable, nettoyé), problèmes, mode construction. */
+    scene: () => (ed.circuit().scene ? JSON.parse(JSON.stringify(ed.circuit().scene)) : null),
+    setScene(s) { ed.setCircuitProp('scene', s ? (s.kind === 'twin' ? cleanTwin(s) : s) : null); sync3d(); refresh3d(true); },
+    sceneProblems: () => (isTwin(ed.circuit().scene) ? validateTwin(ed.circuit().scene, twinApi.known()) : []),
+    openBuild() { openBuild(); }, isBuilding: () => !!(twinEd && twinEd.isOpen()),
     /** Liaisons avec le montage : chaque repère, le composant du montage et la broche de la carte qui le commande ou le lit. */
     links: () => benchLinks().map(l => ({ tag: l.name, kind: l.kind, element: l.el, bench_part: l.comp ? l.comp.name : null, board_pin: l.pin ? `${l.pin.board}.${l.pin.pin}` : null, ...(l.pin && l.pin.via ? { via: l.pin.via } : {}) })),
     linkBench: o => linkBench(o),

@@ -13,7 +13,7 @@ import { createRp2040Runtime, parseImage } from './rp2040.js';
 import { compileFirmware, EMULATED, FQBN as FQBNS } from './compile.js';
 import { bootromB1 } from './rp2040-bootrom.js';
 import { BOARDS } from '../sim/boards.js';
-import { hasPicoCore, compileSketch, fakeBoard, boot, runFor } from './testkit.mjs';
+import { hasPicoCore, compileSketch, fakeBoard, boot, runFor, chipOutFailures, stepFailures, pinFailures, sdFailures, tftFailures, screenFailures } from './testkit.mjs';
 
 const FQBN = 'rp2040:rp2040:rpipico';
 const skip = !hasPicoCore() && 'arduino-cli ou le cœur rp2040:rp2040 absent';
@@ -211,6 +211,8 @@ function runPico(f, src) {
     const [key, ...cols] = e.split(/\s+/), rec = rt.hw.pinApi.rec(key), got = JSON.stringify(rec && rec.px), want = JSON.stringify(cols.map(c => c.split(',').map(Number)));
     if (got !== want) failures.push(`${f} : couleurs attendues ${want}, reçues ${got}`);
   }
+  failures.push(...chipOutFailures(f, src, comps));
+  failures.push(...stepFailures(f, src, comps), ...pinFailures(f, src, rt), ...sdFailures(f, src, comps), ...tftFailures(f, src, comps), ...screenFailures(f, src, comps));
   if (rt.state !== 'run') failures.push(`${f} : état ${rt.state} ${rt.error ? rt.error.msg : ''}`);
   return failures;
 }

@@ -19,6 +19,8 @@
       <div class="project">
         <button type="button" class="projBtn" id="projBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="projMenu" data-tip="Projet : nouveau, ouvrir, enregistrer sous, importer"><i data-icon="file"></i><span id="projectName">Sans titre</span><i data-icon="chevDown" class="chev"></i></button>
         <div class="abMenu" id="projMenu" role="menu" aria-label="Projet" hidden>
+          <button type="button" role="menuitem" id="homeBtn"><i data-icon="sparkle"></i><span>Accueil</span></button>
+          <hr>
           <button type="button" role="menuitem" id="newBtn"><i data-icon="filePlus"></i><span>Nouveau projet</span><kbd data-key="N"></kbd></button>
           <button type="button" role="menuitem" id="openBtn"><i data-icon="folder"></i><span>Ouvrir…</span><kbd data-key="O"></kbd></button>
           <hr>
@@ -28,6 +30,7 @@
           <button type="button" role="menuitem" id="importBtn"><i data-icon="upload"></i><span>Importer un projet Wokwi…</span></button>
           <hr id="updSep" hidden>
           <button type="button" role="menuitem" id="updBtn" hidden><i data-icon="sparkle"></i><span>Rechercher les mises à jour…</span></button>
+          <button type="button" role="menuitem" id="logBtn" hidden><i data-icon="folder"></i><span>Ouvrir le dossier des journaux</span></button>
         </div>
       </div>
       <input type="file" id="importFile" accept=".json,.zip,.ino,.txt,.toml,.h,.cpp,.py" multiple hidden>
@@ -49,6 +52,9 @@
       </div>
     </div>
   </header>
+
+  <!-- Barre d'activité (src/ui/shell.js) : bibliothèque, ressources, TP, classe, problèmes, accueil, commandes -->
+  <nav class="actBar" id="actBar" aria-label="Barre d’activité"></nav>
 
   <!-- Bibliothèque et sélection -->
   <aside class="panel left" id="libPanel" aria-label="Bibliothèque">
@@ -92,6 +98,12 @@
         <label>Z<input type="number" id="tZ" step="1"><span>mm</span></label>
         <label><i data-icon="rotate"></i><input type="number" id="tR" step="15"><span>°</span></label>
       </div>
+      <!-- Valeur d'une résistance, d'un condensateur, d'une bobine (src/sim/passives.js) -->
+      <div class="valBox" id="valBox" role="group" aria-label="Valeur du composant" hidden>
+        <label class="valField"><span id="valLab">Valeur</span><input id="valIn" list="valList" autocomplete="off" spellcheck="false" aria-describedby="valHint"><datalist id="valList"></datalist></label>
+        <label class="valField" id="vmaxField" hidden><span>Tension de service</span><select id="vmaxIn" class="sel"></select></label>
+        <p class="note" id="valHint"></p>
+      </div>
       <button type="button" class="btn primary wide" id="autoBtn" hidden><i data-icon="wand"></i><span>Câbler automatiquement</span></button>
       <div id="behav"></div>
       <div class="explain" id="explain"></div>
@@ -122,6 +134,9 @@
       </div>
     </section>
   </aside>
+
+  <!-- Onglets des plans de travail (src/ui/shell.js) : Montage 3D, Schéma, Logique, Pneumatique -->
+  <div class="edTabs" id="edTabs" role="tablist" aria-label="Plans de travail"></div>
 
   <!-- Plan de travail 3D -->
   <main class="stage" id="stage">
@@ -163,6 +178,9 @@
       <button type="button" class="ax" id="alertClose" aria-label="Fermer l’alerte"><i data-icon="x"></i></button>
     </div>
   </main>
+
+  <!-- Panneau du bas (src/ui/shell.js) : Problèmes du vérificateur, Sortie (messages, téléversement) · Ctrl+J -->
+  <section class="dockPanel" id="dockPanel" aria-label="Panneau du bas" hidden></section>
 
   <!-- Timeline de la vidéo (src/video/dock.js), sous le plan de travail -->
   <section class="tlDock" id="tlDock" aria-label="Timeline de la vidéo" hidden></section>
@@ -217,10 +235,9 @@
           <span class="pstate" id="progState" data-kind="off" role="status"><span class="led"></span><span>Simulation arrêtée</span></span>
           <button type="button" class="tb" id="progMute" aria-pressed="false" aria-label="Couper le son"></button>
           <button type="button" class="tb" id="progWide" aria-pressed="false" data-tip="Agrandir l’inspecteur" aria-label="Agrandir l’inspecteur"></button>
-          <select id="progEngine" class="sel engineSel" aria-label="Mode d’exécution" data-tip="Débutant : interpréteur instantané, pas à pas. Fidèle : le vrai programme compilé par arduino-cli tourne sur un processeur émulé (application installée). MicroPython (Pico) : programme en Python, sur le vrai MicroPython émulé." hidden>
-            <option value="interp">Débutant</option>
-            <option value="firmware">Fidèle</option>
-            <option value="micropython" hidden disabled>MicroPython</option>
+          <select id="progEngine" class="sel engineSel" aria-label="Langage du programme" data-tip="Langage du Pico : C++ d’Arduino ou MicroPython (le vrai MicroPython, sur le processeur émulé)" hidden>
+            <option value="cpp">Arduino (C++)</option>
+            <option value="micropython">MicroPython</option>
           </select>
           <button type="button" class="btn primary small" id="progRun" data-tip="Compiler et exécuter sur la carte · Ctrl+Entrée"><i data-icon="upload"></i><span>Téléverser</span></button>
         </div>
@@ -330,14 +347,19 @@
         <ol class="shots" id="shots"></ol>
         <button type="button" class="btn wide" id="addShot"><i data-icon="plus"></i><span>Ajouter la vue actuelle</span></button>
       </section>
+      <section id="audioSec" class="audioSec"></section>
       <section>
         <h2><i data-icon="record"></i>Export vidéo</h2>
+        <label class="field" id="vFmtField">Format<select id="vFmt"><option value="mp4" selected>MP4 (web, YouTube, réseaux)</option><option value="prores" disabled>ProRes 422 HQ (.mov, montage)</option><option value="dnxhr" disabled>DNxHR HQ (.mov, montage)</option></select></label>
         <div class="grid2">
-          <label class="field">Résolution<select id="vRes"><option value="720">1280 × 720</option><option value="1080" selected>1920 × 1080</option><option value="1440">2560 × 1440</option><option value="2160">3840 × 2160 (4K)</option></select></label>
-          <label class="field">Images/s<select id="vFps"><option value="30">30</option><option value="60">60</option></select></label>
+          <label class="field">Résolution<select id="vRes"><option value="720">1280 × 720 (HD)</option><option value="1080" selected>1920 × 1080 (Full HD)</option><option value="1440">2560 × 1440 (QHD)</option><option value="2160">3840 × 2160 (4K UHD)</option></select></label>
+          <label class="field">Images/s<select id="vFps"><option value="24000/1001">23,976 (cinéma NTSC)</option><option value="24">24 (cinéma)</option><option value="25">25 (Europe, Afrique)</option><option value="30000/1001">29,97 (NTSC)</option><option value="30" selected>30 (web)</option><option value="50">50 (Europe, Afrique)</option><option value="60000/1001">59,94 (NTSC)</option><option value="60">60 (web)</option></select></label>
+          <label class="field">Codec<select id="vCodec"><option value="avc" selected>H.264 (lu partout)</option><option value="hevc">HEVC / H.265 (plus léger)</option><option value="av1">AV1 (libre de droits)</option></select></label>
+          <label class="field">Qualité<select id="vQual"><option value="web" selected>Web (débits YouTube)</option><option value="master">Original (pour le montage)</option></select></label>
         </div>
+        <label class="check"><input type="checkbox" id="vSubs" checked> Piste de sous-titres (accessibilité)</label>
         <button type="button" class="btn primary wide" id="recBtn"><i data-icon="record"></i><span>Rendre la vidéo</span></button>
-        <p class="note">Rendu image par image en MP4 : chaque image est calculée à son instant exact, la vidéo reste fluide quelle que soit la machine. Repli sur l’enregistrement en temps réel si le système ne sait pas encoder.</p>
+        <p class="note">MP4 rendu image par image, encodé par la puce graphique quand elle le permet : couleur BT.709, niveau de codec exact, une image clé par seconde, textes dans la zone de sécurité, sous-titres WebVTT intégrés. 25 et 50 images/s suivent le secteur 50 Hz (Europe, Afrique) ; 30 et 60, le web.</p>
       </section>
     </div>
   </aside>
@@ -357,7 +379,7 @@
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="vidTitle">
     <div class="sheetHead"><h2 id="vidTitle">Vidéo prête</h2><button type="button" class="btn" id="closeModal">Fermer</button></div>
     <video id="vid" controls playsinline></video>
-    <div class="row"><button type="button" class="btn primary auto" id="dl"><i data-icon="save"></i><span>Enregistrer sous…</span></button><span class="note" id="vidMeta"></span></div>
+    <div class="row"><button type="button" class="btn primary auto" id="dl"><i data-icon="save"></i><span>Enregistrer sous…</span></button><span class="vidSubs" id="vidSubs" hidden><button type="button" class="btn auto" data-sub="srt" data-tip="SubRip : logiciels de montage, YouTube">Sous-titres .srt</button><button type="button" class="btn auto" data-sub="vtt" data-tip="WebVTT : lecteurs web">.vtt</button></span><span class="note" id="vidMeta"></span></div>
   </div>
 </div>
 <div class="modal" id="renderModal" hidden>

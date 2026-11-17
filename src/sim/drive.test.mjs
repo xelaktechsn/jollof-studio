@@ -9,7 +9,7 @@ import { analyze, inspect } from './circuit.js';
 import { driveOf, driveBoard } from './drive.js';
 import { generate } from '../prog/rules.js';
 
-const LEGS = { npn: ['C', 'B', 'E'], bat9v: ['+', '-'] };
+const LEGS = { npn: ['C', 'B', 'E'], pnp: ['C', 'B', 'E'], bat9v: ['+', '-'] };
 const keys = type => (BOARDS[type] ? [...Object.keys(BOARDS[type].gpio), ...Object.keys(BOARDS[type].power), 'GND', 'GND (2)', 'GND (3)'] : /^res-/.test(type) ? ['1', '2'] : LEGS[type] || PARTS[type].pins.map(p => p.pin));
 function build(parts, links) {
   const comps = parts.map(([type, id]) => ({ id, type, name: id, pins: Object.fromEntries(keys(type).map(k => [k, {}])), inp: {} }));
@@ -32,13 +32,25 @@ test('Ventilateur par un transistor : base sur D9 (PWM), code analogWrite', () =
   assert.match(m.code([rule('F', 'stop')]), /digitalWrite\(Q, LOW\)/);
 });
 
+test('Ventilateur côté + par un PNP : base à LOW = marche, PWM inversée, arrêt = HIGH', () => {
+  const m = build([['uno', 'U'], ['fan', 'F'], ['pnp', 'Q'], ['res-1k', 'R']],
+    [['U', '5V', 'Q', 'E'], ['Q', 'C', 'F', '+'], ['F', '-', 'U', 'GND'], ['U', 'D9', 'R', '1'], ['R', '2', 'Q', 'B']]);
+  const d = driveOf(m.by.F, m.A);
+  assert.equal(d.kind, 'npn'); assert.equal(d.npn, m.by.Q); assert.equal(d.low, true); assert.equal(d.gpio.key, 'D9');
+  const on = m.code([rule('F', 'on')]), stop = m.code([rule('F', 'stop')]), half = m.code([rule('F', 'speed', 60)]);
+  assert.match(on, /digitalWrite\(Q, HIGH\);[^\n]*bloqué au départ/); // bloqué tant que setup() n'a pas fini
+  assert.match(on, /digitalWrite\(Q, LOW\)/);
+  assert.match(stop, /digitalWrite\(Q, HIGH\)/);
+  assert.match(half, /analogWrite\(Q, 255 - 153\)/);
+});
+
 test('Pompe par un relais (contact NO) : LOW sur IN la fait tourner', () => {
   const m = build([['uno', 'U'], ['bat9v', 'P'], ['pump', 'M'], ['relay', 'K']],
     [['U', '5V', 'K', 'VCC'], ['U', 'GND', 'K', 'GND'], ['U', 'D7', 'K', 'IN'], ['P', '+', 'K', 'COM'], ['K', 'NO', 'M', '+'], ['M', '-', 'P', '-']]);
   const d = driveOf(m.by.M, m.A);
   assert.equal(d.kind, 'relay'); assert.equal(d.contact, 'NO'); assert.equal(d.gpio.key, 'D7');
   const code = m.code([rule('M', 'on')]);
-  assert.match(code, /const int K = 7;/, 'le relais garde un nom court malgré ses contacts');
+  assert.match(code, /constexpr uint8_t K = 7;/, 'le relais garde un nom court malgré ses contacts');
   assert.match(code, /digitalWrite\(K, LOW\);/);
 });
 

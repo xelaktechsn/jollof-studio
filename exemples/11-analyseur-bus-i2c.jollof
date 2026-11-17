@@ -1,0 +1,171 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Analyseur de bus I2C",
+ "description": "Raspberry Pi Pico, un BMP280 (adresse 0x76) et un écran OLED (0x3C) sur le même bus I2C (GP4 SDA, GP5 SCL), tout en 3,3 V. Le programme, écrit à la main, balaie d’abord les 127 adresses comme un scanner I2C, puis lit la température du BMP280 et l’affiche. Lancez la simulation et ouvrez le banc de mesure, onglet « Analyseur de bus » : chaque adresse essayée apparaît, en rouge (NACK) quand aucun module n’y répond, puis les lectures du capteur octet par octet. Cochez « NACK seulement » pour retrouver un capteur muet. Débranchez SDA du BMP280 : l’analyseur montre aussitôt que 0x76 ne répond plus.",
+ "en": {
+  "name": "I2C bus analyser",
+  "description": "Raspberry Pi Pico, a BMP280 (address 0x76) and an OLED screen (0x3C) on the same I2C bus (GP4 SDA, GP5 SCL), all at 3.3 V. The hand-written program first scans the 127 addresses like an I2C scanner, then reads the BMP280’s temperature and shows it. Start the simulation and open the measurement bench, “Bus analyser” tab: every address tried appears, in red (NACK) when no module answers, then the sensor reads byte by byte. Tick “NACK only” to find a silent sensor. Unplug the BMP280’s SDA: the analyser immediately shows that 0x76 no longer answers."
+ },
+ "comps": [
+  {
+   "id": "pico_1",
+   "type": "pico",
+   "name": "PICO",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "bmp280_1",
+   "type": "bmp280",
+   "name": "BMP1",
+   "x": 60,
+   "z": -20,
+   "r": 0
+  },
+  {
+   "id": "oled_1",
+   "type": "oled",
+   "name": "OLED1",
+   "x": 64,
+   "z": 26,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "pico_1",
+    "3V3"
+   ],
+   "b": [
+    "bmp280_1",
+    "VCC"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V"
+  },
+  {
+   "a": [
+    "pico_1",
+    "GND"
+   ],
+   "b": [
+    "bmp280_1",
+    "GND"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "bmp280_1",
+    "SDO"
+   ],
+   "b": [
+    "pico_1",
+    "GND (2)"
+   ],
+   "color": "#3a3f45",
+   "role": "SDO à la masse : adresse 0x76"
+  },
+  {
+   "a": [
+    "pico_1",
+    "GP4"
+   ],
+   "b": [
+    "bmp280_1",
+    "SDA"
+   ],
+   "color": "#3b82f6",
+   "role": "I2C SDA"
+  },
+  {
+   "a": [
+    "pico_1",
+    "GP5"
+   ],
+   "b": [
+    "bmp280_1",
+    "SCL"
+   ],
+   "color": "#f2c94c",
+   "role": "I2C SCL"
+  },
+  {
+   "a": [
+    "oled_1",
+    "VCC"
+   ],
+   "b": [
+    "bmp280_1",
+    "VCC"
+   ],
+   "color": "#e5484d",
+   "role": "Alimentation 3,3 V partagée"
+  },
+  {
+   "a": [
+    "oled_1",
+    "GND"
+   ],
+   "b": [
+    "pico_1",
+    "GND (3)"
+   ],
+   "color": "#3a3f45",
+   "role": "Masse"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SDA"
+   ],
+   "b": [
+    "bmp280_1",
+    "SDA"
+   ],
+   "color": "#3b82f6",
+   "role": "SDA partagé"
+  },
+  {
+   "a": [
+    "oled_1",
+    "SCL"
+   ],
+   "b": [
+    "bmp280_1",
+    "SCL"
+   ],
+   "color": "#f2c94c",
+   "role": "SCL partagé"
+  }
+ ],
+ "settings": {
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {
+    "pico_1": {
+     "auto": false,
+     "code": "// Scanner I2C, puis lecture du BMP280 : ouvrez le banc de mesure, onglet « Analyseur de bus ».\n#include <Wire.h>\n#include <Adafruit_BMP280.h>\nAdafruit_BMP280 bmp;\n\nvoid setup() {\n  Serial.begin(9600);\n  while (!Serial) delay(10); // Pico : Serial passe par l’USB\n  Wire.begin();\n  Serial.println(\"Balayage du bus I2C...\");\n  for (byte a = 1; a < 127; a++) {\n    Wire.beginTransmission(a);\n    if (Wire.endTransmission() == 0) { Serial.print(\"Module en 0x\"); Serial.println(a, HEX); }\n  }\n  if (!bmp.begin(0x76)) Serial.println(\"BMP280 introuvable en 0x76\");\n}\n\nvoid loop() {\n  Serial.print(\"Temperature : \");\n  Serial.print(bmp.readTemperature());\n  Serial.println(\" C\");\n  delay(1000);\n}"
+    }
+   },
+   "states": {}
+  }
+ }
+}

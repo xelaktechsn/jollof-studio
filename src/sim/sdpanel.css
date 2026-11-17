@@ -1,0 +1,13 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Section « Cartes microSD » de l'onglet Simulation (sim/sdpanel.js) : cartes reprises de celles des mesures (.probes). */
+.sdf-list .sdf-files { list-style: none; margin: 6px 0 0; padding: 4px 6px; display: flex; flex-direction: column; gap: 2px; max-height: 200px; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-sm); }
+.sdf-list .sdf-files li { display: flex; flex-direction: row; align-items: center; gap: 6px; padding: 2px 0; border: 0; border-radius: 0; background: none; font-size: 12px; text-align: left; }
+.sdf-list .sdf-name { flex: 1; min-width: 0; display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 11.5px; overflow-wrap: anywhere; }
+.sdf-list .sdf-name .ic { width: 13px; height: 13px; color: var(--muted); flex: 0 0 auto; }
+.sdf-list .sdf-files small { color: var(--muted); font-family: var(--mono); font-size: 10.5px; }
+.sdf-list .sdf-files i { width: 26px; }
+.sdf-list .sdf-files .btn.small { padding: 2px 5px; }
+.sdf-list .sdf-none { color: var(--muted); }
+.sdf-list .sdf-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+.sdf-list .sdf-hint { margin: 5px 0 0; font-size: 11.5px; color: var(--muted); line-height: 1.4; }

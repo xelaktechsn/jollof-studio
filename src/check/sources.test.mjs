@@ -9,15 +9,16 @@ import { SOURCES } from './sources.js';
 import * as LIM from './limits.js';
 import { PARTS, NPNS } from '../sim/parts.js';
 import { BOARDS } from '../sim/boards.js';
+import { RATINGS } from './ratings.js';
 
 const { LIMIT_SRC } = LIM;
 /** Seuils de conception sans fiche technique (LIMIT_SRC à null), chacun justifié dans limits.js. */
-const DESIGN = new Set(['SHORT_MA']);
+const DESIGN = new Set(['SHORT_MA', 'I2C_WIRING_PF', 'DERATE_ECAP']);
 /** Limites de carte sans fiche technique (null dans LIMIT_SRC.BOARD), justifiées dans limits.js. */
-const DESIGN_BOARD = new Set(['d1mini.three', 'esp32-38.three', 'esp32s3.three', 'esp32c3.three']);
+const DESIGN_BOARD = new Set(['d1mini.three', 'esp32s3.three', 'esp32c3.three']);
 /** Fabricants dont le site ne sert pas HTTPS : adresse HTTP d'origine. */
 const HTTP_ONLY = new Set(['ams1117']);
-const BOARD_FIELDS = ['pin', 'total', 'five', 'three', 'vmax'];
+const BOARD_FIELDS = ['pin', 'total', 'five', 'three', 'vmax', 'vih', 'vil'];
 
 const used = new Set();
 /** Une source : clé de SOURCES, ou liste non vide de clés. Renvoie le message d'erreur, ou '' si elle est valable. */
@@ -64,6 +65,12 @@ test('chaque limite de carte cite une source', () => {
       if (DESIGN_BOARD.has(`${type}.${f}`)) { assert.equal(LIMIT_SRC.BOARD[type][f], null, `${type}.${f}`); continue; }
       assert.equal(bad(LIMIT_SRC.BOARD[type][f]), '', `${type}.${f}`);
     }
+    // Champs facultatifs (tirage interne, courant radio, ADC, injection) : une valeur, et une source.
+    for (const [f, s] of Object.entries(LIMIT_SRC.BOARD[type])) {
+      if (BOARD_FIELDS.includes(f) || (s === null && DESIGN_BOARD.has(`${type}.${f}`))) continue;
+      if (b[f] == null) continue; // rpu de l'ESP8266 : sans objet
+      assert.equal(bad(s), '', `${type}.${f}`);
+    }
   }
 });
 
@@ -83,8 +90,9 @@ test('chaque alimentation v et chaque consommation ma de parts.js cite une sourc
 test('chaque fiche est complète et sert au moins une fois', () => {
   // Les tests précédents remplissent used ; on le recalcule ici pour ne pas dépendre de leur ordre.
   for (const [, src] of limits()) if (src != null) bad(src);
-  for (const type of Object.keys(BOARDS)) for (const f of BOARD_FIELDS) if (!DESIGN_BOARD.has(`${type}.${f}`)) bad(LIMIT_SRC.BOARD[type][f]);
+  for (const type of Object.keys(BOARDS)) for (const [f, s] of Object.entries(LIMIT_SRC.BOARD[type])) if (!DESIGN_BOARD.has(`${type}.${f}`)) bad(s);
   for (const n of Object.values(NPNS)) bad(n.src);
+  for (const r of Object.values(RATINGS)) if ([].concat(r.src).length) bad(r.src);
   for (const spec of Object.values(PARTS)) {
     for (const p of spec.pins || []) if (Array.isArray(p.v)) bad(p.ds);
     if (spec.ma != null) bad(spec.ds);

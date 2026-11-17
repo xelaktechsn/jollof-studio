@@ -34,6 +34,7 @@ A part type (for example `led-red`, `dht22`, `l298n`) is a string key used acros
 | `src/sim/dc.js` | how the solver models it (resistor, diode, source, Norton, capacitor, BJT, FET) |
 | `src/sim/models.js` | sensor behaviour (`MODELS`) and interactive peripherals |
 | `src/sim/actuators.js` | how outputs move (LEDs, motors, servo, relay…) |
+| `src/sim/motordrv.js` | motor drivers: H-bridges (L298N, L293D, TB6612FNG) for the DC solver, and the pin-level step/dir model of stepper drivers (A4988, DRV8825) shared by the built-in runtime, the emulators (`src/emu/devices/stepdrv.js`) and the actuators (skipped-step detection, coil pairing) |
 | `src/schematic/sheet.js` | schematic symbol |
 | `src/library/docs.js` | the documentation page |
 | `src/check/limits.js` | machine-readable ratings the checker proves |

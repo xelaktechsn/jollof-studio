@@ -7,7 +7,9 @@
 /** Types de retour : void, bool, char, float, str, any, i8 u8 i16 u16 i32 u32 i64, arg0 (type du 1er argument), num. */
 import { tl } from '../i18n/index.js';
 const f = (args, ret, o = {}) => ({ args, ret, ...o });
-const MATH1 = ['sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'exp', 'log', 'log10', 'fabs', 'floor', 'ceil', 'trunc'];
+const MATH1 = ['sqrt', 'sin', 'cos', 'tan', 'asin', 'acos', 'atan', 'exp', 'log', 'log10', 'fabs', 'floor', 'ceil', 'trunc',
+  'sqrtf', 'sinf', 'cosf', 'tanf', 'expf', 'logf', 'log10f', 'fabsf', 'floorf', 'ceilf', 'truncf', 'roundf', 'cbrt'];
+const raw = { raw: true };
 
 /**
  * Fonctions du cœur Arduino. args : nombre exact, ou [min, max]. block : peut suspendre le programme.
@@ -23,8 +25,39 @@ export const FN = {
   map: f(5, 'i32'), constrain: f(3, 'arg0'), min: f(2, 'num'), max: f(2, 'num'), abs: f(1, 'arg0'), sq: f(1, 'arg0'),
   ...Object.fromEntries(MATH1.map(n => [n, f(1, 'float')])),
   pow: f(2, 'float'), atan2: f(2, 'float'), fmod: f(2, 'float'), hypot: f(2, 'float'),
-  round: f(1, 'i32'), isnan: f(1, 'bool'), isinf: f(1, 'bool'),
+  powf: f(2, 'float'), atan2f: f(2, 'float'), fmodf: f(2, 'float'), fmin: f(2, 'float'), fmax: f(2, 'float'), fminf: f(2, 'float'), fmaxf: f(2, 'float'),
+  round: f(1, 'i32'), labs: f(1, 'i32'), lround: f(1, 'i32'), lroundf: f(1, 'i32'), isnan: f(1, 'bool'), isinf: f(1, 'bool'), isfinite: f(1, 'bool'),
+  // ctype.h : caractères ASCII (rendent un int, comme en C).
+  isdigit: f(1, 'int'), isalpha: f(1, 'int'), isalnum: f(1, 'int'), isspace: f(1, 'int'), isupper: f(1, 'int'), islower: f(1, 'int'),
+  isxdigit: f(1, 'int'), ispunct: f(1, 'int'), isprint: f(1, 'int'), toupper: f(1, 'int'), tolower: f(1, 'int'),
+  // Chaînes du C (string.h, stdlib.h, stdio.h) sur des tableaux de char. buf : arguments qui sont le tableau à remplir ;
+  // fmt : position du format de printf (les arguments qui suivent gardent leur type C).
+  strlen: f(1, 'size', raw), strcmp: f(2, 'int', raw), strncmp: f(3, 'int', raw), strcasecmp: f(2, 'int', raw), strncasecmp: f(3, 'int', raw),
+  strcpy: f(2, 'cptr', { raw: true, buf: [0] }), strncpy: f(3, 'cptr', { raw: true, buf: [0] }), strlcpy: f(3, 'size', { raw: true, buf: [0] }),
+  strcat: f(2, 'cptr', { raw: true, buf: [0] }), strncat: f(3, 'cptr', { raw: true, buf: [0] }), strlcat: f(3, 'size', { raw: true, buf: [0] }),
+  strstr: f(2, 'cptr', raw), strchr: f(2, 'cptr', raw), strrchr: f(2, 'cptr', raw), memcmp: f(3, 'int', { raw: true, ref: [0, 1] }),
+  atoi: f(1, 'int', raw), atol: f(1, 'i32', raw), atof: f(1, 'float', raw), strtol: f([2, 3], 'i32', raw), strtoul: f([2, 3], 'u32', raw), strtod: f(2, 'float', raw),
+  itoa: f(3, 'cptr', { raw: true, buf: [1] }), ltoa: f(3, 'cptr', { raw: true, buf: [1] }), utoa: f(3, 'cptr', { raw: true, buf: [1] }), ultoa: f(3, 'cptr', { raw: true, buf: [1] }),
+  dtostrf: f(4, 'cptr', { raw: true, buf: [3] }),
+  snprintf: f([3, 40], 'int', { raw: true, buf: [0], fmt: 2 }), sprintf: f([2, 40], 'int', { raw: true, buf: [0], fmt: 1 }),
+  // Variantes _P (avr/pgmspace.h) : le second texte est en mémoire flash (PSTR, PROGMEM). Les mêmes dans le simulateur.
+  PSTR: f(1, 'str', raw), strlen_P: f(1, 'size', raw), strcmp_P: f(2, 'int', raw), strncmp_P: f(3, 'int', raw), strcasecmp_P: f(2, 'int', raw),
+  strncasecmp_P: f(3, 'int', raw), strstr_P: f(2, 'cptr', raw), memcmp_P: f(3, 'int', { raw: true, ref: [0, 1] }),
+  strcpy_P: f(2, 'cptr', { raw: true, buf: [0] }), strncpy_P: f(3, 'cptr', { raw: true, buf: [0] }), strlcpy_P: f(3, 'size', { raw: true, buf: [0] }),
+  strcat_P: f(2, 'cptr', { raw: true, buf: [0] }), strncat_P: f(3, 'cptr', { raw: true, buf: [0] }), strlcat_P: f(3, 'size', { raw: true, buf: [0] }),
+  snprintf_P: f([3, 40], 'int', { raw: true, buf: [0], fmt: 2 }), sprintf_P: f([2, 40], 'int', { raw: true, buf: [0], fmt: 1 }),
+  memcpy_P: f(3, 'void', { raw: true, ref: [0, 1] }),
+  // pgm_read_* (&TABLE[i]) : la case lue, au type de la fonction (traité à part par le compilateur).
+  pgm_read_byte: f(1, 'u8', { raw: true, pgm: true }), pgm_read_word: f(1, 'u16', { raw: true, pgm: true }), pgm_read_dword: f(1, 'u32', { raw: true, pgm: true }),
+  pgm_read_float: f(1, 'float', { raw: true, pgm: true }), pgm_read_ptr: f(1, 'any', { raw: true, pgm: true }),
+  pgm_read_byte_near: f(1, 'u8', { raw: true, pgm: true }), pgm_read_word_near: f(1, 'u16', { raw: true, pgm: true }),
+  // avr/sleep.h (AVR seulement) : mise en veille jusqu'à la prochaine interruption.
+  set_sleep_mode: f(1, 'void', { avr: true, inc: 'avr/sleep.h' }), sleep_enable: f(0, 'void', { avr: true, inc: 'avr/sleep.h' }),
+  sleep_disable: f(0, 'void', { avr: true, inc: 'avr/sleep.h' }), sleep_cpu: f(0, 'void', { avr: true, inc: 'avr/sleep.h', wait: true }),
+  sleep_mode: f(0, 'void', { avr: true, inc: 'avr/sleep.h', wait: true }),
   random: f([1, 2], 'i32'), randomSeed: f(1, 'void'),
+  // Registres à décalage : un bit par front d'horloge, comme le cœur Arduino (74HC595, 74HC165, sim/chips.js).
+  shiftOut: f(4, 'void'), shiftIn: f(3, 'u8'),
   bit: f(1, 'u32'), bitRead: f(2, 'int'), highByte: f(1, 'u8'), lowByte: f(1, 'u8'),
   // bitWrite, bitSet, bitClear modifient leur premier argument : traités à part par le compilateur.
   bitWrite: f(3, 'void', { lvalue: true }), bitSet: f(2, 'void', { lvalue: true }), bitClear: f(2, 'void', { lvalue: true }),
@@ -47,7 +80,10 @@ export const FN = {
   esp_now_is_peer_exist: f(1, 'bool', { raw: true }), esp_now_send: f(3, 'int', { raw: true, ref: [1] }),
   esp_now_register_send_cb: f(1, 'int', { raw: true }), esp_now_register_recv_cb: f(1, 'int', { raw: true }),
   esp_now_unregister_send_cb: f(0, 'int'), esp_now_unregister_recv_cb: f(0, 'int'), esp_now_set_self_role: f(1, 'int'),
-  esp_now_recv_cb_t: f(1, 'any', { raw: true }), esp_now_send_cb_t: f(1, 'any', { raw: true })
+  esp_now_recv_cb_t: f(1, 'any', { raw: true }), esp_now_send_cb_t: f(1, 'any', { raw: true }),
+  // MAX30102 (bibliothèque SparkFun) : heartRate.h (détection d'un battement) et spo2_algorithm.h (exemple de Maxim).
+  checkForBeat: f(1, 'bool'),
+  maxim_heart_rate_and_oxygen_saturation: f(7, 'void', { raw: true, ref: [3, 4, 5, 6] })
 };
 
 /** Constantes communes à toutes les cartes. */
@@ -57,6 +93,20 @@ export const CONSTS = {
   DEC: 10, HEX: 16, OCT: 8, BIN: 2, LSBFIRST: 0, MSBFIRST: 1,
   PI: Math.PI, HALF_PI: Math.PI / 2, TWO_PI: Math.PI * 2, DEG_TO_RAD: Math.PI / 180, RAD_TO_DEG: 180 / Math.PI, EULER: Math.E,
   NULL: 0, nullptr: 0,
+  // stdint.h (inclus par Arduino.h) et math.h.
+  INT8_MAX: 127, INT8_MIN: -128, UINT8_MAX: 255, INT16_MAX: 32767, INT16_MIN: -32768, UINT16_MAX: 65535,
+  INT32_MAX: 2147483647, INT32_MIN: -2147483648, UINT32_MAX: 4294967295, NAN: NaN, INFINITY: Infinity, M_PI: Math.PI,
+  // avr/sleep.h (ATmega328P et ATmega2560 : valeurs du registre SMCR).
+  SLEEP_MODE_IDLE: 0, SLEEP_MODE_ADC: 2, SLEEP_MODE_PWR_DOWN: 4, SLEEP_MODE_PWR_SAVE: 6, SLEEP_MODE_STANDBY: 12, SLEEP_MODE_EXT_STANDBY: 14,
+  // Capteurs I2C (prog/sensorlibs.js) : VL53L0X, TCS34725, CCS811, BME680, MAX30102.
+  VL53L0X_I2C_ADDR: 0x29, VL53L0X_SENSE_DEFAULT: 0, VL53L0X_SENSE_LONG_RANGE: 1, VL53L0X_SENSE_HIGH_SPEED: 2, VL53L0X_SENSE_HIGH_ACCURACY: 3,
+  TCS34725_INTEGRATIONTIME_2_4MS: 0xff, TCS34725_INTEGRATIONTIME_24MS: 0xf6, TCS34725_INTEGRATIONTIME_50MS: 0xeb, TCS34725_INTEGRATIONTIME_60MS: 0xe7, TCS34725_INTEGRATIONTIME_101MS: 0xd6, TCS34725_INTEGRATIONTIME_120MS: 0xce, TCS34725_INTEGRATIONTIME_154MS: 0xc0, TCS34725_INTEGRATIONTIME_180MS: 0xb5, TCS34725_INTEGRATIONTIME_199MS: 0xad, TCS34725_INTEGRATIONTIME_240MS: 0x9c, TCS34725_INTEGRATIONTIME_300MS: 0x83, TCS34725_INTEGRATIONTIME_360MS: 0x6a, TCS34725_INTEGRATIONTIME_401MS: 0x59, TCS34725_INTEGRATIONTIME_420MS: 0x51, TCS34725_INTEGRATIONTIME_480MS: 0x38, TCS34725_INTEGRATIONTIME_499MS: 0x30, TCS34725_INTEGRATIONTIME_540MS: 0x1f, TCS34725_INTEGRATIONTIME_600MS: 0x06, TCS34725_INTEGRATIONTIME_614MS: 0x00,
+  TCS34725_GAIN_1X: 0, TCS34725_GAIN_4X: 1, TCS34725_GAIN_16X: 2, TCS34725_GAIN_60X: 3, TCS34725_ADDRESS: 0x29,
+  CCS811_ADDRESS: 0x5a, CCS811_DRIVE_MODE_IDLE: 0, CCS811_DRIVE_MODE_1SEC: 1, CCS811_DRIVE_MODE_10SEC: 2, CCS811_DRIVE_MODE_60SEC: 3, CCS811_DRIVE_MODE_250MS: 4,
+  BME680_OS_NONE: 0, BME680_OS_1X: 1, BME680_OS_2X: 2, BME680_OS_4X: 3, BME680_OS_8X: 4, BME680_OS_16X: 5, BME68X_OS_NONE: 0, BME68X_OS_1X: 1, BME68X_OS_2X: 2, BME68X_OS_4X: 3, BME68X_OS_8X: 4, BME68X_OS_16X: 5,
+  BME680_FILTER_SIZE_0: 0, BME680_FILTER_SIZE_1: 1, BME680_FILTER_SIZE_3: 2, BME680_FILTER_SIZE_7: 3, BME680_FILTER_SIZE_15: 4, BME680_FILTER_SIZE_31: 5, BME680_FILTER_SIZE_63: 6, BME680_FILTER_SIZE_127: 7,
+  BME68X_FILTER_OFF: 0, BME68X_FILTER_SIZE_3: 2, BME68X_ODR_NONE: 8, BME68X_DEFAULT_ADDRESS: 0x77,
+  MAX30105_ADDRESS: 0x57, I2C_SPEED_STANDARD: 100000, I2C_SPEED_FAST: 400000,
   DHT11: 11, DHT21: 21, DHT22: 22, AM2301: 21,
   SSD1306_SWITCHCAPVCC: 2, SSD1306_EXTERNALVCC: 1, SSD1306_WHITE: 1, SSD1306_BLACK: 0, SSD1306_INVERSE: 2, WHITE: 1, BLACK: 0, INVERSE: 2,
   NEO_GRB: 0x52, NEO_RGB: 0x06, NEO_GRBW: 0xd2, NEO_RGBW: 0xc6, NEO_KHZ800: 0, NEO_KHZ400: 0x100,
@@ -70,9 +120,13 @@ export const CONSTS = {
   // IRremote (v4) : retour de la LED de la carte, drapeaux et protocole des trames décodées.
   ENABLE_LED_FEEDBACK: 1, DISABLE_LED_FEEDBACK: 0, USE_DEFAULT_FEEDBACK_LED_PIN: 0,
   IRDATA_FLAGS_IS_REPEAT: 1, IRDATA_FLAGS_IS_AUTO_REPEAT: 2, IRDATA_FLAGS_PARITY_FAILED: 4, UNKNOWN: 0, NEC: 8,
+  // PCF8574 (bibliothèque de Renzo Mischianti) : broches P0 à P7 de l'extenseur.
+  P0: 0, P1: 1, P2: 2, P3: 3, P4: 4, P5: 5, P6: 6, P7: 7,
   // Keypad : aucune touche, états d'une touche.
   NO_KEY: 0, IDLE: 0, PRESSED: 1, HOLD: 2, RELEASED: 3,
   // RF24 : puissance d'émission, débit, contrôle d'erreur.
+  // LoRa (Sandeep Mistry) : sortie d'antenne de setTxPower(niveau, sortie).
+  PA_OUTPUT_RFO_PIN: 0, PA_OUTPUT_PA_BOOST_PIN: 1,
   RF24_PA_MIN: 0, RF24_PA_LOW: 1, RF24_PA_HIGH: 2, RF24_PA_MAX: 3, RF24_PA_ERROR: 4,
   RF24_1MBPS: 0, RF24_2MBPS: 1, RF24_250KBPS: 2, RF24_CRC_DISABLED: 0, RF24_CRC_8: 1, RF24_CRC_16: 2,
   // Wi-Fi (ESP32, ESP8266) : modes, états de la connexion, sécurité des réseaux trouvés.
@@ -90,10 +144,34 @@ export const CONSTS = {
   ESP_NOW_SEND_SUCCESS: 0, ESP_NOW_SEND_FAIL: 1, ESP_NOW_MAX_DATA_LEN: 250, ESP_NOW_ETH_ALEN: 6,
   ESP_NOW_ROLE_IDLE: 0, ESP_NOW_ROLE_CONTROLLER: 1, ESP_NOW_ROLE_SLAVE: 2, ESP_NOW_ROLE_COMBO: 3,
   // Bluetooth (BluetoothSerial) : rôle de la carte.
-  ESP_SPP_ROLE_MASTER: 0, ESP_SPP_ROLE_SLAVE: 1
+  ESP_SPP_ROLE_MASTER: 0, ESP_SPP_ROLE_SLAVE: 1,
+  // TM1637Display : segments (bit 0 = A … bit 6 = G, bit 7 = point ou deux-points).
+  SEG_A: 1, SEG_B: 2, SEG_C: 4, SEG_D: 8, SEG_E: 16, SEG_F: 32, SEG_G: 64, SEG_DP: 128,
+  // RTClib : format de timestamp(), sortie SQW et alarmes du DS3231, sortie SQW du DS1307.
+  TIMESTAMP_FULL: 0, TIMESTAMP_TIME: 1, TIMESTAMP_DATE: 2, SECONDS_FROM_1970_TO_2000: 946684800,
+  DS3231_OFF: 0x1c, DS3231_SquareWave1Hz: 0, DS3231_SquareWave1kHz: 0x08, DS3231_SquareWave4kHz: 0x10, DS3231_SquareWave8kHz: 0x18,
+  DS3231_A1_PerSecond: 0x0f, DS3231_A1_Second: 0x0e, DS3231_A1_Minute: 0x0c, DS3231_A1_Hour: 0x08, DS3231_A1_Date: 0, DS3231_A1_Day: 0x10,
+  DS3231_A2_PerMinute: 7, DS3231_A2_Minute: 6, DS3231_A2_Hour: 4, DS3231_A2_Date: 0, DS3231_A2_Day: 8,
+  DS1307_OFF: 0, DS1307_ON: 0x80, DS1307_SquareWave1HZ: 0x10, DS1307_SquareWave4kHz: 0x11, DS1307_SquareWave8kHz: 0x12, DS1307_SquareWave32kHz: 0x13,
+  // I2C_eeprom (Rob Tillaart) : taille des mémoires.
+  I2C_DEVICESIZE_24LC512: 65536, I2C_DEVICESIZE_24LC256: 32768, I2C_DEVICESIZE_24LC128: 16384, I2C_DEVICESIZE_24LC64: 8192, I2C_DEVICESIZE_24LC32: 4096,
+  I2C_DEVICESIZE_24LC16: 2048, I2C_DEVICESIZE_24LC08: 1024, I2C_DEVICESIZE_24LC04: 512, I2C_DEVICESIZE_24LC02: 256, I2C_DEVICESIZE_24LC01: 128,
+  // Carte SD (bibliothèque SD d'Arduino) : modes d'ouverture d'un fichier.
+  FILE_READ: 0x01, FILE_WRITE: 0x17, O_READ: 0x01, O_RDONLY: 0x01, O_WRITE: 0x02, O_WRONLY: 0x02, O_RDWR: 0x03, O_APPEND: 0x04, O_SYNC: 0x08, O_CREAT: 0x10, O_EXCL: 0x20, O_TRUNC: 0x40,
+  // Écrans TFT (Adafruit_ST7735.h, Adafruit_ILI9341.h) : onglets de l'ST7735, couleurs RGB565.
+  INITR_GREENTAB: 0x00, INITR_REDTAB: 0x01, INITR_BLACKTAB: 0x02, INITR_18GREENTAB: 0x00, INITR_18REDTAB: 0x01, INITR_18BLACKTAB: 0x02, INITR_144GREENTAB: 0x01, INITR_MINI160x80: 0x04, INITR_HALLOWING: 0x05,
+  ST77XX_BLACK: 0x0000, ST77XX_WHITE: 0xffff, ST77XX_RED: 0xf800, ST77XX_GREEN: 0x07e0, ST77XX_BLUE: 0x001f, ST77XX_CYAN: 0x07ff, ST77XX_MAGENTA: 0xf81f, ST77XX_YELLOW: 0xffe0, ST77XX_ORANGE: 0xfc00,
+  ST7735_BLACK: 0x0000, ST7735_WHITE: 0xffff, ST7735_RED: 0xf800, ST7735_GREEN: 0x07e0, ST7735_BLUE: 0x001f, ST7735_CYAN: 0x07ff, ST7735_MAGENTA: 0xf81f, ST7735_YELLOW: 0xffe0, ST7735_ORANGE: 0xfc00,
+  ILI9341_BLACK: 0x0000, ILI9341_NAVY: 0x000f, ILI9341_DARKGREEN: 0x03e0, ILI9341_DARKCYAN: 0x03ef, ILI9341_MAROON: 0x7800, ILI9341_PURPLE: 0x780f, ILI9341_OLIVE: 0x7be0,
+  ILI9341_LIGHTGREY: 0xc618, ILI9341_DARKGREY: 0x7bef, ILI9341_BLUE: 0x001f, ILI9341_GREEN: 0x07e0, ILI9341_CYAN: 0x07ff, ILI9341_RED: 0xf800, ILI9341_MAGENTA: 0xf81f,
+  ILI9341_YELLOW: 0xffe0, ILI9341_WHITE: 0xffff, ILI9341_ORANGE: 0xfd20, ILI9341_GREENYELLOW: 0xafe5, ILI9341_PINK: 0xfc18,
+  ILI9341_TFTWIDTH: 240, ILI9341_TFTHEIGHT: 320, ST7735_TFTWIDTH_128: 128, ST7735_TFTHEIGHT_160: 160, ST7735_TFTHEIGHT_128: 128
 };
 /** Types des constantes non entières (les autres sont des int). */
-export const CONST_TYPES = { PI: 'float', HALF_PI: 'float', TWO_PI: 'float', DEG_TO_RAD: 'float', RAD_TO_DEG: 'float', EULER: 'float', DEVICE_DISCONNECTED_F: 'float' };
+export const CONST_TYPES = {
+  PI: 'float', HALF_PI: 'float', TWO_PI: 'float', DEG_TO_RAD: 'float', RAD_TO_DEG: 'float', EULER: 'float', DEVICE_DISCONNECTED_F: 'float',
+  NAN: 'float', INFINITY: 'float', M_PI: 'float', INT32_MAX: 'i32', INT32_MIN: 'i32', UINT32_MAX: 'u32', UINT16_MAX: 'uint'
+};
 
 /**
  * Constantes propres à chaque carte : numéros des entrées analogiques, LED intégrée.
@@ -144,7 +222,8 @@ export const AVR_INFO = {
  */
 const m = (ret, o = {}) => ({ ret, ...o });
 const fd = t => ({ field: t });
-const PRINT = { print: m('u32', { print: true }), println: m('u32', { print: true }), write: m('u32') };
+// print, println, write rendent un size_t : le nombre de caractères envoyés (lcd.print(t, 1) → 4 pour « 21.5 »).
+const PRINT = { print: m('size', { print: true }), println: m('size', { print: true }), write: m('size') };
 const SERIAL = {
   begin: m('void'), end: m('void'), ...PRINT, printf: m('u32'), available: m('int'), read: m('int'), peek: m('int'),
   readString: m('str'), readStringUntil: m('str'), parseInt: m('i32'), parseFloat: m('float'), flush: m('void'), setTimeout: m('void'),
@@ -157,6 +236,14 @@ const GFX = {
   invertDisplay: m('void'), width: m('i16'), height: m('i16'), setRotation: m('void'), cp437: m('void'), dim: m('void'), setTextWrap: m('void'),
   fillScreen: m('void'), getCursorX: m('i16'), getCursorY: m('i16'),
   drawBitmap: m('void'), drawXBitmap: m('void'), drawChar: m('void'), getTextBounds: m('void', { ref: [3, 4, 5, 6] })
+};
+const TFT_GFX = {
+  initR: m('void'), initB: m('void'), begin: m('void'), setRotation: m('void'), getRotation: m('u8'), width: m('i16'), height: m('i16'),
+  fillScreen: m('void'), drawPixel: m('void'), drawLine: m('void'), drawFastHLine: m('void'), drawFastVLine: m('void'), drawRect: m('void'), fillRect: m('void'),
+  drawRoundRect: m('void'), fillRoundRect: m('void'), drawCircle: m('void'), fillCircle: m('void'), drawTriangle: m('void'), fillTriangle: m('void'),
+  setCursor: m('void'), getCursorX: m('i16'), getCursorY: m('i16'), setTextColor: m('void'), setTextSize: m('void'), setTextWrap: m('void'), cp437: m('void'),
+  ...PRINT, drawChar: m('void'), drawBitmap: m('void'), drawRGBBitmap: m('void'), color565: m('u16'), invertDisplay: m('void'), enableDisplay: m('void'),
+  enableSleep: m('void'), setSPISpeed: m('void'), startWrite: m('void'), endWrite: m('void'), readcommand8: m('u8')
 };
 export const CLASSES = {
   HardwareSerial: SERIAL,
@@ -201,6 +288,103 @@ export const CLASSES = {
     createChar: m('void'), scrollDisplayLeft: m('void'), scrollDisplayRight: m('void'), setBacklight: m('void')
   },
   Adafruit_SSD1306: GFX,
+  // Écrans TFT couleur en SPI (sim/tft.js) : couleurs RGB565 de 16 bits, police classique 5 × 7 d'Adafruit_GFX.
+  Adafruit_ST7735: TFT_GFX, Adafruit_ILI9341: TFT_GFX,
+  // Extenseurs et pilote PWM I2C (sim/chips.js) : chaque appel passe par Wire, registre par registre, comme la vraie bibliothèque.
+  Adafruit_MCP23X17: {
+    begin_I2C: m('bool'), pinMode: m('void'), digitalWrite: m('void'), digitalRead: m('u8'), readGPIO: m('u8'), writeGPIO: m('void'),
+    readGPIOA: m('u8'), writeGPIOA: m('void'), readGPIOB: m('u8'), writeGPIOB: m('void'), readGPIOAB: m('u16'), writeGPIOAB: m('void'),
+    setupInterrupts: m('void'), setupInterruptPin: m('void'), disableInterruptPin: m('void'), clearInterrupts: m('void'),
+    getLastInterruptPin: m('u8'), getCapturedInterrupt: m('u16'), enableAddrPins: m('void')
+  },
+  // PCF8574 : bibliothèque de Rob Tillaart (write, read, write8, read8…), et les noms de celle de Renzo Mischianti (pinMode, digitalWrite…).
+  PCF8574: {
+    begin: m('bool'), isConnected: m('bool'), setAddress: m('bool'), getAddress: m('u8'), read8: m('u8'), read: m('u8'), value: m('u8'),
+    write8: m('void'), write: m('void'), valueOut: m('u8'), readButton8: m('u8'), readButton: m('u8'), setButtonMask: m('void'), getButtonMask: m('u8'),
+    toggle: m('void'), toggleMask: m('void'), shiftRight: m('void'), shiftLeft: m('void'), rotateRight: m('void'), rotateLeft: m('void'), reverse: m('void'),
+    select: m('void'), selectN: m('void'), selectNone: m('void'), selectAll: m('void'), lastError: m('int'),
+    pinMode: m('void'), digitalWrite: m('bool'), digitalRead: m('u8')
+  },
+  // Afficheurs à pilote (sim/displays.js) : MAX7219 par LedControl ou MD_MAX72XX, TM1637 par TM1637Display.
+  LedControl: {
+    getDeviceCount: m('int'), shutdown: m('void'), setScanLimit: m('void'), setIntensity: m('void'), clearDisplay: m('void'),
+    setLed: m('void'), setRow: m('void'), setColumn: m('void'), setDigit: m('void'), setChar: m('void')
+  },
+  MD_MAX72XX: {
+    begin: m('bool'), clear: m('void'), setPoint: m('bool'), getPoint: m('bool'), setRow: m('bool'), setColumn: m('bool'), control: m('bool'),
+    update: m('void'), getColumnCount: m('u16'), getDeviceCount: m('u8')
+  },
+  TM1637Display: {
+    setBrightness: m('void'), setSegments: m('void'), clear: m('void'), showNumberDec: m('void'), showNumberDecEx: m('void'), showNumberHexEx: m('void'), encodeDigit: m('u8')
+  },
+  // Horloges (sim/storage.js) : RTClib d'Adafruit, registres lus et écrits par Wire.
+  DateTime: {
+    year: m('u16'), month: m('u8'), day: m('u8'), hour: m('u8'), minute: m('u8'), second: m('u8'), twelveHour: m('u8'), isPM: m('u8'),
+    dayOfTheWeek: m('u8'), unixtime: m('u32'), secondstime: m('u32'), isValid: m('bool'), timestamp: m('str'), toString: m('str')
+  },
+  TimeSpan: { days: m('i16'), hours: m('i8'), minutes: m('i8'), seconds: m('i8'), totalseconds: m('i32') },
+  RTC_DS3231: {
+    begin: m('bool'), adjust: m('void'), now: m('obj:DateTime'), lostPower: m('bool'), getTemperature: m('float'), readSqwPinMode: m('u8'), writeSqwPinMode: m('void'),
+    isEnabled32K: m('bool'), enable32K: m('void'), disable32K: m('void'), setAlarm1: m('bool'), setAlarm2: m('bool'), alarmFired: m('bool'), clearAlarm: m('void'), disableAlarm: m('void')
+  },
+  RTC_DS1307: {
+    begin: m('bool'), adjust: m('void'), now: m('obj:DateTime'), isrunning: m('u8'), readSqwPinMode: m('u8'), writeSqwPinMode: m('void'),
+    readnvram: m('u8', { ref: [0] }), writenvram: m('void', { ref: [0] })
+  },
+  // Mémoire I2C AT24C256 (sim/storage.js) : bibliothèque I2C_eeprom de Rob Tillaart ; une écriture attend la fin du cycle (5 ms).
+  I2C_eeprom: {
+    begin: m('bool', { block: true }), isConnected: m('bool', { block: true }), getDeviceSize: m('u32'), getPageSize: m('u8'),
+    writeByte: m('int', { block: true }), writeBlock: m('int', { block: true, ref: [1] }), setBlock: m('int', { block: true }), updateByte: m('int', { block: true }),
+    readByte: m('u8', { block: true }), readBlock: m('u16', { block: true, ref: [1] }), writeByteVerify: m('bool', { block: true })
+  },
+  // Capteurs I2C (prog/sensorlibs.js, puces de sim/i2csensors.js).
+  VL53L0X_RangingMeasurementData_t: {
+    TimeStamp: fd('u32'), MeasurementTimeUsec: fd('u32'), RangeMilliMeter: fd('u16'), RangeDMaxMilliMeter: fd('u16'), SignalRateRtnMegaCps: fd('u32'),
+    AmbientRateRtnMegaCps: fd('u32'), EffectiveSpadRtnCount: fd('u16'), ZoneId: fd('u8'), RangeFractionalPart: fd('u8'), RangeStatus: fd('u8')
+  },
+  Adafruit_VL53L0X: {
+    begin: m('bool', { block: true }), setAddress: m('bool'), rangingTest: m('i8', { block: true }), getSingleRangingMeasurement: m('i8', { block: true }), readRange: m('u16', { block: true }),
+    readRangeStatus: m('u8'), startRange: m('bool'), isRangeComplete: m('bool', { block: true }), waitRangeComplete: m('i8', { block: true }), readRangeResult: m('u16'),
+    startRangeContinuous: m('bool'), stopRangeContinuous: m('void'), setMeasurementTimingBudgetMicroSeconds: m('bool'), getMeasurementTimingBudgetMicroSeconds: m('u32'),
+    configSensor: m('bool'), setLimitCheckEnable: m('bool'), setLimitCheckValue: m('bool'), getLimitCheckEnable: m('u8'), setInterruptThresholds: m('bool'), setGpioConfig: m('bool'), clearInterruptMask: m('bool')
+  },
+  VL53L0X: {
+    init: m('bool', { block: true }), setAddress: m('void'), getAddress: m('u8'), setTimeout: m('void'), getTimeout: m('u16'), timeoutOccurred: m('bool'),
+    setSignalRateLimit: m('bool'), getSignalRateLimit: m('float'), setMeasurementTimingBudget: m('bool'), getMeasurementTimingBudget: m('u32'), setVcselPulsePeriod: m('bool'), getVcselPulsePeriod: m('u8'),
+    startContinuous: m('void'), stopContinuous: m('void'), readRangeContinuousMillimeters: m('u16', { block: true }), readRangeSingleMillimeters: m('u16', { block: true }),
+    readRangeContinuous: m('u16', { block: true }), readRangeSingle: m('u16', { block: true }), last_status: m('u8')
+  },
+  MAX30105: {
+    begin: m('bool'), setup: m('void', { block: true }), softReset: m('void', { block: true }), shutDown: m('void'), wakeUp: m('void'), setLEDMode: m('void'), setADCRange: m('void'),
+    setSampleRate: m('void'), setPulseWidth: m('void'), setPulseAmplitudeRed: m('void'), setPulseAmplitudeIR: m('void'), setPulseAmplitudeGreen: m('void'), setPulseAmplitudeProximity: m('void'),
+    setProximityThreshold: m('void'), enableSlot: m('void'), disableSlots: m('void'), setFIFOAverage: m('void'), enableFIFORollover: m('void'), disableFIFORollover: m('void'), setFIFOAlmostFull: m('void'),
+    getWritePointer: m('u8'), getReadPointer: m('u8'), clearFIFO: m('void'), getINT1: m('u8'), getINT2: m('u8'), enableDATARDY: m('void'), disableDATARDY: m('void'), enableAFULL: m('void'), disableAFULL: m('void'),
+    enableDIETEMPRDY: m('void'), disableDIETEMPRDY: m('void'), check: m('u16', { block: true }), safeCheck: m('bool', { block: true }), available: m('u8'), nextSample: m('void'),
+    getRed: m('u32', { block: true }), getIR: m('u32', { block: true }), getGreen: m('u32', { block: true }), getFIFORed: m('u32'), getFIFOIR: m('u32'), getFIFOGreen: m('u32'),
+    readTemperature: m('float', { block: true }), readTemperatureF: m('float', { block: true }), readPartID: m('u8'), readRevisionID: m('void'), getRevisionID: m('u8')
+  },
+  Adafruit_TCS34725: {
+    begin: m('bool', { block: true }), enable: m('void', { block: true }), disable: m('void'), setIntegrationTime: m('void'), setGain: m('void'),
+    getRawData: m('void', { block: true, ref: [0, 1, 2, 3] }), getRawDataOneShot: m('void', { block: true, ref: [0, 1, 2, 3] }), getRGB: m('void', { block: true, ref: [0, 1, 2] }),
+    calculateColorTemperature: m('u16'), calculateColorTemperature_dn40: m('u16'), calculateLux: m('u16'), setInterrupt: m('void'), clearInterrupt: m('void'), setIntLimits: m('void'),
+    write8: m('void'), read8: m('u8'), read16: m('u16')
+  },
+  Adafruit_CCS811: {
+    begin: m('bool', { block: true }), available: m('bool', { block: true }), readData: m('u8', { block: true }), geteCO2: m('u16'), getTVOC: m('u16'), getCurrentSelected: m('u8'), getRawADCreading: m('u16'),
+    setDriveMode: m('void'), enableInterrupt: m('void'), disableInterrupt: m('void'), setEnvironmentalData: m('void'), setThresholds: m('void'), checkError: m('bool'),
+    SWReset: m('void'), getBaseline: m('u16'), setBaseline: m('void'), calculateTemperature: m('float')
+  },
+  Adafruit_BME680: {
+    begin: m('bool', { block: true }), setTemperatureOversampling: m('bool'), setHumidityOversampling: m('bool'), setPressureOversampling: m('bool'), setIIRFilterSize: m('bool'), setODR: m('bool'),
+    setGasHeater: m('bool'), performReading: m('bool', { block: true }), beginReading: m('u32'), endReading: m('bool', { block: true }), remainingReadingMillis: m('i32'),
+    readTemperature: m('float', { block: true }), readHumidity: m('float', { block: true }), readPressure: m('u32', { block: true }), readGas: m('u32', { block: true }), readAltitude: m('float', { block: true }),
+    temperature: fd('float'), humidity: fd('float'), pressure: fd('float'), gas_resistance: fd('u32')
+  },
+  Adafruit_PWMServoDriver: {
+    begin: m('bool'), reset: m('void'), sleep: m('void'), wakeup: m('void'), setExtClk: m('void'), setPWMFreq: m('void'), setOutputMode: m('void'),
+    getPWM: m('u16'), setPWM: m('u8'), setPin: m('void'), readPrescale: m('u8'), writeMicroseconds: m('void'),
+    setOscillatorFrequency: m('void'), getOscillatorFrequency: m('u32')
+  },
   Servo: {
     attach: m('u8'), detach: m('void'), write: m('void'), writeMicroseconds: m('void'), read: m('i32'), readMicroseconds: m('i32'), attached: m('bool'),
     setPeriodHertz: m('void')
@@ -212,6 +396,14 @@ export const CLASSES = {
     fill: m('void'), setBrightness: m('void'), getBrightness: m('u8'), numPixels: m('u16'), setPin: m('void'), updateLength: m('void')
   },
   Stepper: { setSpeed: m('void'), step: m('void', { block: true }), version: m('i32') },
+  // AccelStepper : pilote STEP/DIR (A4988, DRV8825) ou moteur 4 fils ; runToPosition() attend la fin du mouvement.
+  AccelStepper: {
+    moveTo: m('void'), move: m('void'), run: m('bool'), runSpeed: m('bool'), runSpeedToPosition: m('bool'), runToPosition: m('void', { block: true }),
+    runToNewPosition: m('void', { block: true }), setMaxSpeed: m('void'), maxSpeed: m('float'), setAcceleration: m('void'), acceleration: m('float'),
+    setSpeed: m('void'), speed: m('float'), distanceToGo: m('i32'), targetPosition: m('i32'), currentPosition: m('i32'), setCurrentPosition: m('void'),
+    stop: m('void'), isRunning: m('bool'), stepForward: m('i32'), stepBackward: m('i32'), setMinPulseWidth: m('void'), setEnablePin: m('void'),
+    setPinsInverted: m('void'), enableOutputs: m('void'), disableOutputs: m('void')
+  },
   sensors_event_t: {},
   // IRremote : IrReceiver (API v4) et IRrecv irrecv(broche) + decode(&results) (ancienne API).
   IRrecv: {
@@ -220,6 +412,21 @@ export const CLASSES = {
   },
   IRData: { command: fd('u16'), address: fd('u16'), protocol: fd('int'), flags: fd('u8'), decodedRawData: fd('u32'), numberOfBits: fd('u16') },
   decode_results: { value: fd('u32'), decode_type: fd('int'), bits: fd('int') },
+  // TinyGPSPlus (TinyGPS++ de Mikal Hart) : champs location, date, time, speed… avec leurs méthodes (prog/gpslib.js).
+  TinyGPSPlus: {
+    encode: m('bool'), location: fd('TinyGPSLocation'), date: fd('TinyGPSDate'), time: fd('TinyGPSTime'), speed: fd('TinyGPSSpeed'), course: fd('TinyGPSCourse'),
+    altitude: fd('TinyGPSAltitude'), satellites: fd('TinyGPSInteger'), hdop: fd('TinyGPSHDOP'),
+    charsProcessed: m('u32'), sentencesWithFix: m('u32'), failedChecksum: m('u32'), passedChecksum: m('u32'),
+    distanceBetween: m('float', { static: true }), courseTo: m('float', { static: true }), cardinal: m('str', { static: true }), libraryVersion: m('str', { static: true }), parseDecimal: m('i32', { static: true })
+  },
+  TinyGPSLocation: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), lat: m('float'), lng: m('float') },
+  TinyGPSDate: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('u32'), year: m('u16'), month: m('u8'), day: m('u8') },
+  TinyGPSTime: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('u32'), hour: m('u8'), minute: m('u8'), second: m('u8'), centisecond: m('u8') },
+  TinyGPSSpeed: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('i32'), knots: m('float'), mph: m('float'), mps: m('float'), kmph: m('float') },
+  TinyGPSCourse: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('i32'), deg: m('float') },
+  TinyGPSAltitude: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('i32'), meters: m('float'), miles: m('float'), kilometers: m('float'), feet: m('float') },
+  TinyGPSInteger: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('u32') },
+  TinyGPSHDOP: { isValid: m('bool'), isUpdated: m('bool'), age: m('u32'), value: m('i32'), hdop: m('float') },
   // MFRC522 : lecteur RFID en SPI.
   MFRC522: {
     PCD_Init: m('void'), PCD_Reset: m('void'), PCD_AntennaOn: m('void'), PCD_AntennaOff: m('void'), PCD_SetAntennaGain: m('void'), PCD_GetAntennaGain: m('u8'),
@@ -232,6 +439,8 @@ export const CLASSES = {
   Uid: { size: fd('u8'), uidByte: fd('u8[]'), sak: fd('u8') },
   MIFARE_Key: { keyByte: fd('u8[]') },
   // Keypad : clavier matriciel.
+  // Encoder (Paul Stoffregen) : position en fronts de quadrature, 4 par cran d'un KY-040.
+  Encoder: { read: m('i32'), write: m('void'), readAndReset: m('i32') },
   Keypad: {
     getKey: m('char'), waitForKey: m('char', { block: true }), getState: m('int'), isPressed: m('bool'), keyStateChanged: m('bool'),
     setDebounceTime: m('void'), setHoldTime: m('void'), numKeys: m('u8')
@@ -258,6 +467,23 @@ export const CLASSES = {
     putFloat: m('u32'), putDouble: m('u32'), putBool: m('u32'), putString: m('u32'), putBytes: m('u32', { ref: [1] }),
     getInt: m('i32'), getUInt: m('u32'), getLong: m('i32'), getULong: m('u32'), getShort: m('i16'), getUShort: m('u16'), getChar: m('i8'), getUChar: m('u8'),
     getFloat: m('float'), getDouble: m('float'), getBool: m('bool'), getString: m('str'), getBytes: m('u32', { ref: [1] }), getBytesLength: m('u32')
+  },
+  // Radio LoRa SX1278 (prog/loralib.js) : l'objet global LoRa ; begin() et endPacket() attendent la puce.
+  LoRaClass: {
+    begin: m('int', { block: true }), end: m('void'), setPins: m('void'), setSPI: m('void'), setSPIFrequency: m('void'),
+    beginPacket: m('int'), endPacket: m('int', { block: true }), ...PRINT, parsePacket: m('int'), available: m('int'), read: m('int'), peek: m('int'),
+    readString: m('str'), readStringUntil: m('str'), parseInt: m('i32'), parseFloat: m('float'), flush: m('void'), setTimeout: m('void'),
+    packetRssi: m('int'), packetSnr: m('float'), packetFrequencyError: m('i32'), rssi: m('int'), onReceive: m('void'), onTxDone: m('void'), receive: m('void'),
+    idle: m('void'), sleep: m('void'), setTxPower: m('void'), setFrequency: m('void'), getSpreadingFactor: m('int'), setSpreadingFactor: m('void'),
+    getSignalBandwidth: m('i32'), setSignalBandwidth: m('void'), setCodingRate4: m('void'), setPreambleLength: m('void'), setSyncWord: m('void'),
+    enableCrc: m('void'), disableCrc: m('void'), enableInvertIQ: m('void'), disableInvertIQ: m('void'), setOCP: m('void'), setGain: m('void'),
+    random: m('u8'), dumpRegisters: m('void')
+  },
+  // Carte microSD (sim/sdcard.js) : SD.open() rend un File, faux dans un if quand il n'a pas pu s'ouvrir.
+  SDClass: { begin: m('bool'), end: m('void'), exists: m('bool'), mkdir: m('bool'), rmdir: m('bool'), remove: m('bool'), open: m('obj:File') },
+  File: {
+    ...PRINT, available: m('int'), read: m('int'), peek: m('int'), seek: m('bool'), position: m('u32'), size: m('u32'), flush: m('void'), close: m('void'),
+    name: m('str'), isDirectory: m('bool'), openNextFile: m('obj:File'), rewindDirectory: m('void'), readStringUntil: m('str'), readString: m('str'), parseInt: m('i32')
   },
   // ESP32 : port série Bluetooth (SerialBT.begin("Nom")), vers le téléphone du panneau « Périphériques ».
   BluetoothSerial: { ...SERIAL, begin: m('bool'), connected: m('bool'), hasClient: m('bool'), setPin: m('bool'), disconnect: m('bool') },
@@ -292,7 +518,7 @@ CLASSES.ESP8266WebServer = CLASSES.WebServer;
 /** Objets globaux prédéfinis. */
 export const OBJECTS = {
   Serial: 'HardwareSerial', Serial1: 'HardwareSerial', Serial2: 'HardwareSerial', Serial3: 'HardwareSerial', Wire: 'TwoWire', SPI: 'SPIClass', IrReceiver: 'IRrecv',
-  EEPROM: 'EEPROMClass', WiFi: 'WiFiClass', MDNS: 'MDNSResponder'
+  EEPROM: 'EEPROMClass', WiFi: 'WiFiClass', MDNS: 'MDNSResponder', SD: 'SDClass', LoRa: 'LoRaClass'
 };
 /**
  * Bibliothèques, objets et classes propres à certaines cartes : un programme pour une autre carte ne compile pas
@@ -307,7 +533,7 @@ export const BOARD_ONLY = {
     // Bluetooth classique (BluetoothSerial) : l'ESP32 d'origine seulement ; l'ESP32-S3 et l'ESP32-C3 n'ont que le BLE.
     'WiFi.h': ESP, 'WebServer.h': ESP, 'HTTPClient.h': ESP, 'esp_now.h': ESP, 'BluetoothSerial.h': ['esp32'], 'Preferences.h': ESP, 'ESPmDNS.h': ESP,
     'ESP8266WiFi.h': ['nodemcu'], 'ESP8266WebServer.h': ['nodemcu'], 'ESP8266HTTPClient.h': ['nodemcu'], 'espnow.h': ['nodemcu'], 'ESP8266mDNS.h': ['nodemcu'],
-    'WiFiClient.h': WIFI_BOARDS
+    'WiFiClient.h': WIFI_BOARDS, 'avr/sleep.h': ['uno', 'nano', 'mega']
   },
   object: { WiFi: WIFI_BOARDS, MDNS: WIFI_BOARDS },
   class: { BluetoothSerial: ['esp32'], WebServer: ESP, ESP8266WebServer: ['nodemcu'], HTTPClient: WIFI_BOARDS, WiFiClient: WIFI_BOARDS, Preferences: ESP },
@@ -320,6 +546,12 @@ export const INCLUDE_TWIN = {
 };
 /** Constantes d'une classe, écrites Classe::NOM (Adafruit_BMP280::MODE_NORMAL, MFRC522::PICC_TYPE_MIFARE_1K). */
 export const CLASS_CONSTS = {
+  MD_MAX72XX: {
+    GENERIC_HW: 0, FC16_HW: 1, PAROLA_HW: 2, ICSTATION_HW: 3, DR0CR0RR0_HW: 4, DR0CR0RR1_HW: 5, DR0CR1RR0_HW: 6, DR0CR1RR1_HW: 7,
+    DR1CR0RR0_HW: 8, DR1CR0RR1_HW: 9, DR1CR1RR0_HW: 10, DR1CR1RR1_HW: 11,
+    SHUTDOWN: 0, SCANLIMIT: 1, INTENSITY: 2, TEST: 3, DECODE: 4, UPDATE: 10, WRAPAROUND: 11, OFF: 0, ON: 1
+  },
+  AccelStepper: { FUNCTION: 0, DRIVER: 1, FULL2WIRE: 2, FULL3WIRE: 3, FULL4WIRE: 4, HALF3WIRE: 6, HALF4WIRE: 8 },
   Adafruit_BMP280: {
     MODE_SLEEP: 0, MODE_FORCED: 1, MODE_NORMAL: 3, MODE_SOFT_RESET_CODE: 0xb6,
     SAMPLING_NONE: 0, SAMPLING_X1: 1, SAMPLING_X2: 2, SAMPLING_X4: 3, SAMPLING_X8: 4, SAMPLING_X16: 5,
@@ -351,20 +583,28 @@ export const TYPE_ALIASES = {
   DeviceAddress: { t: 'u8', dims: [8] },
   KeypadEvent: { t: 'char' },
   'MFRC522::PICC_Type': { t: 'u8' }, 'MFRC522::StatusCode': { t: 'u8' }, 'MFRC522::MIFARE_Key': { c: 'MIFARE_Key' }, 'MFRC522::Uid': { c: 'Uid' },
-  esp_err_t: { t: 'int' }, esp_now_send_status_t: { t: 'int' }, wl_status_t: { t: 'int' }, HTTPMethod: { t: 'int' }, wifi_mode_t: { t: 'int' }
+  esp_err_t: { t: 'int' },
+  // Texte en mémoire flash : PGM_P (const char * de pgmspace.h), const __FlashStringHelper * (F("…")).
+  PGM_P: { t: 'cptr' }, __FlashStringHelper: { t: 'str' }, esp_now_send_status_t: { t: 'int' }, wl_status_t: { t: 'int' }, HTTPMethod: { t: 'int' }, wifi_mode_t: { t: 'int' },
+  VL53L0X_Error: { t: 'i8' }, VL53L0X_Sense_config_t: { t: 'u8' }
 };
 
 /** Bibliothèques connues : #include accepté sans avertissement. */
 export const KNOWN_INCLUDES = new Set([
   'Arduino.h', 'Wire.h', 'SPI.h', 'DHT.h', 'DHT_U.h', 'Adafruit_Sensor.h', 'OneWire.h', 'DallasTemperature.h', 'Adafruit_BMP280.h', 'Adafruit_BME280.h', 'BH1750.h', 'HX711.h',
   'Adafruit_MPU6050.h', 'LiquidCrystal_I2C.h', 'Adafruit_GFX.h', 'Adafruit_SSD1306.h', 'Servo.h', 'ESP32Servo.h', 'Adafruit_NeoPixel.h',
-  'Stepper.h', 'SoftwareSerial.h', 'math.h', 'stdlib.h', 'string.h', 'stdint.h', 'avr/pgmspace.h', 'pgmspace.h',
-  'IRremote.h', 'IRremote.hpp', 'MFRC522.h', 'RF24.h', 'nRF24L01.h', 'Keypad.h', 'printf.h', 'MPU6050.h', 'I2Cdev.h',
+  'Stepper.h', 'AccelStepper.h', 'SoftwareSerial.h', 'math.h', 'stdlib.h', 'string.h', 'stdint.h', 'avr/pgmspace.h', 'pgmspace.h',
+  'stdio.h', 'ctype.h', 'limits.h', 'inttypes.h', 'stdbool.h', 'avr/sleep.h', 'avr/io.h', 'avr/interrupt.h',
+  'IRremote.h', 'IRremote.hpp', 'MFRC522.h', 'RF24.h', 'nRF24L01.h', 'Keypad.h', 'Encoder.h', 'printf.h', 'MPU6050.h', 'I2Cdev.h',
+  'LedControl.h', 'MD_MAX72xx.h', 'TM1637Display.h', 'RTClib.h', 'I2C_eeprom.h',
+  'Adafruit_MCP23X17.h', 'PCF8574.h', 'Adafruit_PWMServoDriver.h', 'Adafruit_ST7735.h', 'Adafruit_ILI9341.h', 'Adafruit_SPITFT.h', 'Adafruit_BusIO_Register.h', 'Adafruit_I2CDevice.h',
+  'TinyGPSPlus.h', 'TinyGPS++.h',
+  'Adafruit_VL53L0X.h', 'VL53L0X.h', 'MAX30105.h', 'heartRate.h', 'spo2_algorithm.h', 'Adafruit_TCS34725.h', 'Adafruit_CCS811.h', 'Adafruit_BME680.h', 'bme68x.h', 'bme68x_defs.h',
   'EEPROM.h', 'Preferences.h', 'BluetoothSerial.h', 'WiFi.h', 'ESP8266WiFi.h', 'WiFiClient.h', 'WebServer.h', 'ESP8266WebServer.h',
-  'HTTPClient.h', 'ESP8266HTTPClient.h', 'esp_now.h', 'espnow.h', 'ESPmDNS.h', 'ESP8266mDNS.h', 'esp_wifi.h'
+  'HTTPClient.h', 'ESP8266HTTPClient.h', 'esp_now.h', 'espnow.h', 'ESPmDNS.h', 'ESP8266mDNS.h', 'esp_wifi.h', 'SD.h', 'LoRa.h'
 ]);
 /** Bibliothèques reconnues mais non simulées : un message clair plutôt qu'une erreur obscure. */
 export const UNSUPPORTED_INCLUDES = {
-  'PubSubClient.h': 'MQTT', 'SD.h': tl('la carte SD'), 'WiFiClientSecure.h': 'HTTPS', 'ESPAsyncWebServer.h': tl('le serveur web asynchrone'),
+  'PubSubClient.h': 'MQTT', 'WiFiClientSecure.h': 'HTTPS', 'ESPAsyncWebServer.h': tl('le serveur web asynchrone'),
   'ArduinoJson.h': 'ArduinoJson', 'WiFiUdp.h': 'UDP', 'NTPClient.h': 'NTP'
 };

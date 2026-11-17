@@ -1,0 +1,20 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Éditeur des règles : options dépliables, conditions ajoutées, variables, séquences (classes .rl-…). */
+.rule .rl-more { height: 24px; min-width: 24px; padding: 0 6px; font-weight: 700; letter-spacing: .05em; color: var(--muted); }
+.rule .rl-more[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); }
+.rule .rl-adv { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 4px 8px; border-left: 2px solid var(--accent-soft); font-size: 11.5px; color: var(--muted); }
+.rule .rl-adv label, .rule .rl-chk { display: inline-flex; align-items: center; gap: 4px; font-size: 11.5px; color: var(--muted); }
+.rule .rl-adv input[type=checkbox], .rule .rl-chk input[type=checkbox] { height: auto; width: auto; margin: 0; }
+.rule .rl-adv input[type=number] { width: 56px; }
+.rule .rl-term { padding-left: 28px; }
+.rule .rl-term .rl-link { flex: 0 0 auto; width: auto; margin-left: -28px; font-weight: 600; color: var(--accent); }
+.rule .rl-addterm { padding-left: 28px; }
+.rule .rl-k { font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.rule .act.rl-wait, .rule .act.rl-goto, .rule .act.rl-set { background: transparent; }
+.rule .rl-addsel { flex: 0 1 auto; width: auto; height: 22px; font-size: 11.5px; color: var(--muted); background: transparent; border-style: dashed; }
+.rule.rl-var .rl-badge, .rule.rl-seq .rl-badge { font-family: var(--mono); background: var(--raise); color: var(--fg); }
+.rule .rl-step { display: flex; flex-direction: column; gap: 6px; margin-left: 14px; padding: 6px 0 6px 10px; border-left: 2px solid var(--line-2); }
+.rule .rl-go { gap: 5px; }
+.rule .rl-go .rl-when { display: contents; }
+.rl-decl { margin-left: 4px; }

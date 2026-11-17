@@ -1,0 +1,166 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Ossature à la manière d'un éditeur de code (src/ui/shell.js, src/ui/commands.js) : barre d'activité à gauche,
+   onglets des plans de travail au-dessus du plan, panneau du bas (Problèmes, Sortie), palette de commandes.
+   Classes act*, edTab*, dk*, sb*, cp* : rien en commun avec les feuilles de l'édition Pro.
+   Les règles de la grille (colonnes et rangées) sont dans styles.css, avec l'ossature. */
+
+/* ---------- Barre d'activité ---------- */
+.actBar { grid-column: 1; grid-row: 2 / -2; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; min-height: 0; background: var(--bg); border-right: 1px solid var(--line); z-index: 7; }
+.actBar .grow { flex: 1 1 auto; min-height: 0; }
+.actBtn { position: relative; appearance: none; display: grid; place-items: center; width: 40px; height: 40px; margin: 0; padding: 0; border: 0; border-radius: var(--r-sm); background: none; color: var(--muted); cursor: pointer; transition: color .12s, background .12s; }
+.actBtn .ic { width: 22px; height: 22px; stroke-width: 1.6; }
+.actBtn:hover:not(:disabled) { color: var(--fg); }
+.actBtn[aria-pressed="true"] { color: var(--fg); }
+.actBtn[aria-pressed="true"]::before { content: ""; position: absolute; left: -4px; top: 9px; bottom: 9px; width: 2px; border-radius: 2px; background: var(--accent); }
+.actBtn:focus-visible { outline-offset: -2px; }
+.actBtn:disabled { opacity: .35; cursor: default; }
+.actBtn[hidden] { display: none !important; }
+.actSep { flex: none; width: 24px; height: 1px; margin: 4px 0; background: var(--line); }
+.actBadge { position: absolute; right: 2px; top: 2px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent-fill); color: #fff; font: 700 10px/16px var(--sans); text-align: center; letter-spacing: 0; }
+.actBadge.err { background: var(--danger); }
+.actBadge.warn { background: var(--warn); color: #111; }
+.actBadge:empty, .actBadge[hidden] { display: none; }
+/* Infobulles à droite de la colonne. */
+.actBar [data-tip]:hover::after, .actBar [data-tip]:focus-visible::after { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); animation-name: fadeIn; }
+/* Les boutons repris par la barre d'activité et par les onglets restent dans la page (leurs actions y sont branchées), cachés. */
+.appbar .abTools, .appbar .abSpaces, .appbar #libToggle, .appbar .wsSwitch, .appbar .pnSplitBtn, #stageView { display: none !important; }
+.abEnd > .abRun { margin-left: 0; padding-left: 0; }
+.abEnd > .abRun::before { content: none; }
+
+/* ---------- Onglets des plans de travail ---------- */
+.edTabs { grid-column: 3; grid-row: 2; display: flex; align-items: stretch; height: 36px; min-width: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+.edTab { appearance: none; position: relative; display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 14px; border: 0; border-right: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer; transition: color .12s; }
+.edTab .ic { width: 15px; height: 15px; }
+.edTab:hover { color: var(--fg-2); }
+.edTab[aria-selected="true"] { color: var(--fg); background: var(--stage); }
+.edTab[aria-selected="true"]::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px; background: var(--accent); }
+.edTab[aria-selected="true"]::before { content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px; background: var(--stage); } /* l'onglet ouvert se fond dans le plan */
+.edTab[aria-selected="true"].elec .ic { color: var(--accent); }
+.edTab[aria-selected="true"].logic .ic { color: var(--lg1, #4ade80); }
+.edTab[aria-selected="true"].pneu .ic { color: var(--pnP, #3b82f6); }
+.edTab[hidden] { display: none !important; }
+.edTab:focus-visible { outline-offset: -3px; }
+.edEnd { margin-left: auto; display: flex; align-items: center; gap: 2px; padding: 0 6px; }
+.edEnd .tb { height: 28px; min-width: 28px; padding: 0 8px; font-size: 12px; }
+.edEnd .tb .ic { width: 14px; height: 14px; }
+.edEnd .tb[aria-pressed="true"] { color: var(--accent-hi); background: #3b82f61f; }
+.edEnd [data-tip]:hover::after, .edEnd [data-tip]:focus-visible::after { left: auto; right: 0; transform: none; animation-name: fadeIn; }
+@media (max-width: 1180px) { .edEnd .tb span { display: none; } }
+
+/* ---------- Panneau du bas : Problèmes, Sortie ---------- */
+.dockPanel { grid-column: 3; grid-row: 4; position: relative; display: flex; flex-direction: column; height: var(--dkH, 220px); min-height: 0; min-width: 0; background: var(--panel); border-top: 1px solid var(--line-2); }
+.dockPanel[hidden] { display: none !important; }
+.dkGrip { position: absolute; left: 0; right: 0; top: -4px; height: 8px; cursor: ns-resize; z-index: 2; touch-action: none; }
+.dkGrip:focus-visible { outline: none; box-shadow: inset 0 2px 0 var(--accent); }
+.app.dkResizing { transition: none; }
+.app.dkResizing * { cursor: ns-resize !important; }
+.dkHead { flex: none; display: flex; align-items: center; gap: 2px; height: 35px; padding: 0 6px 0 8px; border-bottom: 1px solid var(--line); }
+.dkTab { appearance: none; position: relative; display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 10px; border: 0; background: none; color: var(--muted); font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+.dkTab:hover { color: var(--fg-2); }
+.dkTab[aria-selected="true"] { color: var(--fg); }
+.dkTab[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 1px; background: var(--accent); }
+.dkTab .count { letter-spacing: 0; }
+.dkTab .count.err { color: #fff; background: var(--danger); }
+.dkTab .count.warn { color: #111; background: var(--warn); }
+.dkHead .tb { height: 26px; min-width: 26px; padding: 0 7px; font-size: 12px; }
+.dkHead .tb .ic { width: 14px; height: 14px; }
+.dkHead [data-tip]:hover::after, .dkHead [data-tip]:focus-visible::after { left: auto; right: 0; transform: none; animation-name: fadeIn; }
+.dkBody { flex: 1 1 auto; min-height: 0; overflow: auto; }
+.dkBody[hidden] { display: none !important; }
+/* Problèmes : une ligne par diagnostic, groupées par famille, comme la liste des problèmes d'un éditeur. */
+.dkFam { margin: 8px 12px 2px; font: 600 10.5px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.dkRow { appearance: none; display: grid; grid-template-columns: 18px auto minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; min-height: 26px; padding: 2px 12px; border: 0; background: none; color: var(--fg-2); font: inherit; text-align: left; cursor: pointer; }
+.dkRow:hover { background: var(--raise); color: var(--fg); }
+.dkRow:focus-visible { outline-offset: -2px; }
+.dkRow .ic { width: 15px; height: 15px; }
+.dkRow.err .ic { color: var(--danger); }
+.dkRow.warn .ic { color: var(--warn); }
+.dkRow.acc { opacity: .55; }
+.dkRow.acc .ic { color: var(--muted); }
+.dkRow code { font: 500 11px var(--mono); color: var(--muted); }
+.dkRow b { font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dkRow small { color: var(--muted); font: 11px var(--mono); white-space: nowrap; }
+.dkEmpty { display: flex; align-items: center; gap: 8px; padding: 14px 12px; color: var(--muted); font-size: 12.5px; }
+.dkEmpty .ic { width: 15px; height: 15px; color: var(--ok); flex: none; }
+.dkEmpty.busy .ic { color: var(--muted); }
+/* Sortie : messages d'état et journal du téléversement, horodatés. */
+.dkLog { margin: 0; padding: 6px 12px; font: 11.5px/1.5 var(--mono); color: var(--fg-2); -webkit-user-select: text; user-select: text; }
+.dkLine { display: flex; gap: 10px; white-space: pre-wrap; word-break: break-word; }
+.dkLine time { flex: none; color: var(--muted); }
+.dkLine.ok span { color: var(--ok); }
+.dkLine.warn span { color: var(--warn-ink); }
+.dkLine.err span { color: var(--danger); }
+.dkLine.cmd span { color: var(--accent-hi); }
+.dkLine b.n { flex: none; color: var(--muted); font-weight: 500; }
+.dkLog:empty::before { content: attr(data-empty); color: var(--muted); }
+
+/* ---------- Barre d'état : compteur de problèmes, message cliquable ---------- */
+.sbProblems { appearance: none; display: inline-flex; align-items: center; gap: 5px; height: 100%; margin: 0 2px 0 -8px; padding: 0 8px; border: 0; background: none; color: var(--muted); font: 500 11px var(--mono); cursor: pointer; }
+.sbProblems:hover, .sbProblems[aria-pressed="true"] { background: var(--raise); color: var(--fg); }
+.sbProblems .ic { width: 13px; height: 13px; }
+.sbProblems.err .e { color: var(--danger); }
+.sbProblems.warn .w { color: var(--warn); }
+.statusbar .st { cursor: pointer; border-radius: 4px; padding: 2px 6px; margin-left: -6px; }
+.statusbar .st:hover { background: var(--raise); }
+
+/* ---------- Palette de commandes ---------- */
+.cmdPal { position: fixed; inset: 0; z-index: 65; display: flex; justify-content: center; align-items: flex-start; padding-top: 9vh; }
+.cmdPal[hidden] { display: none !important; }
+.cpBox { width: min(640px, calc(100% - 32px)); max-height: min(62vh, 560px); display: flex; flex-direction: column; background: var(--menu); border: 1px solid var(--line-2); border-radius: 10px; box-shadow: var(--shadow); animation: sheetIn .14s ease-out; overflow: hidden; }
+.cpHead { position: relative; flex: none; }
+.cpHead > .ic { position: absolute; left: 13px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--muted); pointer-events: none; }
+.cpInput { all: unset; box-sizing: border-box; display: block; width: 100%; height: 42px; padding: 0 14px 0 40px; font: 14px var(--sans); color: var(--fg); background: var(--bg); border-bottom: 1px solid var(--line); -webkit-user-select: text; user-select: text; }
+.cpInput::placeholder { color: var(--muted); }
+.cpList { list-style: none; margin: 0; padding: 6px; overflow: auto; min-height: 0; }
+.cpItem { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 32px; padding: 0 10px; border-radius: 6px; color: var(--fg-2); cursor: pointer; }
+.cpItem .ic { width: 15px; height: 15px; color: var(--muted); }
+.cpItem:hover { background: var(--raise); }
+.cpItem[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 0 0 1px #3b82f655; }
+.cpItem[aria-selected="true"] .ic { color: var(--accent-hi); }
+.cpLab { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
+.cpCat { color: var(--muted); }
+.cpLab mark { background: none; color: var(--accent-hi); font-weight: 600; }
+.cpKbd { font: 500 11px system-ui, -apple-system, sans-serif; color: var(--muted); letter-spacing: .04em; white-space: nowrap; }
+.cpEmpty { padding: 16px 14px; color: var(--muted); font-size: 12.5px; }
+.cpFoot { flex: none; display: flex; gap: 14px; padding: 6px 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
+.cpFoot kbd { font: 500 10.5px system-ui, -apple-system, sans-serif; padding: 0 4px; margin-right: 3px; border: 1px solid var(--line-2); border-radius: 3px; color: var(--fg-2); }
+@media (prefers-reduced-motion: reduce) { .cpBox { animation: none; } }
+
+/* ---------- Code au centre (onglet « Code », main.js setCodeCenter) ---------- */
+.edTab[aria-selected="true"].code .ic { color: var(--accent); }
+.codeHost { display: none; }
+.app.codeCenter .codeHost { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; min-height: 0; background: var(--panel); }
+.app.codeCenter .stage > :not(.codeHost):not(.alert) { visibility: hidden; }
+.app.codeCenter .stage { isolation: isolate; }
+.codeHost > #pane-prog { flex: 1 1 auto; min-height: 0; }
+.codeHost .progBar { padding-left: 14px; }
+.codeHost #editor { height: clamp(320px, 58vh, 1100px); }
+/* L'inspecteur garde ses autres onglets ; « Agrandir l'inspecteur » ne sert plus. */
+.app:is(.codeCenter, .codeSplit) #tab-prog, .app:is(.codeCenter, .codeSplit) #progWide { display: none !important; }
+.app:is(.codeCenter, .codeSplit).wide, .app:is(.codeCenter, .codeSplit).wide.libClosed { --insW: clamp(300px, var(--insUser, var(--insDef)), 62vw); }
+.codeGrip { display: none; }
+
+/* ---------- Code côte à côte (bouton « Côte à côte ») : une colonne de plus, entre le plan de travail et l'inspecteur ---------- */
+.app.codeSplit { grid-template-columns: 48px var(--libW) minmax(280px, 1fr) minmax(320px, var(--codeW, 44%)) var(--insW); }
+.app.codeSplit > :is(.edTabs, .dockPanel, .tlDock) { grid-column: 3 / 5; }
+.app.codeSplit > .codeHost { grid-column: 4; grid-row: 3; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--panel); border-left: 1px solid var(--line-2); }
+.app.codeSplit .codeGrip { display: block; position: absolute; left: -4px; top: 0; bottom: 0; width: 8px; z-index: 6; cursor: col-resize; touch-action: none; }
+.app.codeSplit .codeGrip:hover, .app.codeSplit .codeGrip:focus-visible { outline: none; box-shadow: inset 2px 0 0 var(--accent); }
+.app.codeSplit > .codeHost #editor { height: clamp(260px, 52vh, 1000px); }
+.app.presenting.codeSplit { grid-template-columns: 0 0 minmax(0, 1fr) 0 0 !important; }
+.app.presenting.codeSplit > .codeHost { display: none; }
+.edEnd .codeSplitBtn[aria-pressed="true"] { color: var(--accent-hi); background: var(--accent-soft); }
+.edEnd .codeSplitBtn[hidden] { display: none; }
+
+/* ---------- Moniteur série dans le panneau du bas (onglet « Moniteur série ») ---------- */
+.dk-serial { display: flex; flex-direction: column; overflow: hidden; }
+.dk-serial[hidden] { display: none !important; }
+.dk-serial > .serialSec { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; gap: 6px; padding: 6px 12px 8px; border: 0; }
+.dk-serial .serialSec > .secHead { flex: none; min-height: 0; }
+.dk-serial .serialSec > .secHead > h2 { display: none; } /* l'onglet porte déjà le nom */
+.dk-serial .serialSec > .vGrip { display: none; }
+.dk-serial .serialSec .serial { flex: 1 1 auto; height: auto !important; min-height: 48px; }
+.dk-serial .serialSec .plotBox:not([hidden]) { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.dk-serial .serialSec .plotBox canvas { flex: 1 1 auto; min-height: 60px; height: auto !important; }
+.dk-serial .serialSec :is(.serialIn, .realBox, .serialSrc) { flex: none; }

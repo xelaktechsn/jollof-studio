@@ -1,0 +1,142 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Régulateur à diode Zener",
+ "description": "Montage analogique sans carte : une pile 9 V, une résistance de 330 Ω et une diode Zener de 5,1 V montée en inverse (cathode côté +). La Zener garde environ 5,1 V à ses bornes ; la résistance prend le reste et limite le courant : (9 − 5,1) ÷ 330 ≈ 12 mA. Changez la valeur de R1 dans le panneau de sélection (tapez 100 ou 1k) : la tension reste près de 5,1 V tant que la résistance laisse passer assez de courant, et le vérificateur signale la Zener qui dissipe trop avec une résistance trop petite. Mesurez avec le multimètre du banc de mesure.",
+ "en": {
+  "name": "Zener diode regulator",
+  "description": "Analog circuit, no board: a 9 V battery, a 330 Ω resistor and a 5.1 V Zener diode connected in reverse (cathode toward +). The Zener holds about 5.1 V across it; the resistor drops the rest and limits the current: (9 − 5.1) ÷ 330 ≈ 12 mA. Change R1’s value in the selection panel (type 100 or 1k): the voltage stays near 5.1 V as long as the resistor lets enough current through, and the checker flags a Zener dissipating too much with a resistor that is too small. Measure with the bench multimeter."
+ },
+ "comps": [
+  {
+   "id": "bat9v_1",
+   "type": "bat9v",
+   "name": "BAT1",
+   "x": -40,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "res-330_1",
+   "type": "res-330",
+   "name": "R1",
+   "x": 0,
+   "z": -20,
+   "r": 0
+  },
+  {
+   "id": "zener-5v1_1",
+   "type": "zener-5v1",
+   "name": "D1",
+   "x": 30,
+   "z": 0,
+   "r": 1.5708
+  },
+  {
+   "id": "led-green_1",
+   "type": "led-green",
+   "name": "LED1",
+   "x": 60,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "res-1k_1",
+   "type": "res-1k",
+   "name": "R2",
+   "x": 60,
+   "z": -24,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "a": [
+    "bat9v_1",
+    "+"
+   ],
+   "b": [
+    "res-330_1",
+    "1"
+   ],
+   "color": "#e5484d",
+   "role": "Pile vers la résistance série"
+  },
+  {
+   "a": [
+    "res-330_1",
+    "2"
+   ],
+   "b": [
+    "zener-5v1_1",
+    "K"
+   ],
+   "color": "#e5484d",
+   "role": "Cathode côté + (inverse)"
+  },
+  {
+   "a": [
+    "zener-5v1_1",
+    "A"
+   ],
+   "b": [
+    "bat9v_1",
+    "-"
+   ],
+   "color": "#3a3f45",
+   "role": "Anode vers le −"
+  },
+  {
+   "a": [
+    "res-330_1",
+    "2"
+   ],
+   "b": [
+    "res-1k_1",
+    "1"
+   ],
+   "color": "#3fb27f",
+   "role": "Sortie régulée 5,1 V"
+  },
+  {
+   "a": [
+    "res-1k_1",
+    "2"
+   ],
+   "b": [
+    "led-green_1",
+    "A"
+   ],
+   "color": "#f08a3c",
+   "role": "Charge : LED témoin"
+  },
+  {
+   "a": [
+    "led-green_1",
+    "K"
+   ],
+   "b": [
+    "bat9v_1",
+    "-"
+   ],
+   "color": "#3a3f45",
+   "role": "Retour au −"
+  }
+ ],
+ "settings": {
+  "kind": "analog",
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 50,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  }
+ }
+}

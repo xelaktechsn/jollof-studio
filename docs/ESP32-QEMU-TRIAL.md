@@ -3,6 +3,9 @@
 Question: can real ESP32 Arduino firmware run locally and offline in Espressif's QEMU, launched as a
 separate process (Tauri sidecar), and drive the app's simulated pins and modules?
 
+**Update 2026-11-17: full support is implemented (section 14)**: every module model answers real ESP32, ESP32-S3
+and ESP32-C3 firmware; only Wi-Fi and Bluetooth stay on the interpreter.
+
 **Recommendation: GO WITH CONDITIONS.** Real firmware boots and runs: Serial in both directions, GPIO
 outputs, GPIO inputs and interrupts, ADC, PWM, and I2C with the one sensor QEMU models. Wi-Fi does not
 work, and the app's I2C/SPI module models cannot be attached without extra work. The conditions are listed
@@ -347,7 +350,7 @@ If condition 1 or 3 is unacceptable (no CI build of QEMU, or Wi-Fi is a must-hav
 **NO-GO**. In that case ESP32 should stay interpreter-only, with the effort going to the RP2040 and AVR
 faithful modes.
 
-## 13. Implementation: "ESP32 fidèle (bêta)"
+## 13. Implementation: the first version (2026-11-08)
 
 The decision was **GO**, and the MVP is built. The trial's conditions map onto the code as follows.
 
@@ -482,7 +485,7 @@ compiling it into a sketch does not make the sketch AGPL. This is noted in `NOTI
     re-timed the first pin.
 - Rust: 5 new cargo tests (argument template, trace parsing, flash checks, hashes, zip extraction staying inside).
 
-**Still missing**
+**Still missing at that point** (see section 14 for what changed)
 
 - Wi-Fi and Bluetooth.
 - Bridges for I2C, SPI and 1-Wire, and µs-timed protocols (section 7).
@@ -490,3 +493,192 @@ compiling it into a sketch does not make the sketch AGPL. This is noted in `NOTI
 - Windows, Linux and Apple Silicon runs.
 - macOS packages compatible with older macOS versions.
 - If the app itself crashes, QEMU can be left running (normal exits kill it).
+
+## 14. Full support: every module, ESP32-S3 and ESP32-C3 (2026-11-17)
+
+The "bêta" label is gone. Real firmware now talks to every module model of `src/emu/devices` but three (the IR
+receiver, the MAX485 and the HX711, 14.2), on the ESP32, the ESP32-S3 and the ESP32-C3.
+
+### 14.1 How modules answer (design A of section 7, generalised)
+
+- **Shim** (`src/emu/esp32-shim/jollof_qemu_shim.cpp`, compiled into the sketch). It replaces, at the boundary
+  between the arduino-esp32 core and the libraries, everything that touches the circuit:
+  - pins: the core's weak `pinMode`, `digitalWrite`, `digitalRead`, `analogRead`, `attachInterrupt`, plus `pulseIn`
+    and `pulseInLong` (the core's `wiring_pulse.o` is then never pulled from `core.a`);
+  - with `-Wl,--wrap=…` (link only, added by `arduino-cli compile --build-property build.extra_libs=…`, list in
+    `src/emu/esp32-wraps.js`; the Rust allowlist only accepts `--wrap=<symbol>` items): the I2C HAL
+    (`i2cWrite`, `i2cRead`, `i2cWriteReadNonStop`), the SPI HAL data functions (`spiTransfer*`, `spiWrite*`), the
+    RMT (`rmtInit`, `rmtWrite`…, used by Adafruit_NeoPixel and the RGB LED), the UART HAL for UART 1 and 2
+    (`uartBegin`, `uartWrite`… : `Serial1`/`Serial2` become virtual ports, which also keeps the program off the
+    shim's own UART1), the public methods of the OneWire library (C++ mangled names), and `delayMicroseconds`,
+    `micros`, `millis` (time bookkeeping, below). Functions that are not wrapped keep the core's code.
+- **Protocol** (UART1): the old fixed 10-byte frames (`J`, `M`, `T`) plus variable frames
+  `['V', op, len u16, module time u32, data]`. `op` is `p` (posted, no answer: pin changes on bridged pins, I2C
+  writes to an address that has already acknowledged, SPI writes, RMT symbols, UART bytes) or `q` (request: pin
+  read, I2C read or first write, SPI transfer, 1-Wire reset/read/search). The app answers `['R', 'r', len, data]` and
+  can push `B` (which pins are wired to a module, and their levels), `P` (scheduled level changes), `U` (bytes for
+  `Serial1`/`Serial2`) and `N` (an I2C address stopped acknowledging).
+- **Bridge** (`src/emu/esp32-bridge.js`): calls `attachDevices()` with its own pin API, clock (240 MHz cycles), I2C
+  handler, SPI transfer and two UART ports, so the models are **reused unchanged** (one addition: the SD card model
+  now accepts ACMD42, which the ESP32 SD library sends). The bus analyser sees I2C, SPI and UART traffic through the
+  same `hw.probe` taps as on the Uno and the Pico.
+- **Pins wired to a module** are announced to the shim (`B`). Their `pinMode`/`digitalWrite` go to the app in order,
+  stamped with the module time. A read after such a change asks the app; the reply carries the levels **and the
+  rest of the module's answer already scheduled** (up to 60 ms of events caused by the program in the last 50 ms:
+  a DHT frame, an HC-SR04 echo), which the shim then plays back locally. `pulseIn()` on such a pin reads the pulse
+  from that schedule. What modules do on their own (encoder turns, keypad presses, HX711 "data ready", serial
+  modules talking) is pushed with a constant 60 ms lead, which keeps durations; attached interrupts see each of those
+  changes in order.
+- **Module time.** QEMU runs the CPU fast but every register access is slow (an `esp_timer_get_time()` or a
+  `pinMode()` costs tens of µs, a tick interrupt more), and a request costs a round trip to the app. So the time
+  the modules see is the board's time minus: frame sending and request waits on wired pins, the overshoot of
+  `delayMicroseconds()`, and, between two calls on wired pins, anything above 5 µs right after a change, or above
+  1 µs per call with interrupts masked (DHT and HX711 read loops). Between two reads, real time counts (loops timed
+  with `micros()`). When the program has read `micros()`/`millis()` and waited more than 0.5 ms before its next
+  gesture (AccelStepper: one step per millisecond), or nothing happens on wired pins for 20 ms, module time goes
+  back to real time, except while a module's scheduled answer is still playing. Buses (I2C, SPI, serial) and
+  1-Wire always use real time, which their models measure like the program (EEPROM write cycle, sensor conversion,
+  DS18B20 conversion). On the app side, module time never goes backwards; when the
+  app has played ahead (a reply's schedule, 1-Wire slots), later stamps are shifted so the gaps between the board's
+  gestures (a 10 µs TRIG pulse) are kept.
+
+### 14.2 What works, and the test that proves it
+
+All tests compile real sketches with arduino-cli and the shim, run them in QEMU in real time with fake modules
+(`src/emu/testkit.mjs`), and are skipped when QEMU, arduino-cli or the esp32 core is missing. Corpus files are in
+`src/emu/corpus-esp32/` (same headers as the AVR corpus) and run with `src/emu/esp32-corpus.test.mjs`.
+
+| Family | Modules (library used in the test) | Test |
+|---|---|---|
+| I2C displays and sensors | LCD 16×2 (LiquidCrystal_I2C), OLED SSD1306 (Adafruit), BMP280, MPU-6050, BH1750, TCS34725, address scan | `corpus-esp32/i2c_displays_sensors.ino` |
+| I2C clocks, memory, I/O | DS3231 (RTClib, midnight rollover), AT24C256 (I2C_eeprom: write cycles polled by acknowledge), MCP23017, PCF8574, PCA9685, BME280 | `corpus-esp32/i2c_clock_memory_io.ino` |
+| I2C air and distance | VL53L0X (ST's full API), CCS811, BME680 (gas), MAX30102 (SparkFun), LCD 20×4 | `corpus-esp32/i2c_air_distance.ino` |
+| SPI | ST7735 (pixels checked), microSD (the ESP32 core's SD library, FAT), MFRC522 (version, UID) | `corpus-esp32/spi_tft_sd_rfid.ino` |
+| SPI | ILI9341 (MISO reads, pixels), LoRa SX1278 (send), nRF24L01+ (no receiver: write fails after retries) | `corpus-esp32/spi_tft_radios.ino` |
+| SPI and interrupts | MAX7219 matrix (MD_MAX72XX), KY-040 encoder read by `attachInterrupt` | `corpus-esp32/pins_matrix_encoder.ino` |
+| 1-Wire and timed signals | DHT22, DHT11 (Adafruit DHT), HC-SR04 by `pulseIn()` and by a `micros()` loop, two DS18B20 on one wire (DallasTemperature: ROM search, 9 and 12 bits, conversion polling) | `corpus-esp32/pins_dht_sonar_onewire.ino` |
+| Bit-banged chips | 74HC595 (`shiftOut`), 74HC165 (`shiftIn`), TM1637 (TM1637Display), 4×4 keypad (Keypad) | `corpus-esp32/pins_keypad_shift_tm1637.ino` |
+| Stepper, LEDs | A4988 (AccelStepper, steps timed by `micros()`), WS2812 (Adafruit_NeoPixel through the RMT) | `corpus-esp32/pins_stepper_leds.ino` |
+| Serial modules | HC-05 AT mode on `Serial2`, NEO-6M GPS on `Serial1` (TinyGPSPlus: cold start, then a fix) | `corpus-esp32/uart_modules.ino` |
+| Serial and more | SIM800L on `Serial1`, HC-12 AT mode on `Serial2`, DS1307 (RTClib, NVRAM), MAX7219 8-digit (`shiftOut`), DRV8825 (200 steps) | `corpus-esp32/serial_gsm_radio_clock.ino` |
+| Between boards | ESP32 in QEMU sending to a Mega 2560 (avr8js) by LoRa and by HC-12 | `esp32-boards.test.mjs` |
+| ESP32-S3, ESP32-C3 | blink, Serial, input, BMP280 on each chip; DHT22 on the S3 (14.4 for the limits) | `esp32-variants.test.mjs` |
+
+`src/emu/esp32-bridge.test.mjs` checks the bridge without QEMU (wired pins, I2C with repeated start and NACK, DHT
+schedule, HC-SR04 echo, 1-Wire search of two probes, keypad, RMT to WS2812, Serial2 to an HC-05).
+`src/emu/esp32.test.mjs` fails if a model type has no ESP32 test and is not listed in `UNBRIDGED`
+(`src/emu/esp32-limits.js`, which now lists only `ir`, `max485` and `hx711`).
+
+**Not bridged: the IR receiver.** IRremote samples its pin from a hardware-timer interrupt every 50 µs
+(`timerBegin`/`timerAttachInterrupt`/`timerAlarm`). In Espressif's QEMU these alarms raise no interrupt at all
+(a test sketch counted 0 ticks in 3 s), so no IR library can decode, whatever the bridge does. A board with an IR
+receiver therefore stays on the interpreter, which simulates IR, and the log says why.
+
+**Not bridged: the MAX485.** Its model joins the RS-485 pair only through SoftwareSerial links (the AVR tests use
+two Unos on SoftwareSerial); behind a hardware port (`Serial1`), the master's question reaches the other board but
+no answer comes back. The ESP32 has only hardware ports, so a board with a MAX485 stays on the interpreter.
+
+**Not bridged yet: the HX711.** Raw reads work (six `read()` in a row gave 374477 to 374528 for 374500), but a
+series of measurements (`get_units(3)`) sometimes waits forever for "data ready" (DOUT low pushed by the app while
+the program polls it); the cause was not found, so a board with an HX711 stays on the interpreter for now.
+
+Library behaviours found on the way, which the emulation reproduces faithfully:
+
+- the ESP32 core's `shiftIn()` reads **before** each clock pulse (the AVR core reads after), so a 74HC165 sketch
+  written for the Uno that raises the clock first reads one bit late on a real ESP32 too;
+- LedControl does not compile for the ESP32 (`avr/pgmspace.h`); MD_MAX72XX does;
+- libraries that read the GPIO input registers directly (PJRC's Encoder) or drive the RMT through ESP-IDF instead
+  of the Arduino core (FastLED) do not see the circuit: QEMU's GPIO model keeps no input level. Plain
+  `attachInterrupt` + `digitalRead` encoder code works.
+
+### 14.3 Wi-Fi and Bluetooth: decision
+
+They stay on the interpreter (its sandbox simulates the network: project Wi-Fi networks, `WebServer` shown in the
+"Navigateur" card, `HTTPClient` to the fictitious sites, ESP-NOW, `BluetoothSerial` to the phone). The reasons:
+
+- Espressif's QEMU has no Wi-Fi or Bluetooth radio model; the first `WiFi.mode()` touches the Wi-Fi MAC
+  (`0x60033c00`) and panics.
+- The fork's Ethernet MAC (`open_eth`) is unusable: the precompiled ESP-IDF in arduino-esp32 is built without
+  `CONFIG_ETH_USE_OPENETH`, and an Arduino sketch cannot rebuild it.
+- A real-firmware path would need both (1) a fake Wi-Fi driver inside the binary blobs' API (`esp_wifi_init/start/
+  connect`, the event loop, `esp_netif` glue, `esp_wifi_internal_tx` for frames) so that `WiFi.h` runs unchanged,
+  and (2) a TCP/IP endpoint in the app (ARP, DHCP, TCP) to connect lwIP sockets to the simulated network, whose
+  servers today exist only at HTTP level. Wrapping the socket layer (`lwip_socket`, `lwip_connect`, `send`,
+  `recv`, `accept`…) instead is possible with the same `--wrap` mechanism, but `WiFi.begin()`/`WiFi.status()` still
+  go through the blobs. Estimated at two to three weeks, with high breakage risk on each core update. Bluetooth
+  (Bluedroid, NimBLE) has the same problem with no host-side counterpart at all.
+
+Wi-Fi sketches are detected by their includes (`netInclude`, unchanged) and keep a clear message.
+
+### 14.4 ESP32-S3 and ESP32-C3
+
+The same Espressif release contains both: `qemu-system-xtensa -machine esp32s3`, and `qemu-system-riscv32 -machine
+esp32c3`, with their ROMs. Arduino firmware boots on both (`FlashMode=dio`, `CDCOnBoot` off so `Serial` is UART0).
+Differences handled:
+
+- FQBNs `esp32:esp32:esp32s3:FlashMode=dio` and `esp32:esp32:esp32c3:FlashMode=dio` (`src/emu/boards.js`,
+  allowlisted in `src-tauri/src/lib.rs`); `QEMU_KINDS` now holds the three chips.
+- Machine, program (`riscv32` for the C3) and watchdog-timer driver (`timer.esp32s3.timg`, `timer.esp32c3.timg`)
+  per chip (`qemu_args`, `esp32-node.mjs`). The flash image has its bootloader at offset 0 (0x1000 on the ESP32).
+- Registers (`CHIPS` in `src/emu/esp32.js`): GPIO at `0x60004000` (same QEMU model, `esp32.gpio`), output select at
+  `+0x554`, low-speed-only LEDC at `0x60019000` with its signals at 73 (S3) and 45 (C3). The S3/C3 machines have no
+  LEDC model; the decoder and the trace filter (`esp32s3.iomem`/`esp32c3.iomem`, LEDC range only) are ready, but no
+  LEDC write showed up in the trace in the test, so **PWM (`analogWrite`, `ledcWrite`, servo, `tone`) is not
+  decoded on the S3 and C3 yet** (pins still show as outputs).
+- Boot banners (`ESP-ROM:`, `Build:`, `SPIWP:`) and reset names (`POWERON`, `RTC_SW_CPU_RST`…) are recognised.
+- On the C3, masked interrupts are seen through the interrupt-controller threshold (FreeRTOS does not clear MIE).
+- Pin masks are 7 bytes (GPIO 0 to 55) for the S3's GPIO 40 to 48.
+- Test: `src/emu/esp32-variants.test.mjs`. Verified on both chips: boot, blink at 250 ms, Serial both ways,
+  `digitalRead` from the circuit, I2C (BMP280). DHT22 verified on the S3; **on the C3 the DHT read returns NaN**
+  (the masked-interrupt timing rule relies on the interrupt-controller threshold, which needs more work), so other
+  µs-timed protocols on the C3 should be considered unverified.
+
+### 14.5 Distribution
+
+Espressif's prebuilt archives (SHA-256 checked against their `qemu-esp_develop_9.2.2_20250817-checksum.sha256`)
+are **not self-contained**, so the app cannot point at them:
+
+| Archive | Missing at run time |
+|---|---|
+| macOS x86_64 / arm64 | Homebrew `pixman`, `libgcrypt` (+`libgpg-error`), `sdl2`, `glib`, `gettext` under `/usr/local/opt` or `/opt/homebrew/opt` (`otool -L`) |
+| Linux x86_64 / aarch64 | system `libpixman-1.so.0`, `libgcrypt.so.20`, `libSDL2-2.0.so.0`, `libslirp.so.0` (ELF `NEEDED`) |
+| Windows x86_64 | `libiconv-2.dll` (PE import table; the rest is static or system) |
+
+So the app keeps its own release, built by `scripts/esp32-qemu/build-qemu.sh` (relocatable bundles: `@loader_path`,
+`$ORIGIN`, DLLs next to the `.exe`). Revision **j2** adds `qemu-system-riscv32` (target list
+`xtensa-softmmu,riscv32-softmmu`) and the S3 and C3 ROMs; `qemu_install` records a hash per program and
+`qemu_status` reports the chips the installed package can run (`chips`). The `PACKAGES` hashes in
+`src-tauri/src/qemu.rs` stay empty until the release exists (an empty hash still refuses the install).
+
+Owner actions:
+
+1. Push, then Actions → "QEMU ESP32" → Run workflow with **publish** checked (it creates the release
+   `qemu-esp32-9.2.2-20250817-j2` on `xelaktechsn/jollof-studio` with five zips, the source tarball and
+   `SHA256SUMS.txt`).
+2. Copy each zip's SHA-256 from `SHA256SUMS.txt` into `PACKAGES` in `src-tauri/src/qemu.rs`, then
+   `cargo test` (the `real_package` test checks a downloaded zip with `JOLLOF_QEMU_ZIP=…`).
+3. Ship an app release; first ESP32 use downloads about 15 MB.
+
+### 14.6 Local test setup used here
+
+```sh
+# Espressif's macOS build, plus its missing libraries without installing anything system-wide
+curl -LO https://github.com/espressif/qemu/releases/download/esp-develop-9.2.2-20250817/qemu-xtensa-softmmu-esp_develop_9.2.2_20250817-x86_64-apple-darwin.tar.xz
+curl -LO https://github.com/espressif/qemu/releases/download/esp-develop-9.2.2-20250817/qemu-riscv32-softmmu-esp_develop_9.2.2_20250817-x86_64-apple-darwin.tar.xz
+# (libgcrypt.20.dylib, libgpg-error.0.dylib, libintl.8.dylib in $LIBS)
+export JOLLOF_QEMU=$X/qemu/bin/qemu-system-xtensa JOLLOF_QEMU_RISCV32=$R/qemu/bin/qemu-system-riscv32
+export DYLD_FALLBACK_LIBRARY_PATH=$LIBS:/usr/lib
+node --test src/emu/esp32.test.mjs src/emu/esp32-bridge.test.mjs src/emu/esp32-corpus.test.mjs \
+  src/emu/esp32-boards.test.mjs src/emu/esp32-variants.test.mjs
+```
+
+Each ESP32 sketch build leaves about 60 MB in arduino-cli's cache (`~/Library/Caches/arduino/sketches`).
+
+### 14.7 Still missing
+
+- Wi-Fi and Bluetooth (14.3).
+- Libraries that bypass the Arduino core for pins or RMT (14.2); the IR receiver (hardware-timer alarms do not fire
+  in QEMU).
+- ESP32-S3/C3: LEDC PWM decoding, µs-timed protocols on the C3 (14.4).
+- Pause or step of the guest; Windows, Linux and Apple Silicon runs of the new tests (only macOS x86_64 was run).
+

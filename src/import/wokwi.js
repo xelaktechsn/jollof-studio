@@ -27,8 +27,9 @@ const RES = [[22, 'res-22'], [220, 'res-220'], [330, 'res-330'], [1000, 'res-1k'
 /** Résistance la plus proche dans la bibliothèque (en rapport, pas en écart) ; note si elle diffère de plus de 15 %. */
 function resistor(attrs) {
   const r = ohms(attrs.value);
+  // Type le plus proche (son apparence de départ) ; la valeur exacte est gardée sur le composant (c.inp.val).
   const [v, type] = RES.reduce((best, x) => (Math.abs(Math.log(x[0] / r)) < Math.abs(Math.log(best[0] / r)) ? x : best));
-  return { type, note: Math.abs(v / r - 1) > 0.15 ? tl('résistance de {0} Ω remplacée par {1} Ω (valeur la plus proche de la bibliothèque)', r, v) : null };
+  return { type, val: Math.abs(v / r - 1) > 1e-9 ? r : null };
 }
 const LED_COLORS = { red: 'led-red', green: 'led-green', blue: 'led-blue', yellow: 'led-yellow', white: 'led-white', orange: 'led-yellow', limegreen: 'led-green', purple: 'led-blue' };
 
@@ -82,11 +83,17 @@ export const PARTS = {
   'wokwi-gas-sensor': { type: 'mq2', pins: { AOUT: 'AO', DOUT: 'DO', GND: 'GND', VCC: 'VCC' }, w: 140, h: 100 },
   'wokwi-small-sound-sensor': { type: 'sound', pins: { AOUT: 'AO', DOUT: 'DO', GND: 'GND', VCC: 'VCC' }, w: 140, h: 55 },
   'wokwi-big-sound-sensor': { type: 'sound', pins: { AOUT: 'AO', DOUT: 'DO', GND: 'GND', VCC: 'VCC' }, w: 180, h: 60 },
-  'wokwi-analog-joystick': { type: 'joystick', pins: { VCC: '+5V', VERT: 'VRy', HORZ: 'VRx', SEL: 'SW', GND: 'GND' }, w: 100, h: 120 }
+  // Pilote A4988 et moteur pas à pas bipolaire (NEMA 17) de Wokwi : mêmes noms de broches.
+  'wokwi-a4988': { type: 'a4988', pins: same(['ENABLE', 'MS1', 'MS2', 'MS3', 'RESET', 'SLEEP', 'STEP', 'DIR', 'VMOT', 'GND', '2B', '2A', '1A', '1B', 'VDD']), w: 60, h: 80 },
+  'wokwi-stepper-motor': { type: 'nema17', pins: same(['A+', 'A-', 'B+', 'B-']), w: 140, h: 150 },
+  'wokwi-analog-joystick': { type: 'joystick', pins: { VCC: '+5V', VERT: 'VRy', HORZ: 'VRx', SEL: 'SW', GND: 'GND' }, w: 100, h: 120 },
+  // Encodeur KY-040 et télécommande infrarouge (sans broches : elle vise tous les récepteurs du montage).
+  'wokwi-ky-040': { type: 'ky040', pins: { CLK: 'CLK', DT: 'DT', SW: 'SW', VCC: '+', GND: 'GND' }, w: 120, h: 70 },
+  'wokwi-ir-remote': { type: 'irremote', pins: {}, w: 100, h: 200 }
 };
 /** Composants sans équivalent électrique dans le montage (instruments de Wokwi) : ignorés sans avertissement. */
-const SILENT = new Set(['wokwi-logic-analyzer', 'wokwi-ir-remote']);
-const NOTE = { 'wokwi-ir-remote': () => tl('télécommande infrarouge : utilisez celle du panneau « Périphériques » de l’onglet Simulation') };
+const SILENT = new Set(['wokwi-logic-analyzer']);
+const NOTE = { 'wokwi-ir-remote': () => tl('télécommande infrarouge : ses touches sont dans le panneau « Périphériques » de l’onglet Simulation') };
 
 /**
  * Breadboards de Wokwi : quelles broches sont reliées entre elles. Rend la clé de la bande (même clé = même
@@ -184,8 +191,8 @@ export function importWokwi(files, name = 'wokwi') {
     if (NOTE[p.type]) report.notes.push(NOTE[p.type]());
     if (SILENT.has(p.type)) continue;
     const M = PARTS[p.type], attrs = p.attrs || {};
-    let type = M && (typeof M.type === 'function' ? M.type(attrs) : M.type), extra = null;
-    if (type && typeof type === 'object') { extra = type.note; type = type.type; }
+    let type = M && (typeof M.type === 'function' ? M.type(attrs) : M.type), extra = null, val = null;
+    if (type && typeof type === 'object') { extra = type.note; val = type.val || null; type = type.type; }
     const why = M && M.why ? M.why(attrs) : null;
     if (!type) { report.unknown.push({ id: p.id, type: p.type, why }); continue; }
     if (p.hide) continue; // composant masqué dans Wokwi (alimentation virtuelle…)
@@ -197,6 +204,7 @@ export function importWokwi(files, name = 'wokwi') {
     const c = { id, type, x: ((+p.left || 0) + (M.w || 40) / 2) * PX, z: ((+p.top || 0) + (M.h || 40) / 2) * PX, r: Math.round(r * 1e4) / 1e4 };
     // Adresse I2C réglée dans Wokwi (écran OLED) : gardée sur le composant.
     if (type === 'oled' && attrs.i2cAddress) { const a = parseInt(attrs.i2cAddress, 16); if (a > 0 && a < 128) c.inp = { addr: a }; }
+    if (val) c.inp = { ...(c.inp || {}), val }; // résistance : sa valeur exacte (src/sim/passives.js)
     comps.push(c);
     byWokwi.set(p.id, { comp: c, M });
   }
@@ -257,8 +265,8 @@ export function importWokwi(files, name = 'wokwi') {
     const res = compile(code, { board: board.type });
     const e = { code };
     if (!res.ok) {
-      if (EMULATED.has(board.type)) { e.engine = 'firmware'; report.engine = 'firmware'; report.notes.push(tl('programme confié au mode fidèle (vrai compilateur) : l’interpréteur ne le comprend pas ({0})', res.errors[0] ? res.errors[0].msg : '')); }
-      else report.notes.push(tl('le programme ne passe pas dans l’interpréteur, ligne {0} : {1}', res.errors[0] ? res.errors[0].line : 0, res.errors[0] ? res.errors[0].msg : ''));
+      // Carte à processeur émulé : le vrai compilateur le prend tel quel (application installée), rien à signaler.
+      if (!EMULATED.has(board.type)) report.notes.push(tl('le programme ne passe pas dans le simulateur intégré de cette carte, ligne {0} : {1}', res.errors[0] ? res.errors[0].line : 0, res.errors[0] ? res.errors[0].msg : ''));
     } else report.engine = 'interp';
     boards[board.id] = e;
   } else if (typeof code === 'string') report.notes.push(tl('programme ignoré : aucune carte reconnue dans le montage'));
@@ -275,7 +283,7 @@ export function importWokwi(files, name = 'wokwi') {
   if (extra.length) report.notes.push(tl('fichiers du programme ignorés (un seul fichier .ino par carte) : {0}', extra.join(', ')));
   if (files['libraries.txt']) {
     const libs = files['libraries.txt'].split(/\r?\n/).map(l => l.replace(/#.*/, '').trim()).filter(Boolean);
-    if (libs.length) report.notes.push(tl('bibliothèques demandées : {0} (installées au premier lancement en mode fidèle si elles sont connues)', libs.join(', ')));
+    if (libs.length) report.notes.push(tl('bibliothèques demandées : {0} (installées à la première compilation si elles sont connues)', libs.join(', ')));
   }
   const project = { app: 'jollof-studio', version: 1, name, comps, wires, settings: { prog: { rules: [], boards } } };
   return { project, report };

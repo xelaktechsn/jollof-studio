@@ -5,10 +5,12 @@
 // Pur : se teste sous Node (node --test src/sim/drive.test.mjs).
 import { loadPins, NPNS } from './parts.js';
 import { MOSFETS } from './analog-parts.js';
+import { HBRIDGES, hbridgeChan } from './motordrv.js';
 
 /**
  * c : composant moteur ; A : analyse du montage (circuit.js).
- * Rend { kind: 'l298n', drv, keys: [IN, IN, EN], plusFirst } | { kind: 'npn', npn, base, gpio, fet } |
+ * Rend { kind: 'l298n', drv, keys: [IN, IN, EN], plusFirst, stby } (pont en H : L298N, L293D ou TB6612FNG, drv.type ;
+ *      stby : broche de veille du TB6612FNG, ou null) | { kind: 'npn', npn, base, gpio, fet, low } |
  *      { kind: 'relay', relay, contact: 'NO' | 'NC', gpio } | { kind: 'direct' } | null (pas un moteur).
  * gpio : broche de carte qui commande ({ comp, key, prof… } d'analyze), ou null.
  */
@@ -16,20 +18,28 @@ export function driveOf(c, A) {
   const pins = loadPins(c);
   if (!pins || !A) return null;
   const [mp, mm] = pins, ref = k => ({ comp: c, key: k });
-  // Pilote L298N : les deux bornes sur les sorties d'une même voie.
-  const out = k => A.members(ref(k)).find(m => m.comp.type === 'l298n' && /^OUT/.test(m.key));
+  // Pont en H (L298N, L293D, TB6612FNG) : les deux bornes sur les sorties d'une même voie.
+  const out = k => A.members(ref(k)).find(m => hbridgeChan(m.comp.type, m.key));
   const a = out(mp), b = out(mm);
   if (a && b && a.comp === b.comp) {
-    const chB = /OUT[34]/.test(a.key);
-    return { kind: 'l298n', drv: a.comp, keys: chB ? ['IN3', 'IN4', 'ENB'] : ['IN1', 'IN2', 'ENA'], plusFirst: a.key === (chB ? 'OUT3' : 'OUT1') };
+    const ca = hbridgeChan(a.comp.type, a.key), cb = hbridgeChan(b.comp.type, b.key);
+    if (ca.ch === cb.ch && ca.i !== cb.i) return { kind: 'l298n', drv: a.comp, keys: [...ca.ch.ins, ca.ch.en], plusFirst: ca.i === 0, stby: HBRIDGES[a.comp.type].stby || null };
   }
   // Transistor : une borne sur le collecteur, la base reliée (par sa résistance) à une broche de la carte.
   for (const k of [mm, mp]) {
-    const q = A.members(ref(k)).find(m => NPNS[m.comp.type] && m.key === 'C');
+    const q = A.members(ref(k)).find(m => NPNS[m.comp.type] && !NPNS[m.comp.type].pnp && m.key === 'C'); // NPN côté masse (un PNP commande côté +)
     if (q) return { kind: 'npn', npn: q.comp, base: 'B', gpio: A.wnet({ comp: q.comp, key: 'B' }).gpio[0] || null };
     // MOSFET côté masse (drain sur la charge) : même rôle, commandé par sa grille (fet : true).
-    const f = A.members(ref(k)).find(m => MOSFETS[m.comp.type] && m.key === 'D');
+    const f = A.members(ref(k)).find(m => MOSFETS[m.comp.type] && !MOSFETS[m.comp.type].pch && m.key === 'D');
     if (f) return { kind: 'npn', npn: f.comp, base: 'G', fet: true, gpio: A.wnet({ comp: f.comp, key: 'G' }).gpio[0] || null };
+  }
+  // Côté + : PNP (collecteur sur la charge) ou MOSFET canal P (drain sur la charge). Même rôle, mais actif à l'état bas
+  // (low : true) : LOW sur la base ou la grille fait conduire, HIGH bloque.
+  for (const k of [mp, mm]) {
+    const q = A.members(ref(k)).find(m => NPNS[m.comp.type] && NPNS[m.comp.type].pnp && m.key === 'C');
+    if (q) return { kind: 'npn', npn: q.comp, base: 'B', low: true, gpio: A.wnet({ comp: q.comp, key: 'B' }).gpio[0] || null };
+    const f = A.members(ref(k)).find(m => MOSFETS[m.comp.type] && MOSFETS[m.comp.type].pch && m.key === 'D');
+    if (f) return { kind: 'npn', npn: f.comp, base: 'G', fet: true, low: true, gpio: A.wnet({ comp: f.comp, key: 'G' }).gpio[0] || null };
   }
   // Relais : une borne sur NO ou NC (contacts ouverts pour la recherche), son entrée IN sur une broche de la carte.
   for (const k of [mp, mm]) {

@@ -14,7 +14,7 @@
 .svSec h3 .ic { width: 14px; height: 14px; }
 .svSec h3 .btn { text-transform: none; letter-spacing: 0; }
 .svSmall { margin: 0; font-size: 12px; line-height: 1.45; color: var(--fg-2); }
-.link { all: unset; color: #93c5fd; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+.link { all: unset; color: var(--accent-hi); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
 .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 
 /* ---------- Accueil : aucune surveillance ---------- */
@@ -35,7 +35,7 @@
 .svMeta { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .svChip { display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 8px; border-radius: 11px; background: var(--raise); border: 1px solid var(--line-2); font-size: 11.5px; color: var(--fg-2); }
 .svChip .ic { width: 12px; height: 12px; }
-.svChip.on { color: #fca5a5; border-color: #ef444466; } .svChip.warn { color: #f2c94c; border-color: #f2c94c55; }
+.svChip.on { color: var(--danger-ink); border-color: #ef444466; } .svChip.warn { color: var(--warn); border-color: #f2c94c55; }
 .svChip.mono { font-family: var(--mono); }
 
 /* ---------- Que faire maintenant ---------- */
@@ -43,8 +43,8 @@
 .svGuide > .ic { width: 16px; height: 16px; margin-top: 2px; }
 .svGuide .btn { grid-column: 2; justify-self: start; }
 .svGuide.go { border-color: #3b82f666; background: #3b82f612; } .svGuide.go > .ic { color: var(--accent); }
-.svGuide.ok > .ic { color: #3fb27f; }
-.svGuide.warn { border-color: #f2c94c55; background: #f2c94c10; } .svGuide.warn > .ic { color: #f2c94c; }
+.svGuide.ok > .ic { color: var(--ok); }
+.svGuide.warn { border-color: #f2c94c55; background: #f2c94c10; } .svGuide.warn > .ic { color: var(--warn); }
 .svGuide.bad { border-color: #ef444466; background: #ef444412; } .svGuide.bad > .ic { color: #ef4444; }
 .svGuide.info { border-color: #a78bfa55; background: #a78bfa10; } .svGuide.info > .ic { color: #a78bfa; }
 
@@ -55,13 +55,13 @@
 .svSteps h3 .ic { width: 14px; height: 14px; }
 .svSteps ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .svSteps li { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 10px; opacity: .55; }
-.svSteps li.cur { opacity: 1; background: #ffffff08; } .svSteps li.done { opacity: .9; }
+.svSteps li.cur { opacity: 1; background: var(--hi-0); } .svSteps li.done { opacity: .9; }
 .svSteps li > div { flex: 1 1 auto; display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 .svSteps li b { font-size: 13px; } .svSteps li small { font-size: 12px; color: var(--fg-2); }
 .svNum { flex: 0 0 auto; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 50%; border: 1.5px solid var(--line-2); font: 700 12px var(--mono); color: var(--fg-2); }
 .svNum .ic { width: 13px; height: 13px; }
 .svSteps li.cur .svNum { border-color: var(--accent); color: var(--accent); }
-.svSteps li.done .svNum { border-color: #3fb27f; background: #3fb27f; color: #0f1418; }
+.svSteps li.done .svNum { border-color: var(--ok); background: var(--ok); color: var(--stage); }
 
 /* ---------- Surveillances ---------- */
 .svChans, .svFaults, .svLog { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
@@ -74,20 +74,20 @@
 .svChHead .tb { width: 24px; height: 24px; }
 .svRule { margin: 0; font-size: 12px; line-height: 1.4; color: var(--fg-2); }
 .svTag { font-size: 11px; padding: 1px 7px; border-radius: 7px; white-space: nowrap; }
-.svTag.ok { background: #3fb27f22; color: #8fdcb7; } .svTag.warn { background: #f2c94c26; color: #f2c94c; }
-.svTag.crit { background: #ef444426; color: #fca5a5; } .svTag.inv { background: #8b97a126; color: #c9d3da; }
-.svBar { position: relative; height: 8px; border-radius: 4px; background: #ffffff12; }
-.svBar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: #3fb27f; transition: width .1s linear; }
-.svChan.warn .svBar i { background: #f2c94c; } .svChan.crit .svBar i { background: #ef4444; }
+.svTag.ok { background: #3fb27f22; color: var(--ok-ink); } .svTag.warn { background: #f2c94c26; color: var(--warn); }
+.svTag.crit { background: #ef444426; color: var(--danger-ink); } .svTag.inv { background: #8b97a126; color: var(--fg-2); }
+.svBar { position: relative; height: 8px; border-radius: 4px; background: var(--hi-1); }
+.svBar i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--ok); transition: width .1s linear; }
+.svChan.warn .svBar i { background: var(--warn); } .svChan.crit .svBar i { background: #ef4444; }
 .svBar u { position: absolute; top: -3px; bottom: -3px; width: 2px; text-decoration: none; }
-.svBar u.enter { background: #f2c94c; } .svBar u.crit { background: #ef4444; }
+.svBar u.enter { background: var(--warn); } .svBar u.crit { background: #ef4444; }
 
 /* ---------- Courbe ---------- */
 .svChart { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; }
 .svLegend { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; font-size: 11.5px; color: var(--fg-2); }
 .svLegend span { display: inline-block; width: 16px; height: 3px; border-radius: 2px; margin-right: -6px; }
-.svLegend .l { background: #60a5fa; } .svLegend .e { background: repeating-linear-gradient(90deg, #f2c94c 0 5px, transparent 5px 8px); }
-.svLegend .c { background: repeating-linear-gradient(90deg, #ef4444 0 5px, transparent 5px 8px); } .svLegend .g { background: #ffffff30; height: 10px; }
+.svLegend .l { background: var(--accent-hi); } .svLegend .e { background: repeating-linear-gradient(90deg, var(--warn) 0 5px, transparent 5px 8px); }
+.svLegend .c { background: repeating-linear-gradient(90deg, #ef4444 0 5px, transparent 5px 8px); } .svLegend .g { background: var(--hi-2); height: 10px; }
 
 /* ---------- Pannes simulées ---------- */
 .svKinds { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
@@ -98,7 +98,7 @@
 .svKind:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
 .svParams { display: flex; flex-wrap: wrap; gap: 8px; }
 .svFaults li { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 6px 8px; border-radius: 8px; background: #f2c94c10; border: 1px solid #f2c94c33; }
-.svFaults li .ic { width: 14px; height: 14px; color: #f2c94c; }
+.svFaults li .ic { width: 14px; height: 14px; color: var(--warn); }
 .svFaults li.all { background: none; border: 0; padding: 0; }
 .svFaults span { color: var(--fg-2); }
 [data-sv="fform"] { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
@@ -109,7 +109,7 @@
 .svLog { max-height: 220px; overflow: auto; font-size: 12px; gap: 2px; margin-top: 6px; }
 .svLog li { display: flex; gap: 8px; padding: 2px 0; color: var(--fg-2); }
 .svLog time { flex: 0 0 52px; font-family: var(--mono); color: var(--muted); text-align: right; }
-.svLog .warn span { color: #f2c94c; } .svLog .crit span { color: #fca5a5; }
+.svLog .warn span { color: var(--warn); } .svLog .crit span { color: var(--danger-ink); }
 .svFoot { margin: 4px 0 0; font-size: 11px; color: var(--muted); }
 
 /* ---------- Modifier une surveillance ---------- */
@@ -121,7 +121,7 @@
 .svSentence .inp.n { width: 72px; height: 28px; padding: 0 6px; vertical-align: middle; }
 .svEst { margin: 0; display: flex; gap: 7px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; font-size: 12.5px; line-height: 1.45; }
 .svEst .ic { flex: 0 0 auto; width: 14px; height: 14px; margin-top: 2px; }
-.svEst.ok { background: #3fb27f14; color: #8fdcb7; border: 1px solid #3fb27f44; } .svEst.bad { background: #ef444412; color: #ffa3a5; border: 1px solid #ef444444; }
+.svEst.ok { background: #3fb27f14; color: var(--ok-ink); border: 1px solid #3fb27f44; } .svEst.bad { background: #ef444412; color: var(--danger-ink); border: 1px solid #ef444444; }
 .svMore summary { cursor: pointer; font-size: 12.5px; color: var(--fg-2); }
 .svMore[open] summary { margin-bottom: 6px; }
 .svGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 8px; margin: 6px 0; }
@@ -151,7 +151,7 @@
 /* ---------- Accueil : le principe en trois idées ---------- */
 .svIdeas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; counter-reset: i; align-self: stretch; }
 .svIdeas li { display: grid; grid-template-columns: 24px 1fr; column-gap: 8px; counter-increment: i; font-size: 12.5px; }
-.svIdeas li::before { content: counter(i); grid-row: span 2; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #3b82f626; color: #93c5fd; font: 700 11.5px var(--mono); }
+.svIdeas li::before { content: counter(i); grid-row: span 2; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; background: #3b82f626; color: var(--accent-hi); font: 700 11.5px var(--mono); }
 .svIdeas b { color: var(--fg); } .svIdeas span { color: var(--fg-2); }
 
 /* ---------- Assistant « nouvelle surveillance » ---------- */
@@ -166,7 +166,7 @@
 .svDots span { width: 18px; height: 18px; display: grid; place-items: center; border-radius: 50%; border: 1px solid var(--line-2); font: 700 10.5px var(--mono); }
 .svDots span .ic { width: 11px; height: 11px; }
 .svDots li.cur { color: var(--fg); } .svDots li.cur span { border-color: var(--accent); color: var(--accent); }
-.svDots li.done span { background: #3fb27f; border-color: #3fb27f; color: #0f1418; }
+.svDots li.done span { background: var(--ok); border-color: var(--ok); color: var(--stage); }
 .svThings { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .svThing, .svProb { all: unset; box-sizing: border-box; display: flex; flex-direction: column; gap: 3px; padding: 9px 10px; border-radius: 10px; background: var(--raise); border: 1px solid var(--line-2); cursor: pointer; min-width: 0; }
 .svThing:hover, .svProb:hover, .svThing:focus-visible, .svProb:focus-visible { border-color: var(--accent); }

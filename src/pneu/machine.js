@@ -12,7 +12,9 @@
 // - « Presse de marquage » : presse d'établi en col de cygne, vérin vertical, pupitre de commande à deux mains ;
 // - « Poste de serrage et perçage » : un vérin serre la pièce contre une butée, l'autre descend l'unité de perçage ;
 // - « Pantographe » : toit d'un train électrique, pantographe à un bras levé par l'air, caténaire ;
-// - « Convoyeur de tri » : tapis, cellule photoélectrique, vérin pousseur qui envoie un colis dans le bac de côté.
+// - « Convoyeur de tri » : tapis, cellule photoélectrique, vérin pousseur qui envoie un colis dans le bac de côté ;
+// - « Magasin et transfert », « Embouteillage », « Barrière de parking » : machines dont le procédé (pièces, bouteilles,
+//   voitures, capteurs) est simulé par process.js avec le circuit ; la vue le dessine d'après st.proc.
 // SCENES décrit chaque machine pour l'en-tête de la vue (vérins à choisir, boutons liés au circuit).
 // Chargé à la première ouverture de la vue 3D : rien au démarrage de l'application. Formes simples (aucun modèle à
 // télécharger), couleurs inspirées du Sénégal sans reprendre la livrée d'un vrai train.
@@ -21,6 +23,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Q } from '../quality.js';
 import { textSprite } from '../ui/guides.js';
 import { tl } from '../i18n/index.js';
+import { cylOf, FEED, FILL, BAR } from './process.js';
+import { buildTwin } from '../twin/render.js';
 
 /** Porte : course de chaque vantail (m), rayon des poulies (m). */
 export const DOOR = { travel: 0.62, pulleyR: 0.05, leafW: 0.65, leafH: 1.98 };
@@ -114,7 +118,13 @@ export const SCENES = {
   press: { name: () => tl('Presse de marquage'), cyls: CYL(() => tl('Vérin de la presse')), controls: [{ role: 'left', mode: 'toggle', label: () => tl('Main gauche'), defaults: ['s1'], bench: 0 }, { role: 'right', mode: 'toggle', label: () => tl('Main droite'), defaults: ['s2'], bench: 1 }] },
   station: { name: () => tl('Poste de serrage et perçage'), cyls: [{ key: 'clamp', label: () => tl('Vérin de serrage') }, { key: 'drill', label: () => tl('Vérin de perçage') }], controls: [{ role: 'start', mode: 'hold', label: n => tl('Départ ({0})', n), defaults: ['dcy'], bench: 0, icon: 'play' }] },
   pantograph: { name: () => tl('Pantographe'), cyls: CYL(() => tl('Vérin du pantographe')), controls: [{ role: 'up', mode: 'toggle', label: () => tl('Lever'), defaults: ['up'], bench: 0, icon: 'chevUp' }] },
-  sorter: { name: () => tl('Convoyeur de tri'), cyls: CYL(() => tl('Vérin pousseur')), controls: [{ role: 'send', mode: 'click', label: () => tl('Envoyer un colis'), defaults: ['send'], icon: 'send' }, { role: 'detect', mode: 'auto', defaults: ['det'] }] }
+  sorter: { name: () => tl('Convoyeur de tri'), cyls: CYL(() => tl('Vérin pousseur')), controls: [{ role: 'send', mode: 'click', label: () => tl('Envoyer un colis'), defaults: ['send'], icon: 'send' }, { role: 'detect', mode: 'auto', defaults: ['det'] }] },
+  // Machines à procédé (process.js) : leurs capteurs (mag, pp, pb, niv, veh, pass) sont lus par le GRAFCET et l'automate sans rôle ici.
+  feeder: { name: () => tl('Magasin et transfert'), cyls: [{ key: 'push', label: () => tl('Vérin du poussoir') }, { key: 'arm', label: () => tl('Vérin de transfert') }, { key: 'down', label: () => tl('Vérin de descente') }], controls: [{ role: 'start', mode: 'hold', label: n => tl('Départ ({0})', n), defaults: ['dcy'], bench: 0, icon: 'play' }, { role: 'refill', mode: 'click', label: () => tl('Remplir le magasin'), icon: 'plus' }] },
+  filler: { name: () => tl('Embouteillage'), cyls: [{ key: 'stop', label: () => tl('Vérin de butée') }, { key: 'fill', label: () => tl('Vérin du bec') }], controls: [{ role: 'run', mode: 'toggle', label: n => tl('Marche ({0})', n), defaults: ['m', 'marche', 'dcy'], bench: 0, icon: 'play' }, { role: 'bottle', mode: 'click', label: () => tl('Une bouteille'), icon: 'bottle' }] },
+  barrier: { name: () => tl('Barrière de parking'), cyls: [{ key: 'lift', label: () => tl('Vérin de la lisse') }], controls: [{ role: 'badge', mode: 'hold', label: n => tl('Badge ({0})', n), defaults: ['badge', 'dcy'], bench: 0, icon: 'pointer' }, { role: 'car', mode: 'click', label: () => tl('Une voiture'), icon: 'car' }] },
+  // Machine construite par l'utilisateur (src/twin) : ses commandes (boutons, sources) viennent de la scène elle-même (processControls).
+  twin: { name: () => tl('Machine construite (jumeau 3D)'), cyls: [], controls: [] }
 };
 /** Clé de SCENES pour les réglages d'un circuit (la porte de bus est une porte avec skin: 'bus'). */
 export const sceneId = c => (!c || !SCENES[c.kind] || SCENES[c.kind].cfg ? 'cylinders' : c.kind === 'door' && c.skin === 'bus' ? 'bus' : c.kind);
@@ -165,8 +175,8 @@ export const FOV = aspect => (aspect >= 1.15 ? 40 : 2 * Math.atan(Math.tan(Math.
 
 /**
  * Vue 3D dans host. api : { press(rôle, appuyé) } (commandes de SCENES : bouton cliqué dans la scène, cellule du
- * convoyeur). Rend { build(config, circuit), update(état), act(rôle), resize(), dispose() }. état : { running, t,
- * x(id), press(id, orifice), sensor(nom), coil(nom), input(nom), role(rôle) → commande appuyée }.
+ * convoyeur). Rend { build(config, circuit), update(état), act(rôle), home(), resize(), dispose() }. état : { running, t,
+ * proc (état du procédé, process.js), x(id), press(id, orifice), sensor(nom), coil(nom), input(nom), role(rôle) → commande appuyée }.
  */
 export function createMachineView(host, api) {
   const canvas = document.createElement('canvas'); canvas.className = 'pn3dCanvas'; host.appendChild(canvas);
@@ -216,9 +226,6 @@ export function createMachineView(host, api) {
   /* ---------- Outils communs aux machines ---------- */
   const V = (x, y, z) => new THREE.Vector3(x, y, z), mtx = new THREE.Matrix4();
   const put = (o, x, y, z, to = root) => { o.position.set(x, y, z); to.add(o); return o; };
-  const isCyl = x => x.type === 'cyl1' || x.type === 'cyl2';
-  /** Vérin d'un rôle : par identifiant ou repère, sinon le i-ème vérin du circuit. */
-  const cylOf = (circuit, ref, i = 0) => { const cs = circuit.elements.filter(isCyl); return (ref && cs.find(x => x.id === ref || (x.p && x.p.label) === ref)) || cs[i] || null; };
   const tube = (pts, r = 0.007) => { const t = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts.map(p => (p.isVector3 ? p : V(...p)))), 32, r, 8, false), mat(COL.C, { roughness: 0.4 })); root.add(t); return t; };
   const glass = () => new THREE.MeshStandardMaterial({ color: 0xcfe3f1, transparent: true, opacity: 0.16, roughness: 0.1, depthWrite: false });
   const ghost = o => { o.userData.ghost = true; return o; }; // ni ombre portée ni ombre reçue (capots transparents, faisceau)
@@ -235,19 +242,20 @@ export function createMachineView(host, api) {
    * Vérin posé dans la scène : nez du corps en at, tige vers rod, raccords du côté up, capteurs du côté sens (leurs
    * repères décalés de tag, de hauteur tagH), nom en name, distributeur en valve avec ses deux tuyaux (via : points
    * de passage).
+   * holder : groupe qui reçoit le vérin, ses capteurs et son nom (une pièce qui se déplace ; sans distributeur ni tuyaux).
    * Rend { x(état) } : met à jour tige, raccords, tuyaux et voyants, et rend la position 0…1 du vérin.
    */
   function mount(e, o) {
-    const P = (e && e.p) || {}, m = cylinderModel(o), X = V(...o.rod).negate().normalize(), Y = V(...o.up).normalize(), at = V(...o.at);
+    const P = (e && e.p) || {}, m = cylinderModel(o), X = V(...o.rod).negate().normalize(), Y = V(...o.up).normalize(), at = V(...o.at), to = o.holder || root;
     const turn = (g, y) => g.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(X, y, V(0, 0, 0).crossVectors(X, y)));
-    turn(m.group, Y); m.group.position.copy(at); root.add(m.group);
+    turn(m.group, Y); m.group.position.copy(at); to.add(m.group);
     const Ys = o.sens ? V(...o.sens).normalize() : Y, tg = o.tag || [0, m.r + 0.035, 0], sens = [];
     for (const [nm, lx] of [[P.s0, m.L - 0.075], [P.s1, 0.075]]) {
       if (!nm) continue;
-      const s = reedSwitch(nm, m.r, o.ledR || 0.011, o.tagH); turn(s.group, Ys); s.group.position.copy(at).addScaledVector(X, lx); root.add(s.group);
-      s.group.remove(s.tag); s.tag.position.copy(s.group.position).add(V(...tg)); root.add(s.tag); sens.push([s.led, nm]);
+      const s = reedSwitch(nm, m.r, o.ledR || 0.011, o.tagH); turn(s.group, Ys); s.group.position.copy(at).addScaledVector(X, lx); to.add(s.group);
+      s.group.remove(s.tag); s.tag.position.copy(s.group.position).add(V(...tg)); to.add(s.tag); sens.push([s.led, nm]);
     }
-    if (o.name) { const t = label(P.label || (e ? e.id : '?'), o.nameH || 0.07, { bg: '#1f2a33dd' }); t.position.set(...o.name); root.add(t); }
+    if (o.name) { const t = label(P.label || (e ? e.id : '?'), o.nameH || 0.07, { bg: '#1f2a33dd' }); t.position.set(...o.name); to.add(t); }
     let tubes = null;
     if (o.valve) {
       const v = V(...o.valve); put(box(0.16, 0.07, 0.07, mat(0x2f6f9f, { metalness: 0.3 })), v.x, v.y, v.z);
@@ -705,28 +713,280 @@ export function createMachineView(host, api) {
     };
   }
 
+  /* ---------- Magasin et transfert ---------- */
+  // Poste de distribution : un magasin à gravité (tube transparent) garde les pièces empilées ; le poussoir, horizontal,
+  // amène la pièce du bas en position de prise ; un portique porte le vérin de transfert, dont le chariot descend une
+  // ventouse (vérin vertical) : prise bras rentré, dépose bras sorti sur la palette. Le procédé (pièces, capteurs mag et
+  // pp, bourrage) vient de process.js et avance avec la simulation : la vue le dessine (st.proc).
+  function buildFeeder(circuit, cfg) {
+    bench(1.9, 1.0);
+    const eA = cylOf(circuit, cfg.push, 0), eB = cylOf(circuit, cfg.arm, 1), eC = cylOf(circuit, cfg.down, 2);
+    const MX = -0.35, PX = -0.1, OX = 0.42, PART = 0.07, PY = PART / 2 + 0.012, GY = 0.58, AY = GY - 0.05; // magasin, prise, palette, pièce, portique, axe du bras
+    const frameM = mat(0x41607a, { metalness: 0.3 }), steel = mat(0x8d969e, { metalness: 0.6, roughness: 0.35 }), toolM = mat(0xd97706, { metalness: 0.2 }), legM = mat(0x59636c, { metalness: 0.4 });
+    // Glissière de la pièce, du magasin à la position de prise, entre deux guides ; butée.
+    put(box(0.5, 0.012, 0.14, steel), (MX + PX) / 2 + 0.02, 0.006, 0);
+    for (const sz of [-1, 1]) put(box(0.5, 0.03, 0.012, frameM), (MX + PX) / 2 + 0.02, 0.027, sz * 0.05);
+    put(box(0.02, 0.07, 0.11, frameM), PX + 0.05, 0.047, 0);
+    // Magasin : quatre montants, un tube transparent, les pièces empilées (celle du bas est poussée).
+    const MH = 0.46;
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) put(box(0.012, MH, 0.012, steel), MX + sx * 0.048, MH / 2 + 0.012, sz * 0.048);
+    ghost(put(box(0.09, MH - 0.08, 0.09, glass()), MX, MH / 2 + 0.05, 0));
+    const partM = mat(0xd5dade, { metalness: 0.5, roughness: 0.3 }), partGeo = new THREE.BoxGeometry(PART, PART, PART);
+    const stack = []; for (let i = 0; i < FEED.mag; i++) stack.push(put(new THREE.Mesh(partGeo, partM), MX, PY + i * (PART + 0.002), 0));
+    const moving = put(new THREE.Mesh(partGeo, partM), PX, PY, 0); // pièce poussée, en position de prise, ou portée par la ventouse
+    const magLed = put(led(0.012), MX + 0.065, 0.06, 0.06); put(label(cfg.mag || 'mag', 0.045), MX + 0.065, 0.1, 0.06);
+    put(box(0.03, 0.03, 0.03, mat(COL.stripe)), PX, 0.05, -0.1); const ppLed = put(led(0.01), PX, 0.075, -0.1); put(label(cfg.pp || 'pp', 0.045), PX, 0.11, -0.1);
+    // Poussoir : vérin horizontal derrière le magasin, tige vers +x ; son patin pousse la pièce de MX à PX.
+    const cA = mount(eA, { L: 0.3, S: PX - MX, r: 0.03, rodR: 0.012, at: [MX - 0.16, PY, 0], rod: [1, 0, 0], up: [0, 1, 0], name: [MX - 0.31, 0.2, 0], valve: [-0.78, 0.035, -0.34], via: [[[-0.66, 0.2, -0.18]], [[-0.82, 0.2, -0.18]]] });
+    for (const x of [MX - 0.2, MX - 0.42]) put(box(0.05, 0.024, 0.08, frameM), x, 0.012, 0);
+    const pushTip = put(box(0.03, PART - 0.01, PART - 0.01, toolM), 0, PY, 0);
+    // Portique : deux poteaux, une poutre ; le vérin de transfert sous la poutre, tige vers +x, chariot au bout.
+    for (const x of [-0.92, 0.64]) put(box(0.06, GY, 0.06, frameM), x, GY / 2, 0);
+    put(box(1.62, 0.06, 0.08, frameM), -0.14, GY + 0.03, 0);
+    const cB = mount(eB, { L: 0.64, S: OX - PX, r: 0.032, rodR: 0.012, at: [PX - 0.1, AY, 0], rod: [1, 0, 0], up: [0, 0, -1], sens: [0, 0, 1], tag: [0, 0.075, 0], name: [-0.52, GY + 0.14, 0], valve: [-0.46, 0.035, -0.34], via: [[[-0.4, 0.32, -0.22]], [[-0.56, 0.32, -0.22]]] });
+    // Chariot et vérin de descente (vertical, tige vers le bas, ventouse au bout) : ils se déplacent avec le bras.
+    const carriage = new THREE.Group(); root.add(carriage);
+    put(box(0.09, 0.09, 0.1, toolM), 0, -0.05, 0, carriage);
+    const dn = new THREE.Group(); root.add(dn);
+    const cC = mount(eC, { holder: dn, L: 0.18, S: 0.12, r: 0.024, rodR: 0.01, at: [0, 0.31, 0], rod: [0, -1, 0], up: [0, 0, -1], sens: [1, 0, 0], tag: [0.1, 0, 0], tagH: 0.04, ledR: 0.009, name: [0.2, 0.4, 0], nameH: 0.06 });
+    const cup = put(cyl(0.028, 0.012, mat(0x23292e, { roughness: 0.7 }), 18), 0, 0, 0, dn);
+    const hose = put(cyl(0.006, 1, mat(0x2f6f9f), 8), 0, 0, 0, dn); // flexible de la ventouse : du chariot à la tige
+    // Palette de sortie : les pièces transférées, en deux rangées.
+    put(box(0.3, 0.02, 0.3, mat(0x8a6f4d, { roughness: 0.8 })), OX, 0.01, 0);
+    const out = []; for (let i = 0; i < 6; i++) { const m = put(new THREE.Mesh(partGeo, partM), OX + ((i % 3) - 1) * 0.085, 0.02 + PART / 2 + Math.floor(i / 3) * (PART + 0.002), 0); m.visible = false; out.push(m); }
+    // Pupitre : départ cycle, remplir le magasin ; alarme de bourrage.
+    put(box(0.34, 0.05, 0.13, mat(COL.dark)), 0.1, 0.025, 0.4); put(box(0.34, 0.005, 0.13, mat(COL.stripe, { roughness: 0.7 })), 0.1, 0.0525, 0.4);
+    const start = pushBtn('start', 0.032); put(start.g, 0.02, 0.055, 0.4); put(label(tl('Départ'), 0.045), 0.02, 0.12, 0.4);
+    const refill = pushBtn('refill', 0.028, 0x2563eb); put(refill.g, 0.19, 0.055, 0.4); put(label(tl('Remplir'), 0.045), 0.19, 0.12, 0.4);
+    const jamLbl = label(tl('Bourrage !'), 0.07, { bg: '#b91c1cee', color: '#fff' }); jamLbl.position.set(PX, 0.25, 0.1); jamLbl.visible = false; root.add(jamLbl);
+    shadows(root);
+    camera.position.set(0.95, 0.9, 1.6); controls.target.set(-0.15, 0.28, 0);
+    let lit = 0;
+    return {
+      pick: [start.cap, refill.cap], near: 0.6,
+      act(role) { if (role === 'refill') lit = performance.now(); },
+      update(st) {
+        const a = cA.x(st), b = cB.x(st), c = cC.x(st), p = st.proc && st.proc.kind === 'feeder' ? st.proc : null, n = p ? p.n : FEED.mag;
+        pushTip.position.x = MX - 0.06 + (PX - MX) * a + 0.015;
+        // Pile : la pièce du bas glisse avec le poussoir ; les autres descendent d'un cran quand il revient.
+        const pushing = !!p && !p.part && !p.pushed && n > 0 && a > 0.02;
+        for (let i = 0; i < stack.length; i++) stack[i].visible = i < n && !(pushing && i === 0);
+        const cx = PX + (OX - PX) * b; carriage.position.set(cx, AY, 0); dn.position.x = cx;
+        const tipY = 0.31 - 0.1 - 0.12 * c; cup.position.y = tipY - 0.006;
+        hose.scale.y = AY - 0.09 - tipY; hose.position.set(0.03, (AY - 0.09 + tipY) / 2, 0);
+        moving.visible = !!p && (pushing || p.part || p.held);
+        if (p && p.held) moving.position.set(cx, tipY - 0.012 - PART / 2, 0);
+        else if (p && p.part) moving.position.set(PX, PY, 0);
+        else if (pushing) moving.position.set(MX + (PX - MX) * a, PY, 0);
+        for (let i = 0; i < out.length; i++) out[i].visible = !!p && i < p.done;
+        setLed(magLed, COL.on, st.sensor(cfg.mag || 'mag')); setLed(ppLed, COL.amber, st.sensor(cfg.pp || 'pp'));
+        jamLbl.visible = !!p && p.jamming;
+        start.set(st.role('start')); refill.set(st.role('refill') || performance.now() - lit < 250);
+      }
+    };
+  }
+
+  /* ---------- Embouteillage ---------- */
+  // Ligne d'embouteillage : le tapis apporte les bouteilles ; la butée (vérin en travers, derrière le tapis) arrête la
+  // bouteille sous le bec ; le bec (vérin vertical sous la cuve) descend et remplit ; cellule pb (bouteille sous le bec)
+  // et sonde niv (niveau atteint). Le procédé (bouteilles, niveaux, jus renversé) vient de process.js.
+  function buildFiller(circuit, cfg) {
+    workshopFloor(0);
+    const eA = cylOf(circuit, cfg.stop, 0), eB = cylOf(circuit, cfg.fill, 1), K = FILL, BY = 0.8, HW = 0.12, len = K.x1 - K.x0, mid = (K.x0 + K.x1) / 2, XS = K.xs, BH = 0.2, BR = 0.035;
+    const steel = mat(0x8d969e, { metalness: 0.6, roughness: 0.35 }), legM = mat(0x59636c, { metalness: 0.4 }), alu = mat(COL.alu, { metalness: 0.6, roughness: 0.35 }), toolM = mat(0xd97706, { metalness: 0.2 }), frameM = mat(0x41607a, { metalness: 0.3 });
+    const juiceM = mat(0x9b1b4b, { roughness: 0.3 }), glassM = new THREE.MeshStandardMaterial({ color: 0xdff1f7, transparent: true, opacity: 0.35, roughness: 0.1, depthWrite: false });
+    // Tapis, longerons, pieds, tambours, barrettes qui défilent.
+    put(box(len, 0.08, HW * 2 - 0.02, mat(0x1d2124, { roughness: 0.85 })), mid, BY - 0.04, 0);
+    for (const sz of [-1, 1]) { put(box(len - 0.06, 0.09, 0.03, alu), mid, BY - 0.05, sz * (HW + 0.005)); for (const x of [K.x0 + 0.2, K.x1 - 0.2]) put(box(0.05, BY - 0.09, 0.05, legM), x, (BY - 0.09) / 2, sz * HW); }
+    const drums = [K.x0, K.x1].map(x => { const d = put(cyl(0.04, HW * 2 - 0.01, steel, 24), x, BY - 0.04, 0); d.rotation.x = Math.PI / 2; d.add(box(0.083, HW * 2 - 0.005, 0.008, legM)); return d; });
+    const NS = 18, pitch = len / NS, bars = new THREE.InstancedMesh(new THREE.BoxGeometry(0.014, 0.004, HW * 2 - 0.04), mat(0x3a4045), NS); root.add(bars);
+    // Portique au-dessus du bec : poteaux, traverse, console ; cuve de jus et sa canalisation.
+    for (const sx of [-1, 1]) put(box(0.06, BY + 0.85, 0.06, frameM), XS + sx * 0.34, (BY + 0.85) / 2, -0.28);
+    put(box(0.74, 0.06, 0.06, frameM), XS, BY + 0.88, -0.28); put(box(0.1, 0.06, 0.34, frameM), XS, BY + 0.88, -0.1);
+    put(cyl(0.16, 0.28, mat(0xc9d0d6, { metalness: 0.3, roughness: 0.35 }), 28), XS, BY + 1.07, -0.28);
+    put(label(tl('Jus de bissap'), 0.08, { bg: '#7a1240dd', color: '#fff' }), XS, BY + 1.27, -0.28);
+    tube([[XS, BY + 0.93, -0.28], [XS, BY + 0.78, -0.24], [XS + 0.02, BY + 0.7, -0.06], [XS, BY + 0.62, 0]], 0.012);
+    // Bec : vérin vertical, tige vers le bas, buse au bout ; sonde de niveau sur la console.
+    const cB = mount(eB, { L: 0.22, S: 0.12, r: 0.03, rodR: 0.012, at: [XS, BY + 0.55, 0], rod: [0, -1, 0], up: [0, 0, -1], sens: [1, 0, 0], tag: [0.11, 0, 0], tagH: 0.05, ledR: 0.011, name: [XS, BY + 0.82, 0.1], nameH: 0.08, valve: [XS + 0.55, BY + 0.04, -0.42], via: [[[XS + 0.42, BY + 0.5, -0.3]], [[XS + 0.58, BY + 0.62, -0.3]]] });
+    const nozzle = put(cyl(0.012, 0.08, steel, 10), XS, BY + 0.4, 0), nozTip = put(new THREE.Mesh(new THREE.ConeGeometry(0.02, 0.03, 12), steel), XS, BY + 0.35, 0); nozTip.rotation.x = Math.PI;
+    const stream = ghost(put(cyl(0.006, 1, juiceM, 8), XS, BY + 0.3, 0)); stream.visible = false;
+    const puddle = ghost(put(cyl(0.07, 0.003, juiceM, 20), XS, BY + 0.002, 0)); puddle.visible = false;
+    put(box(0.04, 0.05, 0.04, mat(COL.stripe)), XS + 0.12, BY + 0.47, 0.03); const nivLed = put(led(0.013), XS + 0.12, BY + 0.51, 0.06); put(label(cfg.niv || 'niv', 0.05), XS + 0.12, BY + 0.56, 0.06);
+    // Butée : vérin en travers derrière le tapis, tige vers l'avant, patin au bout ; sur sa tablette.
+    const cA = mount(eA, { L: 0.2, S: 0.14, r: 0.025, rodR: 0.01, at: [XS + 0.05, BY + 0.07, -0.2], rod: [0, 0, 1], up: [0, 1, 0], name: [XS + 0.05, BY + 0.25, -0.36], nameH: 0.07, tagH: 0.05, ledR: 0.011, valve: [XS - 0.55, BY + 0.04, -0.42], via: [[[XS - 0.35, BY + 0.3, -0.38]], [[XS - 0.5, BY + 0.36, -0.38]]] });
+    put(box(0.5, 0.02, 0.3, steel), XS + 0.05, BY + 0.019, -0.4); for (const x of [-0.2, 0.2]) put(box(0.04, BY + 0.02, 0.04, legM), XS + 0.05 + x, (BY + 0.02) / 2, -0.5);
+    const pad = put(box(0.02, 0.1, 0.1, toolM), XS + 0.05, BY + 0.08, 0);
+    // Cellule pb : émetteur et récepteur de part et d'autre du tapis, faisceau rouge, voyant.
+    for (const sz of [-1, 1]) { put(box(0.03, 0.14, 0.03, legM), XS - 0.02, BY + 0.07, sz * 0.21); put(box(0.035, 0.05, 0.05, mat(COL.stripe)), XS - 0.02, BY + 0.15, sz * 0.21); }
+    const pbLed = put(led(0.013), XS - 0.02, BY + 0.195, -0.21); put(label(cfg.pb || 'pb', 0.05), XS - 0.02, BY + 0.25, -0.21);
+    const beam = ghost(put(new THREE.Mesh(new THREE.CylinderGeometry(0.004, 0.004, 1, 6), new THREE.MeshBasicMaterial({ color: 0xff3b30 })), XS - 0.02, BY + 0.15, 0)); beam.rotation.x = Math.PI / 2;
+    // Bouteilles : réserve de dix (corps en verre, col, capsule, jus dont la hauteur suit le niveau).
+    const bottles = [];
+    for (let i = 0; i < 10; i++) {
+      const g = new THREE.Group(); g.visible = false; root.add(g);
+      ghost(put(cyl(BR, BH, glassM, 18), 0, BH / 2, 0, g)); ghost(put(cyl(0.014, 0.06, glassM, 12), 0, BH + 0.03, 0, g)); put(cyl(0.016, 0.015, mat(0xf2c230), 12), 0, BH + 0.066, 0, g);
+      const juice = put(cyl(BR - 0.006, 1, juiceM, 18), 0, 0, 0, g); juice.scale.y = 0.001;
+      bottles.push({ g, juice });
+    }
+    // Caisse en bout de tapis ; bouton « une bouteille » au début ; alarme.
+    const crateM = mat(0x2f6f9f, { roughness: 0.6 }), CX = K.x1 + 0.38;
+    put(box(0.5, 0.02, 0.5, crateM), CX, 0.01, 0); for (const s of [-1, 1]) { put(box(0.015, 0.3, 0.5, crateM), CX + s * 0.25, 0.15, 0); put(box(0.5, 0.3, 0.015, crateM), CX, 0.15, s * 0.25); }
+    put(box(0.05, 0.95, 0.05, legM), K.x0 + 0.1, 0.475, 0.42); put(box(0.14, 0.07, 0.11, mat(COL.dark)), K.x0 + 0.1, 0.985, 0.42);
+    const add = pushBtn('bottle', 0.035, 0x2563eb); put(add.g, K.x0 + 0.1, 1.02, 0.42); put(label(tl('Une bouteille'), 0.06), K.x0 + 0.1, 1.12, 0.42);
+    const spillLbl = label(tl('Jus renversé !'), 0.08, { bg: '#b91c1cee', color: '#fff' }); spillLbl.position.set(XS, BY + 0.3, 0.28); spillLbl.visible = false; root.add(spillLbl);
+    shadows(root);
+    camera.position.set(1.35, 1.65, 2.35); controls.target.set(0.05, 0.85, 0);
+    let lit = 0;
+    return {
+      pick: [add.cap],
+      act(role) { if (role === 'bottle') lit = performance.now(); },
+      update(st) {
+        const a = cA.x(st), b = cB.x(st), p = st.proc && st.proc.kind === 'filler' ? st.proc : null;
+        pad.position.z = -0.2 + 0.1 + 0.14 * a;
+        const tipY = BY + 0.55 - 0.1 - 0.12 * b; nozzle.position.y = tipY - 0.04; nozTip.position.y = tipY - 0.095;
+        const list = p ? p.bottles : []; let under = null;
+        for (let i = 0; i < bottles.length; i++) {
+          const q = list[i], o = bottles[i]; o.g.visible = !!q; if (!q) continue;
+          o.g.position.set(q.x, BY, 0); o.juice.scale.y = Math.max(0.001, q.lvl * (BH - 0.012)); o.juice.position.y = o.juice.scale.y / 2 + 0.004;
+          if (Math.abs(q.x - XS) < K.tol) under = q;
+        }
+        const filling = st.running && b >= 0.98;
+        stream.visible = filling;
+        if (filling) { const y0 = tipY - 0.11, y1 = under ? BY + (BH - 0.012) * under.lvl + 0.004 : BY + 0.004; stream.scale.y = Math.max(0.001, y0 - y1); stream.position.y = (y0 + y1) / 2; }
+        puddle.visible = !!p && p.spill > 0.05; spillLbl.visible = !!p && p.spilling;
+        // Faisceau : de l'émetteur (devant) au récepteur, ou jusqu'à la bouteille qui le coupe.
+        const z1 = under ? BR : -0.195; beam.scale.y = Math.max(0.001, 0.195 - z1); beam.position.z = (0.195 + z1) / 2;
+        setLed(pbLed, COL.amber, st.sensor(cfg.pb || 'pb')); setLed(nivLed, COL.on, st.sensor(cfg.niv || 'niv'));
+        const off = st.running ? (st.t * K.speed) % len : 0;
+        for (let i = 0; i < NS; i++) { mtx.makeTranslation(K.x0 + (i * pitch + off) % len, BY + 0.002, 0); bars.setMatrixAt(i, mtx); }
+        bars.instanceMatrix.needsUpdate = true;
+        for (const d of drums) d.rotation.y = -(st.running ? st.t * K.speed : 0) / 0.04;
+        add.set(st.role('bottle') || performance.now() - lit < 250);
+      }
+    };
+  }
+
+  /* ---------- Barrière de parking ---------- */
+  // Entrée d'un parking-relais : la voie, la ligne d'arrêt et la boucle de détection (veh), l'armoire de la barrière et
+  // sa lisse rouge et blanche, levée par le vérin (biellette sur la manivelle de l'axe) ; zone de sécurité sous la lisse
+  // (pass) ; lecteur de badge côté conducteur ; feu rouge ou vert. Les voitures (process.js) arrivent sur un clic.
+  function buildBarrier(circuit, cfg) {
+    scene.background = skyTex;
+    const e = cylOf(circuit, cfg.lift, 0), K = BAR, ZC = -1.55, PV = V(K.xbar, 1.0, ZC + 0.22), R = 0.15, TH = 85 * Math.PI / 180;
+    const asphalt = mat(0x3a3f45, { roughness: 0.95 }), curb = mat(0xb9bcc0, { roughness: 0.8 }), paint = mat(0xf4f4f4, { roughness: 0.7 }), yellow = mat(COL.tactile, { roughness: 0.8 });
+    const steel = mat(0x8d969e, { metalness: 0.6, roughness: 0.35 }), red = mat(COL.accent, { roughness: 0.45 }), white = mat(0xf4f4f4, { roughness: 0.45 }), dark = mat(COL.dark);
+    const ground = new THREE.Mesh(new THREE.PlaneGeometry(40, 40), mat(0xa89f84, { roughness: 1 })); ground.rotation.x = -Math.PI / 2; put(ground, 0, -0.01, 0);
+    put(box(9, 0.02, 2.8, asphalt), 0, 0, 0);
+    for (const sz of [-1, 1]) put(box(9, 0.12, 0.2, curb), 0, 0.06, sz * 1.5);
+    put(box(0.12, 0.004, 2.4, paint), K.xwait, 0.013, 0); // ligne d'arrêt
+    // Boucle de détection : rectangle jaune au sol avant la ligne d'arrêt ; voyant veh. Zone sous la lisse ; voyant pass.
+    const lx = K.xwait - K.loop / 2 - 0.04;
+    for (const sz of [-1, 1]) put(box(K.loop, 0.004, 0.02, yellow), lx, 0.013, sz * 1.0);
+    for (const x of [K.xwait - K.loop - 0.04, K.xwait - 0.08]) put(box(0.02, 0.004, 2.0, yellow), x, 0.013, 0);
+    const vehLed = put(led(0.03), lx, 0.2, -1.35); put(label(cfg.veh || 'veh', 0.08), lx, 0.32, -1.35);
+    put(box(K.zone * 2, 0.004, 2.4, mat(0x7a848c, { roughness: 0.9 })), K.xbar, 0.012, 0);
+    const passLed = put(led(0.03), K.xbar, 0.2, 1.35); put(label(cfg.pass || 'pass', 0.08), K.xbar, 0.32, 1.35);
+    // Armoire, feu rouge / vert ; lisse sur son axe (manivelle côté +x), contrepoids.
+    put(box(0.4, 1.0, 0.4, mat(0xe9ecef, { roughness: 0.5 })), K.xbar, 0.62, ZC); put(box(0.4, 0.12, 0.4, red), K.xbar, 0.18, ZC);
+    put(box(0.34, 0.2, 0.08, dark), K.xbar, 1.35, ZC + 0.17); const lampR = put(led(0.05), K.xbar - 0.1, 1.35, ZC + 0.22), lampG = put(led(0.05), K.xbar + 0.1, 1.35, ZC + 0.22);
+    const arm = new THREE.Group(); arm.position.copy(PV); root.add(arm);
+    const AL = 2.8; for (let i = 0; i < 7; i++) put(box(0.08, 0.1, AL / 7, i % 2 ? red : white), 0, 0, 0.2 + AL / 14 + i * AL / 7, arm);
+    put(cyl(0.04, 0.6, steel, 16), 0.2, 0, 0, arm).rotation.z = Math.PI / 2; // axe, prolongé vers la manivelle
+    put(box(0.1, 0.12, 0.3, steel), 0, -0.02, -0.18, arm); // contrepoids
+    put(box(0.04, R, 0.04, steel), 0.42, -R / 2, 0, arm); // manivelle
+    // Vérin : vertical à côté de l'armoire, tige vers le haut, biellette jusqu'au maneton.
+    const cl = mount(e, { L: 0.42, S: 0.28, r: 0.035, rodR: 0.012, at: [K.xbar + 0.42, 0.75, PV.z], rod: [0, 1, 0], up: [1, 0, 0], sens: [0, 0, 1], tag: [0, 0, 0.1], tagH: 0.06, ledR: 0.014, name: [K.xbar + 0.42, 0.24, PV.z + 0.3], nameH: 0.09, valve: [K.xbar + 0.95, 0.08, ZC - 0.1], via: [[[K.xbar + 0.85, 0.45, ZC + 0.05]], [[K.xbar + 1.0, 0.5, ZC + 0.05]]] });
+    put(box(0.2, 0.06, 0.2, steel), K.xbar + 0.42, 0.3, PV.z);
+    const link = put(box(0.03, 1, 0.03, steel), 0, 0, 0), pin = put(cyl(0.02, 0.08, steel, 10), 0, 0, 0); pin.rotation.z = Math.PI / 2;
+    // Lecteur de badge côté conducteur (à gauche, vers la caméra) ; bouton « une voiture » à l'entrée.
+    put(box(0.08, 1.1, 0.08, steel), K.xwait - 0.3, 0.55, 1.0); put(box(0.2, 0.25, 0.12, dark), K.xwait - 0.3, 1.15, 1.0);
+    const badge = pushBtn('badge', 0.045, 0x2563eb); badge.g.rotation.x = Math.PI / 2; put(badge.g, K.xwait - 0.3, 1.15, 1.07); put(label(tl('Badge'), 0.08), K.xwait - 0.3, 1.42, 1.0);
+    put(box(0.06, 0.9, 0.06, steel), K.xin + 0.3, 0.45, 1.7); put(box(0.18, 0.08, 0.14, dark), K.xin + 0.3, 0.94, 1.7);
+    const car = pushBtn('car', 0.04); put(car.g, K.xin + 0.3, 0.98, 1.7); put(label(tl('Une voiture'), 0.09), K.xin + 0.3, 1.16, 1.7);
+    // Voitures : quatre carrosseries de couleurs différentes, cabine vitrée, roues qui tournent.
+    const cars = [], colors = [0x2a7ab0, 0xf2c230, 0xd8342b, 0xe9ecef];
+    for (let i = 0; i < 4; i++) {
+      const g = new THREE.Group(); g.visible = false; root.add(g); const bodyM = mat(colors[i], { roughness: 0.35, metalness: 0.2 });
+      put(box(K.len, 0.3, 0.6, bodyM), 0, 0.33, 0, g); put(box(K.len * 0.5, 0.24, 0.52, bodyM), -0.05, 0.6, 0, g); put(box(K.len * 0.5 + 0.01, 0.13, 0.54, mat(COL.glass, { roughness: 0.1, metalness: 0.3 })), -0.05, 0.63, 0, g);
+      const wheels = [-0.32, 0.32].flatMap(x => [-0.31, 0.31].map(z => { const w = put(cyl(0.12, 0.08, mat(0x1d2124), 16), x, 0.12, z, g); w.rotation.x = Math.PI / 2; return w; }));
+      cars.push({ g, wheels });
+    }
+    const hitLbl = label(tl('Choc !'), 0.14, { bg: '#b91c1cee', color: '#fff' }); hitLbl.position.set(K.xbar, 1.7, 0); hitLbl.visible = false; root.add(hitLbl);
+    shadows(root);
+    camera.position.set(3.4, 2.3, 4.2); controls.target.set(-0.4, 0.6, 0);
+    let lit = 0;
+    return {
+      pick: [badge.cap, car.cap], near: 1.5,
+      act(role) { if (role === 'car') lit = performance.now(); },
+      update(st) {
+        const x = cl.x(st), p = st.proc && st.proc.kind === 'barrier' ? st.proc : null, th = TH * x;
+        arm.rotation.x = -th;
+        // Biellette : du nez de tige au maneton (manivelle à R sous l'axe, qui tourne avec la lisse).
+        const tx = K.xbar + 0.42, tipY = 0.75 + 0.1 + 0.28 * x, cy = PV.y - R * Math.cos(th), cz = PV.z + R * Math.sin(th);
+        link.position.set(tx, (tipY + cy) / 2, (PV.z + cz) / 2); link.scale.y = Math.max(0.01, Math.hypot(cy - tipY, cz - PV.z)); link.rotation.x = Math.atan2(cz - PV.z, cy - tipY);
+        pin.position.set(tx, cy, cz);
+        const list = p ? p.cars : [];
+        for (let i = 0; i < cars.length; i++) { const q = list[i], o = cars[i]; o.g.visible = !!q; if (!q) continue; o.g.position.set(q.x, 0.01, 0); for (const w of o.wheels) w.rotation.y = -q.x / 0.12; }
+        const open = x >= K.open; setLed(lampG, COL.on, open); setLed(lampR, COL.red, !open);
+        setLed(vehLed, COL.amber, st.sensor(cfg.veh || 'veh')); setLed(passLed, COL.amber, st.sensor(cfg.pass || 'pass'));
+        hitLbl.visible = !!p && p.hitting;
+        badge.set(st.role('badge')); car.set(st.role('car') || performance.now() - lit < 250);
+      }
+    };
+  }
+
   /* ---------- Clic : boutons et commandes de la scène ---------- */
   const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
-  let down = null;
+  let down = null, building = false, pickCb = null, clickAt = null;
+  const buildCbs = new Set();
+  const castAt = ev => { const r = canvas.getBoundingClientRect(); ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(ptr, camera); };
   canvas.addEventListener('pointerdown', ev => {
-    if (!S || !S.pick || ev.button !== 0) return;
-    const r = canvas.getBoundingClientRect(); ptr.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
-    ray.setFromCamera(ptr, camera);
+    if (!S || ev.button !== 0) return;
+    if (building) { clickAt = [ev.clientX, ev.clientY, performance.now()]; return; } // en construction : choisir une pièce (au relâchement, sans glissement)
+    if (!S.pick) return;
+    castAt(ev);
     const hit = ray.intersectObjects(S.pick, true).find(h => h.object.userData.press);
     if (!hit) return;
     down = hit.object.userData.press; controls.enabled = false; api.press(down, true); ask();
   });
+  canvas.addEventListener('pointerup', ev => {
+    if (!building || !clickAt || !S || ev.button !== 0) return;
+    const [x, y, t] = clickAt; clickAt = null;
+    if (Math.hypot(ev.clientX - x, ev.clientY - y) > 4 || performance.now() - t > 600) return;
+    castAt(ev);
+    const hit = ray.intersectObjects(root.children, true).find(h => h.object.visible && h.object.userData.part && !h.object.userData.ghost);
+    if (pickCb) pickCb(hit ? hit.object.userData.part : null);
+  });
+  canvas.addEventListener('dblclick', ev => {
+    if (!building || !S) return;
+    castAt(ev);
+    const hit = ray.intersectObjects(root.children, true).find(h => h.object.visible && h.object.userData.part && !h.object.userData.ghost);
+    if (hit && pickCb) pickCb(hit.object.userData.part, 'focus'); // double-clic : centrer la vue sur la pièce
+  });
   const onUp = () => { if (!down) return; api.press(down, false); down = null; controls.enabled = true; ask(); };
   addEventListener('pointerup', onUp);
-  const BUILD = { door: buildDoor, bus: buildDoor, press: buildPress, station: buildStation, pantograph: buildPanto, sorter: buildSorter };
+  /** Outils prêtés au rendu du jumeau (src/twin/render.js). */
+  const ctx = { THREE, get root() { return root; }, scene, camera, controls, canvas, put, box, cyl, mat, label, led, setLed, mount, pushBtn, shadows, workshopFloor, ghost, glass, COL, ask, Q };
+  const BUILD = { door: buildDoor, bus: buildDoor, press: buildPress, station: buildStation, pantograph: buildPanto, sorter: buildSorter, feeder: buildFeeder, filler: buildFiller, barrier: buildBarrier, twin: (circuit, cfg) => buildTwin(ctx, circuit, cfg) };
 
   return {
     /** Construit la scène (config : circuit.scene, { kind, skin, vérins et commandes des rôles de SCENES, coil }). */
     build(config, circuit) {
       release(); clear(); kind = sceneId(config);
       S = (BUILD[kind] || buildCylinders)(circuit, config);
+      S.cam0 = { p: camera.position.clone(), t: controls.target.clone() };
       controls.minDistance = S.near || 1; resize(); ask();
+      if (building && S.overlays) S.overlays(true);
+      for (const cb of buildCbs) cb();
     },
+    /** Mode construction (jumeau) : les clics choisissent une pièce (cb(id | null)) au lieu d'appuyer sur les boutons ; grille et zones visibles. */
+    setBuild(on, cb) { building = !!on; pickCb = cb || null; if (S && S.overlays) S.overlays(building); if (!building) clickAt = null; ask(); },
+    /** Appelé après chaque reconstruction de la scène ; rend la fonction qui désabonne. */
+    onBuild(cb) { buildCbs.add(cb); return () => buildCbs.delete(cb); },
+    /** Accès de l'éditeur du jumeau : scène Three.js, caméra, commandes, toile, groupes des pièces, objet construit. */
+    twin: () => ({ scene, camera, controls, canvas, root, groups: () => (S && S.groups) || new Map(), view: S, ask }),
+    /** Recentre la vue : la caméra de départ de la machine. */
+    home() { if (!S) return; camera.position.copy(S.cam0.p); controls.target.copy(S.cam0.t); ask(); },
     update(st) { if (!S) return; seen = performance.now(); S.update(st); if (!st.running) release(); ask(); },
     /** Action d'une commande 'click' (envoyer un colis). */
     act(role) { if (S && S.act) { S.act(role); ask(); } },

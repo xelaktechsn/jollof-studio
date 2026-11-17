@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
-// Mode « fidèle » de l'ESP32 (bêta) : le vrai programme (compilé par arduino-cli, avec la cale
+// Mode « fidèle » de l'ESP32, de l'ESP32-S3 et de l'ESP32-C3 : le vrai programme (compilé par arduino-cli, avec la cale
 // src/emu/esp32-shim/jollof_qemu_shim.cpp) tourne dans QEMU, l'émulateur d'Espressif, lancé comme un programme à part
 // (src-tauri/src/qemu.rs ; les tests passent par src/emu/esp32-node.mjs). Le moteur expose la même interface que ceux
 // de l'Uno (avr.js) et du Pico (rp2040.js) : broches, temps de la carte, port série, sondes.
@@ -8,41 +8,58 @@
 //     broche, et, pour le LEDC (analogWrite, ledcWrite, tone(), servo), le rapport cyclique et la fréquence réglés.
 //   Entrées : le modèle GPIO de QEMU ne garde rien ; la cale du programme lit les niveaux et l'ADC que le moteur lui
 //     envoie par l'UART1, et appelle les fonctions attachées (attachInterrupt) aux fronts.
+//   Modules du montage (I2C, SPI, 1-Wire, signaux temporisés, ports série, NeoPixel) : la cale fait passer leurs
+//     échanges par l'UART1 vers les modèles de src/emu/devices (src/emu/esp32-bridge.js).
 //   Temps : QEMU tourne en temps réel, à son rythme ; le temps de la carte (millis()) arrive par le battement de la
 //     cale, toutes les 10 ms. run(dt) n'avance rien : il relève les entrées et analyse les sorties.
-// Limites (bêta) : ni Wi-Fi ni Bluetooth, modules I2C/SPI/1-Wire pas encore reliés (src/emu/esp32-limits.js).
+// Limites : ni Wi-Fi ni Bluetooth (src/emu/esp32-limits.js).
 import { pinMap } from '../prog/runtime.js';
 import { tl } from '../i18n/index.js';
 import { UNBRIDGED, unbridgedWarning } from './esp32-limits.js';
-import { pkgTypes } from '../sim/pkgparts.js';
+import { createBridge, maskBytes } from './esp32-bridge.js';
 
-const GPIO = 0x3ff44000, LEDC = 0x3ff59000, APB_HZ = 80e6, REF_HZ = 1e6;
+const APB_HZ = 80e6, REF_HZ = 1e6;
 const WINDOW = 60;        // ms : fenêtre d'analyse des fronts (signaux faits à coups de digitalWrite)
 const RING = 256;         // fronts gardés par broche
 const ADC_REF = 3.3, ADC_MAX = 4095;
 const LOOP_RESETS = 3, LOOP_MS = 15000; // trois redémarrages en 15 s : la carte boucle, on l'arrête
 const STALL_MS = 3000;    // plus de battement de la cale depuis 3 s : programme bloqué
-// Lignes écrites par la mémoire morte et le chargeur d'amorçage à chaque démarrage (115200 bauds sur l'ESP32).
-const BANNER = /^(ets [A-Z][a-z]{2} +\d|rst:0x|configsip:|clk_drv:|mode:(DIO|QIO|DOUT|QOUT)|load:0x|entry 0x|ho \d+ tail)/;
-const BANNER_HEADS = ['ets ', 'rst:', 'conf', 'clk_', 'mode', 'load', 'entr', 'ho '];
+// Lignes écrites par la mémoire morte et le chargeur d'amorçage à chaque démarrage (115200 bauds) : ESP32, puis
+// ESP32-S3 et ESP32-C3 (« ESP-ROM:esp32s3-20210327 », « Build:Mar 27 2021 », « SPIWP:0xee »…).
+const BANNER = /^(ets [A-Z][a-z]{2} +\d|rst:0x|configsip:|clk_drv:|mode:(DIO|QIO|DOUT|QOUT)|load:0x|entry 0x|ho \d+ tail|ESP-ROM:|Build:[A-Z][a-z]{2} |SPIWP:|Saved PC:)/;
+const BANNER_HEADS = ['ets ', 'rst:', 'conf', 'clk_', 'mode', 'load', 'entr', 'ho ', 'ESP-', 'Buil', 'SPIW', 'Save'];
 const RESET = /^rst:0x[0-9a-f]+ \(([A-Z0-9_]+)\)/;
 const PANIC = /Guru Meditation Error: Core +\d+ panic'ed \(([^)]+)\)|abort\(\) was called|assert failed: (.+)/;
 const REASONS = {
-  SW_CPU_RESET: () => tl('redémarrage logiciel (ESP.restart() ou plantage)'),
+  SW_CPU_RESET: () => tl('redémarrage logiciel (ESP.restart() ou plantage)'), RTC_SW_CPU_RST: () => tl('redémarrage logiciel (ESP.restart() ou plantage)'),
+  TG0WDT_SYS_RST: () => tl('chien de garde'), TG1WDT_SYS_RST: () => tl('chien de garde'), RTCWDT_RTC_RST: () => tl('chien de garde'),
   TG0WDT_SYS_RESET: () => tl('chien de garde'), TG1WDT_SYS_RESET: () => tl('chien de garde'),
   RTCWDT_SYS_RESET: () => tl('chien de garde'), RTCWDT_RTC_RESET: () => tl('chien de garde'),
   DEEPSLEEP_RESET: () => tl('réveil du sommeil profond')
 };
 
 /**
- * Registres GPIO et LEDC de l'ESP32 (manuel de référence technique d'Espressif), reconstitués à partir des
- * écritures du programme. pin(n) : { out (sortie active), level, pwm: { duty, freq, channel } | null }.
+ * Puces émulées par QEMU (manuels de référence technique d'Espressif) : machine de QEMU, programme (xtensa ou
+ * riscv32), adresses des registres GPIO et LEDC, premier registre GPIO_FUNCn_OUT_SEL_CFG, nombre de GPIO, masque des
+ * GPIO 32 et plus, numéro du premier signal du LEDC dans la matrice des GPIO, organisation du LEDC (« esp32 » : 8 voies
+ * rapides puis 8 lentes ; « ls » : voies lentes seulement), offset du chargeur d'amorçage dans la flash.
  */
-export function createDecoder() {
+export const CHIPS = {
+  esp32: { machine: 'esp32', arch: 'xtensa', gpio: 0x3ff44000, ledc: 0x3ff59000, outSel: 0x530, pins: 40, hiMask: 0xff, ledcSig: 71, channels: 16, layout: 'esp32', boot: 0x1000 },
+  esp32s3: { machine: 'esp32s3', arch: 'xtensa', gpio: 0x60004000, ledc: 0x60019000, outSel: 0x554, pins: 49, hiMask: 0x3fffff, ledcSig: 73, channels: 8, layout: 'ls', boot: 0 },
+  esp32c3: { machine: 'esp32c3', arch: 'riscv32', gpio: 0x60004000, ledc: 0x60019000, outSel: 0x554, pins: 22, hiMask: 0, ledcSig: 45, channels: 6, layout: 'ls', boot: 0 }
+};
+
+/**
+ * Registres GPIO et LEDC de la puce (ESP32 par défaut), reconstitués à partir des écritures du programme.
+ * pin(n) : { out (sortie active), level, pwm: { duty, freq, channel } | null }.
+ */
+export function createDecoder(chip = 'esp32') {
+  const C = CHIPS[chip] || CHIPS.esp32, GPIO = C.gpio, LEDC = C.ledc, HI = C.hiMask;
   const out = [0, 0], en = [0, 0];
-  const sel = new Array(40).fill(256);
-  const ch = Array.from({ length: 16 }, () => ({ timer: 0, duty: 0, on: false }));
-  const timers = Array.from({ length: 8 }, () => ({ res: 0, div: 0, apb: true }));
+  const sel = new Array(C.pins).fill(256);
+  const ch = Array.from({ length: C.channels }, () => ({ timer: 0, duty: 0, on: false }));
+  const timers = Array.from({ length: C.layout === 'esp32' ? 8 : 4 }, () => ({ res: 0, div: 0, apb: true }));
   const bit = n => [n >> 5, 1 << (n & 31)];
   function reset() {
     out.fill(0); en.fill(0); sel.fill(256);
@@ -51,13 +68,33 @@ export function createDecoder() {
   }
   function pwmOf(n) {
     const s = sel[n];
-    if (s < 71 || s > 86) return null;
-    const c = s - 71, C = ch[c], T = timers[(c < 8 ? 0 : 4) + C.timer];
-    if (!T.res || !T.div) return null;
+    if (s < C.ledcSig || s >= C.ledcSig + C.channels) return null;
+    const c = s - C.ledcSig, K = ch[c], T = timers[(C.layout === 'esp32' ? (c < 8 ? 0 : 4) : 0) + K.timer];
+    if (!T || !T.res || !T.div) return null;
     const full = 2 ** T.res;
-    return { duty: Math.min(1, C.duty / 16 / full), freq: (T.apb ? APB_HZ : REF_HZ) / (T.div / 256) / full, channel: c };
+    return { duty: Math.min(1, K.duty / 16 / full), freq: (T.apb ? APB_HZ : REF_HZ) / (T.div / 256) / full, channel: c };
+  }
+  /** Registre d'une voie ou d'une minuterie du LEDC ; rend vrai s'il peut changer une broche. */
+  function ledc(l, value) {
+    const chEnd = C.layout === 'esp32' ? 0x140 : 0x14 * C.channels, tBase = C.layout === 'esp32' ? 0x140 : 0xa0;
+    if (l < chEnd) {
+      let c, reg;
+      if (C.layout === 'esp32') { const hs = l < 0xa0, b = hs ? l : l - 0xa0; c = (hs ? 0 : 8) + Math.floor(b / 0x14); reg = b % 0x14; }
+      else { c = Math.floor(l / 0x14); reg = l % 0x14; }
+      if (reg === 0x00) { ch[c].timer = value & 3; ch[c].on = !!(value & 4); return true; }
+      if (reg === 0x08) { ch[c].duty = value & 0x1ffffff; return true; }
+      return false;
+    }
+    if (l >= tBase && l < tBase + timers.length * 8 && ((l - tBase) & 7) === 0) {
+      const T = timers[(l - tBase) >> 3];
+      if (C.layout === 'esp32') { T.res = value & 0x1f; T.div = (value >>> 5) & 0x3ffff; T.apb = !!(value & (1 << 25)); }
+      else { T.res = value & 0xf; T.div = (value >>> 4) & 0x3ffff; T.apb = true; } // horloge APB (80 MHz), celle du cœur Arduino
+      return true;
+    }
+    return false;
   }
   return {
+    chip: C,
     /** Redémarrage de la carte : registres à leur valeur de démarrage. */
     reset,
     /** Écriture d'un registre ; rend vrai si elle peut changer une broche. */
@@ -69,34 +106,22 @@ export function createDecoder() {
           case 0x04: out[0] = v; return true;
           case 0x08: out[0] = (out[0] | v) >>> 0; return true;
           case 0x0c: out[0] = (out[0] & ~v) >>> 0; return true;
-          case 0x10: out[1] = v & 0xff; return true;
-          case 0x14: out[1] = (out[1] | v) & 0xff; return true;
-          case 0x18: out[1] = out[1] & ~v & 0xff; return true;
+          case 0x10: out[1] = v & HI; return true;
+          case 0x14: out[1] = (out[1] | v) & HI; return true;
+          case 0x18: out[1] = out[1] & ~v & HI; return true;
           case 0x20: en[0] = v; return true;
           case 0x24: en[0] = (en[0] | v) >>> 0; return true;
           case 0x28: en[0] = (en[0] & ~v) >>> 0; return true;
-          case 0x2c: en[1] = v & 0xff; return true;
-          case 0x30: en[1] = (en[1] | v) & 0xff; return true;
-          case 0x34: en[1] = en[1] & ~v & 0xff; return true;
+          case 0x2c: en[1] = v & HI; return true;
+          case 0x30: en[1] = (en[1] | v) & HI; return true;
+          case 0x34: en[1] = en[1] & ~v & HI; return true;
           default:
-            if (o >= 0x530 && o < 0x530 + 40 * 4) { sel[(o - 0x530) >> 2] = v & 0x1ff; return true; }
+            if (o >= C.outSel && o < C.outSel + C.pins * 4) { sel[(o - C.outSel) >> 2] = v & 0x1ff; return true; }
             return false;
         }
       }
       const l = addr - LEDC;
-      if (l < 0 || l >= 0x200) return false;
-      if (l < 0x140) {
-        const hs = l < 0xa0, b = hs ? l : l - 0xa0, c = (hs ? 0 : 8) + Math.floor(b / 0x14), reg = b % 0x14;
-        if (reg === 0x00) { ch[c].timer = value & 3; ch[c].on = !!(value & 4); return true; }
-        if (reg === 0x08) { ch[c].duty = value & 0x1ffffff; return true; }
-        return false;
-      }
-      if (l < 0x180 && (l & 7) === 0) {
-        const T = timers[(l - 0x140) >> 3];
-        T.res = value & 0x1f; T.div = (value >>> 5) & 0x3ffff; T.apb = !!(value & (1 << 25));
-        return true;
-      }
-      return false;
+      return l >= 0 && l < 0x200 ? ledc(l, value) : false;
     },
     pin(n) {
       const [w, m] = bit(n);
@@ -125,12 +150,12 @@ export function classify(pwm) {
 export function createEsp32Runtime(image, hw, opts = {}) {
   const prof = hw.prof, logic = prof.logic, keys = pinMap(prof, hw.kind || 'esp32'), transport = opts.transport;
   if (!transport) throw new Error(tl('Émulateur ESP32 indisponible.'));
-  const dec = createDecoder();
+  const chip = CHIPS[hw.kind] ? hw.kind : 'esp32', dec = createDecoder(chip);
   const pins = new Map(), lines = [], byNum = new Map(), warnings = new Map();
   let state = 'run', error = null, trace = null, tap = null, out = '', tapBuf = '';
 
   for (const [n, key] of keys) {
-    if (typeof n !== 'number' || n < 0 || n > 39) continue;
+    if (typeof n !== 'number' || n < 0 || n >= CHIPS[chip].pins) continue;
     const rec = { mode: 0, d: 0, pwm: null, freq: 0, ledc: 0, toneEnd: 0, servo: null, px: null, stepper: null, weak: false, dac: null };
     const L = { key, n, rec, adc: !!(prof.gpio[key] && prof.gpio[key].caps && prof.gpio[key].caps.has('adc')), inMode: 0, level: 0, ring: new Float64Array(RING), lev: new Uint8Array(RING), head: 0, count: 0, sliceEdges: 0, adcSent: -1 };
     pins.set(key, rec); lines.push(L); byNum.set(n, L);
@@ -196,36 +221,56 @@ export function createEsp32Runtime(image, hw, opts = {}) {
   /* ---------- Entrées : niveaux et ADC envoyés à la cale (UART1) ---------- */
   let sentMask = null, shimReady = false;
   function readInputs() {
-    let lo = 0, hi = 0;
+    const set = new Set();
     for (const L of lines) {
       if (dec.pin(L.n).out) continue;
       const r = hw.read ? hw.read(L.key) : null;
       const lv = r ? (r.d != null ? !!r.d : r.v > logic / 2) : L.inMode === 2;
-      if (lv) { if (L.n < 32) lo |= 1 << L.n; else hi |= 1 << (L.n - 32); }
+      if (lv) set.add(L.n);
       if (L.adc && shimReady) {
         const v = r ? (r.v != null ? r.v : r.d ? logic : 0) : 0, raw = Math.max(0, Math.min(ADC_MAX, Math.round(v / ADC_REF * ADC_MAX)));
         if (raw !== L.adcSent) { L.adcSent = raw; transport.side([0x41, L.n, raw & 0xff, raw >> 8]); }
       }
     }
-    const mask = `${lo >>> 0}:${hi}`;
-    if (shimReady && mask !== sentMask) {
-      sentMask = mask;
-      transport.side([0x49, lo & 0xff, (lo >>> 8) & 0xff, (lo >>> 16) & 0xff, (lo >>> 24) & 0xff, hi & 0xff]);
-    }
+    const bytes = maskBytes(set), mask = bytes.join(',');
+    if (shimReady && mask !== sentMask) { sentMask = mask; transport.side([0x49, ...bytes]); } // 'I' + 7 octets
   }
-  /* ---------- Cale (UART1) : trames de 10 octets ---------- */
-  let sideBuf = [];
+  /* ---------- Modules du montage (src/emu/esp32-bridge.js) ---------- */
+  const bridge = createBridge({ hw, keys, rec: k => pins.get(k) || null, send: b => transport.side(b) });
+
+  /* ---------- Cale (UART1) : trames de 10 octets [type, broche, valeur, heure], trames variables 'V' ---------- */
+  let sideBuf = new Uint8Array(4096), sideLen = 0, sideAt = 0;
+  const u32at = (f, i) => (f[i] | (f[i + 1] << 8) | (f[i + 2] << 16) | (f[i + 3] << 24)) >>> 0;
   function onSide(t, bytes) {
     seen(t);
-    for (const b of bytes) sideBuf.push(b);
-    while (sideBuf.length >= 10) {
-      const f = sideBuf.splice(0, 10), type = String.fromCharCode(f[0]);
-      if (!'JMT'.includes(type)) { sideBuf.splice(0, 0, ...f.slice(1)); continue; } // resynchronisation
-      const value = (f[2] | (f[3] << 8) | (f[4] << 16) | (f[5] << 24)) >>> 0, us = (f[6] | (f[7] << 8) | (f[8] << 16) | (f[9] << 24)) >>> 0;
-      beat(t, us);
-      if (type === 'J') { shimReady = true; sentMask = null; for (const L of lines) { L.adcSent = -1; L.inMode = 0; } readInputs(); } // la cale attend ces niveaux avant setup()
-      else if (type === 'M') { const L = byNum.get(f[1]); if (L) L.inMode = value & 2 ? 4 : value & 4 ? 2 : value & 8 ? 3 : 1; }
+    if (sideLen + bytes.length > sideBuf.length) {
+      const grown = new Uint8Array(Math.max(sideBuf.length * 2, sideLen - sideAt + bytes.length + 4096));
+      grown.set(sideBuf.subarray(sideAt, sideLen)); sideLen -= sideAt; sideAt = 0; sideBuf = grown;
     }
+    sideBuf.set(bytes, sideLen); sideLen += bytes.length;
+    while (sideLen - sideAt > 0) {
+      const f = sideBuf.subarray(sideAt, sideLen), type = String.fromCharCode(f[0]);
+      if (type === 'V') { // [V, op, longueur u16, heure des modules u32, données]
+        if (f.length < 8) break;
+        const n = f[2] | (f[3] << 8);
+        if (f.length < 8 + n) break;
+        sideAt += 8 + n;
+        if (state === 'run') bridge.frame(String.fromCharCode(f[1]), u32at(f, 4), f.slice(8, 8 + n));
+        continue;
+      }
+      if (!'JMT'.includes(type)) { sideAt++; continue; } // resynchronisation
+      if (f.length < 10) break;
+      sideAt += 10;
+      const value = u32at(f, 2), us = u32at(f, 6);
+      beat(t, us);
+      if (type === 'J') { // la cale attend ces niveaux avant setup() ; les broches reliées aux modules d'abord
+        shimReady = true; sentMask = null;
+        for (const L of lines) { L.adcSent = -1; L.inMode = 0; }
+        bridge.ready(); readInputs();
+      } else if (type === 'M') { const L = byNum.get(f[1]); if (L) L.inMode = value & 2 ? 4 : value & 4 ? 2 : value & 8 ? 3 : 1; }
+      else bridge.beat(us, value);
+    }
+    if (sideAt === sideLen) sideAt = sideLen = 0;
   }
 
   /* ---------- Port série (UART0) : moniteur série ; démarrages, redémarrages et plantages ---------- */
@@ -242,7 +287,7 @@ export function createEsp32Runtime(image, hw, opts = {}) {
     const rst = RESET.exec(text);
     if (rst) {
       booting = true;
-      if (firstBoot && rst[1] === 'POWERON_RESET') firstBoot = false;
+      if (firstBoot && /^POWERON/.test(rst[1])) firstBoot = false;
       else {
         const why = panic || (REASONS[rst[1]] ? REASONS[rst[1]]() : rst[1]);
         emit(tl('\n— l’ESP32 redémarre : {0} —\n', why));
@@ -251,7 +296,7 @@ export function createEsp32Runtime(image, hw, opts = {}) {
         if (resets.length >= LOOP_RESETS) stopWith(tl('L’ESP32 redémarre sans cesse ({0}) : programme arrêté. Vérifiez le moniteur série.', why));
       }
       panic = null; shimReady = false;
-      if (!firstBoot || lastBeatAt) rebase();
+      if (!firstBoot || lastBeatAt) { rebase(); bridge.reset(); }
       dec.reset();
       for (const L of lines) { L.level = 0; L.count = 0; }
       return null;
@@ -289,7 +334,7 @@ export function createEsp32Runtime(image, hw, opts = {}) {
 
   /* ---------- Lancement ---------- */
   transport.start({
-    image,
+    image, chip,
     onUart, onSide, onTrace,
     onExit(code, log) {
       if (state !== 'run') return;
@@ -303,12 +348,13 @@ export function createEsp32Runtime(image, hw, opts = {}) {
     if (state !== 'run') return;
     if (lineBuf.length > partial) { if (!heldAt) heldAt = performance.now(); flushPartial(); } else heldAt = 0;
     readInputs();
+    if (shimReady) bridge.run();
     analyse();
     const now = performance.now();
-    // Modules branchés que le mode fidèle ne fait pas encore répondre (revu de temps en temps : le montage change).
+    // Modules branchés que le mode fidèle ne fait pas répondre (revu de temps en temps : le montage change).
     if (now - lastUnbridged > 2000) {
       lastUnbridged = now;
-      const msg = unbridgedWarning(hw.comps ? hw.comps([...UNBRIDGED, ...pkgTypes('i2c'), ...pkgTypes('spi'), ...pkgTypes('pulse')]) : []);
+      const msg = unbridgedWarning(hw.comps && UNBRIDGED.length ? hw.comps(UNBRIDGED) : []);
       if (msg) warnings.set('unbridged', { line: 0, msg, n: 1 }); else warnings.delete('unbridged');
     }
     if (lastBeatAt && now - lastBeatAt > STALL_MS) warnings.set('stall', { line: 0, msg: tl('L’ESP32 ne donne plus signe de vie depuis {0} s (programme bloqué, interruptions coupées ?).', Math.round((now - lastBeatAt) / 1000)), n: 1 });
@@ -329,12 +375,12 @@ export function createEsp32Runtime(image, hw, opts = {}) {
     },
     setTrace(fn) { trace = fn || null; },
     setSerialTap(fn) { tap = fn || null; },
-    debug, logic, firmware: 'esp32',
+    debug, logic, firmware: 'esp32', chip,
     get state() { return state; }, get error() { return error; }, get line() { return null; },
     takeSerial() { const s = out; out = ''; return s; },
     send(s) { if (state === 'run') transport.uart(Array.from(String(s), ch => ch.charCodeAt(0) & 0xff)); },
     stop, dispose: stop,
     /** Pour les tests : décodeur des registres, cale prête, heure du dernier battement. */
-    hw: { dec, transport, shimReady: () => shimReady, lastBeat: () => lastBeat }
+    hw: { dec, transport, bridge, shimReady: () => shimReady, lastBeat: () => lastBeat }
   };
 }
