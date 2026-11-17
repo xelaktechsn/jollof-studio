@@ -23,7 +23,7 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 - MPL-2.0: copyleft par fichier : les fichiers MPL restent sous MPL (7 components)
 - LGPL-2.1: module WebAssembly séparé et remplaçable (1 components)
 - CC-BY-SA-4.0: modèles 3D : les fichiers convertis restent sous CC-BY-SA, crédit obligatoire (22 components)
-- LGPL-2.1-or-later: module séparé et remplaçable (1 components)
+- LGPL-3.0-or-later: programme séparé et remplaçable (1 components)
 
 ## By license
 
@@ -285,11 +285,11 @@ Nothing: every component is compatible with the AGPL and with the commercial lic
 | --- | --- | --- | --- |
 | npm | [occt-import-js](github:kovacsv/occt-import-js) | 0.0.23 | LGPL-2.1 |
 
-### LGPL-2.1-or-later (1)
+### LGPL-3.0-or-later (1)
 
 | Kind | Name | Version | License |
 | --- | --- | --- | --- |
-| program | [FFmpeg](https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz) | 8.1.3 | LGPL-2.1-or-later |
+| program | [FFmpeg](https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz) | 8.1.3 | LGPL-3.0-or-later |
 
 ### MIT (242)
 

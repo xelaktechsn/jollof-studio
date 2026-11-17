@@ -16,8 +16,10 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// fileURLToPath : sous Windows, le chemin de l'URL (« /D:/… ») donnerait « D:\\D:\\… ».
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const BIN = path.join(ROOT, 'src-tauri', 'binaries');
 const VERSION = '8.1.3';
 const SOURCE = { url: `https://ffmpeg.org/releases/ffmpeg-${VERSION}.tar.xz` };
@@ -54,7 +56,8 @@ async function download(url, file, want) {
 function checkLicense(bin) {
   const v = execFileSync(bin, ['-hide_banner', '-L'], { encoding: 'utf8' });
   const conf = execFileSync(bin, ['-hide_banner', '-buildconf'], { encoding: 'utf8' });
-  if (/--enable-gpl|--enable-nonfree|libx264|libx265/.test(conf) || !/Lesser General Public License/.test(v)) throw new Error(`${bin} n'est pas une version LGPL`);
+  // Options activées seulement : les builds LGPL écrivent « --disable-libx264 » dans leur configuration.
+  if (/--enable-(gpl|nonfree|libx264|libx265)\b/.test(conf) || !/Lesser General Public License/.test(v)) throw new Error(`${bin} n'est pas une version LGPL`);
 }
 
 async function prebuilt() {

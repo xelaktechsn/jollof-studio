@@ -20,7 +20,7 @@ const OK = new Set(['MIT', 'MIT-0', 'ISC', 'BSD-2-Clause', 'BSD-3-Clause', '0BSD
   // Licence de données permissive (Linux Foundation) : certificats racine de webpki-roots, sans obligation de partage.
   'CDLA-Permissive-2.0']);
 // Acceptées sous condition (notées dans le rapport) : module séparé (LGPL), fichiers sous la même licence (MPL, CC-BY-SA).
-const COND = { 'LGPL-2.1': 'module WebAssembly séparé et remplaçable', 'LGPL-2.1-only': 'module séparé et remplaçable', 'LGPL-2.1-or-later': 'module séparé et remplaçable',
+const COND = { 'LGPL-2.1': 'module WebAssembly séparé et remplaçable', 'LGPL-2.1-only': 'module séparé et remplaçable', 'LGPL-2.1-or-later': 'module séparé et remplaçable', 'LGPL-3.0-or-later': 'programme séparé et remplaçable',
   'MPL-2.0': 'copyleft par fichier : les fichiers MPL restent sous MPL', 'CC-BY-SA-4.0': 'modèles 3D : les fichiers convertis restent sous CC-BY-SA, crédit obligatoire' };
 /** Une expression SPDX (« MIT OR Apache-2.0 ») est acceptable si l'une des branches d'un OR l'est, toutes celles d'un AND. */
 function verdict(expr) {
@@ -86,7 +86,8 @@ function assets() {
     ...fs.readdirSync(path.join(ROOT, 'public/firmware')).map(f => /^RPI_PICO-\d+-v([\d.]+)\.uf2$/.exec(f)).filter(Boolean)
       .map(m => ({ kind: 'firmware', name: 'MicroPython (RPI_PICO)', version: m[1], license: 'MIT AND BSD-3-Clause', url: 'https://micropython.org/download/RPI_PICO/', author: 'Damien P. George and contributors' })),
     // Programme livré à côté de l'application (scripts/ffmpeg.mjs), lancé à part, jamais lié : version LGPL.
-    { kind: 'program', name: 'FFmpeg', version: '8.1.3', license: 'LGPL-2.1-or-later', url: 'https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz', author: 'FFmpeg developers' },
+    // Builds Windows et Linux de BtbN compilés avec --enable-version3 : LGPL 3 ou plus récente.
+    { kind: 'program', name: 'FFmpeg', version: '8.1.3', license: 'LGPL-3.0-or-later', url: 'https://ffmpeg.org/releases/ffmpeg-8.1.3.tar.xz', author: 'FFmpeg developers' },
     // Musiques de la bande-son (public/audio/music) : FreePD.com, CC0 1.0.
     ...MUSIC.map(m => ({ kind: 'music', name: `${m.title} — ${m.artist}`, version: '', license: 'CC0-1.0', url: 'https://archive.org/details/abook-music-freepd-cc0', author: m.artist }))
   ];
