@@ -32,32 +32,32 @@ pub const VERSION: &str = "9.2.2-20250817-j2";
 const RELEASE_URL: &str =
     "https://github.com/xelaktechsn/jollof-studio/releases/download/qemu-esp32-9.2.2-20250817-j2";
 /// Paquet de chaque plateforme : (plateforme, archive, SHA-256). Empreinte vide : pas encore publié, installation
-/// refusée. Les empreintes viennent du fichier SHA256SUMS.txt de la publication.
+/// refusée. Les empreintes viennent du fichier SHA256SUMS.txt de la publication (publiée le 2026-11-17).
 const PACKAGES: &[(&str, &str, &str)] = &[
     (
         "x86_64-apple-darwin",
         "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-apple-darwin.zip",
-        "",
+        "64617645bf838517f977cf8cd7ca591d71f8cba3443427fab2f53340d966139c",
     ),
     (
         "aarch64-apple-darwin",
         "jollof-qemu-esp32-9.2.2-20250817-j2-aarch64-apple-darwin.zip",
-        "",
+        "25a9d300d3ed623044e24e3bdc4479892daa82665bc8938cc959a220162c0056",
     ),
     (
         "x86_64-linux-gnu",
         "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-linux-gnu.zip",
-        "",
+        "34356e534ec6f3c26f5f432465703fbebca0e8aeb994336a2cd4160aeb04b6a1",
     ),
     (
         "aarch64-linux-gnu",
         "jollof-qemu-esp32-9.2.2-20250817-j2-aarch64-linux-gnu.zip",
-        "",
+        "b4908318e3bf1fce1989216d3c016c05f7e4074ea41ec18bff93a8fc89a57046",
     ),
     (
         "x86_64-w64-mingw32",
         "jollof-qemu-esp32-9.2.2-20250817-j2-x86_64-w64-mingw32.zip",
-        "",
+        "65fe5827b1716fae9bc44f4f8e95eb457817eb466173aba7e4b1042bed9b5cd3",
     ),
 ];
 /// Programme de QEMU d'une architecture (xtensa : ESP32 et ESP32-S3 ; riscv32 : ESP32-C3).
