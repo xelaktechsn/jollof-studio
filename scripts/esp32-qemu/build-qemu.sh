@@ -105,6 +105,7 @@ CONF=(
   --target-list=xtensa-softmmu,riscv32-softmmu
   --without-default-features
   --enable-gcrypt --enable-pixman --enable-stack-protector
+  --disable-werror   # avertissements des compilateurs plus récents (GCC de MSYS2) dans le code de test de QEMU
   --with-pkgversion="jollof-$VERSION"
   --python="$PYTHON"
 )
