@@ -123,7 +123,16 @@ fi
 
 # ---------- 3. Compilation ----------
 log "Compilation ($JOBS tâches)"
-ninja -C "$BUILD" -j "$JOBS" install
+if [[ "$PLATFORM" == *mingw32 ]]; then
+  # Windows : seulement les deux émulateurs. Les tests de QEMU ne se lient plus avec la chaîne MSYS2 récente
+  # (test-vmstate : qemu_ftruncate64 introuvable) et « install » les construit. Les ROM viennent de pc-bios/.
+  ninja -C "$BUILD" -j "$JOBS" "${EXES[@]}"
+  mkdir -p "$STAGE/bin" "$STAGE/share/qemu"
+  for e in "${EXES[@]}"; do cp "$BUILD/$e" "$STAGE/bin/"; done
+  for r in esp32-v3-rom.bin esp32-v3-rom-app.bin esp32s3_rev0_rom.bin esp32c3-rom.bin; do cp "$SRC/pc-bios/$r" "$STAGE/share/qemu/"; done
+else
+  ninja -C "$BUILD" -j "$JOBS" install
+fi
 
 # ---------- 4. Paquet ----------
 log "Paquet $NAME"

@@ -18,34 +18,52 @@ on:
         description: Publier les archives dans la publication GitHub
         type: boolean
         default: false
+      platforms:
+        description: Plateformes à construire, séparées par des virgules (vide = toutes), ex. x86_64-w64-mingw32
+        type: string
+        default: ''
+      reuse_run:
+        description: Numéro d'une exécution précédente dont on publie aussi les archives (plateformes non reconstruites)
+        type: string
+        default: ''
 
 permissions:
   contents: write
+  actions: read # télécharger les archives d'une exécution précédente (reuse_run)
 
 env:
   # Doit correspondre à QEMU_TAG + JOLLOF_REV de build-qemu.sh et à VERSION / RELEASE_URL de src-tauri/src/qemu.rs.
   QEMU_RELEASE: qemu-esp32-9.2.2-20250817-j2
 
 jobs:
+  plan:
+    name: Plateformes
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.m.outputs.matrix }}
+    steps:
+      - id: m
+        env:
+          ONLY: ${{ inputs.platforms }}
+        # Les bibliothèques de Homebrew suivent la version du système de la machine de construction :
+        # le paquet macOS demande au moins cette version (voir docs/ESP32-QEMU-TRIAL.md, « Implementation »).
+        run: |
+          all='[
+            {"platform":"x86_64-apple-darwin","runs-on":"macos-15-intel"},
+            {"platform":"aarch64-apple-darwin","runs-on":"macos-15"},
+            {"platform":"x86_64-linux-gnu","runs-on":"ubuntu-22.04","source":"1"},
+            {"platform":"aarch64-linux-gnu","runs-on":"ubuntu-22.04-arm"},
+            {"platform":"x86_64-w64-mingw32","runs-on":"windows-2022"}]'
+          sel=$(jq -c --arg only "$ONLY" '[.[] | select($only == "" or (.platform as $p | $only | split(",") | map(gsub("^ +| +$"; "")) | index($p)))]' <<<"$all")
+          [ "$(jq length <<<"$sel")" -gt 0 ] || { echo "Aucune plateforme ne correspond à « $ONLY »" >&2; exit 1; }
+          echo "matrix={\"include\":$sel}" >> "$GITHUB_OUTPUT"
+
   build:
     name: QEMU ${{ matrix.platform }}
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          # Les bibliothèques de Homebrew suivent la version du système de la machine de construction :
-          # le paquet macOS demande au moins cette version (voir docs/ESP32-QEMU-TRIAL.md, « Implementation »).
-          - platform: x86_64-apple-darwin
-            runs-on: macos-15-intel
-          - platform: aarch64-apple-darwin
-            runs-on: macos-15
-          - platform: x86_64-linux-gnu
-            runs-on: ubuntu-22.04
-            source: '1'
-          - platform: aarch64-linux-gnu
-            runs-on: ubuntu-22.04-arm
-          - platform: x86_64-w64-mingw32
-            runs-on: windows-2022
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     runs-on: ${{ matrix.runs-on }}
     timeout-minutes: 90
     steps:
@@ -131,10 +149,27 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && inputs.publish
     runs-on: ubuntu-latest
     steps:
+      # Archives d'une exécution précédente (plateformes déjà construites), puis celles de cette exécution par-dessus.
+      - if: inputs.reuse_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+          run-id: ${{ inputs.reuse_run }}
+          github-token: ${{ github.token }}
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
+
+      - name: Toutes les plateformes et les sources
+        run: |
+          ls -l dist
+          for p in x86_64-apple-darwin aarch64-apple-darwin x86_64-linux-gnu aarch64-linux-gnu x86_64-w64-mingw32; do
+            ls dist/*"$p"*.zip >/dev/null 2>&1 || { echo "Archive manquante : $p" >&2; exit 1; }
+          done
+          ls dist/*-source.tar.gz >/dev/null 2>&1 || { echo "Archive des sources manquante" >&2; exit 1; }
 
       - name: Empreintes
         run: |
