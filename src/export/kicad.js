@@ -93,6 +93,8 @@ export const FOOTPRINTS = {
   hc12: conn(['VCC', 'GND', 'RXD', 'TXD', 'SET'], 'HC-12 433MHz'),
   max485: conn(['RO', 'RE', 'DE', 'DI', 'VCC', 'B', 'A', 'GND'], 'MAX485 RS-485 module'),
   sx1278: conn(['GND', '3.3V', 'RST', 'DIO0', 'NSS', 'MOSI', 'MISO', 'SCK', 'DIO1', 'DIO2'], 'SX1278 Ra-02 LoRa module'),
+  w5500: conn(['3V3', 'GND', 'MISO', 'MOSI', 'SCK', 'CS', 'RST', 'INT'], 'W5500 Ethernet module (WIZ850io type)'),
+  enc28j60: conn(['VCC', 'GND', 'SO', 'SI', 'SCK', 'CS', 'RST', 'INT'], 'ENC28J60 Ethernet module'),
   'ind-10m': { lib: 'Device', part: 'L', fp: 'Inductor_THT:L_Axial_L9.5mm_D4.0mm_P15.24mm_Horizontal', pads: { 1: '1', 2: '2' }, value: '10m' }
 };
 

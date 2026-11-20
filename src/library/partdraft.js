@@ -10,7 +10,7 @@ import { roleOf, pinFromRole } from '../import/fritzing.js';
 import { sanitizeSvg } from '../import/xml.js';
 import { tl } from '../i18n/index.js';
 
-export const PART_KEYS = ['id', 'version', 'category', 'prefix', 'description', 'author', 'license', 'ma', 'ds', 'limits', 'sources', 'docs', 'behaviour', 'look'];
+export const PART_KEYS = ['id', 'version', 'category', 'prefix', 'description', 'author', 'license', 'ma', 'ds', 'limits', 'sources', 'docs', 'behaviour', 'look', 'checked'];
 export const KIND_LABEL = () => ({ pwr: tl('Alimentation'), gnd: tl('Masse'), io: tl('Signal (GPIO)'), nc: tl('Libre'), passive: tl('Patte passive'), drv: tl('Borne de moteur'), contact: tl('Contact de puissance') });
 export const NEED_LABEL = () => ({ io: tl('Données (entrée/sortie)'), in: tl('Sortie du module → carte'), out: tl('Commande carte → module'), pullup: tl('Entrée avec tirage (INPUT_PULLUP)'), pwm: tl('Commande PWM'), adc: tl('Sortie analogique'), sda: 'I2C SDA', scl: 'I2C SCL', sck: 'SPI SCK', mosi: 'SPI MOSI', miso: 'SPI MISO', ss: 'SPI CS', rx: tl('Série RX du module'), tx: tl('Série TX du module') });
 export const LOOK_LABEL = () => ({ module: tl('Plaquette (module)'), block: tl('Bloc'), led: 'LED', resistor: tl('Résistance'), svg: tl('Dessin SVG sur plaquette'), glb: tl('Modèle 3D importé') });
@@ -32,6 +32,7 @@ export function pinOut(q) {
   if (kind === 'pwr') o.v = q.v || 'logic';
   if (q.label) o.role = q.label;
   if (q.why) o.why = q.why;
+  if (q.exit && q.exit !== 'up') o.exit = q.exit;
   if (kind === 'pwr' && Array.isArray(o.v) && q.ds) o.ds = q.ds;
   if ((kind === 'io' || kind === 'gnd') && q.via) o.via = q.via;
   if (kind === 'io') { for (const k of ['opt', 'lv5', 'lv3']) if (q[k]) o[k] = true; if (q.idle === 0 || q.idle === 1) o.idle = q.idle; if (q.pull) o.pull = q.pull; }
@@ -43,7 +44,8 @@ export function manifestOf(d) {
   const p = JSON.parse(JSON.stringify(Object.fromEntries(PART_KEYS.filter(k => d.part && d.part[k] != null).map(k => [k, d.part[k]]))));
   const m = { format: J.FORMAT, ...p, name: d.name, id: p.id || `pk-${slug(d.name)}-${Date.now().toString(36).slice(-5)}`, pins: (d.pins || []).map(pinOut) };
   m.category = m.category || J.PKG_CATEGORIES[0]; m.prefix = m.prefix || 'U';
-  for (const k of ['limits', 'behaviour', 'docs', 'sources']) if (m[k]) prune(m[k]);
+  for (const k of ['limits', 'behaviour', 'docs', 'sources', 'checked']) if (m[k]) prune(m[k]);
+  if (m.checked && !Object.keys(m.checked).length) delete m.checked;
   if (m.behaviour) { if (m.behaviour.analogOut && !m.behaviour.analogOut.length) delete m.behaviour.analogOut; if (m.behaviour.digitalOut && !m.behaviour.digitalOut.length) delete m.behaviour.digitalOut; }
   if (!m.look || !m.look.kind) m.look = { kind: d.glb ? 'glb' : d.part && d.part.svg ? 'svg' : 'module' };
   if (d.glb) m.look = { kind: 'glb' };

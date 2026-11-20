@@ -10,6 +10,11 @@
 // TP de logique (src/lab/logic/*.json, domain: 'logic') : éléments et fils valides, la solution réussit
 // chaque contrôle (table, suite d'actions, éléments utilisés, équation, table à remplir), le montage de
 // départ ne réussit pas d'avance les contrôles de table et de suite.
+// TP de réseau informatique (src/lab/net/*.json, projets « Réseau » et « Objets connectés ») : même format que les TP
+// d'électronique, plan réseau dans start.settings.modules.net ; la solution est solution.net (le plan) ou
+// solution.project (projet entier : montage, programme, plan). Chaque contrôle net-* échoue au départ et réussit avec la
+// solution ; quand la solution a un programme, il tourne d'abord sur l'interpréteur, branché au réseau simulé de la
+// solution (DHCP, page web, MQTT, Modbus TCP comme dans l'application).
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,6 +34,10 @@ import { hasSequence, moveText } from '../pneu/seq.js';
 import { clean as cleanPneu } from '../pneu/clean.js';
 import { checkPneu } from '../pneu/check.js';
 import { processSensorNames, processActRoles, actProcess } from '../pneu/process.js';
+import { netEnv, netOfProject, checkNet, isNetCheck } from '../net/labcheck.js';
+import { cleanNet } from '../net/clean.js';
+import { createRuntime } from '../prog/runtime.js';
+import { NET_DEFAULT } from '../sim/models.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'tp');
 const logicDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'logic');
@@ -37,7 +46,7 @@ try { ({ solveDC } = await import('../sim/dc.js')); } catch (e) { /* solveur abs
 
 function keysOf(c) {
   const prof = BOARDS[c.type];
-  if (prof) return [...Object.keys(prof.gpio), ...Object.keys(prof.power), 'GND', 'GND (2)', 'GND (3)', 'VIN', 'EN', 'RST', 'AREF', 'IOREF', 'VSYS', 'VBUS', '3V3_EN', 'RUN'];
+  if (prof) return [...Object.keys(prof.gpio), ...Object.keys(prof.power), 'GND', 'GND (2)', 'GND (3)', 'GND (4)', 'GND (5)', 'GND (6)', 'GND (7)', 'GND (8)', 'VIN', 'EN', 'RST', 'AREF', 'IOREF', 'VSYS', 'VBUS', '3V3_EN', 'RUN'];
   if (/^breadboard/.test(c.type)) return bbGroups(c).flatMap(g => g.keys);
   if (/^res-/.test(c.type)) return ['1', '2'];
   if (c.type === 'bat9v' || c.type === 'bat18650' || c.type === 'psu24') return ['+', '-'];
@@ -57,14 +66,15 @@ function build(project, wires) {
 }
 let failures = 0;
 /** États d'interface qu'une étape « ui » peut demander (lab/index.js). */
-const UI_STATES = new Set(['sim', 'split', 'pneu', 'elec', 'grafcet', 'plc', '3d', 'build']);
+const UI_STATES = new Set(['sim', 'split', 'pneu', 'elec', 'grafcet', 'plc', '3d', 'build', 'net', 'crimp', 'tester', 'browser', 'ping']);
 let eStartPlan = null, eSolPlan = null; // plans pneumatiques du tutoriel en cours de vérification
 const bad = (tp, msg) => { failures++; console.log(`  ✕ ${tp.id} : ${msg}`); };
 const both = (o, what, tp) => { if (!o || !o.fr || !o.en) bad(tp, `${what} : texte fr et en requis`); };
 
 // TP d'électronique et TP de pneumatique (src/lab/pneu : même format, plan pneumatique dans start.settings.modules.pneu).
 const pneuDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'pneu');
-const elecFiles = [dir, pneuDir].flatMap(d => (fs.existsSync(d) ? fs.readdirSync(d).filter(f => f.endsWith('.json')).sort().map(f => [d, f]) : []));
+const netDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'net');
+const elecFiles = [dir, pneuDir, netDir].flatMap(d => (fs.existsSync(d) ? fs.readdirSync(d).filter(f => f.endsWith('.json')).sort().map(f => [d, f]) : []));
 for (const [fdir, f] of elecFiles) {
   const tp = JSON.parse(fs.readFileSync(path.join(fdir, f), 'utf8'));
   console.log(`• ${f} — ${tp.title && tp.title.fr} (${tp.steps.length} étapes)`);
@@ -74,7 +84,10 @@ for (const [fdir, f] of elecFiles) {
   if ((tp.start.wires || []).length) bad(tp, 'le montage de départ ne doit pas avoir de fils');
   if (tp.takeaways) { if (!Array.isArray(tp.takeaways) || tp.takeaways.length < 2 || tp.takeaways.length > 6) bad(tp, 'takeaways : 2 à 6 points à retenir'); else tp.takeaways.forEach((t, i) => both(t, `à retenir ${i + 1}`, tp)); }
   const kind = (tp.start.settings || {}).kind;
-  if (kind != null && !['elec', 'analog', 'logic', 'pneu', 'epneu'].includes(kind)) bad(tp, `start.settings.kind inconnu : ${kind}`);
+  if (kind != null && !['elec', 'analog', 'logic', 'pneu', 'epneu', 'net', 'iot'].includes(kind)) bad(tp, `start.settings.kind inconnu : ${kind}`);
+  const isNet = fdir === netDir;
+  if (isNet && !['net', 'iot'].includes(kind)) bad(tp, 'TP de réseau : start.settings.kind net ou iot');
+  if (isNet && `${tp.id}.json` !== f) bad(tp, `id ${tp.id} différent du nom du fichier`);
   // Tutoriel (départ vide) : la solution est un projet entier (montage, fils, plan pneumatique, programme).
   const proj = tp.solution && tp.solution.project;
   let start, sol;
@@ -104,6 +117,7 @@ for (const [fdir, f] of elecFiles) {
   if (proj) { eStartPlan = planOf(tp.start); eSolPlan = planOf(proj); }
   const eStart = envOf(start, ''), eSol = envOf(sol, code);
   if (proj) { eStart.pneu = () => eStartPlan; eSol.pneu = () => eSolPlan; }
+  const netSteps = []; // contrôles du réseau : vérifiés après les autres (le programme de la solution tourne d'abord)
   tp.steps.forEach((s, i) => {
     both(s.title, `étape ${i + 1} title`, tp); both(s.text, `étape ${i + 1} text`, tp); if (s.hint) both(s.hint, `étape ${i + 1} hint`, tp);
     if (s.keep) both(s.keep, `étape ${i + 1} keep (à retenir)`, tp);
@@ -111,6 +125,7 @@ for (const [fdir, f] of elecFiles) {
     const c = s.check; if (!c) return;
     // Contrôles d'un tutoriel : la solution les réussit, le départ non.
     const solFirst = (fn, what) => { const ok = fn(c, eSol), ko = fn(c, eStart); if (!ok.ok) bad(tp, `étape ${i + 1} : la solution ne réussit pas ${what} (${JSON.stringify(ok)})`); if (ko.ok) bad(tp, `étape ${i + 1} : ${what} déjà réussi au départ`); };
+    if (isNetCheck(c.type)) { netSteps.push([i, c]); return; }
     if (c.type === 'parts') return solFirst(checkParts, 'les composants');
     if (c.type === 'wired') return solFirst(checkWired, 'le câblage');
     if (c.type === 'pneu-parts') return proj ? solFirst(checkPneuParts, 'les éléments du plan') : bad(tp, `étape ${i + 1} : pneu-parts réservé aux tutoriels`);
@@ -179,6 +194,63 @@ for (const [fdir, f] of elecFiles) {
       if (solveDC) { if (v == null) bad(tp, `étape ${i + 1} : mesure non calculable`); else console.log(`    mesure étape ${i + 1} : ${v.toFixed(2)} ${c.unit}`); }
     } else if (c.type !== 'info') bad(tp, `étape ${i + 1} : type ${c.type} inconnu`);
   });
+  if (netSteps.length || isNet) await validateNet(tp, proj, code, netSteps);
+}
+/* ---------- Réseau informatique ---------- */
+/**
+ * Contrôles du réseau d'un TP : le départ (plan du fichier, aucun programme) échoue à chacun ; la solution (plan de
+ * solution.net ou de solution.project, programme de la carte en marche sur l'interpréteur, 10 s de temps simulé) les réussit tous.
+ */
+async function validateNet(tp, proj, code, steps) {
+  const startNet = netOfProject(tp.start), solProject = proj || { ...tp.start, settings: { ...(tp.start.settings || {}), modules: { ...((tp.start.settings || {}).modules || {}), net: tp.solution.net || netOfProject(tp.start) } } };
+  // Le plan doit passer tel quel par le chargeur (clean.js) : rien d'inconnu, aucun câble perdu.
+  for (const [what, raw] of [['départ', startNet], ['solution', netOfProject(solProject)]]) {
+    const cn = cleanNet(raw);
+    if (cn.devices.length !== raw.devices.length || cn.cables.length !== raw.cables.length) bad(tp, `plan réseau ${what} : ${raw.devices.length - cn.devices.length} équipement(s), ${raw.cables.length - cn.cables.length} câble(s) refusés par cleanNet`);
+  }
+  const eStart = netEnv(tp.start), S = runNet(solProject, code);
+  if (S.error) { bad(tp, `programme de la solution : ${S.error}`); return; }
+  const st = eStart.lan().state(), ss = S.env.lan().state();
+  console.log(`    réseau : départ ${st.all.length} nœud(s), ${startNet.cables.length} câble(s) ; solution ${ss.all.length} nœud(s), ${netOfProject(solProject).cables.length} câble(s)${S.rt ? ' ; programme en marche' : ''}`);
+  for (const [i, c] of steps) {
+    const ko = await settle(checkNet(c, eStart), null), ok = await settle(checkNet(c, S.env), S.rt);
+    if (!ok.ok) bad(tp, `étape ${i + 1} : la solution ne réussit pas ${c.type} (${JSON.stringify(ok)})`);
+    if (ko.ok) bad(tp, `étape ${i + 1} : ${c.type} déjà réussi au départ`);
+  }
+  if (S.rt) S.rt.stop();
+}
+/** Résultat d'un contrôle, attendu (net-http) en faisant tourner le programme entre deux tranches. */
+async function settle(r, rt) {
+  if (!r || typeof r.then !== 'function') return r;
+  let done = false, v; r.then(x => { done = true; v = x; });
+  for (let k = 0; k < 400 && !done; k++) { if (rt) rt.run(16); await new Promise(res => setImmediate(res)); }
+  return done ? v : { ok: false, why: 'timeout' };
+}
+/** Réseau de la solution, et son programme lancé sur l'interpréteur (10 s de temps simulé : DHCP, Wi-Fi, connexions). */
+function runNet(project, code) {
+  const comps = (project.comps || []).map(c => ({ ...c, inp: { ...(c.inp || {}) } }));
+  const kindOfC = c => (BOARDS[c.type] ? kindOf(c) : c.type);
+  const env = netEnv(project, { comps, kindOf: kindOfC });
+  const board = comps.find(c => BOARDS[c.type]);
+  if (!board || !code) return { env, rt: null };
+  const kind = kindOf(board), cc = compile(code, { board: kind });
+  if (!cc.ok) return { env, error: 'compilation ' + JSON.stringify(cc.errors.slice(0, 2)) };
+  let mem = null, net = null;
+  const hw = {
+    kind, label: board.name, prof: BOARDS[board.type],
+    read: () => ({ v: 1.6 }), echo: () => null, // entrées : 1,6 V partout (potentiomètre à mi-course)
+    onPin: () => null, at: () => [], bus: () => [], i2c: () => [],
+    status: () => ({ ok: true, msg: '' }),
+    comps: types => comps.filter(c => types.includes(c.type)),
+    peers: types => comps.filter(c => types.includes(c.type)).map(c => ({ comp: c, ok: true })),
+    data: () => null, self: () => board,
+    mem: () => mem || (mem = { ee: '', prefs: {} }), memChanged: () => {},
+    net: () => net || (net = NET_DEFAULT()), netChanged: () => {},
+    lan: () => env.lan(), level: () => null
+  };
+  const rt = createRuntime(cc.js, hw, { globals: cc.globals });
+  for (let k = 0; k < 600; k++) { rt.run(16); rt.takeSerial(); if (rt.state === 'error') return { env, error: 'exécution : ' + (rt.error && rt.error.msg) }; }
+  return { env, rt };
 }
 /* ---------- Plan pneumatique des TP ---------- */
 /**

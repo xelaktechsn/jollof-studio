@@ -16,6 +16,9 @@ Ces montages s’ouvrent depuis le bouton « Exemples » de Jollof Studio, ou av
 | `11-analyseur-bus-i2c.jollof` | BMP280 et écran OLED sur le même bus I2C, à suivre dans l’analyseur de bus (NACK en rouge) | Raspberry Pi Pico | Écrit à la main : scanner I2C puis lecture du BMP280 |
 | `12-feu-pietons-sequence.jollof` | Feu tricolore, bouton d’appel et buzzer (derrière un transistor) | Arduino Uno | Séquence vert → orange → rouge, temporisée sans delay() ; « dès que » le bouton est appuyé, une variable retient l’appel ; « puis attendre » arrête le bip |
 | `13-compteur-visiteurs.jollof` | Capteur d’obstacle infrarouge, bouton, écran LCD 16×2 et LED | Arduino Uno | Variable gardée dans l’EEPROM, affichée sur le LCD ; remise à zéro par appui de 2 s ou par « zero » envoyé au moniteur série |
+| `14-reseau-salle-info.jollof` | **Réseau informatique** d’une salle de classe : box (DHCP), switch PoE, panneau de brassage, cinq prises murales (liens permanents de 42 à 63 m), deux PC, imprimante à adresse fixe, point d’accès Wi-Fi et caméra alimentés par PoE, portable en Wi-Fi | — (projet Réseau) | — : essayez le ping, le testeur de câble, le budget PoE du switch |
+| `15-objet-connecte-w5500.jollof` | Module Ethernet W5500 en SPI, alimenté en 3,3 V par un régulateur AMS1117, potentiomètre ; plan réseau avec box, switch, PC et Serveur MQTT | Arduino Uno | Écrit à la main : adresse par DHCP, page web avec la position du potentiomètre (navigateur de PC1 : `http://ETH1/`), publication MQTT sur `atelier/pot` |
+| `16-esp32-mqtt-wifi.jollof` | Potentiomètre et LED ; plan réseau avec box, switch PoE, point d’accès « Atelier » alimenté par PoE, Serveur MQTT et PC | ESP32 | Écrit à la main : Wi-Fi par le point d’accès, publication sur `atelier/pot`, LED commandée par `atelier/led` |
 
 ## Le montage à corriger
 

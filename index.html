@@ -88,6 +88,7 @@
         <div class="iconRow">
           <button type="button" class="tb" id="rot" data-tip="Pivoter de 90° · R" aria-label="Pivoter de 90°"><i data-icon="rotate"></i></button>
           <button type="button" class="tb" id="docSel" data-tip="Fiche du composant" aria-label="Documentation du composant"><i data-icon="help"></i></button>
+          <button type="button" class="tb" id="replSel" data-tip="Remplacer par un autre composant : les fils suivent" aria-label="Remplacer le composant"><i data-icon="swap"></i></button>
           <button type="button" class="tb danger" id="del" data-tip="Supprimer · Suppr" aria-label="Supprimer"><i data-icon="trash"></i></button>
           <button type="button" class="tb" id="selClose" data-tip="Désélectionner" aria-label="Désélectionner"><i data-icon="x"></i></button>
         </div>
@@ -205,6 +206,13 @@
         </div>
         <label class="check"><input type="checkbox" id="autoCol" checked> Couleur auto : GND en noir, alimentation en rouge</label>
         <p class="note rule" id="tipOneWire"><i data-icon="info"></i><span>Une broche ne reçoit qu’un fil. Pour relier plusieurs fils au même point, passez par une breadboard : le câblage automatique s’en sert.</span><button type="button" class="noteX" data-dismiss="tipOneWire" aria-label="Masquer ce conseil"><i data-icon="x"></i></button></p>
+      </section>
+      <section id="wireShape" hidden>
+        <div class="secHead"><h2><i data-icon="cable"></i>Forme du fil</h2><button type="button" class="btn small" id="wsReset" data-tip="Oublie les réglages et les points posés à la main"><i data-icon="undo"></i><span>Réinitialiser</span></button></div>
+        <p class="note" id="wsMode"></p>
+        <label class="field"><span class="fh">Hauteur en plus <output id="wsLiftOut">0 mm</output></span><input type="range" id="wsLift" min="0" max="40" step="1" value="0"></label>
+        <label class="field"><span class="fh">Arrondi des coudes <output id="wsRoundOut">2,6 mm</output></span><input type="range" id="wsRound" min="0" max="12" step="0.2" value="2.6"></label>
+        <p class="note">Sur le fil, glissez un point bleu pour le courber, ou un point clair pour ajouter un coude. Maj : en hauteur. Double-clic : retirer le point.</p>
       </section>
       <section data-fold="blocks">
         <div class="secHead"><h2><i data-icon="blockFrame"></i>Blocs</h2><button type="button" class="btn small" id="blockAdd" data-tip="Tracez un rectangle autour des composants à regrouper"><i data-icon="plus"></i><span>Encadrer</span></button></div>
@@ -340,17 +348,34 @@
         <label class="field"><span class="fh">Durée par fil <output id="durOut">1,2 s</output></span><input type="range" id="dur" min="0.4" max="3" step="0.1" value="1.2"></label>
         <label class="check"><input type="checkbox" id="capOn" checked> Afficher les légendes</label>
         <label class="check"><input type="checkbox" id="orbitOn"> Rotation lente de la caméra</label>
+        <label class="field" data-tip="Après le dernier fil, la simulation démarre : la vidéo montre le circuit qui fonctionne"><span class="fh">Démonstration à la fin <output id="demoOut">non</output></span><input type="range" id="demo" min="0" max="20" step="1" value="0"></label>
       </section>
       <section>
         <h2><i data-icon="frame"></i>Plans de caméra</h2>
         <p class="note">La caméra passe d’un plan au suivant pendant la vidéo, et pendant « Animer ».</p>
         <ol class="shots" id="shots"></ol>
+        <button type="button" class="btn wide" id="autoShots" aria-pressed="false" data-tip="Calcule une vue d’ensemble et, pour chaque fil, la vue d’où ses deux broches se voient le mieux"><i data-icon="wand"></i><span>Plans automatiques</span></button>
         <button type="button" class="btn wide" id="addShot"><i data-icon="plus"></i><span>Ajouter la vue actuelle</span></button>
+      </section>
+      <section>
+        <h2><i data-icon="frame"></i>Image et présentation</h2>
+        <div class="grid2">
+          <label class="field">Taille<select id="imgRes"><option value="1080" selected>1920 × 1080</option><option value="1440">2560 × 1440</option><option value="2160">3840 × 2160 (4K)</option></select></label>
+          <label class="field">Fond<select id="imgBg"><option value="scene" selected>Atelier (comme à l’écran)</option><option value="white">Blanc (studio)</option><option value="none">Transparent</option></select></label>
+        </div>
+        <div class="row"><button type="button" class="btn" id="stillBtn" data-tip="Image PNG de la vue actuelle : fiche de TP, diaporama, article"><i data-icon="save"></i><span>Exporter l’image</span></button><button type="button" class="btn" id="presentBtn" data-tip="Seul le montage reste à l’écran : projection en classe · Échap pour revenir"><i data-icon="eye"></i><span>Présentation</span></button></div>
+        <button type="button" class="btn wide" id="synBtn" data-tip="La carte au centre, ce qu’elle lit à gauche, ce qu’elle commande à droite, et les broches de chaque lien"><i data-icon="blockFrame"></i><span>Synoptique du montage</span></button>
+      </section>
+      <section>
+        <h2><i data-icon="list"></i>Guide illustré</h2>
+        <button type="button" class="btn wide" id="guideBtn" data-tip="Une page illustrée, une étape par fil, à lire ou à imprimer en PDF"><i data-icon="list"></i><span>Exporter le guide illustré</span></button>
+        <p class="note">Une image 3D par fil, dans l’ordre du câblage, avec le matériel et le résultat du vérificateur. Page HTML : elle s’imprime en PDF depuis un navigateur.</p>
       </section>
       <section id="audioSec" class="audioSec"></section>
       <section>
         <h2><i data-icon="record"></i>Export vidéo</h2>
-        <label class="field" id="vFmtField">Format<select id="vFmt"><option value="mp4" selected>MP4 (web, YouTube, réseaux)</option><option value="prores" disabled>ProRes 422 HQ (.mov, montage)</option><option value="dnxhr" disabled>DNxHR HQ (.mov, montage)</option></select></label>
+        <label class="field" id="vFmtField">Format<select id="vFmt"><option value="mp4" selected>MP4 (web, YouTube, réseaux)</option><option value="prores" disabled>ProRes 422 HQ (.mov, montage)</option><option value="dnxhr" disabled>DNxHR HQ (.mov, montage)</option><option value="png">Images PNG (.zip, montage, fond transparent)</option></select></label>
+        <label class="check" id="vAlphaField" hidden><input type="checkbox" id="vAlpha"> Fond transparent (sans tapis ni brouillard)</label>
         <div class="grid2">
           <label class="field">Résolution<select id="vRes"><option value="720">1280 × 720 (HD)</option><option value="1080" selected>1920 × 1080 (Full HD)</option><option value="1440">2560 × 1440 (QHD)</option><option value="2160">3840 × 2160 (4K UHD)</option></select></label>
           <label class="field">Images/s<select id="vFps"><option value="24000/1001">23,976 (cinéma NTSC)</option><option value="24">24 (cinéma)</option><option value="25">25 (Europe, Afrique)</option><option value="30000/1001">29,97 (NTSC)</option><option value="30" selected>30 (web)</option><option value="50">50 (Europe, Afrique)</option><option value="60000/1001">59,94 (NTSC)</option><option value="60">60 (web)</option></select></label>
@@ -380,6 +405,23 @@
     <div class="sheetHead"><h2 id="vidTitle">Vidéo prête</h2><button type="button" class="btn" id="closeModal">Fermer</button></div>
     <video id="vid" controls playsinline></video>
     <div class="row"><button type="button" class="btn primary auto" id="dl"><i data-icon="save"></i><span>Enregistrer sous…</span></button><span class="vidSubs" id="vidSubs" hidden><button type="button" class="btn auto" data-sub="srt" data-tip="SubRip : logiciels de montage, YouTube">Sous-titres .srt</button><button type="button" class="btn auto" data-sub="vtt" data-tip="WebVTT : lecteurs web">.vtt</button></span><span class="note" id="vidMeta"></span></div>
+  </div>
+</div>
+<button type="button" class="presentExit" id="presentExit" hidden><i data-icon="x"></i><span>Quitter la présentation · Échap</span></button>
+<div class="modal" id="synModal" hidden>
+  <div class="sheet synSheet" role="dialog" aria-modal="true" aria-labelledby="synTitle">
+    <div class="sheetHead"><h2 id="synTitle"><i data-icon="blockFrame"></i>Synoptique</h2>
+      <div class="row"><button type="button" class="btn" id="synSvgBtn" data-tip="Dessin vectoriel : traitement de texte, diaporama"><i data-icon="save"></i><span>SVG</span></button><button type="button" class="btn" id="synPngBtn"><i data-icon="save"></i><span>PNG</span></button><button type="button" class="btn" id="synClose">Fermer</button></div></div>
+    <div class="synView" id="synView"></div>
+    <p class="note">Cliquez sur un bloc pour le retrouver dans le montage. Les alimentations ne sont pas tracées : chaque bloc dit de quoi il est alimenté.</p>
+  </div>
+</div>
+<div class="modal" id="replModal" hidden>
+  <div class="sheet rpSheet" role="dialog" aria-modal="true" aria-labelledby="rpTitle">
+    <div class="sheetHead"><h2 id="rpTitle">Remplacer le composant</h2><button type="button" class="btn" id="rpClose">Fermer</button></div>
+    <label class="field">Nouveau composant<select id="rpType"></select></label>
+    <div class="rpMap" id="rpMap"></div>
+    <div class="row"><button type="button" class="btn primary auto" id="rpGo"><i data-icon="swap"></i><span>Remplacer</span></button><span class="rpNote" id="rpNote" role="status"></span></div>
   </div>
 </div>
 <div class="modal" id="renderModal" hidden>

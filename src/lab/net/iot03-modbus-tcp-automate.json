@@ -1,0 +1,930 @@
+{
+ "id": "iot03-modbus-tcp-automate",
+ "series": "objets",
+ "workspace": "elec",
+ "level": "pro",
+ "minutes": 40,
+ "title": {
+  "fr": "Modbus TCP : une carte écrit dans un automate",
+  "en": "Modbus TCP: a board writes to a PLC"
+ },
+ "summary": {
+  "fr": "Un Raspberry Pi Pico et un module W5500 mesurent un potentiomètre et envoient la valeur à un automate programmable en Modbus TCP : registre de maintien 0 pour la mesure, bobine 0 au-delà de la moitié. Le protocole des usines, sur le réseau de l’atelier.",
+  "en": "A Raspberry Pi Pico and a W5500 module measure a potentiometer and send the value to a programmable logic controller over Modbus TCP: holding register 0 for the reading, coil 0 past half travel. The factory protocol, on the workshop network."
+ },
+ "objectives": [
+  {
+   "fr": "Connaître les tables Modbus : bobines, entrées, registres",
+   "en": "Know the Modbus tables: coils, inputs, registers"
+  },
+  {
+   "fr": "Ajouter un automate au réseau et lui donner son adresse",
+   "en": "Add a PLC to the network with its address"
+  },
+  {
+   "fr": "Écrire un client Modbus TCP (ArduinoModbus)",
+   "en": "Write a Modbus TCP client (ArduinoModbus)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Modbus TCP : un client interroge un serveur sur le port 502 ; l’automate est le serveur.",
+   "en": "Modbus TCP: a client queries a server on port 502; the PLC is the server."
+  },
+  {
+   "fr": "Bobines et entrées : un bit ; registres : 16 bits (0 à 65 535).",
+   "en": "Coils and inputs: one bit; registers: 16 bits (0 to 65,535)."
+  },
+  {
+   "fr": "Le W5500 tire 130 mA en 3,3 V : la broche 3V3 du Pico (300 mA) suffit.",
+   "en": "The W5500 draws 130 mA at 3.3 V: the Pico’s 3V3 pin (300 mA) is enough."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Modbus TCP",
+  "comps": [
+   {
+    "id": "pico_0",
+    "type": "pico",
+    "name": "PICO1",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "w5500_1",
+    "type": "w5500",
+    "name": "ETH1",
+    "x": -34,
+    "z": 12,
+    "r": 0
+   },
+   {
+    "id": "pot_2",
+    "type": "pot",
+    "name": "POT1",
+    "x": -22,
+    "z": -38,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "iot",
+   "dur": 1.2,
+   "env": {
+    "temp": 24,
+    "hum": 55,
+    "press": 1013,
+    "lux": 300,
+    "dist": 35,
+    "motion": 0,
+    "soil": 40,
+    "gas": 0,
+    "sound": 45,
+    "tilt": 0
+   },
+   "prog": {
+    "rules": [],
+    "boards": {}
+   },
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 360,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 160,
+       "y": 280,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {
+      "e:w5500_1": {
+       "x": 620,
+       "y": 300
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "Modbus TCP",
+   "comps": [
+    {
+     "id": "pico_0",
+     "type": "pico",
+     "name": "PICO1",
+     "x": 0,
+     "z": 0,
+     "r": 0
+    },
+    {
+     "id": "w5500_1",
+     "type": "w5500",
+     "name": "ETH1",
+     "x": -34,
+     "z": 12,
+     "r": 0
+    },
+    {
+     "id": "pot_2",
+     "type": "pot",
+     "name": "POT1",
+     "x": -22,
+     "z": -38,
+     "r": 0
+    },
+    {
+     "id": "breadboard_3",
+     "type": "breadboard",
+     "name": "BB1",
+     "x": 0,
+     "z": 74,
+     "r": 0
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "w5500_1",
+      "GND"
+     ],
+     "b": [
+      "pico_0",
+      "GND (4)"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w2",
+     "a": [
+      "w5500_1",
+      "SCK"
+     ],
+     "b": [
+      "pico_0",
+      "GP18"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w3",
+     "a": [
+      "w5500_1",
+      "MOSI"
+     ],
+     "b": [
+      "pico_0",
+      "GP19"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w4",
+     "a": [
+      "w5500_1",
+      "MISO"
+     ],
+     "b": [
+      "pico_0",
+      "GP16"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w5",
+     "a": [
+      "w5500_1",
+      "CS"
+     ],
+     "b": [
+      "pico_0",
+      "GP17"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w6",
+     "a": [
+      "pico_0",
+      "3V3"
+     ],
+     "b": [
+      "breadboard_3",
+      "T+16"
+     ],
+     "color": "#e8833a"
+    },
+    {
+     "id": "w7",
+     "a": [
+      "w5500_1",
+      "3V3"
+     ],
+     "b": [
+      "breadboard_3",
+      "T+1"
+     ],
+     "color": "#e8833a"
+    },
+    {
+     "id": "w8",
+     "a": [
+      "pot_2",
+      "3"
+     ],
+     "b": [
+      "breadboard_3",
+      "T+6"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w9",
+     "a": [
+      "pico_0",
+      "GND (3)"
+     ],
+     "b": [
+      "breadboard_3",
+      "T-10"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w10",
+     "a": [
+      "pot_2",
+      "1"
+     ],
+     "b": [
+      "breadboard_3",
+      "T-5"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w11",
+     "a": [
+      "pot_2",
+      "W"
+     ],
+     "b": [
+      "pico_0",
+      "GP28"
+     ],
+     "color": "#4c8bf5"
+    }
+   ],
+   "settings": {
+    "kind": "iot",
+    "dur": 1.2,
+    "env": {
+     "temp": 24,
+     "hum": 55,
+     "press": 1013,
+     "lux": 300,
+     "dist": 35,
+     "motion": 0,
+     "soil": 40,
+     "gas": 0,
+     "sound": 45,
+     "tilt": 0
+    },
+    "prog": {
+     "rules": [],
+     "boards": {
+      "pico_0": {
+       "code": "// Pico + W5500 : écrit la mesure du potentiomètre dans le registre 0 de l'automate (Modbus TCP),\n// et met la bobine 0 à 1 au-delà de la moitié de la course.\n#include <SPI.h>\n#include <Ethernet.h>\n#include <ArduinoRS485.h>\n#include <ArduinoModbus.h>\n\nbyte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0x03 };\nIPAddress ip(192, 168, 1, 60);         // adresse fixe de la carte\nIPAddress automate(192, 168, 1, 50);   // l'Automate Modbus TCP du plan réseau\nEthernetClient ethClient;\nModbusTCPClient modbus(ethClient);\nunsigned long dernier = 0;\n\nvoid setup() {\n  Serial.begin(115200);\n  Ethernet.init(17);                   // CS du W5500 sur GP17\n  Ethernet.begin(mac, ip);\n}\n\nvoid loop() {\n  if (!modbus.connected()) {\n    if (!modbus.begin(automate, 502)) { Serial.println(\"Automate injoignable\"); delay(1000); return; }\n  }\n  if (millis() - dernier > 1000) {\n    dernier = millis();\n    int mesure = analogRead(A2);       // A2 = GP28\n    if (!modbus.holdingRegisterWrite(0, mesure)) Serial.println(modbus.lastError());\n    modbus.coilWrite(0, mesure > 512);\n  }\n}\n",
+       "auto": false
+      }
+     }
+    },
+    "modules": {
+     "net": {
+      "view": "net",
+      "devices": [
+       {
+        "id": "box1",
+        "type": "router",
+        "x": 60,
+        "y": 40,
+        "name": "BOX1",
+        "p": {
+         "lan": {
+          "ip": "192.168.1.1",
+          "prefix": 24
+         },
+         "dhcp": {
+          "on": true,
+          "from": 100,
+          "to": 199
+         },
+         "wan": {
+          "mode": "none",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "wifi": {
+          "on": false,
+          "ssid": "Box-Jollof",
+          "pass": "jollof2024"
+         }
+        }
+       },
+       {
+        "id": "sw1",
+        "type": "switch",
+        "x": 360,
+        "y": 60,
+        "name": "SW1",
+        "p": {
+         "legacy": false
+        }
+       },
+       {
+        "id": "pc1",
+        "type": "pc",
+        "x": 160,
+        "y": 280,
+        "name": "PC1",
+        "p": {
+         "ip": {
+          "mode": "dhcp",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "legacy": false
+        }
+       },
+       {
+        "id": "api1",
+        "type": "plc",
+        "x": 400,
+        "y": 280,
+        "name": "API1",
+        "p": {
+         "ip": {
+          "mode": "static",
+          "ip": "192.168.1.50",
+          "prefix": 24,
+          "gw": "192.168.1.1",
+          "dns": ""
+         },
+         "regs": {
+          "coils": [
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0
+          ],
+          "di": [
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0
+          ],
+          "hr": [
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0
+          ],
+          "ir": [
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0,
+           0
+          ]
+         }
+        }
+       }
+      ],
+      "cables": [
+       {
+        "id": "c1",
+        "a": [
+         "box1",
+         "lan1"
+        ],
+        "b": [
+         "sw1",
+         "p1"
+        ],
+        "cat": "cat6",
+        "len": 1,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c2",
+        "a": [
+         "pc1",
+         "eth0"
+        ],
+        "b": [
+         "sw1",
+         "p2"
+        ],
+        "cat": "cat6",
+        "len": 3,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c3",
+        "a": [
+         "api1",
+         "eth0"
+        ],
+        "b": [
+         "sw1",
+         "p3"
+        ],
+        "cat": "cat6",
+        "len": 5,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c4",
+        "a": [
+         "e:w5500_1",
+         "eth"
+        ],
+        "b": [
+         "sw1",
+         "p4"
+        ],
+        "cat": "cat6",
+        "len": 2,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       }
+      ],
+      "ext": {
+       "e:w5500_1": {
+        "x": 620,
+        "y": 300
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Modbus TCP",
+    "en": "Modbus TCP"
+   },
+   "text": {
+    "fr": "**Modbus** est le protocole le plus répandu dans les usines. Un **client** (ici la carte) envoie des requêtes à un **serveur** (l’automate), sur le port TCP **502**. L’automate range ses données dans quatre tables : **bobines** (sorties tout ou rien, lecture et écriture), **entrées** (tout ou rien, lecture), **registres de maintien** (16 bits, lecture et écriture), **registres d’entrée** (16 bits, lecture).",
+    "en": "**Modbus** is the most widespread protocol in factories. A **client** (here the board) sends requests to a **server** (the PLC), on TCP port **502**. The PLC keeps its data in four tables: **coils** (on/off outputs, read and write), **discrete inputs** (on/off, read), **holding registers** (16 bits, read and write), **input registers** (16 bits, read)."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le montage",
+    "en": "Wire the circuit"
+   },
+   "text": {
+    "fr": "Onglet **Câblage**, **Câbler tout le circuit** : le W5500 sur le SPI du Pico (GP18 SCK, GP19 MOSI, GP16 MISO, GP17 CS), alimenté par le 3V3 du Pico ; le potentiomètre sur GP28 (A2).",
+    "en": "**Wiring** tab, **Wire the whole circuit**: the W5500 on the Pico’s SPI (GP18 SCK, GP19 MOSI, GP16 MISO, GP17 CS), powered by the Pico’s 3V3; the potentiometer on GP28 (A2)."
+   },
+   "spot": [
+    "#tab-wiring",
+    "#autoAll"
+   ],
+   "check": {
+    "type": "wired"
+   }
+  },
+  {
+   "title": {
+    "fr": "L’automate",
+    "en": "The PLC"
+   },
+   "text": {
+    "fr": "Passez au plan **Réseau**. Posez un **Automate Modbus TCP** (bibliothèque, groupe Services) : son adresse fixe est `192.168.1.50`. Reliez-le au switch.",
+    "en": "Switch to the **Network** workspace. Place a **Modbus TCP PLC** (library, Services group): its fixed address is `192.168.1.50`. Connect it to the switch."
+   },
+   "spot": [
+    ".ntLib .ntItem[data-t=\"plc\"]",
+    ".ntTools [data-tool=\"cable\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "plc",
+    "b": "SW1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le module sur le réseau",
+    "en": "The module on the network"
+   },
+   "text": {
+    "fr": "Reliez le module **ETH1** au switch : lien à **100 Mb/s**.",
+    "en": "Connect module **ETH1** to the switch: **100 Mb/s** link."
+   },
+   "spot": [
+    ".ntDev[data-id^=\"e:\"] .ntPort[data-port=\"eth\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "ETH1",
+    "b": "SW1",
+    "speed": 100
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme",
+    "en": "The program"
+   },
+   "text": {
+    "fr": "Onglet **Code** :\n- `#include <SPI.h>`, `<Ethernet.h>`, `<ArduinoRS485.h>` et `<ArduinoModbus.h>` ;\n- une adresse fixe pour la carte, `IPAddress ip(192, 168, 1, 60);`, celle de l’automate, `IPAddress automate(192, 168, 1, 50);` ;\n- `EthernetClient ethClient;` et `ModbusTCPClient modbus(ethClient);` ;\n- setup() : `Ethernet.init(17);` puis `Ethernet.begin(mac, ip);` ;\n- loop() : si `!modbus.connected()`, `modbus.begin(automate, 502)` ; chaque seconde, `modbus.holdingRegisterWrite(0, mesure)` avec `analogRead(A2)`, et `modbus.coilWrite(0, mesure > 512)`.",
+    "en": "**Code** tab:\n- `#include <SPI.h>`, `<Ethernet.h>`, `<ArduinoRS485.h>` and `<ArduinoModbus.h>`;\n- a fixed address for the board, `IPAddress ip(192, 168, 1, 60);`, the PLC’s, `IPAddress automate(192, 168, 1, 50);`;\n- `EthernetClient ethClient;` and `ModbusTCPClient modbus(ethClient);`;\n- setup(): `Ethernet.init(17);` then `Ethernet.begin(mac, ip);`;\n- loop(): if `!modbus.connected()`, `modbus.begin(automate, 502)`; every second, `modbus.holdingRegisterWrite(0, mesure)` with `analogRead(A2)`, and `modbus.coilWrite(0, mesure > 512)`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "ModbusTCPClient",
+     "Ethernet\\.begin\\s*\\(",
+     "\\.begin\\s*\\([^)]*502",
+     "holdingRegisterWrite\\s*\\("
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "L’automate reçoit la mesure",
+    "en": "The PLC receives the reading"
+   },
+   "text": {
+    "fr": "Cliquez sur **Observer** : la carte se connecte à l’automate et écrit son registre de maintien 0 chaque seconde. Choisissez **API1** dans le plan réseau : son tableau de registres montre la valeur, qui suit le potentiomètre.",
+    "en": "Click **Observe**: the board connects to the PLC and writes its holding register 0 every second. Select **API1** on the network plan: its register table shows the value, which follows the potentiometer."
+   },
+   "spot": [
+    ".ntDev[data-id^=\"api\"]"
+   ],
+   "check": {
+    "type": "net-modbus",
+    "plc": "plc",
+    "table": "hr",
+    "addr": 0,
+    "op": "write"
+   }
+  },
+  {
+   "title": {
+    "fr": "Les tables",
+    "en": "The tables"
+   },
+   "text": {
+    "fr": "La carte veut lire l’état d’un capteur tout ou rien câblé sur l’automate. Quelle table lit-elle ?",
+    "en": "The board wants to read the state of an on/off sensor wired to the PLC. Which table does it read?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les entrées (discrete inputs) : un bit, en lecture seule",
+      "en": "The discrete inputs: one bit, read-only"
+     },
+     {
+      "fr": "Les registres de maintien",
+      "en": "The holding registers"
+     },
+     {
+      "fr": "Les bobines : elles se lisent mais servent aux sorties",
+      "en": "The coils: they can be read but they are outputs"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

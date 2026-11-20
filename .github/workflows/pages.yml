@@ -2,7 +2,9 @@
 # Copyright (C) 2026 Mamadou Sarr
 #
 # Site de présentation (dossier site/, statique, bilingue) publié sur GitHub Pages à chaque poussée sur main qui le
-# modifie, ou à la main (Actions → Site → Run workflow). Aucune construction : le dossier est publié tel quel.
+# modifie, ou à la main (Actions → Site → Run workflow). Le site est publié tel quel ; la démonstration en ligne
+# (l'édition libre de l'application, construite pour le navigateur) est ajoutée dans site/app/ : « Essayer dans le
+# navigateur » y mène. Elle suit donc aussi les modifications de l'application.
 # Réglage du dépôt : Settings → Pages → Source = « GitHub Actions ».
 name: Site
 
@@ -11,6 +13,12 @@ on:
     branches: [main]
     paths:
       - 'site/**'
+      - 'src/**'
+      - 'public/**'
+      - 'exemples/**'
+      - 'index.html'
+      - 'vite.config.js'
+      - 'package-lock.json'
       - '.github/workflows/pages.yml'
   workflow_dispatch:
 
@@ -47,6 +55,14 @@ jobs:
             done
           done
           exit $missing
+      # Démonstration en ligne : chemins relatifs (--base=./), elle fonctionne dans n'importe quel sous-dossier.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Construire la démonstration en ligne (site/app)
+        run: npx vite build --base=./ --outDir site/app --emptyOutDir
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

@@ -1422,3 +1422,30 @@ section.unread .foldHead::after { content: ""; width: 7px; height: 7px; border-r
 .auVoices li .btn.auIco { width: 26px; height: 26px; }
 .auBlock input[type=number], .auVoices li input[type=number] { font: inherit; height: var(--ctl); color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 8px; min-width: 0; }
 .auVoices li input[type=number] { width: 64px; height: 26px; padding: 0 6px; }
+
+/* Remplacement d'un composant (main.js : openReplace) */
+.rpSheet { width: min(560px, 100%); }
+.rpMap { max-height: 46vh; overflow: auto; }
+.rpTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rpTable th, .rpTable td { padding: 5px 6px; text-align: left; border-bottom: 1px solid var(--line); font-weight: 500; }
+.rpTable thead th { font-size: 11px; color: var(--muted); font-weight: 600; }
+.rpTable .c { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.rpTable .rpTo { color: var(--muted); }
+.rpTable select { width: 100%; }
+.rpTable tr.bad select { border-color: var(--danger-ink); }
+.rpNote { font-size: 12.5px; color: var(--muted); }
+.rpNote[data-kind="err"] { color: var(--danger-ink); }
+.rpNote[data-kind="warn"] { color: var(--warn-ink); }
+.rpNote[data-kind="ok"] { color: var(--ok-ink); }
+
+/* Mode présentation (main.js : setPresenting) : bouton de sortie discret, en haut à droite */
+.presentExit { position: fixed; top: 12px; right: 12px; z-index: 19; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line-2); background: var(--glass, var(--panel)); color: var(--fg-2); font: 500 12.5px/1 var(--sans); cursor: pointer; opacity: .35; transition: opacity .15s; }
+.presentExit:hover, .presentExit:focus-visible { opacity: 1; }
+.presentExit[hidden] { display: none; }
+.presentExit svg { width: 14px; height: 14px; }
+
+/* Synoptique (main.js : openSynoptic) : dessin sur fond blanc, tel qu'il sera exporté */
+.synSheet { width: min(1180px, 100%); max-height: 94vh; }
+.synSheet .sheetHead .row { width: auto; gap: 8px; }
+.synView { overflow: auto; background: #fff; border-radius: 8px; border: 1px solid var(--line-2); padding: 8px; text-align: center; min-height: 200px; }
+.synView svg { max-width: 100%; height: auto; }

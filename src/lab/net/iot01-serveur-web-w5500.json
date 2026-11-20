@@ -1,0 +1,856 @@
+{
+ "id": "iot01-serveur-web-w5500",
+ "series": "objets",
+ "workspace": "elec",
+ "level": "lycee",
+ "minutes": 40,
+ "title": {
+  "fr": "Un serveur web sur un module Ethernet W5500",
+  "en": "A web server on a W5500 Ethernet module"
+ },
+ "summary": {
+  "fr": "Une carte Arduino Uno et un module Ethernet W5500 deviennent un petit serveur web : le PC de l’atelier ouvre http://<adresse du module>/ et lit la position d’un potentiomètre. Alimentation 3,3 V, bus SPI, câble RJ45, DHCP et requête HTTP.",
+  "en": "An Arduino Uno board and a W5500 Ethernet module become a small web server: the workshop PC opens http://<module address>/ and reads a potentiometer’s position. 3.3 V supply, SPI bus, RJ45 cable, DHCP and HTTP request."
+ },
+ "objectives": [
+  {
+   "fr": "Câbler un module Ethernet en SPI et l’alimenter correctement",
+   "en": "Wire an Ethernet module over SPI and power it correctly"
+  },
+  {
+   "fr": "Relier l’objet au réseau et obtenir une adresse par DHCP",
+   "en": "Connect the object to the network and get an address by DHCP"
+  },
+  {
+   "fr": "Écrire un serveur web qui envoie une mesure",
+   "en": "Write a web server that sends a reading"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Le W5500 tire environ 130 mA en 3,3 V : la broche 3V3 de l’Uno n’en donne que 50, il faut un régulateur AMS1117.",
+   "en": "The W5500 draws about 130 mA at 3.3 V: the Uno’s 3V3 pin only gives 50, so an AMS1117 regulator is needed."
+  },
+  {
+   "fr": "SPI sur l’Uno : D13 SCK, D12 MISO, D11 MOSI, D10 CS.",
+   "en": "SPI on the Uno: D13 SCK, D12 MISO, D11 MOSI, D10 CS."
+  },
+  {
+   "fr": "Un navigateur envoie une requête GET terminée par une ligne vide ; le serveur répond « HTTP/1.1 200 OK », des en-têtes, une ligne vide, puis la page.",
+   "en": "A browser sends a GET request ending with a blank line; the server answers “HTTP/1.1 200 OK”, headers, a blank line, then the page."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Serveur web W5500",
+  "comps": [
+   {
+    "id": "uno_0",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "ams1117_1",
+    "type": "ams1117",
+    "name": "U1",
+    "x": 9,
+    "z": -47,
+    "r": 0
+   },
+   {
+    "id": "w5500_2",
+    "type": "w5500",
+    "name": "ETH1",
+    "x": 56,
+    "z": 1,
+    "r": 0
+   },
+   {
+    "id": "pot_3",
+    "type": "pot",
+    "name": "POT1",
+    "x": -22,
+    "z": -38,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "iot",
+   "dur": 1.2,
+   "env": {
+    "temp": 24,
+    "hum": 55,
+    "press": 1013,
+    "lux": 300,
+    "dist": 35,
+    "motion": 0,
+    "soil": 40,
+    "gas": 0,
+    "sound": 45,
+    "tilt": 0
+   },
+   "prog": {
+    "rules": [],
+    "boards": {}
+   },
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 360,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 200,
+       "y": 280,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {
+      "e:w5500_2": {
+       "x": 560,
+       "y": 280
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "Serveur web W5500",
+   "comps": [
+    {
+     "id": "uno_0",
+     "type": "uno",
+     "name": "UNO",
+     "x": 0,
+     "z": 0,
+     "r": 0
+    },
+    {
+     "id": "ams1117_1",
+     "type": "ams1117",
+     "name": "U1",
+     "x": 9,
+     "z": -47,
+     "r": 0
+    },
+    {
+     "id": "w5500_2",
+     "type": "w5500",
+     "name": "ETH1",
+     "x": 56,
+     "z": 1,
+     "r": 0
+    },
+    {
+     "id": "pot_3",
+     "type": "pot",
+     "name": "POT1",
+     "x": -22,
+     "z": -38,
+     "r": 0
+    },
+    {
+     "id": "breadboard_4",
+     "type": "breadboard",
+     "name": "BB1",
+     "x": 0,
+     "z": 75,
+     "r": 0
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "ams1117_1",
+      "GND"
+     ],
+     "b": [
+      "uno_0",
+      "GND"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w2",
+     "a": [
+      "w5500_2",
+      "3V3"
+     ],
+     "b": [
+      "ams1117_1",
+      "OUT"
+     ],
+     "color": "#e8833a"
+    },
+    {
+     "id": "w3",
+     "a": [
+      "w5500_2",
+      "GND"
+     ],
+     "b": [
+      "uno_0",
+      "GND (3)"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w4",
+     "a": [
+      "w5500_2",
+      "SCK"
+     ],
+     "b": [
+      "uno_0",
+      "D13"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w5",
+     "a": [
+      "w5500_2",
+      "MOSI"
+     ],
+     "b": [
+      "uno_0",
+      "D11"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w6",
+     "a": [
+      "w5500_2",
+      "MISO"
+     ],
+     "b": [
+      "uno_0",
+      "D12"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w7",
+     "a": [
+      "w5500_2",
+      "CS"
+     ],
+     "b": [
+      "uno_0",
+      "D10"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w8",
+     "a": [
+      "uno_0",
+      "5V"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+12"
+     ],
+     "color": "#d64545"
+    },
+    {
+     "id": "w9",
+     "a": [
+      "ams1117_1",
+      "IN"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+15"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w10",
+     "a": [
+      "pot_3",
+      "3"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+6"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w11",
+     "a": [
+      "uno_0",
+      "GND (2)"
+     ],
+     "b": [
+      "breadboard_4",
+      "T-13"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w12",
+     "a": [
+      "pot_3",
+      "1"
+     ],
+     "b": [
+      "breadboard_4",
+      "T-5"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w13",
+     "a": [
+      "pot_3",
+      "W"
+     ],
+     "b": [
+      "uno_0",
+      "A0"
+     ],
+     "color": "#4c8bf5"
+    }
+   ],
+   "settings": {
+    "kind": "iot",
+    "dur": 1.2,
+    "env": {
+     "temp": 24,
+     "hum": 55,
+     "press": 1013,
+     "lux": 300,
+     "dist": 35,
+     "motion": 0,
+     "soil": 40,
+     "gas": 0,
+     "sound": 45,
+     "tilt": 0
+    },
+    "prog": {
+     "rules": [],
+     "boards": {
+      "uno_0": {
+       "code": "// Serveur web sur un module Ethernet W5500 : la page montre la position du potentiomètre.\n#include <SPI.h>\n#include <Ethernet.h>\n\nbyte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED }; // une adresse MAC différente pour chaque module du réseau\nEthernetServer serveur(80);                          // le port du web\n\nvoid setup() {\n  Serial.begin(9600);\n  Ethernet.init(10);                 // CS du W5500 sur D10\n  if (Ethernet.begin(mac) == 0) {    // adresse demandée à la box (DHCP)\n    Serial.println(\"Pas de serveur DHCP\");\n    while (true) delay(1);\n  }\n  serveur.begin();\n  Serial.print(\"Page web : http://\");\n  Serial.println(Ethernet.localIP());\n}\n\nvoid loop() {\n  EthernetClient client = serveur.available();\n  if (client) {\n    boolean ligneVide = true;\n    while (client.connected()) {\n      if (client.available()) {\n        char c = client.read();\n        if (c == '\\n' && ligneVide) {   // fin de la requête : une ligne vide\n          int valeur = analogRead(A0);\n          client.println(\"HTTP/1.1 200 OK\");\n          client.println(\"Content-Type: text/html; charset=utf-8\");\n          client.println(\"Connection: close\");\n          client.println();\n          client.print(\"<h1>Atelier</h1><p>Potentiometre : \");\n          client.print(valeur);\n          client.println(\"</p>\");\n          break;\n        }\n        if (c == '\\n') ligneVide = true;\n        else if (c != '\\r') ligneVide = false;\n      }\n    }\n    delay(1);\n    client.stop();\n  }\n}\n",
+       "auto": false
+      }
+     }
+    },
+    "modules": {
+     "net": {
+      "view": "net",
+      "devices": [
+       {
+        "id": "box1",
+        "type": "router",
+        "x": 60,
+        "y": 40,
+        "name": "BOX1",
+        "p": {
+         "lan": {
+          "ip": "192.168.1.1",
+          "prefix": 24
+         },
+         "dhcp": {
+          "on": true,
+          "from": 100,
+          "to": 199
+         },
+         "wan": {
+          "mode": "none",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "wifi": {
+          "on": false,
+          "ssid": "Box-Jollof",
+          "pass": "jollof2024"
+         }
+        }
+       },
+       {
+        "id": "sw1",
+        "type": "switch",
+        "x": 360,
+        "y": 60,
+        "name": "SW1",
+        "p": {
+         "legacy": false
+        }
+       },
+       {
+        "id": "pc1",
+        "type": "pc",
+        "x": 200,
+        "y": 280,
+        "name": "PC1",
+        "p": {
+         "ip": {
+          "mode": "dhcp",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "legacy": false
+        }
+       }
+      ],
+      "cables": [
+       {
+        "id": "c1",
+        "a": [
+         "box1",
+         "lan1"
+        ],
+        "b": [
+         "sw1",
+         "p1"
+        ],
+        "cat": "cat6",
+        "len": 1,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c2",
+        "a": [
+         "pc1",
+         "eth0"
+        ],
+        "b": [
+         "sw1",
+         "p2"
+        ],
+        "cat": "cat6",
+        "len": 3,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c3",
+        "a": [
+         "e:w5500_2",
+         "eth"
+        ],
+        "b": [
+         "sw1",
+         "p3"
+        ],
+        "cat": "cat6",
+        "len": 2,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       }
+      ],
+      "ext": {
+       "e:w5500_2": {
+        "x": 560,
+        "y": 280
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’objet connecté",
+    "en": "The connected object"
+   },
+   "text": {
+    "fr": "Le montage réunit une **Arduino Uno**, un module Ethernet **W5500** (relié en SPI), un régulateur **AMS1117 3,3 V** et un **potentiomètre** sur A0. Le module a une prise RJ45 : dans le plan **Réseau**, il apparaît sous le nom ETH1, comme un appareil qu’on câble au switch.\nLe programme demandera une adresse à la box (DHCP), puis répondra aux navigateurs avec une page qui donne la position du potentiomètre.",
+    "en": "The circuit brings together an **Arduino Uno**, a **W5500** Ethernet module (connected over SPI), an **AMS1117 3.3 V** regulator and a **potentiometer** on A0. The module has an RJ45 socket: in the **Network** workspace, it shows up as ETH1, a device you cable to the switch.\nThe program will ask the box for an address (DHCP), then answer browsers with a page giving the potentiometer’s position."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le montage",
+    "en": "Wire the circuit"
+   },
+   "text": {
+    "fr": "Onglet **Câblage**, **Câbler tout le circuit** : le W5500 va sur le bus SPI (D13 SCK, D12 MISO, D11 MOSI, D10 CS), le potentiomètre sur A0.",
+    "en": "**Wiring** tab, **Wire the whole circuit**: the W5500 goes on the SPI bus (D13 SCK, D12 MISO, D11 MOSI, D10 CS), the potentiometer on A0."
+   },
+   "spot": [
+    "#tab-wiring",
+    "#autoAll"
+   ],
+   "check": {
+    "type": "wired"
+   }
+  },
+  {
+   "title": {
+    "fr": "Alimenter le W5500",
+    "en": "Power the W5500"
+   },
+   "text": {
+    "fr": "Le W5500 consomme environ **130 mA** en 3,3 V ; la broche 3V3 de l’Uno ne donne que **50 mA** (le vérificateur le signale : J0109). Le régulateur U1 fait du 3,3 V à partir du 5 V :\n- **IN** de U1 au **5V** de l’Uno (le câblage automatique le fait par la breadboard) ;\n- **OUT** de U1 au **3V3** du W5500 : déplacez le fil 3V3 du module de la carte vers OUT de U1.",
+    "en": "The W5500 draws about **130 mA** at 3.3 V; the Uno’s 3V3 pin only gives **50 mA** (the checker reports it: J0109). Regulator U1 makes 3.3 V from 5 V:\n- U1 **IN** to the Uno’s **5V** (auto-wiring does it through the breadboard);\n- U1 **OUT** to the W5500’s **3V3**: move the module’s 3V3 wire from the board to U1 OUT."
+   },
+   "hint": {
+    "fr": "Un fil se déplace en tirant son extrémité vers une autre broche, ou se retire (Suppr) puis se retrace.",
+    "en": "Move a wire by dragging its end to another pin, or delete it (Delete) and draw it again."
+   },
+   "check": {
+    "type": "wire",
+    "nets": [
+     [
+      "ETH1.3V3",
+      "U1.OUT"
+     ],
+     [
+      "U1.IN",
+      "UNO.5V"
+     ]
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câble réseau",
+    "en": "The network cable"
+   },
+   "text": {
+    "fr": "Passez au plan **Réseau**. Le module **ETH1** y est posé. Avec l’outil **Câble**, reliez son port RJ45 à un port libre du switch **SW1**. Le W5500 est une puce 100 Mb/s : le lien monte à **100 Mb/s**.",
+    "en": "Switch to the **Network** workspace. Module **ETH1** is there. With the **Cable** tool, connect its RJ45 port to a free port of switch **SW1**. The W5500 is a 100 Mb/s chip: the link comes up at **100 Mb/s**."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"cable\"]",
+    ".ntDev[data-id^=\"e:\"] .ntPort[data-port=\"eth\"]",
+    ".ntDev[data-id=\"sw1\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "ETH1",
+    "b": "SW1",
+    "speed": 100
+   }
+  },
+  {
+   "title": {
+    "fr": "Le programme : réseau et serveur",
+    "en": "The program: network and server"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Code**, écrivez le programme :\n- `#include <SPI.h>` et `#include <Ethernet.h>` ;\n- une adresse MAC : `byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };` et `EthernetServer serveur(80);` ;\n- dans setup() : `Ethernet.init(10);`, puis `Ethernet.begin(mac)` (0 si aucun serveur DHCP ne répond), `serveur.begin();` et l’adresse au moniteur série avec `Serial.println(Ethernet.localIP());` ;\n- dans loop() : `EthernetClient client = serveur.available();` ; si un client est là, lisez sa requête jusqu’à la ligne vide, répondez `HTTP/1.1 200 OK`, `Content-Type: text/html`, une ligne vide, puis la page avec `analogRead(A0)` ; terminez par `client.stop();`.",
+    "en": "In the **Code** tab, write the program:\n- `#include <SPI.h>` and `#include <Ethernet.h>`;\n- a MAC address: `byte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };` and `EthernetServer serveur(80);`;\n- in setup(): `Ethernet.init(10);`, then `Ethernet.begin(mac)` (0 if no DHCP server answers), `serveur.begin();` and the address on the serial monitor with `Serial.println(Ethernet.localIP());`;\n- in loop(): `EthernetClient client = serveur.available();`; when a client is there, read its request up to the blank line, answer `HTTP/1.1 200 OK`, `Content-Type: text/html`, a blank line, then the page with `analogRead(A0)`; finish with `client.stop();`."
+   },
+   "hint": {
+    "fr": "C’est l’exemple « WebServer » de la bibliothèque Ethernet d’Arduino, avec une seule mesure.",
+    "en": "It is the Arduino Ethernet library’s “WebServer” example, with a single reading."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<Ethernet\\.h>",
+     "Ethernet\\.begin\\s*\\(",
+     "EthernetServer",
+     "analogRead\\s*\\(\\s*A0",
+     "HTTP/1\\.[01] 200"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "La page dans le navigateur",
+    "en": "The page in the browser"
+   },
+   "text": {
+    "fr": "Cliquez sur **Observer** : la simulation démarre, le module obtient son adresse (lisez-la au moniteur série). Choisissez **PC1** dans le plan réseau, ouvrez son **navigateur** et tapez `http://` suivi de l’adresse du module (ou `http://ETH1/`). La page doit montrer la valeur du potentiomètre.",
+    "en": "Click **Observe**: the simulation starts and the module gets its address (read it on the serial monitor). Select **PC1** on the network plan, open its **browser** and type `http://` followed by the module’s address (or `http://ETH1/`). The page must show the potentiometer’s value."
+   },
+   "spot": [
+    ".ntDev[data-id=\"pc1\"]",
+    "[data-nt=\"browser\"]"
+   ],
+   "check": {
+    "type": "net-http",
+    "from": "PC1",
+    "to": "ETH1",
+    "path": "/",
+    "expect": "Potentiom\\w*\\s*:\\s*\\d+"
+   }
+  },
+  {
+   "title": {
+    "fr": "Trouver le module",
+    "en": "Finding the module"
+   },
+   "text": {
+    "fr": "L’adresse du module vient du DHCP de la box. Comment un utilisateur la connaît-il ?",
+    "en": "The module’s address comes from the box’s DHCP. How does a user know it?"
+   },
+   "keep": {
+    "fr": "Pour un objet qu’on doit retrouver, on lui donne souvent une adresse fixe hors de la plage DHCP, ou une réservation dans la box.",
+    "en": "For an object you need to find again, you often give it a fixed address outside the DHCP range, or a reservation in the box."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le programme l’écrit au moniteur série ; la box la montre aussi dans sa liste des baux",
+      "en": "The program prints it on the serial monitor; the box also shows it in its lease list"
+     },
+     {
+      "fr": "Elle est toujours 192.168.1.177",
+      "en": "It is always 192.168.1.177"
+     },
+     {
+      "fr": "Elle est imprimée sur le module",
+      "en": "It is printed on the module"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

@@ -3,7 +3,7 @@
 // Codes stables des diagnostics du vérificateur, comme ceux de rustc (E0308…) : un numéro ne change jamais
 // de sens. Familles : J01 alimentation et courts-circuits, J02 signaux (le « type » de chaque broche),
 // J03 valeurs nominales prouvées dans tous les états, J04 polarité, J05 moteurs, J06 programme ↔ montage,
-// J09 conseils (avertissements qu'on peut accepter), J1 code du programme.
+// J09 conseils (avertissements qu'on peut accepter), J1 code du programme (J10, J11), J12 réseau informatique.
 // key : code de l'ancienne détection (circuit.js, faults.js) que ce numéro reprend.
 import { tl, DEC } from '../i18n/index.js';
 
@@ -117,6 +117,10 @@ export const CODES = {
   J0908: { level: 'warning', title: m => tl('{0} pas saturé : {1} dans la base, il en faut {2} (IC ÷ {3})', m.name, fmtMA1(m.value), fmtMA1(m.limit), m.beta) },
   J0909: { level: 'warning', title: m => tl('{0} sans condensateur {1}', m.name, m.which === 'in' ? tl('d’entrée') : tl('de sortie')) },
   J0910: { level: 'warning', title: m => tl('{0} alimenté par la broche 5V de {1} : un SG90 peut tirer {2} ({3} pour toute la carte)', m.name, m.b, fmtMA(m.value), fmtMA(m.limit)) },
+  // Plan réseau : le titre vient des vérifications du plan (src/net/issues.js).
+  J1201: { level: 'error' }, J1202: { level: 'error' }, J1203: { level: 'error' }, J1204: { level: 'warning' }, J1205: { level: 'error' }, J1206: { level: 'error' },
+  J1207: { level: 'error' }, J1208: { level: 'error' }, J1209: { level: 'error' }, J1210: { level: 'error' }, J1211: { level: 'warning' }, J1212: { level: 'error' },
+  J1213: { level: 'error' }, J1214: { level: 'warning' }, J1215: { level: 'warning' }, J1216: { level: 'warning' },
   J1001: { level: 'error' }, J1002: { level: 'error' }, J1101: { level: 'error' }, J1102: { level: 'error' },
   J1103: { level: 'error' }, J1104: { level: 'error' }, J1105: { level: 'error' }, J1106: { level: 'error' },
   J1107: { level: 'error' }, J1108: { level: 'error' }, J1109: { level: 'warning' }, J1110: { level: 'error' }, J1111: { level: 'error' }, J1199: { level: 'error' }
@@ -126,6 +130,6 @@ export const BY_KEY = Object.fromEntries(Object.entries(CODES).filter(([, c]) =>
 /** Famille d'un code, pour regrouper. */
 export const FAMILY = {
   J01: tl('Alimentation et courts-circuits'), J02: tl('Signaux et broches'), J03: tl('Valeurs nominales'), J04: tl('Polarité'),
-  J05: tl('Moteurs'), J06: tl('Programme et montage'), J07: tl('Pneumatique et électropneumatique'), J08: tl('Circuit logique'), J09: tl('Conseils'), J1: tl('Code du programme')
+  J05: tl('Moteurs'), J06: tl('Programme et montage'), J07: tl('Pneumatique et électropneumatique'), J08: tl('Circuit logique'), J09: tl('Conseils'), J1: tl('Code du programme'), J12: tl('Réseau informatique')
 };
 export const familyOf = code => FAMILY[code.slice(0, 3)] || FAMILY[code.slice(0, 2)] || '';

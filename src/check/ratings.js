@@ -150,6 +150,11 @@ export const RATINGS = {
   rc522: { cls: 'module', vcc: [3, 3.6], vabs: 4, ma: 26, vio: { over: 0.5 }, vih: { k: 0.7 }, iout: 4, fmax: null, src: 'nxpMfrc522', gap: { fmax: 'horloge SPI non relue' } },
   nrf24: { cls: 'module', vcc: [1.9, 3.6], vabs: 3.6, ma: 14, vio: { abs: 5.25 }, vih: { k: 0.7 }, iout: null, fmax: null, src: 'nordicNrf24', gap: { iout: 'non relu', fmax: 'horloge SPI non relue' } },
   sx1278: { cls: 'module', vcc: [1.8, 3.7], vabs: 3.9, ma: 120, vio: null, vih: { k: 0.8 }, iout: 1, fmax: 10e6, src: 'semtechSx1278', gap: { vio: 'Table 3 sans tension maximale des broches' } },
+  // Modules Ethernet : la fiche du W5500 ne donne que des courants typiques (128 mA lien 100M, 132 mA en émission) ;
+  // ma garde le plus fort, maMax dit pourquoi il n'y a pas de maximum. Entrées du W5500 tolérantes au 5 V (VIN 6 V).
+  w5500: { cls: 'module', vcc: [2.97, 3.63], vabs: 4.6, ma: 132, vio: { abs: 6 }, vih: { v: 2.0 }, iout: 8, fmax: 33.3e6, src: ['wiznetW5500Datasheet', 'wiznetWiz850io'],
+    gap: { maMax: '§ 5.4 : valeurs typiques seulement (128 mA lien 100M, 132 mA en émission), pas de maximum publié ; SPI 80 MHz en théorie, 33,3 MHz garantis' } },
+  enc28j60: { cls: 'module', vcc: [3.1, 3.6], vabs: 3.6, ma: 180, vio: { abs: 6 }, vih: { v: 2.25 }, iout: 4, fmax: 20e6, src: 'microchipEnc28j60' },
   sim800: { cls: 'module', vcc: [3.4, 4.4], vabs: 4.5, ma: 500, vio: { abs: 3.1 }, vih: { v: 2.5 }, iout: 8, fmax: null, src: 'simcomSim800l', gap: { fmax: 'vitesse série réglable' } },
   neo6m: { cls: 'module', vcc: [3, 5.5], vabs: null, ma: 47, vio: { abs: 3.6 }, vih: { v: 2.31 }, iout: 10, fmax: 9600, src: 'neo6mUblox', gap: { vabs: MODULE_ONLY } },
   hc12: { cls: 'module', vcc: [3.2, 5.5], vabs: null, ma: 100, vio: null, vih: null, iout: null, fmax: null, src: 'hc12Manual',

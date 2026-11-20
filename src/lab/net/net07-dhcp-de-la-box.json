@@ -1,0 +1,1002 @@
+{
+ "id": "net07-dhcp-de-la-box",
+ "series": "cablage",
+ "level": "lycee",
+ "minutes": 25,
+ "title": {
+  "fr": "Le DHCP de la box, et le piège des deux serveurs",
+  "en": "The box’s DHCP, and the two-server trap"
+ },
+ "summary": {
+  "fr": "Les postes reçoivent leur adresse de la box par DHCP. Mais une vieille box est restée branchée : elle aussi distribue des adresses, et certains postes se retrouvent dans un autre réseau. Comprendre, trouver, réparer.",
+  "en": "The computers get their address from the box by DHCP. But an old box was left plugged in: it hands out addresses too, and some computers end up in another network. Understand, find, fix."
+ },
+ "objectives": [
+  {
+   "fr": "Décrire les quatre messages du DHCP",
+   "en": "Describe the four DHCP messages"
+  },
+  {
+   "fr": "Reconnaître deux serveurs DHCP sur un même réseau",
+   "en": "Recognise two DHCP servers on the same network"
+  },
+  {
+   "fr": "Vérifier les baux et le ping",
+   "en": "Check the leases and the ping"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "DHCP : DISCOVER (diffusion), OFFER, REQUEST, ACK. Le serveur donne adresse, masque, passerelle et DNS.",
+   "en": "DHCP: DISCOVER (broadcast), OFFER, REQUEST, ACK. The server gives address, mask, gateway and DNS."
+  },
+  {
+   "fr": "Deux serveurs sur un même réseau : chaque poste prend l’offre du premier qui répond (J1207).",
+   "en": "Two servers on one network: each computer takes the offer of whichever answers first (J1207)."
+  },
+  {
+   "fr": "Un seul serveur DHCP par réseau.",
+   "en": "One DHCP server per network."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "DHCP de la box",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "box2",
+       "type": "router",
+       "x": 60,
+       "y": 220,
+       "name": "BOX2",
+       "p": {
+        "lan": {
+         "ip": "192.168.0.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 10,
+         "to": 50
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 380,
+       "y": 120,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 160,
+       "y": 360,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 320,
+       "y": 360,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc3",
+       "type": "pc",
+       "x": 480,
+       "y": 360,
+       "name": "PC3",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc4",
+       "type": "pc",
+       "x": 640,
+       "y": 360,
+       "name": "PC4",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "box2",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "pc2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c5",
+       "a": [
+        "pc3",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p5"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c6",
+       "a": [
+        "pc4",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p6"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 60,
+     "y": 40,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "box2",
+     "type": "router",
+     "x": 60,
+     "y": 220,
+     "name": "BOX2",
+     "p": {
+      "lan": {
+       "ip": "192.168.0.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": false,
+       "from": 10,
+       "to": 50
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 380,
+     "y": 120,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 160,
+     "y": 360,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 320,
+     "y": 360,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc3",
+     "type": "pc",
+     "x": 480,
+     "y": 360,
+     "name": "PC3",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc4",
+     "type": "pc",
+     "x": 640,
+     "y": 360,
+     "name": "PC4",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "box2",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "pc2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "pc3",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p5"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "pc4",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p6"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le DHCP",
+    "en": "DHCP"
+   },
+   "text": {
+    "fr": "Un poste qui démarre n’a pas d’adresse. Il crie à tout le réseau (**DISCOVER**, en diffusion) ; le serveur DHCP, ici la box, lui propose une adresse (**OFFER**) ; le poste la demande (**REQUEST**) ; le serveur confirme (**ACK**). Avec l’adresse viennent le masque, la **passerelle** (la box, pour sortir vers Internet) et le serveur DNS.",
+    "en": "A computer that boots has no address. It shouts to the whole network (**DISCOVER**, broadcast); the DHCP server, the box here, offers an address (**OFFER**); the computer asks for it (**REQUEST**); the server confirms (**ACK**). With the address come the mask, the **gateway** (the box, to get out to the Internet) and the DNS server."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Des adresses étranges",
+    "en": "Strange addresses"
+   },
+   "text": {
+    "fr": "Choisissez chaque PC et lisez son adresse dans l’inspecteur. Certains ont une adresse en `192.168.1.x`, d’autres en `192.168.0.x`. Pourquoi ?",
+    "en": "Select each PC and read its address in the inspector. Some have a `192.168.1.x` address, others `192.168.0.x`. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Deux serveurs DHCP répondent : BOX1 et la vieille BOX2 ; chaque poste prend la première offre reçue",
+      "en": "Two DHCP servers answer: BOX1 and the old BOX2; each computer takes the first offer it gets"
+     },
+     {
+      "fr": "Les câbles de ces postes sont défectueux",
+      "en": "The cables of these computers are faulty"
+     },
+     {
+      "fr": "Ces postes ont une adresse fixe",
+      "en": "These computers have a fixed address"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Un seul serveur",
+    "en": "A single server"
+   },
+   "text": {
+    "fr": "Choisissez **BOX2** et désactivez son serveur DHCP (onglet **Réseau** de l’inspecteur), ou débranchez-la. L’onglet Problèmes ne doit plus signaler deux serveurs DHCP (J1207).",
+    "en": "Select **BOX2** and turn off its DHCP server (**Network** tab of the inspector), or unplug it. The Problems tab must no longer report two DHCP servers (J1207)."
+   },
+   "spot": [
+    ".ntDev[data-id=\"box2\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1207"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les baux",
+    "en": "The leases"
+   },
+   "text": {
+    "fr": "Chaque PC redemande une adresse : cette fois, toutes viennent de **BOX1**, dans sa plage 192.168.1.100 à 192.168.1.199.",
+    "en": "Each PC asks for an address again: this time they all come from **BOX1**, in its range 192.168.1.100 to 192.168.1.199."
+   },
+   "check": {
+    "type": "net-dhcp",
+    "of": "pc",
+    "server": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping vers la passerelle",
+    "en": "Ping the gateway"
+   },
+   "text": {
+    "fr": "Faites un ping de chaque PC vers la box (leur passerelle).",
+    "en": "Ping the box (their gateway) from each PC."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "pc",
+    "to": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "La plage",
+    "en": "The range"
+   },
+   "text": {
+    "fr": "BOX1 distribue les adresses de `.100` à `.199`. Combien de postes peut-elle servir en même temps ?",
+    "en": "BOX1 hands out addresses from `.100` to `.199`. How many computers can it serve at once?"
+   },
+   "hint": {
+    "fr": "De 100 à 199 inclus : 199 − 100 + 1.",
+    "en": "From 100 to 199 inclusive: 199 − 100 + 1."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "99",
+      "en": "99"
+     },
+     {
+      "fr": "100",
+      "en": "100"
+     },
+     {
+      "fr": "254",
+      "en": "254"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

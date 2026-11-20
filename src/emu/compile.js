@@ -37,7 +37,9 @@ export const LIBS = {
   // GPS NEO-6M (sim/serialmods.js) : TinyGPSPlus de Mikal Hart (TinyGPS++.h ou TinyGPSPlus.h).
   'TinyGPSPlus.h': ['TinyGPSPlus'], 'TinyGPS++.h': ['TinyGPSPlus'],
   // Radio LoRa SX1278 (sim/lora.js) : bibliothèque de Sandeep Mistry.
-  'LoRa.h': ['LoRa']
+  'LoRa.h': ['LoRa'],
+  // Modules Ethernet : W5500 (bibliothèque Ethernet d'Arduino), ENC28J60 (UIPEthernet, EtherCard) ; client MQTT.
+  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient']
 };
 
 /** Accès à arduino-cli : par défaut l'application de bureau ; les tests passent le leur. */

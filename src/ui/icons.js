@@ -155,7 +155,27 @@ const P = {
   fitAll: 'M4 9V5a1 1 0 0 1 1-1h4 M15 4h4a1 1 0 0 1 1 1v4 M20 15v4a1 1 0 0 1-1 1h-4 M9 20H5a1 1 0 0 1-1-1v-4 M8 8.5h3.5v3H8z M12.5 12.5H16V16h-3.5z',
   focus: 'M4 9V5a1 1 0 0 1 1-1h4 M15 4h4a1 1 0 0 1 1 1v4 M20 15v4a1 1 0 0 1-1 1h-4 M9 20H5a1 1 0 0 1-1-1v-4 M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z',
   minimap: 'M3 5h18v14H3z M13 11h5v5h-5z',
-  keyboard: 'M3 6h18v12H3z M7 10h.01 M10.5 10h.01 M14 10h.01 M17.5 10h.01 M8 14h8'
+  keyboard: 'M3 6h18v12H3z M7 10h.01 M10.5 10h.01 M14 10h.01 M17.5 10h.01 M8 14h8',
+  // Réseau informatique (src/net) : type de projet, équipements, outils.
+  network: 'M9 3h6v5H9z M3 16h6v5H3z M15 16h6v5h-6z M12 8v4 M6 16v-4h12v4',
+  iot: 'M7 11h10v10H7z M10 14h4v4h-4z M8.5 7.8a5 5 0 0 1 7 0 M6 5.2a8.5 8.5 0 0 1 12 0',
+  desktopPc: 'M2 5h13v9H2z M5.5 18h6 M8.5 14v4 M18 4h4v16h-4z M20 7.5h.01',
+  laptop: 'M5 5h14v10H5z M2.5 19h19L20 15H4z',
+  server: 'M5 3h14v6H5z M5 9h14v6H5z M5 15h14v6H5z M8 6h.01 M8 12h.01 M8 18h.01 M12 6h4 M12 12h4 M12 18h4',
+  switchNet: 'M2 8h20v8H2z M5 12h1.5 M8.5 12h1.5 M12 12h1.5 M15.5 12h1.5 M19 11v2',
+  router: 'M3 13h18v6H3z M7 16h.01 M10.5 16h.01 M8 13 6 6 M16 13l2-7 M14 16h3',
+  wifi: 'M5 12.5a10 10 0 0 1 14 0 M8.5 16a5 5 0 0 1 7 0 M2 9a15 15 0 0 1 20 0 M12 19.5h.01',
+  ipCamera: 'M3 7h13l3 3-3 3H3z M9 13v5 M5 18h8 M19.5 9.2l2-1v3.6l-2-1',
+  deskPhone: 'M4 4h5v16H4z M11 6h9v14h-9z M13 9h5 M13.5 13h.01 M16 13h.01 M18.5 13h.01 M13.5 16h.01 M16 16h.01 M18.5 16h.01',
+  outlet: 'M4 3h16v18H4z M8 9h8v6h-2v2h-4v-2H8z',
+  patchPanel: 'M2 8h20v8H2z M4.5 11h2.5v2.5H4.5z M9 11h2.5v2.5H9z M13.5 11H16v2.5h-2.5z M18 11h2v2.5h-2z',
+  broker: 'M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M4 4.5 10 10 M20 4.5 14 10 M4 19.5l6-5.5 M20 19.5 14 14',
+  plc: 'M4 4h16v16H4z M4 9h16 M7 13h2.5 M7 16.5h2.5 M13 13h4.5v4H13z',
+  ethModule: 'M3 6h18v12H3z M13 9h6v6h-6z M15 15v-1.5 M17 15v-1.5 M6 9h4 M6 12h4 M6 15h4',
+  rj45: 'M6 3h12v11l-3 3H9l-3-3z M9 3v5 M12 3v5 M15 3v5 M10 17v4h4v-4',
+  cableTester: 'M3 5h7v14H3z M14 5h7v14h-7z M6.5 9h.01 M6.5 12h.01 M6.5 15h.01 M17.5 9h.01 M17.5 12h.01 M17.5 15h.01 M10 12h4',
+  ping: 'M12 12h.01 M8.5 8.5a5 5 0 0 0 0 7 M15.5 8.5a5 5 0 0 1 0 7 M5.6 5.6a9 9 0 0 0 0 12.8 M18.4 5.6a9 9 0 0 1 0 12.8',
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18'
 };
 
 export function icon(name, cls = '') {

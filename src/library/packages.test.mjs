@@ -381,3 +381,21 @@ test('Mes composants : créés, importés ou apportés par un projet, rangés à
   P.installStandard([stdOf('pk-sht31')]);
   assert.ok(P.isStandard('pk-sht31') && BY_ID['pk-sht31'].cat === 'Capteurs');
 });
+
+test('Manifeste : sortie du fil d’une broche et vérification déclarée', () => {
+  const m = clone(pack('pk-ldr'));
+  m.pins[0].exit = 'x+'; m.pins[1].exit = 'up';
+  m.checked = { model: true, pins: true, labels: false, note: 'pied à coulisse' };
+  const v = J.validateManifest(m);
+  assert.ok(v.ok, (v.errors || []).join('\n'));
+  assert.equal(v.manifest.pins[0].exit, 'x+');
+  assert.equal('exit' in v.manifest.pins[1], false, '« up » est le défaut : il n’est pas gardé');
+  assert.deepEqual(v.manifest.checked, { model: true, pins: true, note: 'pied à coulisse' });
+  assert.deepEqual(J.validateManifest(v.manifest).manifest, v.manifest);
+  assert.match(J.checkedText(v.manifest.checked), /pied à coulisse/);
+  assert.ok(J.docOf(v.manifest).specs.some(r => /pied à coulisse/.test(r[1])), 'la fiche affiche la vérification');
+  assert.equal(J.checkedText(null), '');
+  bad(x => { x.pins[0].exit = 'down'; }, /exit/);
+  bad(x => { x.checked = { model: 'yes' }; }, /checked\.model/);
+  bad(x => { x.checked = { model: true, score: 3 }; }, /checked\.score/);
+});

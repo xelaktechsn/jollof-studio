@@ -13,14 +13,25 @@
 //     et l'ESP32 n'a que des ports série matériels. HX711 enfin : ses lectures brutes répondent, mais une suite de mesures
 //     (get_units) reste parfois bloquée en attendant « donnée prête » ; tant que ce n'est pas fiable, il reste aussi sur
 //     l'interpréteur.
+//   Ethernet : le module W5500 (bibliothèque Ethernet d'Arduino) répond par la cale comme les autres modules SPI et
+//     parle au réseau simulé du projet ; un client MQTT (PubSubClient) qui passe par lui est donc admis, tant que le
+//     programme n'inclut pas aussi le Wi-Fi. Le module ENC28J60 non : le programme y porte sa propre pile TCP/IP sur
+//     des trames brutes, que le mode fidèle ne relie au réseau sur aucune carte ; avec lui, l'ESP32 reste sur
+//     l'interpréteur, qui le simule.
 import { tl } from '../i18n/index.js';
 
 /** Bibliothèques réseau : Wi-Fi, Bluetooth, et ce qui en dépend (serveur web, HTTP, MQTT, ESP-NOW, OTA…). */
 const NET = /^(WiFi\w*|WebServer|ESPAsyncWebServer|AsyncTCP|AsyncUDP|HTTPClient|HTTPUpdate\w*|ESPmDNS|ArduinoOTA|DNSServer|esp_now|esp_wifi|BluetoothSerial|BLE\w*|NimBLE\w*|PubSubClient|ESP32Ping|Network\w*|ETH|Firebase\w*|ThingSpeak|UniversalTelegramBot|WebSocketsClient|WebSocketsServer)\.h$/;
 
+/** Bibliothèques réseau qui passent aussi par le module Ethernet W5500 (Ethernet.h), sans Wi-Fi. */
+const OVER_ETH = /^PubSubClient\.h$/;
+const RADIO = /^(WiFi\w*|ETH|Network\w*|esp_now|esp_wifi|BluetoothSerial|BLE\w*|NimBLE\w*)\.h$/;
+
 /** Bibliothèque réseau incluse par le programme (« WiFi.h »), sinon null. */
 export function netInclude(code) {
-  for (const m of String(code).matchAll(/^[ \t]*#\s*include\s*[<"]([^>"]+)[>"]/gm)) if (NET.test(m[1])) return m[1];
+  const incs = [...String(code).matchAll(/^[ \t]*#\s*include\s*[<"]([^>"]+)[>"]/gm)].map(m => m[1]);
+  const eth = incs.includes('Ethernet.h') && !incs.some(i => RADIO.test(i));
+  for (const i of incs) if (NET.test(i) && !(eth && OVER_ETH.test(i))) return i;
   return null;
 }
 /** Raison de ne pas lancer ce programme en mode fidèle sur l'ESP32 (il reste sur l'interpréteur), sinon null. */
@@ -30,7 +41,7 @@ export function esp32Refusal(code) {
 }
 
 /** Types de modules que le mode fidèle de l'ESP32 ne fait pas répondre. */
-export const UNBRIDGED = ['ir', 'max485', 'hx711'];
+export const UNBRIDGED = ['ir', 'max485', 'hx711', 'enc28j60'];
 
 /** Message pour les modules branchés qui ne répondront pas (noms des composants), sinon null. */
 export function unbridgedWarning(comps) {

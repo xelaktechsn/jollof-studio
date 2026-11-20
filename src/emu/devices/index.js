@@ -13,7 +13,9 @@
 //   onEdge(clé carte, fn(niveau, cycle)) → désabonnement, drive(clé carte, niveau | null), after(cycles, fn), data(),
 //   rec(clé carte) → fiche de la broche (px…), now() → cycle courant, us(µs) → cycles,
 //   uart : { onTx(fn(octet, cycle)) → désabonnement, inject(octets), baud() } (port série matériel D0/D1),
-//   uarts : [{ name, rx, tx, api }] (tous les ports série matériels, clés de leurs broches RX et TX ; api comme uart) }.
+//   uarts : [{ name, rx, tx, api }] (tous les ports série matériels, clés de leurs broches RX et TX ; api comme uart),
+//   warn(clé, texte) / unwarn(clé) : avertissement affiché par le moteur (module que le mode fidèle ne relie pas) }.
+// Les modèles sont rendus (dispose) quand le module quitte le montage et quand le moteur s'arrête.
 // drive(clé, null) relâche la ligne : elle reprend le niveau du montage (résistance de tirage câblée), sinon le
 // tirage interne de la carte (INPUT_PULLUP), sinon LOW.
 import lcd from './lcd.js';
@@ -41,20 +43,23 @@ import displays from './displays.js';
 import storage from './storage.js';
 import i2csensors from './i2csensors.js';
 import sx1278 from './sx1278.js';
+import w5500 from './w5500.js';
+import enc28j60 from './enc28j60.js';
 import { pkgI2cModel, pkgSpiModel, pkgPulseModel } from './pkg.js';
 
 // Modules en paquet : leurs types se lisent à chaque rattachement (paquets installés pendant la simulation).
-export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht, ds18b20, hcsr04, ws2812, keypad, ky040, irnec, mfrc522, nrf24, uart, ...chips, stepdrv, sdcard, tft, ...displays, storage, i2csensors, sx1278].filter(m => m.types.length).concat([pkgI2cModel, pkgSpiModel, pkgPulseModel]);
+export const MODELS = [lcd, ssd1306, bmp280, bme280, bh1750, mpu6050, hx711, dht, ds18b20, hcsr04, ws2812, keypad, ky040, irnec, mfrc522, nrf24, uart, ...chips, stepdrv, sdcard, tft, ...displays, storage, i2csensors, sx1278, w5500, enc28j60].filter(m => m.types.length).concat([pkgI2cModel, pkgSpiModel, pkgPulseModel]);
 
 /**
  * Branche les modèles sur un processeur émulé. ctx : { cpu, MHZ, twi, spi, hw, pinApi, uart } (avr8js). Un autre
  * processeur (RP2040, src/emu/rp2040.js) donne en plus son horloge et ses bus : now() → cycle courant,
  * after(cycles, fn), i2c : { setHandler({ start(), connect(adresse, écriture) → acquitté, write(octet) → acquitté,
  * read(ack) → octet, stop() }) }, spiBus : { onTransfer(fn(octet) → octet) } ; twi et spi ne servent alors pas.
- * cpu n'est plus qu'un identifiant de la carte (bus 1-Wire partagé). Rend { frame() }.
+ * cpu n'est plus qu'un identifiant de la carte (bus 1-Wire partagé). warnings : Map des avertissements du moteur
+ * (facultative). Rend { frame(), rebind(), dispose(), live }.
  */
 export function attachDevices(ctx) {
-  const { cpu, twi, spi, hw, pinApi, MHZ, uart, uarts } = ctx;
+  const { cpu, twi, spi, hw, pinApi, MHZ, uart, uarts, warnings } = ctx;
   const probe = hw && hw.probe ? hw.probe : null; // analyseur de bus (src/sim/buslog.js)
   let names = new Map(); // adresse I2C → repère du module (analyseur de bus)
   const now = ctx.now || (() => cpu.cycles);
@@ -80,7 +85,9 @@ export function attachDevices(ctx) {
       rec: key => (pinApi.rec ? pinApi.rec(key) : null),
       now,
       us: n => n * MHZ / 1e6,
-      uart, uarts
+      uart, uarts,
+      warn: (key, msg) => { if (warnings) warnings.set(key, { line: 0, msg, n: 1 }); },
+      unwarn: key => { if (warnings) warnings.delete(key); }
     };
   }
   /** Modules présents sur cette carte (refait de temps en temps : le montage peut changer pendant la simulation). */
@@ -145,6 +152,8 @@ export function attachDevices(ctx) {
     },
     /** Modules rattachés tout de suite (ESP32 : un port série vient de recevoir ses broches). */
     rebind() { lastBind = performance.now(); bind(); },
+    /** Le moteur s'arrête : chaque modèle lâche ce qu'il tient (connexions du réseau simulé…). */
+    dispose() { for (const e of live.values()) if (e.dev.dispose) e.dev.dispose(); live.clear(); },
     live
   };
 }

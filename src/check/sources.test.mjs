@@ -10,6 +10,8 @@ import * as LIM from './limits.js';
 import { PARTS, NPNS } from '../sim/parts.js';
 import { BOARDS } from '../sim/boards.js';
 import { RATINGS } from './ratings.js';
+import { NET } from '../net/limits.js';
+import { NET_SRC, NET_CODES } from '../net/issues.js';
 
 const { LIMIT_SRC } = LIM;
 /** Seuils de conception sans fiche technique (LIMIT_SRC à null), chacun justifié dans limits.js. */
@@ -74,6 +76,13 @@ test('chaque limite de carte cite une source', () => {
   }
 });
 
+test('chaque chiffre du réseau (NET de src/net/limits.js) et chaque vérification J12xx cite une source', () => {
+  assert.ok(Object.keys(NET).length >= 10, 'chiffres du réseau trouvés');
+  for (const [k, e] of Object.entries(NET)) { assert.ok(e && 'v' in e, `NET.${k}.v`); assert.equal(bad(e.src), '', `NET.${k}`); }
+  assert.deepEqual(Object.keys(NET_SRC).sort(), Object.keys(NET_CODES).sort(), 'une source par code J12xx');
+  for (const [code, src] of Object.entries(NET_SRC)) assert.equal(bad(src), '', `NET_SRC.${code}`);
+});
+
 test('chaque transistor NPNS cite une source', () => {
   for (const [k, n] of Object.entries(NPNS)) assert.equal(bad(n.src), '', `NPNS.${k}`);
 });
@@ -93,6 +102,8 @@ test('chaque fiche est complète et sert au moins une fois', () => {
   for (const type of Object.keys(BOARDS)) for (const [f, s] of Object.entries(LIMIT_SRC.BOARD[type])) if (!DESIGN_BOARD.has(`${type}.${f}`)) bad(s);
   for (const n of Object.values(NPNS)) bad(n.src);
   for (const r of Object.values(RATINGS)) if ([].concat(r.src).length) bad(r.src);
+  for (const e of Object.values(NET)) bad(e.src);
+  for (const src of Object.values(NET_SRC)) bad(src);
   for (const spec of Object.values(PARTS)) {
     for (const p of spec.pins || []) if (Array.isArray(p.v)) bad(p.ds);
     if (spec.ma != null) bad(spec.ds);

@@ -31,6 +31,18 @@ export const PIN_KINDS = ['pwr', 'gnd', 'io', 'nc', 'drv', 'contact', 'passive']
 export const NEEDS = ['io', 'in', 'out', 'pullup', 'pwm', 'adc', 'irq', 'sda', 'scl', 'sck', 'mosi', 'miso', 'ss', 'rx', 'tx'];
 /** Résistances de la bibliothèque qu'une broche peut demander en série (via) ou en tirage (pull). */
 export const RESISTORS = ['res-22', 'res-220', 'res-330', 'res-1k', 'res-4k7', 'res-10k'];
+/** Sens de sortie du fil d'une broche : vers le haut (défaut), ou sur le côté (bornier, connecteur coudé), dans le repère du composant. */
+export const PIN_EXITS = ['up', 'x+', 'x-', 'z+', 'z-'];
+/** Ce que l'auteur a contrôlé sur la pièce réelle ou sa fiche technique (champ `checked` du manifeste). */
+export const CHECKS = ['model', 'pins', 'labels'];
+export const CHECK_LABEL = () => ({ model: tl('dimensions du modèle'), pins: tl('position des broches'), labels: tl('nom et rôle des broches') });
+/** Ligne « Vérification » d'un composant : ce qui est contrôlé, ou rien si l'auteur n'a rien déclaré. */
+export function checkedText(c) {
+  if (!c) return '';
+  const L = CHECK_LABEL(), done = CHECKS.filter(k => c[k]);
+  if (!done.length) return c.note || '';
+  return (done.length === CHECKS.length ? tl('Complète : {0}', done.map(k => L[k]).join(', ')) : tl('Partielle : {0}', done.map(k => L[k]).join(', '))) + (c.note ? ` — ${c.note}` : '');
+}
 export const LOOKS = ['module', 'block', 'led', 'resistor', 'glb', 'svg'];
 export const LED_COLORS = { red: '#d8322f', green: '#2fbf5a', blue: '#2f6fe0', yellow: '#f2c94c', white: '#f2f2ee', orange: '#f28c28' };
 const ID = /^pk-[a-z0-9]+(-[a-z0-9]+)*$/;
@@ -107,7 +119,7 @@ export function validateManifest(raw) {
   scan(raw, 'part', errors);
   if (errors.length) return { ok: false, errors };
   const R = reader(errors), { fail, keys, str, number, bool, oneOf, arr } = R;
-  keys(raw, 'part', ['format', 'id', 'version', 'name', 'category', 'prefix', 'description', 'author', 'license', 'pins', 'ma', 'ds', 'limits', 'sources', 'docs', 'behaviour', 'look']);
+  keys(raw, 'part', ['format', 'id', 'version', 'name', 'category', 'prefix', 'description', 'author', 'license', 'pins', 'ma', 'ds', 'limits', 'sources', 'docs', 'behaviour', 'look', 'checked']);
   if (raw.format !== FORMAT) fail('part.format', tl('format {0} attendu', FORMAT));
   const m = { format: FORMAT };
   m.id = str(raw.id, 'part.id', 40, { req: true, re: ID });
@@ -117,6 +129,13 @@ export function validateManifest(raw) {
   m.prefix = str(raw.prefix, 'part.prefix', 8, { req: true, re: /^[A-Z][A-Z0-9]{0,7}$/ });
   const opt = (k, max) => { const v = str(raw[k], `part.${k}`, max); if (v) m[k] = v; };
   opt('description', 400); opt('author', 80); opt('license', 80);
+  // Vérification déclarée par l'auteur : modèle, position des broches, noms ; une note dit sur quoi il s'est appuyé.
+  if (raw.checked != null && keys(raw.checked, 'part.checked', [...CHECKS, 'note'])) {
+    const c = {};
+    for (const k of CHECKS) if (bool(raw.checked[k], `part.checked.${k}`)) c[k] = true;
+    const note = str(raw.checked.note, 'part.checked.note', 200); if (note) c.note = note;
+    if (Object.keys(c).length) m.checked = c;
+  }
 
   // Sources : fiches techniques citées par les limites (même forme que check/sources.js).
   m.sources = {};
@@ -169,7 +188,7 @@ export function validateManifest(raw) {
   m.pins = [];
   pins.forEach((p, i) => {
     const path = `part.pins[${i}]`;
-    if (!keys(p, path, ['name', 'x', 'y', 'z', 'kind', 'need', 'role', 'why', 'v', 'ds', 'via', 'pull', 'opt', 'when', 'switch', 'lv5', 'lv3', 'idle'])) return;
+    if (!keys(p, path, ['name', 'x', 'y', 'z', 'kind', 'need', 'role', 'why', 'v', 'ds', 'via', 'pull', 'opt', 'when', 'switch', 'lv5', 'lv3', 'idle', 'exit'])) return;
     const q = { name: str(p.name, `${path}.name`, 16, { req: true, re: PIN_NAME }) };
     if (q.name && names.has(q.name)) fail(`${path}.name`, tl('broche en double : {0}', q.name));
     if (q.name) names.add(q.name);
@@ -192,6 +211,7 @@ export function validateManifest(raw) {
     if (p.pull != null) { if (q.kind === 'io') q.pull = oneOf(p.pull, `${path}.pull`, RESISTORS); else fail(`${path}.pull`, tl('seulement pour io')); }
     for (const k of ['opt', 'switch', 'lv5', 'lv3']) { const b = bool(p[k], `${path}.${k}`); if (b) q[k] = true; }
     if (p.idle != null) q.idle = oneOf(p.idle, `${path}.idle`, [0, 1]);
+    if (p.exit != null) { const e = oneOf(p.exit, `${path}.exit`, PIN_EXITS); if (e && e !== 'up') q.exit = e; }
     if (p.when != null) q.when = arr(p.when, `${path}.when`, 8).map((w, j) => str(w, `${path}.when[${j}]`, 16, { req: true, re: PIN_NAME })).filter(Boolean);
     m.pins.push(q);
   });
@@ -594,6 +614,7 @@ export function docOf(m) {
   for (const k of new Set([...srcList(L.src), ...srcList(m.ds), ...m.pins.flatMap(p => srcList(p.ds))])) {
     const s = m.sources[k]; if (s) specs.push([tl('Source'), `${s.title} (${s.publisher}), ${s.section}`]);
   }
+  const chk = checkedText(m.checked); if (chk) specs.push([tl('Vérification'), chk]);
   if (m.author) specs.push([tl('Auteur'), m.author]);
   if (m.license) specs.push([tl('Licence'), m.license]);
   return { specs, how: T(d.text), uses: (d.uses || []).map(T), mistakes: (d.mistakes || []).map(T) };

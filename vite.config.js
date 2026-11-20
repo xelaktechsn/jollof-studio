@@ -35,16 +35,19 @@ function jollofPro(mode) {
  * les feuilles de style, les polices et le dictionnaire.
  */
 function preloadMain() {
+  let base = '/';
   return {
     name: 'jollof-preload-main',
     apply: 'build',
+    // Base de la construction : « / » dans l'application, « ./ » pour la démonstration en ligne publiée dans un sous-dossier.
+    configResolved(c) { base = c.base; },
     transformIndexHtml: {
       order: 'post',
       handler(html, ctx) {
         // Le module de main.js (avec ce qu'il partage avec d'autres morceaux, d'où pas de « facade » unique).
         const main = ctx.bundle && Object.values(ctx.bundle).find(c => c.type === 'chunk' && (c.moduleIds || Object.keys(c.modules || {})).some(id => id.replace(/\\/g, '/').endsWith('/src/main.js')));
         if (!main) return html;
-        return { html, tags: [{ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: '/' + main.fileName }, injectTo: 'head' }] };
+        return { html, tags: [{ tag: 'link', attrs: { rel: 'modulepreload', crossorigin: true, href: base + main.fileName }, injectTo: 'head' }] };
       }
     }
   };

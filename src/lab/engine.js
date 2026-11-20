@@ -26,6 +26,11 @@
 //   { type: 'grafcet', outputs: ['Y1'], reads: ['B2'], minSteps?: 2 }   GRAFCET lisible, qui commande et lit ces repères
 //   { type: 'ladder', outputs: ['Y1'], reads: ['dcy', 'a1'], minRungs?: 1 }   programme Ladder de l'automate sans erreur, qui écrit et lit ces noms
 //   { type: 'ui', need: ['sim', 'split'] }               état de l'interface (simulation lancée, vue partagée…)
+//     (plan réseau : 'net' affiché, 'crimp' atelier de sertissage ouvert, 'tester' testeur de câble, 'browser'
+//     navigateur du PC, 'ping' outil ping)
+// Réseau informatique (src/lab/net, plan réseau dans start.settings.modules.net) : contrôles de src/net/labcheck.js,
+//   net-devices, net-cable, net-link, net-ping, net-dhcp, net-poe, net-ok, net-ip, net-wifi (plan) et net-http,
+//   net-mqtt, net-modbus (programme de la carte en marche) ; leurs formes sont décrites en tête de labcheck.js.
 // Les noms (UNO, R1, LED1…) sont les repères des composants du montage de départ.
 
 import { hasSequence, normMove, expectOf } from '../pneu/seq.js';
@@ -39,6 +44,10 @@ import { lintPlc } from '../plc/ladder.js';
 import { tagsOf } from '../pneu/links.js';
 import { processSensorNames, processOutputNames, processInputNames } from '../pneu/process.js';
 import { isTwin, CATALOG as TWIN } from '../twin/model.js';
+import { NET_AUTO } from '../net/labkinds.js';
+export { NET_AUTO, NET_LIVE, isNetCheck } from '../net/labkinds.js';
+/** Contrôles réseau (simulation du réseau comprise) : chargés à la demande. */
+export const loadNetCheck = () => import('../net/labcheck.js');
 
 const low = v => String(v ?? '').trim().toLowerCase();
 
@@ -267,7 +276,7 @@ export function checkScene(check, env) {
 /** Nom d'un composant du jumeau pour les messages. */
 export const sceneNeedText = n => (TWIN[n.type] ? TWIN[n.type].name() : n.type) + (n.bind && Object.keys(n.bind).length ? ` (${Object.entries(n.bind).map(([k, v]) => `${k} = ${v}`).join(', ')})` : '');
 /** Contrôles qui se vérifient seuls dans un tutoriel (sans rien observer ni répondre) : relus régulièrement. */
-export const AUTO_CHECKS = new Set(['parts', 'wired', 'pneu-parts', 'pneu-tube', 'grafcet', 'ladder', 'ui', 'code', 'wire', 'scene']);
+export const AUTO_CHECKS = new Set(['parts', 'wired', 'pneu-parts', 'pneu-tube', 'grafcet', 'ladder', 'ui', 'code', 'wire', 'scene', ...NET_AUTO]);
 /** Cycle des vérins : moves (mouvements relevés depuis le début de l'observation) contient-il le cycle attendu ? */
 export function checkPneuSeq(check, moves) {
   return { ok: hasSequence(moves, check.expect), seen: moves.map(m => normMove(m.name + m.dir)), want: expectOf(check.expect) };

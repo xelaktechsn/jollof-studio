@@ -836,5 +836,207 @@ export const SOURCES = {
     publisher: 'Solomon Systech',
     url: 'https://cdn-shop.adafruit.com/datasheets/SSD1306.pdf',
     section: 'Table 11-1, p. 47 : VDD −0.3 à 4 V, entrées au plus VDD + 0.3 V ; Table 12-1, p. 48 : VDD 1.65 à 3.3 V, VIH 0.8 VDD, VIL 0.2 VDD ; Table 13-6, p. 54 : cycle I2C 2.5 µs (400 kHz)'
+  },
+  /* ---------- Réseau informatique (src/net : NET de limits.js, NET_SRC de issues.js), relu en novembre 2026 ---------- */
+  // Les normes de câblage (ANSI/TIA-568, ISO/IEC 11801) et IEEE 802.3 sont payantes : leurs chiffres sont lus dans les
+  // guides des fabricants qui les citent (Belden, Fluke Networks, Cisco) et dans les documents publics du groupe 802.3.
+  beldenCopperDesignGuide: {
+    title: 'Copper Structured Cabling Design Guide, Issue 10',
+    publisher: 'Belden',
+    url: 'https://www.belden.com/-/media/project/belden/catalog-assets/assets/2025/10/31/11/57/174662.pdf?rev=1fd9a57224d64e03940d7c96afec4e4b',
+    section: 'Chiffres de la norme TIA-568-C lus dans le guide du fabricant (norme payante, non lue directement) : Figure 10, p. 13 : lien permanent de 90 m, canal de 100 m, 10 m de cordons au plus ; Table 1, p. 11 : Cat 5e 1000 Mb/s sur 100 m, Cat 6 en 10 Gb/s sur 37 à 55 m, Cat 6A en 10 Gb/s sur 100 m ; Table 2, p. 22 : brochages T568A et T568B ; bandes passantes : Cat 6A 500 MHz (p. 64), Cat 6 250 MHz (p. 65), Cat 5e 100 MHz (p. 67)'
+  },
+  flukeT568AvsB: {
+    title: 'Differences between wiring codes T568A vs T568B',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/knowledge-base/application-or-standards-articles-copper/differences-between-wiring-codes-t568a-vs',
+    section: 'Les deux codes ne diffèrent que par l’échange des paires orange et verte ; « Both are allowed under the ANSI/TIA-568.2-D wiring standards. » Un câble droit a le même code aux deux bouts.'
+  },
+  foaUtpColorCodes: {
+    title: 'Premises Cabling: UTP Termination and Color Codes',
+    publisher: 'The Fiber Optic Association',
+    url: 'https://www.thefoa.org/tech/ref/premises/term.html',
+    section: 'Numérotation des paires : 1 bleue, 2 orange, 3 verte, 4 marron ; un câble serti T568A d’un côté et T568B de l’autre croise les paires 2 et 3'
+  },
+  flukeFrequencySteps: {
+    title: 'Frequency steps on the DTX CableAnalyzer',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/knowledge-base/dtx-cableanalyzer/frequency-steps-dtx-cableanalyzer',
+    section: 'Fréquence de mesure la plus haute de chaque catégorie (classe ISO) : Cat 5e 100 MHz (classe D), Cat 6 250 MHz (classe E), Cat 6A 500 MHz (classe EA)'
+  },
+  flukeBeyond100m: {
+    title: 'Extending and Testing Cable Runs Beyond 100 Meters',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/extending-and-testing-cable-runs-beyond-100-meters',
+    section: 'Le canal de 100 m des normes : « 4-connector channel that includes a 90m permanent link and 5m of patch cable at both ends »'
+  },
+  fluke10gbaseT: {
+    title: '10GBASE-T Field Testing Requirements',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/knowledge-base/applicationstandards-articles-copper/10gbase-t-field-testing-requirements',
+    section: 'TSB-155 (lu par Fluke) : 10GBASE-T sur Cat 6 assuré jusqu’à 37 m, de 37 à 55 m selon la diaphonie exogène (à mesurer), au-delà de 55 m il faut l’atténuer ; Cat 6A pour 100 m'
+  },
+  flukeWireMapBlog: {
+    title: 'Wire Map Testing: It’s Not All About Color',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/wire-map-testing-it-s-not-all-about-color',
+    section: 'Définitions des défauts de la carte de câblage : conducteur ouvert, court-circuit, paire inversée, paires croisées, paire séparée ; une paire séparée passe le test de continuité broche à broche mais échoue à la mesure de diaphonie (NEXT)'
+  },
+  flukeMicroScannerFaults: {
+    title: 'Diagnosing wiremap faults with the MicroScanner2',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/knowledge-base/microscanner2/diagnosing-wiremap-faults-microscanner2',
+    section: 'Paires croisées : mélange des codes 568A et 568B, les paires 1-2 et 3-6 sont croisées'
+  },
+  ieee8023_2022: {
+    title: 'IEEE Std 802.3-2022, IEEE Standard for Ethernet',
+    publisher: 'IEEE',
+    url: 'https://standards.ieee.org/ieee/802.3/10422/',
+    section: 'Norme payante, texte non lu directement : référence de la couche physique Ethernet (10BASE-T, 100BASE-TX, 1000BASE-T, 10GBASE-T) ; les chiffres utilisés viennent des documents publics du groupe 802.3 et des guides cités ici'
+  },
+  ieee80211_2024: {
+    title: 'IEEE Std 802.11-2024, Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Specifications',
+    publisher: 'IEEE',
+    url: 'https://standards.ieee.org/ieee/802.11/10548/',
+    section: 'Norme payante, texte non lu directement : référence du Wi-Fi (MAC et couche physique), qui remplace 802.11-2020 ; l’association à un point d’accès et la sécurité RSNA y sont définies'
+  },
+  ieeeMaint1115: {
+    title: 'IEEE 802.3 Maintenance Request 1115',
+    publisher: 'IEEE 802.3 Working Group',
+    url: 'https://www.ieee802.org/3/maint/requests/maint_1115.pdf',
+    section: 'Clause 40.4.4 : Auto MDI/MDI-X facultatif en 1000BASE-T ; Table 40-12 : fonction de croisement des quatre paires ; 14.5.2 : croisement en 10BASE-T'
+  },
+  ieeeMaint1183: {
+    title: 'IEEE 802.3 Maintenance Request 1183',
+    publisher: 'IEEE 802.3 Working Group',
+    url: 'https://www.ieee802.org/3/maint/requests/maint_1183.pdf',
+    section: 'Clause 55.4.4 : l’Auto-MDIX est obligatoire en 10GBASE-T'
+  },
+  unhIolFeTestPlans: {
+    title: 'Fast Ethernet Test Plans',
+    publisher: 'University of New Hampshire InterOperability Laboratory',
+    url: 'https://www.iol.unh.edu/testing/ethernet/fe/test-plans',
+    section: 'Plans d’essai par clause d’IEEE 802.3 : clause 14 (10BASE-T), clause 25 (100BASE-TX)'
+  },
+  cisco10100Cables: {
+    title: 'Ethernet 10BaseT, 100BaseTX and Fast Ethernet Cabling',
+    publisher: 'Cisco',
+    url: 'https://www.cisco.com/c/en/us/support/docs/routers/10000-series-routers/46792-ethbase.html',
+    section: '100 m au plus en 10BaseT et 100BaseTX ; émission sur les broches 1 et 2, réception sur 3 et 6, broches 4, 5, 7 et 8 inutilisées ; Cat 3, 4 ou 5 en 10BaseT, Cat 5 en 100BaseTX'
+  },
+  ciscoCat2960Cabling: {
+    title: 'Catalyst 2960 Switch Hardware Installation Guide, Cable and Connectors',
+    publisher: 'Cisco',
+    url: 'https://www.cisco.com/c/en/us/td/docs/switches/lan/catalyst2960/hardware/installation/guide/2960_hg/higcable.pdf',
+    section: '1000BASE-T : quatre paires en Cat 5 ; Auto-MDIX activé par défaut sur les ports du switch'
+  },
+  ciscoStp: {
+    title: 'Spanning Tree Protocol',
+    publisher: 'Cisco',
+    url: 'https://www.cisco.com/c/en/us/tech/lan-switching/spanning-tree-protocol/index.html',
+    section: 'Le protocole Spanning Tree (IEEE 802.1D) bloque les chemins redondants entre switchs pour éviter les boucles de niveau 2'
+  },
+  ciscoL2Loops: {
+    title: 'Troubleshoot Layer 2 Loops (Catalyst 9200)',
+    publisher: 'Cisco',
+    url: 'https://www.cisco.com/c/en/us/support/docs/switches/catalyst-9200-series-switches/221191-troubleshoot-layer-2-loops.html',
+    section: 'Une boucle de niveau 2 sans Spanning Tree fait tourner les trames de diffusion sans fin (tempête de diffusion) : liens saturés, tables MAC instables'
+  },
+  eaOverview8023bt: {
+    title: 'Overview of 802.3bt — Power over Ethernet standard (white paper v2.1)',
+    publisher: 'Ethernet Alliance',
+    url: 'https://ethernetalliance.org/wp-content/uploads/2019/12/WP_EA_Overview8023bt_V2p1_FINAL.pdf',
+    section: 'Puissance réservée par le PSE pour les classes 1 à 8 : 4, 7, 15,4, 30, 45, 60, 75 et 90 W ; puissance garantie au PD : 3,84, 6,49, 13 (12,95), 25,5, 40, 51, 62 et 71,3 W ; la classe 0 vaut la classe 3 ; type 1 jusqu’à la classe 3, type 2 la classe 4, type 3 jusqu’à la classe 6, type 4 les classes 7 et 8 ; un PSE de la clause 145 réserve 14,0 W en classe 3'
+  },
+  tiTps23755Class: {
+    title: 'TPS23755 High Efficiency PoE PD Interface with No-Opto Flyback DC-DC Controller',
+    publisher: 'Texas Instruments',
+    url: 'https://www.ti.com/lit/ds/symlink/tps23755.pdf',
+    section: 'Table 7-1 (relu par un outil de résumé, citation non mot à mot) : classes 0 à 3, puissance au PD 12,95, 3,84, 6,49 et 12,95 W'
+  },
+  axisM2035le: {
+    title: 'AXIS M2035-LE Bullet Camera Datasheet',
+    publisher: 'Axis Communications',
+    url: 'https://www.axis.com/dam/public/cc/31/2a/datasheet-axis-m2035-le-bullet-camera-en-US-555402.pdf',
+    section: 'Alimentation : PoE IEEE 802.3af type 1 classe 3, 5 W typique, 12,95 W au plus'
+  },
+  cisco7800DataSheet: {
+    title: 'Cisco IP Phone 7800 Series Data Sheet',
+    publisher: 'Cisco',
+    url: 'https://www.cisco.com/c/en/us/products/collateral/collaboration-endpoints/unified-ip-phone-7800-series/data-sheet-c78-729488.html',
+    section: 'Alimentation : PoE IEEE 802.3af classe 1, 3,84 W au plus'
+  },
+  tplinkEap225: {
+    title: 'EAP225 V4.20 Datasheet',
+    publisher: 'TP-Link',
+    url: 'https://static.tp-link.com/upload/product-overview/2026/202603/20260305/Datasheet_EAP225%204.20.pdf',
+    section: 'Alimentation : PoE 802.3af ou passif 24 V ; consommation maximale 12,6 W (version US), 9,7 W (version EU)'
+  },
+  tplinkSg1008p: {
+    title: 'TL-SG1008P V6 Datasheet',
+    publisher: 'TP-Link',
+    url: 'https://static.tp-link.com/upload/product-overview/2021/202108/20210827/TL-SG1008P%206.0%20Datasheet.pdf',
+    section: '4 ports PoE+ 802.3af/at sur 8, 30 W par port, budget PoE total de 64 W'
+  },
+  rfc2131: {
+    title: 'RFC 2131 Dynamic Host Configuration Protocol',
+    publisher: 'IETF',
+    url: 'https://www.rfc-editor.org/rfc/rfc2131',
+    section: '§ 4.1 : messages du client vers le port du serveur (67), du serveur vers le port du client (68) ; § 3.1 : DHCPDISCOVER, DHCPOFFER, DHCPREQUEST, DHCPACK ; un seul serveur doit répondre pour un même réseau, sinon le client prend la première offre'
+  },
+  rfc3927: {
+    title: 'RFC 3927 Dynamic Configuration of IPv4 Link-Local Addresses',
+    publisher: 'IETF',
+    url: 'https://www.rfc-editor.org/rfc/rfc3927',
+    section: '§ 1 : préfixe 169.254/16 réservé aux adresses locales au lien, que l’hôte se donne lui-même quand aucun serveur DHCP ne répond ; ces adresses ne passent pas les routeurs'
+  },
+  rfc1918: {
+    title: 'RFC 1918 Address Allocation for Private Internets',
+    publisher: 'IETF',
+    url: 'https://www.rfc-editor.org/rfc/rfc1918',
+    section: '§ 3 : plages privées 10.0.0.0/8, 172.16.0.0/12 et 192.168.0.0/16 ; une adresse doit être unique dans le réseau où elle sert'
+  },
+  rfc950: {
+    title: 'RFC 950 Internet Standard Subnetting Procedure',
+    publisher: 'IETF',
+    url: 'https://www.rfc-editor.org/rfc/rfc950',
+    section: 'Masque de sous-réseau : un hôte joint directement les adresses de son sous-réseau, les autres par une passerelle de ce sous-réseau ; adresses de réseau et de diffusion réservées'
+  },
+  rfc4632: {
+    title: 'RFC 4632 Classless Inter-domain Routing (CIDR)',
+    publisher: 'IETF',
+    url: 'https://www.rfc-editor.org/rfc/rfc4632',
+    section: '§ 3.1 : notation préfixe/longueur (192.168.1.0/24), masque contigu'
+  },
+  mqtt311: {
+    title: 'MQTT Version 3.1.1 (OASIS Standard)',
+    publisher: 'OASIS',
+    url: 'https://docs.oasis-open.org/mqtt/mqtt/v3.1.1/os/mqtt-v3.1.1-os.html',
+    section: '§ 4.2 : port TCP 1883 enregistré auprès de l’IANA pour MQTT sans TLS ; § 2 et 3 : paquets CONNECT, CONNACK, PUBLISH, SUBSCRIBE, SUBACK, PINGREQ, DISCONNECT ; § 4.7 : jokers + et # des filtres de sujets'
+  },
+  modbusTcpGuide: {
+    title: 'MODBUS Messaging on TCP/IP Implementation Guide V1.0b',
+    publisher: 'Modbus Organization',
+    url: 'https://www.modbus.org/file/secure/messagingimplementationguide.pdf',
+    section: 'Port TCP 502 réservé à Modbus ; en-tête MBAP de 7 octets (identifiant de transaction, protocole 0, longueur, unité) devant la trame de la fonction'
+  },
+  /* ---------- Modules Ethernet des cartes (W5500, ENC28J60) ---------- */
+  wiznetW5500Datasheet: {
+    title: 'W5500 Datasheet Version 1.1.0',
+    publisher: 'WIZnet',
+    url: 'https://docs.wiznet.io/assets/files/W5500_ds_v110e-226ffec190c588b69f88d629789585e1.pdf',
+    section: 'Features, p. 2 : « Supports 8 independent sockets simultaneously », « Internal 32Kbytes Memory for TX/RX Buffers » ; § 4.1, p. 43 : « VERSIONR (W5500 Chip Version Register) [R] [0x0039] [0x04] » ; § 2.2, p. 15 : trame SPI = adresse sur 16 bits, octet de contrôle (BSB[4:0], RWB, OM[1:0]), données ; § 5.1, p. 58 : « VDD DC Supply voltage -0.5 to 4.6 V », « VIN DC input voltage -0.5 to 6 V » ; § 5.3, p. 59 : VDD 2.97 à 3.63 V, VIH 2.0 à 5.5 V (entrées tolérantes au 5 V), VOL 0.4 V à « IOL = 8mA » ; § 5.4, p. 60 : « 100M Link - 128 - mA », « 100M Transmitting - 132 - mA » (valeurs typiques, sans maximum) ; § 5.5.4, p. 61 : « Even though theoretical design speed is 80MHz […] The minimum guaranteed speed of the SCLK is 33.3 MHz »'
+  },
+  wiznetWiz850io: {
+    title: 'WIZ850io',
+    publisher: 'WIZnet',
+    url: 'https://docs.wiznet.io/Product/ioModule/WIZ850io',
+    section: 'Page du module (relu par un outil de résumé, citation non mot à mot) : module W5500 avec prise RJ45 à transformateurs intégrés, alimenté en 3,3 V seulement, IDD typique 141 mA, 135 mA avec un lien à 100 Mb/s'
+  },
+  microchipEnc28j60: {
+    title: 'ENC28J60 Stand-Alone Ethernet Controller with SPI Interface (DS39662E)',
+    publisher: 'Microchip Technology',
+    url: 'https://ww1.microchip.com/downloads/en/DeviceDoc/39662e.pdf',
+    section: 'p. 1 : « SPI Interface with Clock Speeds up to 20 MHz », « 5V Tolerant Inputs », 10BASE-T ; § 2.5, p. 8 : « The SPI CS, SCK and SI inputs, as well as the RESET pin, are all 5V tolerant » ; § 16.0, p. 79 : « Voltage on VDD […] -0.3V to 3.6V », « Voltage on RESET, CS, SCK and SI, with respect to VSS -0.3V to 6.0V », « Current sourced or sunk by INT and SO 4 mA » ; § 16.1, p. 80 : VDD 3.10 à 3.60 V, VIH (SCK, CS, SI, RESET) 2.25 à 5.5 V, IDD « Transmitting Ethernet Packets » 160 mA (typ.) 180 mA (max.), 120 mA actif sans émission ; Table 16-6, p. 82 : FSCK « DC 20 MHz »'
   }
 };

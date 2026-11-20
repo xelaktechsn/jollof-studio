@@ -1,0 +1,789 @@
+{
+ "id": "net03-testeur-de-cable",
+ "series": "cablage",
+ "level": "lycee",
+ "minutes": 30,
+ "title": {
+  "fr": "Trouver le défaut au testeur de câble",
+  "en": "Find the fault with the cable tester"
+ },
+ "summary": {
+  "fr": "Trois postes, trois câbles mal sertis : un conducteur pas enfoncé, une paire inversée, une paire séparée. Le testeur de continuité en voit deux ; la qualification trouve le troisième, celui qui passe au voyant mais perd des trames.",
+  "en": "Three computers, three badly crimped cables: a conductor not pushed in, a reversed pair, a split pair. The continuity tester sees two of them; qualification finds the third, the one that passes the lights but loses frames."
+ },
+ "objectives": [
+  {
+   "fr": "Lire une carte de câblage (wire map) sur un testeur",
+   "en": "Read a wire map on a tester"
+  },
+  {
+   "fr": "Reconnaître un conducteur ouvert, une paire inversée, une paire séparée",
+   "en": "Recognise an open conductor, a reversed pair, a split pair"
+  },
+  {
+   "fr": "Refaire une fiche et contrôler le résultat",
+   "en": "Redo a plug and check the result"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Ouvert : un voyant reste éteint. Paire inversée : deux voyants d’une paire s’allument dans l’ordre inverse.",
+   "en": "Open: one light stays off. Reversed pair: two lights of a pair come on in reverse order."
+  },
+  {
+   "fr": "Paire séparée : la continuité est bonne, mais les broches 3-6 ne sont plus sur une même paire torsadée ; la diaphonie fait perdre des trames.",
+   "en": "Split pair: continuity is fine, but pins 3-6 are no longer on one twisted pair; crosstalk makes frames get lost."
+  },
+  {
+   "fr": "Un testeur de continuité ne voit pas la paire séparée : il faut un testeur qui qualifie le câble.",
+   "en": "A continuity tester cannot see a split pair: you need a tester that qualifies the cable."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Testeur de câble",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 80,
+       "y": 60,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 420,
+       "y": 80,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 180,
+       "y": 300,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 400,
+       "y": 300,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc3",
+       "type": "pc",
+       "x": 620,
+       "y": 300,
+       "name": "PC3",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          null,
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "pc2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "o",
+          "wo",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "pc3",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "g",
+          "wbl",
+          "bl",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "g",
+          "wbl",
+          "bl",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 80,
+     "y": 60,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 420,
+     "y": 80,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 180,
+     "y": 300,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 400,
+     "y": 300,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc3",
+     "type": "pc",
+     "x": 620,
+     "y": 300,
+     "name": "PC3",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "pc2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "pc3",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le testeur",
+    "en": "The tester"
+   },
+   "text": {
+    "fr": "Un testeur de câble a deux boîtiers : le **maître**, branché à un bout, envoie un signal sur chaque broche, de 1 à 8 ; le **bouchon distant**, à l’autre bout, allume le voyant de la broche qui reçoit. Câble droit et bon : les voyants s’allument 1, 2, 3… 8 des deux côtés.\nDeux modes : **Continuité** (broche à broche, comme un testeur à 10 €) et **Qualification** (paires torsadées vérifiées, comme un testeur d’installateur).",
+    "en": "A cable tester has two units: the **main unit**, at one end, sends a signal on each pin, from 1 to 8; the **remote unit**, at the other end, lights the LED of the pin that receives it. With a good straight cable, the lights come on 1, 2, 3… 8 on both sides.\nTwo modes: **Continuity** (pin to pin, like a cheap tester) and **Qualification** (twisted pairs checked, like an installer’s tester)."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Tester le câble de PC1",
+    "en": "Test PC1’s cable"
+   },
+   "text": {
+    "fr": "Prenez l’outil **Testeur** et cliquez sur le câble entre PC1 et SW1 (ou choisissez le câble, puis **Tester** dans l’inspecteur).",
+    "en": "Take the **Tester** tool and click the cable between PC1 and SW1 (or select the cable, then **Test** in the inspector)."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"tester\"]",
+    "[data-nt=\"test\"]"
+   ],
+   "check": {
+    "type": "ui",
+    "need": [
+     "tester"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Câble de PC1",
+    "en": "PC1’s cable"
+   },
+   "text": {
+    "fr": "Sur le bouchon distant, le voyant **6** ne s’allume jamais. Quel est le défaut ?",
+    "en": "On the remote unit, light **6** never comes on. What is the fault?"
+   },
+   "keep": {
+    "fr": "Sans la broche 6, la paire 3-6 ne marche plus : même en 100 Mb/s, pas de lien.",
+    "en": "Without pin 6, the 3-6 pair no longer works: even at 100 Mb/s, no link."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Un conducteur ouvert : le vert n’arrive pas à la broche 6 (pas enfoncé jusqu’au bout de la fiche)",
+      "en": "An open conductor: the green one does not reach pin 6 (not pushed to the end of the plug)"
+     },
+     {
+      "fr": "Un court-circuit entre les broches 5 et 6",
+      "en": "A short between pins 5 and 6"
+     },
+     {
+      "fr": "Une paire séparée",
+      "en": "A split pair"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Câble de PC2",
+    "en": "PC2’s cable"
+   },
+   "text": {
+    "fr": "Testez le câble de PC2. Quand le maître envoie sur **1**, c’est le voyant **2** qui s’allume, et inversement ; les autres sont bons.",
+    "en": "Test PC2’s cable. When the main unit sends on **1**, light **2** comes on, and the other way round; the others are fine."
+   },
+   "keep": {
+    "fr": "Une carte gigabit corrige parfois la polarité et le lien monte quand même, mais le câble n’est pas conforme : on le refait.",
+    "en": "A gigabit card sometimes corrects the polarity and the link comes up anyway, but the cable does not comply: redo it."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Paires croisées",
+      "en": "Crossed pairs"
+     },
+     {
+      "fr": "Paire inversée : orange et blanc-orange échangés dans une fiche",
+      "en": "Reversed pair: orange and white-orange swapped in one plug"
+     },
+     {
+      "fr": "Conducteur ouvert",
+      "en": "Open conductor"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Câble de PC3",
+    "en": "PC3’s cable"
+   },
+   "text": {
+    "fr": "En mode **Continuité**, le câble de PC3 passe : 1 à 8 dans l’ordre. Passez en mode **Qualification**. Que montre-t-il ?",
+    "en": "In **Continuity** mode, PC3’s cable passes: 1 to 8 in order. Switch to **Qualification** mode. What does it show?"
+   },
+   "keep": {
+    "fr": "Ranger les couleurs « par paires » (blanc-vert, vert, blanc-bleu, bleu…) est la paire séparée classique : il faut le vert autour du bleu.",
+    "en": "Laying colours “pair by pair” (white-green, green, white-blue, blue…) is the classic split pair: green must surround blue."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : le câble est bon",
+      "en": "Nothing: the cable is fine"
+     },
+     {
+      "fr": "Une paire séparée : les broches 3 et 6 ne sont pas sur la même paire torsadée, la diaphonie fait perdre des trames",
+      "en": "A split pair: pins 3 and 6 are not on the same twisted pair, crosstalk makes frames get lost"
+     },
+     {
+      "fr": "Un court-circuit",
+      "en": "A short"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Refaire les fiches",
+    "en": "Redo the plugs"
+   },
+   "text": {
+    "fr": "Refaites les fiches défectueuses en **T568B** (inspecteur du câble, **Sertir le côté A** ou **B**), puis repassez chaque câble au testeur, en mode Qualification.",
+    "en": "Redo the faulty plugs in **T568B** (cable inspector, **Crimp side A** or **B**), then run each cable through the tester again, in Qualification mode."
+   },
+   "spot": [
+    "#tab-nprop",
+    "[data-nt=\"crimpA\"]",
+    "[data-nt=\"crimpB\"]"
+   ],
+   "check": {
+    "type": "net-cable",
+    "all": true,
+    "kind": "straight"
+   }
+  },
+  {
+   "title": {
+    "fr": "Les trois postes à 1 Gb/s",
+    "en": "All three computers at 1 Gb/s"
+   },
+   "text": {
+    "fr": "Câbles conformes : chaque PC a un lien à **1 Gb/s** avec le switch, sans erreur.",
+    "en": "Compliant cables: each PC has a **1 Gb/s** link with the switch, error-free."
+   },
+   "check": {
+    "type": "net-link",
+    "a": "pc",
+    "b": "SW1",
+    "speed": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Plus aucun défaut",
+    "en": "No faults left"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Problèmes** : plus de câble mal câblé (J1201), plus de paire séparée (J1202), plus de lien absent (J1213).",
+    "en": "Open the **Problems** tab: no more miswired cable (J1201), no more split pair (J1202), no more missing link (J1213)."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1201",
+     "J1202",
+     "J1213"
+    ]
+   }
+  }
+ ]
+}

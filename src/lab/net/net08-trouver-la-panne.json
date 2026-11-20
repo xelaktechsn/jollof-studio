@@ -1,0 +1,1037 @@
+{
+ "id": "net08-trouver-la-panne",
+ "series": "cablage",
+ "level": "pro",
+ "minutes": 35,
+ "title": {
+  "fr": "Trouver la panne : un réseau à réparer",
+  "en": "Find the fault: a network to repair"
+ },
+ "summary": {
+  "fr": "Plus rien ne marche dans l’atelier. Quatre pannes s’additionnent : une boucle entre deux switchs, une fiche non sertie, une adresse en double, une passerelle fausse. L’onglet Problèmes donne les codes J12xx ; à vous de réparer, une panne à la fois.",
+  "en": "Nothing works in the workshop any more. Four faults add up: a loop between two switches, an uncrimped plug, a duplicate address, a wrong gateway. The Problems tab gives the J12xx codes; it is up to you to repair, one fault at a time."
+ },
+ "objectives": [
+  {
+   "fr": "Lire les codes du vérificateur du réseau (J12xx)",
+   "en": "Read the network checker’s codes (J12xx)"
+  },
+  {
+   "fr": "Réparer une boucle, un câble, un adressage",
+   "en": "Repair a loop, a cable, an addressing mistake"
+  },
+  {
+   "fr": "Valider la réparation par le ping",
+   "en": "Confirm the repair with a ping"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Une boucle entre switchs sans Spanning Tree sature tout le réseau : les autres pannes ne se voient même plus.",
+   "en": "A loop between switches without Spanning Tree saturates the whole network: the other faults cannot even be seen."
+  },
+  {
+   "fr": "Méthode : du bas vers le haut, câbles et liens d’abord, adresses ensuite, ping pour finir.",
+   "en": "Method: bottom up, cables and links first, then addresses, ping to finish."
+  },
+  {
+   "fr": "Passerelle : une adresse du même réseau que le poste, celle de la box.",
+   "en": "Gateway: an address in the same network as the computer, the box’s."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Réseau en panne",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 360,
+       "y": 40,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "sw2",
+       "type": "switch",
+       "x": 360,
+       "y": 220,
+       "name": "SW2",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "imp1",
+       "type": "printer",
+       "x": 700,
+       "y": 60,
+       "name": "IMP1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.1.30",
+         "prefix": 24,
+         "gw": "192.168.1.1",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 160,
+       "y": 400,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.1.30",
+         "prefix": 24,
+         "gw": "192.168.1.1",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 360,
+       "y": 400,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.1.50",
+         "prefix": 24,
+         "gw": "192.168.2.1",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc3",
+       "type": "pc",
+       "x": 560,
+       "y": 400,
+       "name": "PC3",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "sw1",
+        "p2"
+       ],
+       "b": [
+        "sw2",
+        "p8"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "sw1",
+        "p4"
+       ],
+       "b": [
+        "sw2",
+        "p7"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "imp1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 4,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c5",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw2",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c6",
+       "a": [
+        "pc2",
+        "eth0"
+       ],
+       "b": [
+        "sw2",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c7",
+       "a": [
+        "pc3",
+        "eth0"
+       ],
+       "b": [
+        "sw2",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": false,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 60,
+     "y": 40,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 360,
+     "y": 40,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "sw2",
+     "type": "switch",
+     "x": 360,
+     "y": 220,
+     "name": "SW2",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "imp1",
+     "type": "printer",
+     "x": 700,
+     "y": 60,
+     "name": "IMP1",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.1.30",
+       "prefix": 24,
+       "gw": "192.168.1.1",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 160,
+     "y": 400,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 360,
+     "y": 400,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.1.50",
+       "prefix": 24,
+       "gw": "192.168.1.1",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc3",
+     "type": "pc",
+     "x": 560,
+     "y": 400,
+     "name": "PC3",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "sw1",
+      "p2"
+     ],
+     "b": [
+      "sw2",
+      "p8"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "imp1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 4,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw2",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "pc2",
+      "eth0"
+     ],
+     "b": [
+      "sw2",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c7",
+     "a": [
+      "pc3",
+      "eth0"
+     ],
+     "b": [
+      "sw2",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’onglet Problèmes",
+    "en": "The Problems tab"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Problèmes** (en bas de l’écran) : chaque ligne donne un code **J12xx**, l’équipement ou le câble en cause et une explication. Cliquez sur une ligne pour voir l’élément dans le plan. Réparez dans l’ordre des étapes : du câble vers les adresses.",
+    "en": "Open the **Problems** tab (at the bottom of the screen): each line gives a **J12xx** code, the device or cable involved and an explanation. Click a line to see the item on the plan. Repair in the order of the steps: from the cable up to the addresses."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La boucle",
+    "en": "The loop"
+   },
+   "text": {
+    "fr": "**J1206** : deux câbles relient SW1 et SW2. Sans Spanning Tree (switchs non administrables), chaque diffusion tourne sans fin entre eux et sature le réseau. Retirez un des deux câbles (choisissez-le, puis Suppr).",
+    "en": "**J1206**: two cables connect SW1 and SW2. Without Spanning Tree (unmanaged switches), every broadcast loops forever between them and saturates the network. Remove one of the two cables (select it, then Delete)."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1206"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câble de PC3",
+    "en": "PC3’s cable"
+   },
+   "text": {
+    "fr": "**J1213** : une fiche du câble de PC3 n’est pas sertie. Sertissez-la en T568B.",
+    "en": "**J1213**: a plug of PC3’s cable is not crimped. Crimp it in T568B."
+   },
+   "spot": [
+    "#tab-nprop",
+    "[data-nt=\"crimpB\"]"
+   ],
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1213",
+     "J1201"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "L’adresse en double",
+    "en": "The duplicate address"
+   },
+   "text": {
+    "fr": "**J1208** : PC1 a la même adresse fixe que l’imprimante. Passez PC1 en **DHCP** : la box lui donnera une adresse libre.",
+    "en": "**J1208**: PC1 has the same fixed address as the printer. Switch PC1 to **DHCP**: the box will give it a free address."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1208"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La passerelle de PC2",
+    "en": "PC2’s gateway"
+   },
+   "text": {
+    "fr": "**J1210** : la passerelle de PC2, `192.168.2.1`, n’est pas dans son réseau `192.168.1.0/24`. La passerelle, c’est la box : `192.168.1.1`.",
+    "en": "**J1210**: PC2’s gateway, `192.168.2.1`, is not in its `192.168.1.0/24` network. The gateway is the box: `192.168.1.1`."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1210",
+     "J1209"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Plus aucune erreur",
+    "en": "No error left"
+   },
+   "text": {
+    "fr": "L’onglet Problèmes ne doit plus montrer d’erreur.",
+    "en": "The Problems tab must no longer show any error."
+   },
+   "check": {
+    "type": "net-ok"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping vers la box",
+    "en": "Ping the box"
+   },
+   "text": {
+    "fr": "Faites un ping de chaque PC vers la box.",
+    "en": "Ping the box from each PC."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "pc",
+    "to": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping vers l’imprimante",
+    "en": "Ping the printer"
+   },
+   "text": {
+    "fr": "Et vers l’imprimante, qui est sur l’autre switch.",
+    "en": "And the printer, which is on the other switch."
+   },
+   "check": {
+    "type": "net-ping",
+    "from": "pc",
+    "to": "IMP1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi tout tombait",
+    "en": "Why everything was down"
+   },
+   "text": {
+    "fr": "Avec la boucle, même les postes bien réglés ne pouvaient rien faire. Pourquoi ?",
+    "en": "With the loop, even well-configured computers could do nothing. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Les trames de diffusion tournent sans fin entre les deux switchs et occupent tout le réseau",
+      "en": "Broadcast frames loop forever between the two switches and fill the whole network"
+     },
+     {
+      "fr": "Le deuxième câble coupe le courant des switchs",
+      "en": "The second cable cuts the switches’ power"
+     },
+     {
+      "fr": "Deux câbles entre switchs doublent les adresses IP",
+      "en": "Two cables between switches duplicate the IP addresses"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

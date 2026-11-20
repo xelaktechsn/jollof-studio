@@ -16,6 +16,9 @@ import { HX711_PER_G } from '../sim/models.js';
 import { netLevel } from '../sim/chips.js';
 import { stepperLink, driverInputs, STEPPERS } from '../sim/motordrv.js';
 import { PART_SIGNALS, PART_ACTIONS, PART_GEN } from './rules-parts.js';
+import { NET, NET_SIG, NET_ACTS, fixNet, netText, netSrcName, netEventText, netActText, netSource, netAct, netFinish, cleanTopic, cleanPath } from './rules-net.js';
+
+export { NET };
 
 /* ---------------- Ce que mesurent les capteurs et entrées ---------------- */
 // kind : num (valeur comparable) ou bool (oui / non). range : plage habituelle (pour « fait varier »).
@@ -133,7 +136,7 @@ export const TEXT_OPS = { any: tl('reçoit n’importe quoi'), '==': tl('vaut'),
 const adcMax = prof => 2 ** ((prof && (prof.adcRead || prof.adcBits)) || 10) - 1; // ce que rend analogRead() par défaut
 /** Mesure d'un capteur, avec seuil et plage exprimés pour cette carte. */
 export function signalOf(type, key, prof) {
-  const s = type === SERIAL ? SERIAL_SIG[key] : SIGNALS[type] && SIGNALS[type][key];
+  const s = type === SERIAL ? SERIAL_SIG[key] : type === NET ? NET_SIG[key] : SIGNALS[type] && SIGNALS[type][key];
   if (!s) return null;
   if (!s.adc) return { kind: 'num', type: s.kind === 'time' ? 'int' : 'float', ...s };
   const max = adcMax(prof), r = s.range01 || [0, 1];
@@ -165,7 +168,7 @@ export const isActuator = c => !!ACTIONS[c.type];
  */
 export const uid = p => p + Math.random().toString(36).slice(2, 8);
 export const actItem = (c, act, arg) => ({ kind: 'act', id: uid('a'), comp: c ? c.id : null, act, arg: arg === undefined && c ? defArg(c.type, act) : arg });
-const actsOfType = type => (type === SERIAL ? SERIAL_ACTS : ACTIONS[type]);
+const actsOfType = type => (type === SERIAL ? SERIAL_ACTS : type === NET ? NET_ACTS : ACTIONS[type]);
 export const defArg = (type, act) => { const a = actsOfType(type) && actsOfType(type)[act]; return a && a.arg ? a.arg.def : a && a.follow ? [...a.follow] : null; };
 /** Actions permises : « follow » (fait varier), « cond » (sous une mesure), « always » (sans mesure, état par défaut). */
 export function actsFor(type, mode) {
@@ -183,6 +186,7 @@ export function migrate(r) {
     r.persist = !!r.persist;
     return r;
   }
+  if (r.kind === 'net') return fixNet(r);
   if (r.kind === 'seq') {
     r.id = r.id || uid('s'); r.name = ident(String(r.name || 'sequence')) || 'sequence';
     r.start = r.start === 'stopped' ? 'stopped' : 'boot';
@@ -211,13 +215,17 @@ function fixTerm(t) {
   if (t.hyst != null) { t.hyst = Math.abs(+t.hyst || 0); if (!t.hyst) delete t.hyst; }
   if (t.src && t.src.every != null) t.src.every = Math.max(1, Math.round(+t.src.every || 1000));
   if (!t.edge) delete t.edge; if (!t.not) delete t.not;
+  if (t.src && t.src.comp === NET) {
+    if (NET_SIG[t.src.sig] && NET_SIG[t.src.sig].topic) t.src.topic = cleanTopic(t.src.topic, false); else delete t.src.topic;
+    if (t.src.sig === 'page' && t.op !== 'any' && !t.vs) t.v = cleanPath(t.v);
+  }
   return t;
 }
 function fixList(list) {
   return (Array.isArray(list) ? list : []).map(it => {
     if (!it || typeof it !== 'object') return null;
     if (it.kind === 'rule') return migrate(it);
-    if (it.kind === 'act') return { ...it, id: it.id || uid('a') };
+    if (it.kind === 'act') return it.comp === NET ? { ...it, id: it.id || uid('a'), ...(it.act === 'publish' ? { topic: cleanTopic(it.topic, true) } : {}) } : { ...it, id: it.id || uid('a') };
     if (it.kind === 'set') return { ...it, id: it.id || uid('a'), op: ['=', '+', '-', 'toggle'].includes(it.op) ? it.op : '=' };
     if (it.kind === 'wait') return { ...it, id: it.id || uid('a'), ms: Math.max(1, Math.round(+it.ms || 1000)) };
     if (it.kind === 'goto') return { ...it, id: it.id || uid('a') };
@@ -295,6 +303,7 @@ export function srcName(src, byId, prof) {
   if (!src) return '?';
   if (src.var) { const d = byId(src.var); return d ? d.name : tl('(variable retirée)'); }
   if (src.comp === SERIAL) return tl('la ligne reçue');
+  if (src.comp === NET) return netSrcName(src);
   const s = byId(src.comp), sig = s && signalOf(s.type, src.sig, prof);
   if (!s) return tl('(mesure retirée du montage)');
   return sig ? `${s.name} · ${sig.label.replace(/ \(.*\)$/, '')}` : `${s.name} ?`;
@@ -303,7 +312,7 @@ export function srcName(src, byId, prof) {
 export function srcSignal(src, byId, prof) {
   if (!src) return null;
   if (src.var) { const d = byId(src.var); return d && d.kind === 'var' ? varSignal(d) : null; }
-  if (src.comp === SERIAL) return signalOf(SERIAL, src.sig, prof);
+  if (src.comp === SERIAL || src.comp === NET) return signalOf(src.comp, src.sig, prof);
   const s = byId(src.comp); return s ? signalOf(s.type, src.sig, prof) : null;
 }
 const valText = (v, sig) => (sig && sig.kind === 'time' ? fmtTime(v) : sig && sig.kind === 'text' ? quote(String(v ?? '')) : fmtNum(+v || 0) + (sig && sig.unit ? ' ' + sig.unit : ''));
@@ -319,7 +328,15 @@ export function termText(t, byId, prof) {
   }
   const sig = srcSignal(src, byId, prof);
   let text;
-  if (src.var || src.comp === SERIAL) {
+  if (src.comp === NET) {
+    // Réseau : « un message arrive sur le sujet « x » », « la page web reçoit « /on » », « la carte est connectée au réseau ».
+    const rhs = () => (t.vs ? srcName(t.vs, byId, prof) : valText(t.v, sig));
+    if (!sig) text = netSrcName(src);
+    else if (sig.kind === 'bool') text = t.v ? sig.label : sig.neg;
+    else if (t.op === 'any') text = netEventText(src);
+    else if (src.sig === 'page' && t.op === '==' && !t.vs) text = tl('la page web reçoit {0}', quote(cleanPath(t.v)));
+    else text = `${netSrcName(src)} ${sig.kind === 'text' ? TEXT_OPS[t.op] || TEXT_OPS['=='] : OPS[t.op] || OPS['>']} ${rhs()}`;
+  } else if (src.var || src.comp === SERIAL) {
     const name = srcName(src, byId, prof);
     if (!sig) text = name;
     else if (sig.kind === 'bool') text = `${name} ${t.v ? tl('est vraie') : tl('est fausse')}`;
@@ -368,6 +385,7 @@ export function actText(it, byId, prof) {
     if (it.op === '-') return tl('retire {0} à {1}', val, d.name);
     return tl('met {0} à {1}', d.name, val);
   }
+  if (it.comp === NET) return netActText(it, it.what ? srcName(it.what, byId, prof) : null);
   const ser = it.comp === SERIAL, d = ser ? null : byId(it.comp);
   if (!ser && !d) return it.comp ? tl('(effecteur retiré)') : tl('(choisir un effecteur)');
   const name = ser ? tl('Moniteur série') : d.name, A = actsOfType(ser ? SERIAL : d.type) && actsOfType(ser ? SERIAL : d.type)[it.act];
@@ -392,6 +410,7 @@ function ruleInner(x, byId, prof) {
 export function ruleText(r, byId, prof) {
   if (r.kind === 'var') return varText(r);
   if (r.kind === 'seq') return seqText(r, byId, prof);
+  if (r.kind === 'net') return netText(r);
   return ruleInner(r, byId, prof) + '.';
 }
 const VAR_TYPES = { int: tl('nombre entier'), dec: tl('nombre à virgule'), bool: tl('vrai ou faux'), text: tl('texte') };
@@ -427,7 +446,7 @@ const SAMPLE = {
 };
 
 /* ---------------- Génération du code ---------------- */
-export const RESERVED = new Set([...Object.keys(FN), ...Object.keys(CONSTS), 'int', 'float', 'long', 'char', 'byte', 'bool', 'void', 'String', 'setup', 'loop', 'Serial', 'Wire', 'SPI', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'LED_BUILTIN']);
+export const RESERVED = new Set([...Object.keys(FN), ...Object.keys(CONSTS), 'int', 'float', 'long', 'char', 'byte', 'bool', 'void', 'String', 'setup', 'loop', 'Serial', 'Wire', 'SPI', 'Ethernet', 'WiFi', 'IPAddress', 'Client', 'Server', 'EthernetClient', 'EthernetServer', 'WiFiClient', 'WiFiServer', 'PubSubClient', 'A0', 'A1', 'A2', 'A3', 'A4', 'A5', 'LED_BUILTIN']);
 /**
  * Noms que le cœur Arduino définit déjà comme macros : B1, B101… (binary.h), registres et bits des AVR (PORTB, PB5, OCR1A…).
  * Un composant nommé ainsi garde son nom suivi de _PIN (sinon le préprocesseur remplacerait le nom par un nombre).
@@ -1123,7 +1142,7 @@ export function createGenContext(board, cx, opts = {}) {
     const reads = [...timed.values()].filter(t => t.lines.length).flatMap(t => [
       tl('// {0} : une mesure toutes les {1} ms ({2})', t.c.name, t.period, t.why), `if (${t.timer} == 0 || ${clock()} - ${t.timer} >= ${t.period}${robust ? 'UL' : ''}) {`, `  ${t.timer} = ${clock()};`, ...t.lines.map(l => '  ' + l), '}']);
     // Réception (moniteur série, radio, télécommande…) : drapeaux remis à zéro, puis ce qui est arrivé.
-    const recv = events.length ? [tl('// Réception : ce qui arrive pendant ce tour (les drapeaux ne restent vrais qu’un tour)'), ...events.map(e => `${e.ev} = false;`), ...events.flatMap(e => (e.period
+    const recv = events.length ? [tl('// Réception : ce qui arrive pendant ce tour (les drapeaux ne restent vrais qu’un tour)'), ...events.filter(e => e.ev).map(e => `${e.ev} = false;`), ...events.flatMap(e => (e.period
       ? [`if (${clock()} - ${e.ev}_t >= ${e.period}UL) {`, `  ${e.ev}_t = ${clock()};`, ...e.lines.map(l => '  ' + l), '}'] : e.lines))] : [];
     events.filter(e => e.period).forEach(e => glob.push(`uint32_t ${e.ev}_t = 0;`));
     const pause = [];
@@ -1169,7 +1188,7 @@ export function createGenContext(board, cx, opts = {}) {
     return isEn ? englishNames(code, keep) : code;
   }
   Object.assign(api, {
-    board, cx, prof, kind, avr, baud, max, robust, byId, inc, glob, setup, pre, body, tail, helpers, notes, printed, declared, used, names, actors,
+    board, cx, prof, kind, avr, baud, max, robust, byId, inc, glob, setup, pre, body, tail, helpers, notes, printed, declared, used, names, actors, events,
     pinOf, onBoard, uniq, pinConst, objName, missing, readSignal, eventOf, sensorExpr, actor, assemble, now, first, flash, cstr, i2cAddr, failVar,
     fast: () => { fast = true; }
   });
@@ -1217,7 +1236,7 @@ function unwrap(e) {
   return e.slice(1, -1);
 }
 /** Actions qui ne se font qu'une fois quand leur branche devient active (compter, écrire, changer d'étape). */
-const onceAct = (it, byId) => { if (it.kind !== 'act') return false; if (it.comp === SERIAL) return it.act !== 'plot'; const d = byId(it.comp), A = d && ACTIONS[d.type] && ACTIONS[d.type][it.act]; return !!(A && A.once); };
+const onceAct = (it, byId) => { if (it.kind !== 'act') return false; if (it.comp === SERIAL) return it.act !== 'plot'; if (it.comp === NET) return it.act === 'publish' && !it.what; const d = byId(it.comp), A = d && ACTIONS[d.type] && ACTIONS[d.type][it.act]; return !!(A && A.once); };
 const isOnce = (it, byId) => (it.kind === 'set' && it.op !== '=') || it.kind === 'goto' || onceAct(it, byId);
 /** Condition « instantanée » (vraie un seul tour) : front, minuterie, démarrage, événement reçu. */
 const instant = (t, byId, prof) => !!(t.edge || (t.src && (t.src.every || t.src.start)) || ((s => s && s.event)(srcSignal(t.src, byId, prof))));
@@ -1301,6 +1320,7 @@ export function generate(board, cx) {
       return { v: vName.get(d.id), sig, label: { name: `${d.name}: `, unit: d.unit || '', kind: sig.kind, d: d.type === 'dec' ? 2 : 0 } };
     }
     if (src.comp === SERIAL) { const v = readSignal(SERIAL, 'line'); return v && { v, sig: SERIAL_SIG.line, ev: g.eventOf(SERIAL, 'line'), label: { name: tl('Recu: '), unit: '', kind: 'text' } }; }
+    if (src.comp === NET) return netSource(g, src);
     const s = byId(src.comp); if (!s || !SIGNALS[s.type]) return null;
     const sig = signalOf(s.type, src.sig, prof); if (!sig) return null;
     const v = readSignal(s, src.sig); if (!v) return null;
@@ -1327,8 +1347,9 @@ export function generate(board, cx) {
       if (sig.kind === 'bool') e = t.v ? x.v : `!${x.v}`;
       else if (sig.kind === 'text') {
         const other = t.vs && source(t.vs);
-        const cmp = other ? `strcmp(${x.v}, ${other.v})` : `${P_('strcmp')}(${x.v}, ${pstr(String(t.v ?? ''))})`;
-        e = t.op === 'any' ? 'true' : t.op === 'has' ? (other ? `strstr(${x.v}, ${other.v}) != nullptr` : `${P_('strstr')}(${x.v}, ${pstr(String(t.v ?? ''))}) != nullptr`) : `${cmp} ${t.op === '!=' ? '!=' : '=='} 0`;
+        const tv = x.norm && t.op !== 'has' ? x.norm(t.v) : String(t.v ?? ''); // chemin d'une page : « on » → « /on »
+        const cmp = other ? `strcmp(${x.v}, ${other.v})` : `${P_('strcmp')}(${x.v}, ${pstr(tv)})`;
+        e = t.op === 'any' ? 'true' : t.op === 'has' ? (other ? `strstr(${x.v}, ${other.v}) != nullptr` : `${P_('strstr')}(${x.v}, ${pstr(tv)}) != nullptr`) : `${cmp} ${t.op === '!=' ? '!=' : '=='} 0`;
       } else {
         const op = ['>', '<', '>=', '<=', '==', '!='].includes(t.op) ? t.op : '>';
         if (sig.event && t.op === 'any') e = 'true';
@@ -1438,6 +1459,12 @@ export function generate(board, cx) {
   }
   function emitAct(it, ctx) {
     if (it.comp === SERIAL) return serialAct(it, ctx);
+    if (it.comp === NET) {
+      // Réseau : publier sur un sujet MQTT, une ligne de la page web (valeur choisie, ou texte fixe).
+      const x = it.what ? source(it.what) : null;
+      if (it.what && !x) return [tl('// (valeur non câblée : action du réseau ignorée)')];
+      return netAct(g, it, ctx, x, it.what ? srcName(it.what, byId, prof) : null);
+    }
     const d = byId(it.comp);
     if (!d || !ACTIONS[d.type]) return [it.comp ? tl('// (action ignorée : l’effecteur a été retiré du montage)') : tl('// (action incomplète : choisissez un effecteur)')];
     const db = boardOfComp(d);
@@ -1650,6 +1677,9 @@ export function generate(board, cx) {
     body.push(tl('// Ou ajoutez des règles : sélectionnez un composant puis « Programmer ».'));
   }
   if (seqs.length || chains.length || condPre.length) now();
+  // Réseau : lignes de chaque tour, rappel MQTT, page web (liens vers les chemins attendus par les règles).
+  const links = []; walkAll(items, it => { for (const t of it.kind === 'rule' ? termsOf(it) : it.kind === 'go' && it.when ? [it.when] : []) if (t.src && t.src.comp === NET && t.src.sig === 'page' && t.op === '==' && !t.vs) links.push(String(t.v ?? '')); });
+  netFinish(g, { links });
   return g.assemble({ starter });
 }
 
@@ -1672,7 +1702,12 @@ const ID_EN = { appuye: 'pressed', bouton: 'button', gaz: 'gas', humidite: 'humi
   penche: 'tilted', aimant: 'magnet', eclairement: 'illuminance', masse: 'mass', doigt: 'finger', debut: 'start', maintenant: 'now', impulsions: 'pulses', compter: 'count', flamme: 'flame', infrarouge: 'infrared', pluie: 'rain', mouille: 'wetness', niveau: 'level', surLaLigne: 'onLine', secousse: 'shaken',
   ligneRecue: 'lineReceived', recu: 'received', premierTour: 'firstPass', sauver: 'mustSave', sauvegarde: 'lastSave', suite: 'chain', depuis: 'since', avant: 'before', front: 'edge',
   branche: 'branch', ici: 'now', echecs: 'failures', periode: 'period', bascule: 'lastToggle', ordre: 'order', quoi: 'what', vide: 'empty', change: 'changed', brut: 'raw', aller: 'goTo',
-  entree: 'entry', empreinte: 'fingerprint', nombre: 'number', enPanne: 'faulty', Etape: 'Step', ARRET: 'STOPPED', mesures: 'readings', trace: 'plot', car: 'ch', hysteresis: 'hysteresis', top: 'tick', ok: 'ok' };
+  entree: 'entry', empreinte: 'fingerprint', nombre: 'number', enPanne: 'faulty', Etape: 'Step', ARRET: 'STOPPED', mesures: 'readings', trace: 'plot', car: 'ch', hysteresis: 'hysteresis', top: 'tick', ok: 'ok',
+  reseauEnLigne: 'networkOnline', reseauVerif: 'networkCheck', reseauMac: 'networkMac', reseauIp: 'networkIp', reseauAdresse: 'networkLease', reseauEssai: 'networkRetry', reseauClient: 'networkClient',
+  RESEAU_WIFI: 'WIFI_SSID', RESEAU_CLE: 'WIFI_PASSWORD', MQTT_SERVEUR: 'MQTT_SERVER', mqttEnLigne: 'mqttOnline', mqttAttendre: 'mqttWait', mqttEssai: 'mqttLastTry', mqttRecu: 'mqttReceived',
+  mqttCopier: 'mqttCopy', mqttPublier: 'mqttPublish', mqttPublierP: 'mqttPublishP', mqttAbonner: 'mqttSubscribe', sujetVa: 'topicMatches', sujetVaP: 'topicMatchesP', serveurWeb: 'webServer',
+  pageLigne: 'pageLine', pageEtape: 'pageStep', pageDebut: 'pageStart', pageChemin: 'pagePath', pageCheminDe: 'pathOf', pageEnvoyer: 'sendPage', pageEcrire: 'pageWrite', pageQuoi: 'pageWhat',
+  pageNombre: 'pageNumber', enLigne: 'online', bail: 'lease', sujet: 'topic', contenu: 'payload', taille: 'length', filtre: 'filter', chemin: 'path', fait: 'done', lien: 'link', adresse: 'address' };
 export function englishNames(code, keep) {
   return code.replace(/("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'|\/\/[^\n]*|[A-Za-z_][A-Za-z0-9_]*)/g, tok => {
     if (!/^[A-Za-z_]/.test(tok)) return tok; // texte, caractère ou commentaire

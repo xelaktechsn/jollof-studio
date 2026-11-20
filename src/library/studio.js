@@ -105,7 +105,7 @@ function locate(path) {
   const d = S.draft;
   let m;
   if ((m = /^part\.pins\[(\d+)\]/.exec(path))) { const i = +m[1]; return { pin: i, where: tl('Broche {0}', (d.pins[i] && d.pins[i].name) || i + 1) }; }
-  if (/^part\.(name|category|prefix|description|author|license|id|version)\b/.test(path)) return { tab: 'id', path, where: tl('Identité') };
+  if (/^part\.(name|category|prefix|description|author|license|id|version|checked)\b/.test(path)) return { tab: 'id', path, where: tl('Identité') };
   if (/^part\.look/.test(path)) return { tab: 'look', path, where: tl('Apparence') };
   if (/^part\.(ma|ds|limits)\b/.test(path)) return { tab: 'elec', path, where: tl('Électrique') };
   if (/^part\.behaviour/.test(path)) return { tab: 'beh', path, where: tl('Comportement') };
@@ -133,6 +133,7 @@ function validate() {
   if (generic.length) out.push({ sev: 'info', text: tl('{0} broche(s) au nom générique ({1}…) : donnez-leur le nom imprimé sur le module.', generic.length, generic[0].name), pin: pins.indexOf(generic[0]), where: tl('Broches') });
   if (!(d.part && d.part.description)) out.push({ sev: 'warn', text: tl('Ajoutez une description : l’élève la lit dans la bibliothèque.'), tab: 'id', path: 'part.description', where: tl('Identité') });
   if (!(d.part && d.part.docs && d.part.docs.text)) out.push({ sev: 'info', text: tl('Documentation vide : expliquez le fonctionnement et les erreurs fréquentes.'), tab: 'docs', path: 'part.docs.text', where: tl('Documentation') });
+  if (!(d.part && d.part.checked && J.CHECKS.some(k => d.part.checked[k]))) out.push({ sev: 'info', text: tl('Vérification : dites ce que vous avez contrôlé (modèle, broches, noms).'), tab: 'id', path: 'part.checked.model', where: tl('Identité') });
   if (!(d.part && d.part.author && d.part.license)) out.push({ sev: 'info', text: tl('Auteur et licence : utiles pour partager le composant.'), tab: 'id', path: d.part && d.part.author ? 'part.license' : 'part.author', where: tl('Identité') });
   S.issues = out;
 }
@@ -408,6 +409,7 @@ function pinInsp() {
       <label class="psField"><span>${tl('Pourquoi (affiché à l’élève)')}</span><textarea data-p="why" rows="2" placeholder="${esc(tl('ex. Se branche sur une entrée numérique'))}">${esc(common(list, q => q.why || '') ?? '')}</textarea></label>
     </section>
     <section class="psSec"><h4>${tl('Position (mm)')}</h4>
+      <label class="psField"><span>${tl('Sortie du fil')}</span>${pSel('exit', { '': tl('vers le haut (broche debout)'), 'x+': tl('sur le côté, vers +X'), 'x-': tl('sur le côté, vers −X'), 'z+': tl('sur le côté, vers +Z'), 'z-': tl('sur le côté, vers −Z') }, common(list, q => q.exit || ''))}</label>
       ${one ? `<div class="psXYZ">${['x', 'y', 'z'].map(k => `<label><b>${k.toUpperCase()}</b><input data-p="${k}" value="${numStr(q0[k])}" inputmode="decimal"></label>`).join('')}</div>`
     : `<div class="psBtns"><span>${tl('Aligner')}</span><button type="button" class="btn small" data-al="x">X</button><button type="button" class="btn small" data-al="y">Y</button><button type="button" class="btn small" data-al="z">Z</button></div>
          <div class="psBtns"><span>${tl('Répartir au pas')}</span><button type="button" class="btn small" data-dist="x">${tl('le long de X')}</button><button type="button" class="btn small" data-dist="z">${tl('le long de Z')}</button></div>
@@ -430,6 +432,10 @@ function partTab(tab) {
       <div class="psRow2">${field(tl('Catégorie'), sel('part.category', cats, p.category))}${field(tl('Préfixe des repères'), inp('part.prefix', p.prefix, 'str', 'placeholder="U" maxlength="8"'))}</div>
       ${field(tl('Description (affichée à l’élève)'), area('part.description', p.description, 'str', 3, `maxlength="400" placeholder="${esc(tl('À quoi sert le composant, en une ou deux phrases'))}"`))}
       <div class="psRow2">${field(tl('Auteur'), inp('part.author', p.author))}${field(tl('Licence'), inp('part.license', p.license, 'str', 'placeholder="CC-BY-4.0"'))}</div></section>
+      <section class="psSec"><h4>${tl('Vérification')}</h4>
+        <p class="psNote">${tl('Cochez ce que vous avez contrôlé sur la pièce réelle, son modèle CAO ou sa fiche technique. La fiche du composant l’affiche : on sait à quoi se fier.')}</p>
+        <div class="psChks">${Object.entries(J.CHECK_LABEL()).map(([k, l]) => chk(`part.checked.${k}`, p.checked && p.checked[k], l)).join('')}</div>
+        ${field(tl('Contrôlé d’après'), inp('part.checked.note', p.checked && p.checked.note, 'str', `maxlength="200" placeholder="${esc(tl('ex. pied à coulisse + fiche technique rév. C'))}"`))}</section>
       <section class="psSec"><h4>${tl('Paquet')}</h4><dl class="psDl"><dt>${tl('Identifiant')}</dt><dd>${esc(p.id || tl('donné au premier enregistrement'))}</dd><dt>${tl('Version')}</dt><dd>${esc(S.type && P.packageOf(S.type) ? P.packageOf(S.type).manifest.version : p.version || 1)}</dd></dl></section>`;
   }
   if (tab === 'look') {
@@ -689,6 +695,7 @@ function applyPin(q, k, v) {
   if (k === 'vmin' || k === 'vmax') { if (v == null) return; if (!Array.isArray(q.v)) q.v = [3, 5.5]; q.v[k === 'vmin' ? 0 : 1] = v; return; }
   if (k === 'idle') { if (v === '0' || v === '1') q.idle = +v; else delete q.idle; return; }
   if (k === 'x' || k === 'y' || k === 'z') { if (v != null) q[k] = r3(v); return; }
+  if (k === 'exit') { if (J.PIN_EXITS.includes(v) && v !== 'up') q.exit = v; else delete q.exit; return; }
   if (v === undefined || v === '' || v === false) delete q[k]; else q[k] = v;
 }
 const NUM_KEYS = new Set(['vmin', 'vmax', 'x', 'y', 'z']);
@@ -698,7 +705,7 @@ function pinFieldChange(el) {
   if (el.tagName === 'SELECT' && el.selectedOptions[0] && el.selectedOptions[0].hasAttribute('data-mixed')) return; // « valeurs différentes » : rien à appliquer
   const v = NUM_KEYS.has(k) ? readValue(el, 'num') : el.type === 'checkbox' ? el.checked || undefined : el.value === '' ? undefined : el.value;
   if (NUM_KEYS.has(k) && v == null) { renderInsp(); return; }
-  edit(() => S.sel.forEach(i => d.pins[i] && applyPin(d.pins[i], k, v)), k === 'kind' || k === 'x' || k === 'y' || k === 'z');
+  edit(() => S.sel.forEach(i => d.pins[i] && applyPin(d.pins[i], k, v)), k === 'kind' || k === 'x' || k === 'y' || k === 'z' || k === 'exit');
 }
 function cellChange(el) {
   const i = +el.dataset.row, k = el.dataset.col, d = S.draft;
@@ -934,7 +941,7 @@ async function importModel(f) {
   edit(() => { d.glb = J.toB64(new Uint8Array(r.glb)); d.part.look = { kind: 'glb' }; if (generic) d.name = J.cleanStr(r.name, 60); }, true);
   q$('[data-c="gallery"]').hidden = true;
   await (V && V.modelReady); frame();
-  say(tl('Modèle importé ({0} × {1} mm) : posez ses broches sur sa surface (outil Broche, P).', Math.round(r.size.x), Math.round(r.size.z)), 'ok');
+  say(tl('Modèle importé ({0} × {1} mm) : posez ses broches sur sa surface (outil Broche, P).', Math.round(r.size.x), Math.round(r.size.z)) + (r.note ? ' ' + r.note : ''), r.heavy ? 'warn' : 'ok');
   if (!d.pins.length) setTool('pin');
 }
 /** Quart de tour du modèle 3D ; les broches tournent avec lui (même recentrage que cad/import.js). */

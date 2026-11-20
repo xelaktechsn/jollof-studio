@@ -2,8 +2,9 @@
 // Copyright (C) 2026 Mamadou Sarr
 // Travaux pratiques guidés : le « laboratoire sans laboratoire ». Une bibliothèque de TP
 // (montage de départ, étapes, contrôles automatiques), utilisable hors ligne et sans compte.
-// Deux familles, chacune dans son onglet : Électronique (src/lab/tp : montage 3D, programme,
-// mesures) et Logique (src/lab/logic : portes, bascules, compteurs, sur le plan de travail logique).
+// Une famille par onglet : Électronique (src/lab/tp : montage 3D, programme, mesures), Pneumatique (src/lab/pneu),
+// Logique (src/lab/logic : portes, bascules, compteurs, sur le plan de travail logique) et Réseau (src/lab/net :
+// câblage RJ45, switchs, adresses IP, PoE, objets connectés, contrôles de src/net/labcheck.js sur le plan réseau).
 // Un TP s'ouvre dans le plan de travail (le projet personnel est mis de côté) ; chaque étape se
 // vérifie : câblage, programme, comportement observé, mesures, table de vérité, chronologie,
 // équation, questions. À la fin : compte-rendu en PDF. Édition Pro : un TP s'envoie à une classe.
@@ -12,7 +13,7 @@ import { tl, LANG, DEC, isEn } from '../i18n/index.js';
 import { icon, esc, toast, dialog, ask } from '../school/ui.js';
 import { hydrateIcons } from '../ui/icons.js';
 import { compile } from '../prog/lang.js';
-import { checkWire, checkCode, checkWatch, checkMeasure, checkQuiz, checkPneuTube, checkPneuSeq, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkUiState, checkScene, sceneNeedText, AUTO_CHECKS, allNets } from './engine.js';
+import { checkWire, checkCode, checkWatch, checkMeasure, checkQuiz, checkPneuTube, checkPneuSeq, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkUiState, checkScene, sceneNeedText, AUTO_CHECKS, allNets, loadNetCheck, NET_LIVE, isNetCheck } from './engine.js';
 import { DEFS as PNEU_DEFS } from '../pneu/elements.js';
 import { expectOf } from '../pneu/seq.js';
 import { checkLogicTable, checkLogicSeq, checkLogicParts, checkExpr, checkTableFill } from '../logic/check.js';
@@ -23,16 +24,17 @@ import { parse as parseExpr, expected as expectedCol } from '../logic/boolean.js
 let TPS = [];
 async function loadTps() {
   if (TPS.length) return;
-  const { ELEC, LOGIC, PNEU } = await import('./tps.js');
-  const lists = { elec: ELEC, logic: LOGIC, pneu: PNEU };
+  const { ELEC, LOGIC, PNEU, NET } = await import('./tps.js');
+  const lists = { elec: ELEC, logic: LOGIC, pneu: PNEU, net: NET };
   for (const d of DOMAINS) d.list = lists[d.id] || [];
-  TPS = [...ELEC, ...LOGIC, ...PNEU];
+  TPS = [...ELEC, ...LOGIC, ...PNEU, ...NET];
 }
 // (« Logique » seul est déjà traduit « Logic level » pour les fiches des cartes : nom écrit selon la langue.)
 const DOMAINS = [
   { id: 'elec', list: [], icon: 'cpu', name: () => tl('Électronique'), intro: () => tl('Un laboratoire d’électronique sans matériel : chaque TP part d’un montage, guide pas à pas et vérifie votre travail (câblage, programme, comportement, mesures au multimètre).') },
   { id: 'pneu', list: [], icon: 'pneu', name: () => tl('Pneumatique'), intro: () => tl('Distributeurs, vérins, électrovannes : chaque TP ouvre le plan de travail pneumatique, vérifie vos tuyaux et observe vos vérins ; certains y ajoutent la carte qui commande les électrovannes.') },
-  { id: 'logic', list: [], icon: 'logic', name: () => (isEn ? 'Logic' : 'Logique'), intro: () => tl('Portes, bascules, compteurs : chaque TP ouvre le plan de travail logique avec ses entrées et ses sorties, et vérifie la table de vérité, la chronologie ou l’équation de votre circuit.') }
+  { id: 'logic', list: [], icon: 'logic', name: () => (isEn ? 'Logic' : 'Logique'), intro: () => tl('Portes, bascules, compteurs : chaque TP ouvre le plan de travail logique avec ses entrées et ses sorties, et vérifie la table de vérité, la chronologie ou l’équation de votre circuit.') },
+  { id: 'net', list: [], icon: 'cable', name: () => tl('Réseau'), intro: () => tl('Câbles RJ45, switchs, box, adresses IP, PoE, puis objets connectés : chaque TP ouvre le plan réseau, vérifie vos câbles et vos réglages, et essaie lui-même le ping, la page web ou le message MQTT.') }
 ];
 const L = o => (o == null ? '' : typeof o === 'string' ? o : o[LANG] || o.fr || '');
 /**
@@ -42,6 +44,8 @@ const L = o => (o == null ? '' : typeof o === 'string' ? o : o[LANG] || o.fr || 
 const SERIES = {
   tuto: { icon: 'graduation', tag: () => tl('Tutoriel'), name: () => tl('Tutoriels pas à pas'), intro: () => tl('Partir de zéro et construire un projet complet, guidé à chaque clic : l’étape en cours reste affichée sur le plan de travail, montre où cliquer et se valide toute seule.') },
   dakar: { icon: 'train', tag: () => 'TER · BRT', name: () => tl('TER et BRT de Dakar'), intro: () => tl('Des TP inspirés du Train Express Régional et du Bus Rapid Transit de Dakar : signalisation, portes, validation des titres de transport, information des voyageurs, énergie des bus électriques.') },
+  cablage: { icon: 'cable', tag: () => tl('Câblage réseau'), name: () => tl('Câblage d’un réseau informatique'), intro: () => tl('Sertir une fiche RJ45, choisir entre câble droit et croisé, trouver un défaut au testeur, passer par le panneau de brassage, alimenter en PoE, adresser les postes, faire marcher le DHCP et réparer un réseau en panne.') },
+  objets: { icon: 'radio', tag: () => tl('Objets connectés'), name: () => tl('Objets connectés'), intro: () => tl('Une carte rejoint le réseau : serveur web sur un module Ethernet W5500, messages MQTT en Wi-Fi, échanges Modbus TCP avec un automate. Le programme tourne et parle aux équipements du plan réseau.') },
   usine: { icon: 'gear', tag: () => tl('Usine'), name: () => tl('Machines industrielles'), intro: () => tl('Des postes d’atelier en 3D dont le procédé est simulé : pièces, bouteilles, colis et capteurs réagissent au programme. On écrit la partie commande (GRAFCET ou Ladder d’automate), on la voit tourner sur la machine, et les erreurs se voient : bourrage, jus renversé, pièce non serrée.') }
 };
 const LEVELS = { college: () => tl('Collège'), lycee: () => tl('Lycée'), pro: () => tl('Formation professionnelle') };
@@ -54,7 +58,13 @@ const num = v => (Math.round(v * 100) / 100).toString().replace('.', DEC);
 const unitOf = c => (c.unit === 'mA' ? 'mA' : c.unit === 's' ? 's' : 'V');
 const norm = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 /** Icône du contrôle d'une étape (repère dans la frise des étapes). */
-const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ladder: 'cpu', ui: 'eye', scene: 'box', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sigma', 'table-fill': 'edit', info: 'info' };
+const CHECK_ICON = { parts: 'cpu', wired: 'cable', 'pneu-parts': 'pneu', grafcet: 'list', ladder: 'cpu', ui: 'eye', scene: 'box', 'pneu-tube': 'pneu', 'pneu-seq': 'activity', wire: 'cable', code: 'code', watch: 'eye', measure: 'gauge', quiz: 'help', 'logic-table': 'list', 'logic-seq': 'activity', 'logic-parts': 'logic', expr: 'sigma', 'table-fill': 'edit', info: 'info', 'net-devices': 'monitor', 'net-cable': 'cable', 'net-link': 'link', 'net-ping': 'send', 'net-dhcp': 'list', 'net-poe': 'zap', 'net-ok': 'check', 'net-ip': 'edit', 'net-wifi': 'radio', 'net-http': 'eye', 'net-mqtt': 'message', 'net-modbus': 'cpu' };
+/** Contrôles qui s'observent pendant la simulation (bouton « Observer ») : comportement, cycle, réseau en direct. */
+/** Contrôles réseau (src/net/labcheck.js, simulation du réseau comprise) : chargés au premier TP réseau qui en a besoin. */
+let netMod = null, netLoading = null;
+const netLoad = () => netMod ? Promise.resolve(netMod) : (netLoading ||= loadNetCheck().then(m => (netMod = m), e => { netLoading = null; throw e; }));
+const netText = (c, r) => (netMod ? netMod.netResultText(c, r) : tl('Le contrôle du réseau n’a pas pu se charger.'));
+const LIVE = t => t === 'watch' || t === 'pneu-seq' || NET_LIVE.has(t);
 const status = st => (st && st.finishedAt ? 'done' : st && st.done && st.done.some(Boolean) ? 'doing' : 'new');
 const typeName = t => (LOGIC_DEFS[t] ? LOGIC_DEFS[t].name() : t);
 /** Composant demandé par une étape « parts », en clair : « électrovanne 24 V Y1 », « une carte ». */
@@ -66,7 +76,7 @@ const PROP_NAME = { label: () => tl('Repère'), s0: () => tl('Capteur tige rentr
 /** Orifice d'un contrôle de tuyaux : « ~v52:4 » → « Distributeur 5/2, orifice 4 ». */
 const portText = k => { if (!k.startsWith('~')) return k; const i = k.lastIndexOf(':'), t = k.slice(1, i); return tl('{0}, orifice {1}', PNEU_DEFS[t] ? PNEU_DEFS[t].name() : t, k.slice(i + 1)); };
 /** Ce qu'il reste à faire pour un état d'interface demandé (étape « ui »). */
-const UI_TODO = { sim: () => tl('Lancez la simulation (« Simuler »).'), split: () => tl('Ouvrez la vue partagée (bouton « Vue partagée », à côté du sélecteur).'), pneu: () => tl('Passez au plan Pneumatique.'), elec: () => tl('Passez au plan Électronique.'), grafcet: () => tl('Ouvrez le panneau GRAFCET.'), plc: () => tl('Ouvrez le panneau Automate (bouton « Automate » du plan pneumatique).'), '3d': () => tl('Ouvrez la vue 3D du plan pneumatique.'), build: () => tl('Dans la vue 3D, choisissez la scène « Machine construite (jumeau 3D) » : le mode Construire s’ouvre (bouton « Construire » de la fenêtre).') };
+const UI_TODO = { net: () => tl('Passez au plan Réseau.'), crimp: () => tl('Ouvrez l’atelier de sertissage : choisissez le câble, puis « Sertir » dans l’onglet Réseau de l’inspecteur.'), tester: () => tl('Ouvrez le testeur de câble : outil Testeur, ou bouton « Tester » du câble choisi.'), browser: () => tl('Ouvrez le navigateur d’un PC (onglet Réseau de l’inspecteur, PC choisi).'), ping: () => tl('Ouvrez l’outil ping (barre d’outils du plan réseau).'), sim: () => tl('Lancez la simulation (« Simuler »).'), split: () => tl('Ouvrez la vue partagée (bouton « Vue partagée », à côté du sélecteur).'), pneu: () => tl('Passez au plan Pneumatique.'), elec: () => tl('Passez au plan Électronique.'), grafcet: () => tl('Ouvrez le panneau GRAFCET.'), plc: () => tl('Ouvrez le panneau Automate (bouton « Automate » du plan pneumatique).'), '3d': () => tl('Ouvrez la vue 3D du plan pneumatique.'), build: () => tl('Dans la vue 3D, choisissez la scène « Machine construite (jumeau 3D) » : le mode Construire s’ouvre (bouton « Construire » de la fenêtre).') };
 /** Équation juste mais pas sous la forme demandée (expr.form). */
 const FORM_MSG = {
   sop: () => tl('Équation juste, mais écrivez-la comme une somme de produits : des termes reliés par +, chacun fait de lettres (barrées ou non) reliées par « . ».'),
@@ -86,6 +96,7 @@ function seqText(s) {
 export function installLab(app) {
   const sessions = app.sessions || (app.school && app.school.sessions);
   const logic = () => app.logic;
+  const net = () => app.net || null;
   const env = {
     comps: () => app.comps(), analyze: () => app.analyze(),
     program: () => { const p = app.program(); return p ? { code: p.code, kind: p.kind } : null; },
@@ -93,14 +104,19 @@ export function installLab(app) {
     dc: state => (app.dc ? app.dc(state) : null),
     pneu: () => (app.pneu ? app.pneu.circuit() : null), pneuState: () => (app.pneu ? app.pneu.state() : null), pneuPushed: k => !!(app.pneu && app.pneu.isPushed(k)), pneuInput: k => !!(app.pneu && app.pneu.isGrafcetInput(k)),
     plcProblems: () => (app.pneu ? app.pneu.check().filter(i => /^Automate/.test(i.text)) : []),
+    // Plan réseau : son contenu et le réseau simulé vivant (nœuds du montage compris), lus par src/net/labcheck.js.
+    netData: () => (net() ? net().data() : null), lan: () => (net() && net().lan ? net().lan() : null),
     /** État de l'interface demandé par une étape « ui » : simulation, vue partagée, plan affiché, GRAFCET, vue 3D. */
     ui: n => {
-      const P = app.pneu, onP = !!(P && P.isOn()), onL = !!(logic() && logic().isOn());
+      const P = app.pneu, onP = !!(P && P.isOn()), onL = !!(logic() && logic().isOn()), onN = !!(net() && net().isOn());
+      if (n === 'net') return onN;
+      if (['crimp', 'tester', 'browser', 'ping'].includes(n)) { const u = net() && net().uiState ? net().uiState() : null; return !!(u && u[n]); }
+      if (n === 'elec') return !onP && !onL && !onN;
       return n === 'sim' ? app.simOn() : n === 'split' ? !!(P && P.isSplit()) : n === 'pneu' ? onP : n === 'elec' ? !onP && !onL : n === 'grafcet' ? !!(P && P.grafcetOpen()) : n === 'plc' ? !!(P && P.plcOpen()) : n === '3d' ? !!(P && P.is3dOpen()) : n === 'build' ? !!(P && P.isBuilding && P.isBuilding()) : false;
     }
   };
   const btn = app.toolbar(`<button type="button" class="tb label" id="labBtn" data-tip="${tl('Travaux pratiques guidés, vérifiés pas à pas')}">${icon('checklist')}<span>${tl('TP')}</span></button>`);
-  btn.onclick = () => openLibrary(app.pneu && app.pneu.isOn() ? 'pneu' : logic() && logic().isOn() ? 'logic' : null);
+  btn.onclick = () => openLibrary(app.pneu && app.pneu.isOn() ? 'pneu' : logic() && logic().isOn() ? 'logic' : net() && net().isOn() ? 'net' : null);
   app.openLabs = domain => openLibrary(domain);
   /** Ouvre un TP ou un tutoriel par son identifiant (bouton « Tutoriel » du plan pneumatique…). */
   app.openTutorial = async id => { await loadTps(); const tp = TPS.find(t => t.id === id); if (tp) run(tp); else toast(tl('Tutoriel introuvable.'), 'err'); };
@@ -164,14 +180,14 @@ export function installLab(app) {
   /* ---------- Séance de TP ---------- */
   async function run(tp) {
     if (!sessions) return;
-    const isLogic = tp.domain === 'logic', isPneu = tp.domain === 'pneu';
+    const isLogic = tp.domain === 'logic', isPneu = tp.domain === 'pneu', isNet = tp.domain === 'net';
     if (isLogic && !logic()) { toast(tl('Le plan de travail logique n’est pas disponible.'), 'err'); return; }
     let st = load(tp.id) || { step: 0, done: tp.steps.map(() => false), answers: {}, results: {}, startedAt: Date.now(), finishedAt: null };
     if (st.done.length !== tp.steps.length) st = { step: 0, done: tp.steps.map(() => false), answers: {}, results: {}, startedAt: Date.now(), finishedAt: null };
     const resume = st.done.some(Boolean) && !st.finishedAt;
     let watcher = null;
     const project = st.project || (isLogic ? logic().project(tp.start.logic, L(tp.title)) : tp.start);
-    const panel = document.createElement('div'); panel.className = 'sessPanel labPanel' + (isLogic ? ' logicLab' : isPneu ? ' pneuLab' : '');
+    const panel = document.createElement('div'); panel.className = 'sessPanel labPanel' + (isLogic ? ' logicLab' : isPneu ? ' pneuLab' : isNet ? ' netLab' : '');
     const save = () => { st.project = app.projectData(); store(tp.id, st); };
     const total = tp.steps.length, doneN = () => st.done.filter(Boolean).length;
     let offLogic = null;
@@ -189,6 +205,7 @@ export function installLab(app) {
         if (c.type === 'ui') return checkUiState(c, env).ok;
         if (c.type === 'scene') return checkScene(c, env).ok;
         if (c.type === 'wire') return checkWire(c, env).ok;
+        if (isNetCheck(c.type) && !NET_LIVE.has(c.type)) { if (!netMod) { netLoad().catch(() => {}); return false; } return netMod.checkNet(c, env).ok; }
         if (c.type === 'code') { const p = env.program(), key = p ? p.code : ''; if (!codeMemo || codeMemo[0] !== key) codeMemo = [key, !!key.trim() && checkCode(c, env).ok]; return codeMemo[1]; } // compilé une fois par version du programme
       } catch (e) { console.error(e); }
       return false;
@@ -200,7 +217,7 @@ export function installLab(app) {
       if (!tp.tutorial || !c || st.done[i]) return;
       // Contrôle de structure : relu régulièrement ; observation : démarre seule dès que la simulation tourne.
       if (AUTO_CHECKS.has(c.type)) auto = setInterval(() => { if (st.step !== i || st.done[i]) { stopAuto(); return; } if (quick(c)) { stopAuto(); verify(i); } }, c.type === 'code' ? 1200 : 600);
-      else if (c.type === 'pneu-seq' || c.type === 'watch') auto = setInterval(() => { if (st.step !== i || st.done[i]) { stopAuto(); return; } if (!watcher && app.simOn()) { stopAuto(); verify(i); } }, 500);
+      else if (LIVE(c.type)) auto = setInterval(() => { if (st.step !== i || st.done[i]) { stopAuto(); return; } if (!watcher && app.simOn()) { stopAuto(); verify(i); } }, 500);
     }
     function clearSpots() { if (spots) { clearInterval(spots.t); clearTimeout(spots.end); spots.els.forEach(e => e.remove()); spots = null; } }
     /** Entoure les éléments visibles désignés par les sélecteurs de l'étape (8 au plus) ; rend leur nombre. */
@@ -244,11 +261,11 @@ export function installLab(app) {
         });
       }
       const i = st.step, s = tp.steps[i], c = s.check, r = st.results[i], done = st.done[i], last = i === total - 1;
-      const answer = c && !AUTO_CHECKS.has(c.type) && !['info', 'watch', 'pneu-seq'].includes(c.type); // quiz, mesure… : dans le panneau
+      const answer = c && !AUTO_CHECKS.has(c.type) && c.type !== 'info' && !LIVE(c.type); // quiz, mesure… : dans le panneau
       const main = done || !c || c.type === 'info'
         ? `<button type="button" class="btn primary small" data-lc="next"${last && done ? ' disabled' : ''}>${last ? tl('Terminer') : tl('Étape suivante')}${icon('chevRight')}</button>`
         : answer ? `<button type="button" class="btn primary small" data-lc="panel">${icon('sidebar')}<span>${tl('Répondre')}</span></button>`
-          : `<button type="button" class="btn small${c.type === 'pneu-seq' || c.type === 'watch' ? ' primary' : ''}" data-lc="check">${icon(c.type === 'pneu-seq' || c.type === 'watch' ? 'eye' : 'check')}<span>${c.type === 'pneu-seq' || c.type === 'watch' ? tl('Observer') : tl('Vérifier')}</span></button>`;
+          : `<button type="button" class="btn small${LIVE(c.type) ? ' primary' : ''}" data-lc="check">${icon(LIVE(c.type) ? 'eye' : 'check')}<span>${LIVE(c.type) ? tl('Observer') : tl('Vérifier')}</span></button>`;
       coach.classList.toggle('min', coachMin); coach.classList.toggle('ok', !!done);
       coach.innerHTML = `<header class="lcHead">${icon('graduation')}<b>${tl('Tutoriel')}</b><span class="lcProg"><span class="tpBar"><i style="width:${Math.round(100 * doneN() / total)}%"></i></span>${tl('Étape {0}/{1}', i + 1, total)}</span><span class="grow"></span>
           <button type="button" class="tb" data-lc="panel" aria-label="${tl('Ouvrir le panneau du tutoriel')}" title="${tl('Ouvrir le panneau du tutoriel')}">${icon('sidebar')}</button><button type="button" class="tb" data-lc="min" aria-label="${coachMin ? tl('Déplier') : tl('Réduire')}" title="${coachMin ? tl('Déplier') : tl('Réduire')}">${icon(coachMin ? 'chevUp' : 'chevDown')}</button></header>
@@ -256,7 +273,7 @@ export function installLab(app) {
           ${keepHtml(s)}
           ${r ? `<div class="labRes ${r.ok ? 'ok' : 'ko'}">${icon(r.ok ? 'check' : 'alert')}<span>${r.msg || tl('Étape validée.')}</span></div>` : ''}
           ${s.hint && r && !r.ok ? `<p class="lcHint">${icon('info')}<span>${esc(L(s.hint))}</span></p>` : ''}
-          ${!done && c && (c.type === 'pneu-seq' || c.type === 'watch') && watcher ? `<p class="lcWatch"><span class="dotsAnim"><i></i><i></i><i></i></span>${tl('En observation…')}</p>` : ''}</div>
+          ${!done && c && LIVE(c.type) && watcher ? `<p class="lcWatch"><span class="dotsAnim"><i></i><i></i><i></i></span>${tl('En observation…')}</p>` : ''}</div>
         <footer class="lcFoot"><button type="button" class="btn small" data-lc="prev"${i ? '' : ' disabled'} aria-label="${tl('Étape précédente')}">${icon('chevLeft')}</button>${s.spot ? `<button type="button" class="btn small" data-lc="show">${icon('target')}<span>${tl('Montrer')}</span></button>` : ''}<span class="grow"></span>${main}</footer>`;
       hydrateIcons(coach);
     }
@@ -270,7 +287,7 @@ export function installLab(app) {
     function render() {
       stopWatch();
       const i = st.step, s = tp.steps[i], c = s.check, r = st.results[i];
-      panel.innerHTML = `<header class="spHead"><span class="kind lab ${tp.domain}">${icon(tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : 'checklist')}${tp.tutorial ? tl('Tutoriel') : isLogic ? tl('TP de logique') : isPneu ? tl('TP de pneumatique') : tl('Travaux pratiques')} · ${LEVELS[tp.level] ? LEVELS[tp.level]() : ''}</span><h2>${esc(L(tp.title))}</h2>
+      panel.innerHTML = `<header class="spHead"><span class="kind lab ${tp.domain}">${icon(tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : isNet ? 'cable' : 'checklist')}${tp.tutorial ? tl('Tutoriel') : isLogic ? tl('TP de logique') : isPneu ? tl('TP de pneumatique') : isNet ? tl('TP de réseau') : tl('Travaux pratiques')} · ${LEVELS[tp.level] ? LEVELS[tp.level]() : ''}</span><h2>${esc(L(tp.title))}</h2>
         <div class="labProg"><span class="tpBar"><i style="width:${Math.round(100 * doneN() / total)}%"></i></span><b>${doneN()}/${total}</b></div>
         <div class="labSteps">${tp.steps.map((x, k) => `<button type="button" class="ls${k === i ? ' on' : ''}${st.done[k] ? ' ok' : ''}" data-go="${k}" title="${esc(`${k + 1}. ${L(x.title)}`)}">${st.done[k] ? icon('check') : k + 1}</button>`).join('')}</div></header>
         <div class="spBody"><div class="labStep"><span class="lsNum">${icon(CHECK_ICON[c ? c.type : 'info'] || 'info')}${tl('Étape {0}', i + 1)}</span><h3>${esc(L(s.title))}</h3><div class="labText">${md(L(s.text))}</div>
@@ -281,7 +298,7 @@ export function installLab(app) {
           ${s.spot ? `<button type="button" class="btn small labShow" data-show-me>${icon('target')}<span>${tl('Montrer où cliquer')}</span></button>` : ''}
         </div>${st.finishedAt ? `<div class="labDone">${icon('award')}<div><b>${tp.tutorial ? tl('Tutoriel terminé !') : tl('TP terminé !')}</b><small>${tl('Toutes les étapes sont validées. Exportez votre compte-rendu.')}</small></div><button type="button" class="btn primary small labQuit" data-quit>${icon('check')}<span>${tp.tutorial ? tl('Terminer le tutoriel') : tl('Terminer le TP')}</span></button></div>${takeHtml()}` : ''}</div>
         <footer class="spFoot labFoot"><button type="button" class="btn" data-prev ${i ? '' : 'disabled'} aria-label="${tl('Étape précédente')}">${icon('chevLeft')}</button>
-          ${c && c.type !== 'info' && !st.done[i] ? `<button type="button" class="btn primary grow" data-check>${icon('check')}<span>${c.type === 'watch' || c.type === 'pneu-seq' ? tl('Observer') : tl('Vérifier')}</span></button>` : `<button type="button" class="btn primary grow" data-next ${i < total - 1 || !st.done[i] ? '' : 'disabled'}>${i < total - 1 ? tl('Étape suivante') : st.done[i] ? tl('Dernière étape') : tl('Terminer')}${icon(i < total - 1 ? 'chevRight' : 'check')}</button>`}
+          ${c && c.type !== 'info' && !st.done[i] ? `<button type="button" class="btn primary grow" data-check>${icon('check')}<span>${LIVE(c.type) ? tl('Observer') : tl('Vérifier')}</span></button>` : `<button type="button" class="btn primary grow" data-next ${i < total - 1 || !st.done[i] ? '' : 'disabled'}>${i < total - 1 ? tl('Étape suivante') : st.done[i] ? tl('Dernière étape') : tl('Terminer')}${icon(i < total - 1 ? 'chevRight' : 'check')}</button>`}
           <button type="button" class="btn" data-report title="${tl('Compte-rendu en PDF')}">${icon('pdf')}</button>
           ${app.labPublish && !isLogic ? `<button type="button" class="btn" data-publish title="${tl('Envoyer ce TP à une classe')}">${icon('send')}</button>` : ''}</footer>`;
       hydrateIcons(panel);
@@ -316,6 +333,9 @@ export function installLab(app) {
       if (c.type === 'quiz') return `<div class="choices${Array.isArray(c.answer) ? ' multi' : ''}">${c.options.map((o, k) => `<label class="choice${[].concat(a ?? []).includes(k) ? ' on' : ''}"><input type="${Array.isArray(c.answer) ? 'checkbox' : 'radio'}" name="q${i}" value="${k}"${[].concat(a ?? []).includes(k) ? ' checked' : ''}><span class="cBox"></span><span>${esc(L(o))}</span></label>`).join('')}</div>`;
       if (c.type === 'pneu-tube') return `<p class="muted small">${icon('pneu')} ${tp.tutorial ? tl('Tirez les tuyaux dans le plan de travail Pneumatique : l’étape se valide dès qu’ils sont justes.') : tl('Tirez les tuyaux dans le plan de travail Pneumatique (sélecteur en haut à gauche), puis cliquez sur « Vérifier ».')}</p>`;
       if (c.type === 'parts') return `<ul class="labNeed">${c.require.map(n => `<li data-need="${esc(needText(n))}">${icon(n.board ? 'cpu' : 'plus')}<span>${esc(needText(n))}</span></li>`).join('')}</ul>`;
+      if (c.type === 'net-devices') return `<ul class="labNeed">${c.require.map(n => `<li>${icon('monitor')}<span>${esc(`${n.n > 1 ? n.n + ' × ' : ''}${n.type}${n.name ? ' ' + n.name : ''}`)}</span></li>`).join('')}</ul>`;
+      if (NET_LIVE.has(c.type)) return `<p class="muted small">${icon('eye')} ${tl('Cliquez sur « Observer » : la simulation se lance, le programme de la carte tourne et la vérification se fait en direct sur le réseau.')}</p><div class="watchState" hidden></div>`;
+      if (isNetCheck(c.type) && !tp.tutorial) return `<p class="muted small">${icon('cable')} ${tl('Faites-le dans le plan réseau, puis cliquez sur « Vérifier » : l’onglet Problèmes donne les codes J12xx de ce qui ne va pas.')}</p>`;
       if (c.type === 'pneu-parts') return `<ul class="labNeed">${c.require.map(n => `<li>${icon('pneu')}<span>${esc(pneuNeedText(n))}</span></li>`).join('')}</ul>`;
       if (AUTO_CHECKS.has(c.type) && tp.tutorial) return `<p class="muted small labAuto">${icon('check')} ${tl('Cette étape se valide toute seule dès que c’est juste ; « Vérifier » dit ce qui manque.')}</p>`;
       if (c.type === 'pneu-seq') return `<p class="muted small">${icon('activity')} ${tl('Cliquez sur « Observer », puis lancez le cycle : les courses des vérins sont relevées et comparées au cycle attendu.')}</p><div class="watchState" hidden></div>`;
@@ -391,6 +411,11 @@ export function installLab(app) {
     }
     function verify(i) {
       const c = tp.steps[i].check;
+      if (NET_LIVE.has(c.type)) return watchNet(i, c);
+      if (isNetCheck(c.type)) {
+        if (!netMod) { netLoad().then(() => { if (st.step === i) verify(i); }, e => { console.error(e); fail(i, tl('Le contrôle du réseau n’a pas pu se charger.')); }); return; }
+        const r = netMod.checkNet(c, env); return r.ok ? pass(i, netText(c, r)) : fail(i, netText(c, r));
+      }
       if (c.type === 'wire') {
         const r = checkWire(c, env);
         const short = r.missing.find(m => m.why === 'short');
@@ -545,6 +570,26 @@ export function installLab(app) {
         return fail(i, tl('{0} portes ou blocs : {1} au plus.', r.total, r.max));
       }
     }
+    /**
+     * Contrôle du réseau en direct (page web, MQTT, Modbus) : la simulation se lance, le programme de la carte tourne ;
+     * le contrôle est refait toutes les 0,8 s jusqu'à réussir, 40 s au plus.
+     */
+    function watchNet(i, c) {
+      if (!app.simOn()) { app.setSim(true); setTimeout(() => app.sessionTab.show(), 30); }
+      const box = panel.querySelector('.watchState');
+      if (box) { box.hidden = false; box.innerHTML = `<div class="wsMsg"><span class="dotsAnim"><i></i><i></i><i></i></span>${tl('En observation : le programme de la carte tourne, la vérification se fait en direct…')}</div>`; }
+      if (tp.tutorial) setTimeout(renderCoach, 0);
+      let busy = false, last = null; const t0 = performance.now();
+      const me = watcher = setInterval(async () => {
+        if (busy) return; busy = true;
+        try { const m = await netLoad(); last = await m.checkNet(c, env); } catch (e) { console.error(e); last = { ok: false, why: 'error' }; }
+        busy = false;
+        if (watcher !== me) return; // observation arrêtée pendant la requête
+        if (last.ok) { stopWatch(); pass(i, netText(c, last)); return; }
+        if (box) { const m = box.querySelector('.wsMsg'); if (m) m.innerHTML = `<span class="dotsAnim"><i></i><i></i><i></i></span>${esc(netText(c, last))}`; }
+        if (performance.now() - t0 > 40000) { stopWatch(); fail(i, netText(c, last)); }
+      }, 800);
+    }
     function stopWatch() { if (watcher) { clearInterval(watcher); watcher = null; } }
 
     /* ---------- Compte-rendu ---------- */
@@ -594,7 +639,13 @@ export function installLab(app) {
         const p2 = page(++no); p2.d.text(p2.ar.x0, p2.ar.y0 + 6, tl('Circuit logique'), { s: 3.4, b: true });
         logic().drawPdf(p2.d, { x0: p2.ar.x0 + 4, y0: p2.ar.y0 + 12, x1: p2.ar.x1 - 4, y1: p2.ar.y1 - 26 });
         pages[pages.length - 1].ops = p2.d.ops;
-      } else {
+      } else if (isNet && net() && net().drawPdf) {
+        // Le plan réseau sur une page à part (et le montage d'un projet Objets connectés à la suite).
+        const p2 = page(++no); p2.d.text(p2.ar.x0, p2.ar.y0 + 6, tl('Plan réseau'), { s: 3.4, b: true });
+        net().drawPdf(p2.d, { x0: p2.ar.x0 + 4, y0: p2.ar.y0 + 12, x1: p2.ar.x1 - 4, y1: p2.ar.y1 - 26 });
+        pages[pages.length - 1].ops = p2.d.ops;
+        if (app.comps().length) app.schematic({ format: 'A4', lists: false }).pages.forEach(p => pages.push({ w: p.w, h: p.h, ops: p.ops }));
+      } else if (!isNet || app.comps().length) {
         const sch = app.schematic({ format: 'A4', lists: false });
         sch.pages.forEach(p => pages.push({ w: p.w, h: p.h, ops: p.ops }));
       }
@@ -608,7 +659,7 @@ export function installLab(app) {
 
     const ok = await sessions.begin({
       kind: 'lab', panel, name: L(tp.title), data: project,
-      chip: () => ({ icon: tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : 'checklist', title: L(tp.title), meta: tl('étape {0}/{1}', st.step + 1, total), tone: st.finishedAt ? 'done' : 'work', actions: [st.finishedAt
+      chip: () => ({ icon: tp.tutorial ? 'graduation' : isLogic ? 'logic' : isPneu ? 'pneu' : isNet ? 'cable' : 'checklist', title: L(tp.title), meta: tl('étape {0}/{1}', st.step + 1, total), tone: st.finishedAt ? 'done' : 'work', actions: [st.finishedAt
         // Terminé : un vrai bouton, bien visible, pour quitter.
         ? { id: 'end', icon: 'check', label: tl('Terminer'), kind: 'primary', tip: tp.tutorial ? tl('Terminer le tutoriel et retrouver votre projet') : tl('Terminer le TP et retrouver votre projet') }
         : { id: 'end', icon: 'x', tip: tl('Quitter le TP (votre progression est gardée)') }] }),
@@ -617,10 +668,12 @@ export function installLab(app) {
       onEnd: () => { stopWatch(); endTutorial(); if (offLogic) { clearTimeout(offLogic.t); offLogic(); } } // plus d'enregistrement : le projet personnel revient
     });
     if (!ok) return;
-    // Plan de travail du TP : pneumatique (sauf un TP qui commence par le câblage de la carte), logique, ou montage.
+    // Plan de travail du TP : pneumatique (sauf un TP qui commence par le câblage de la carte), logique, réseau, ou montage.
     if (app.pneu) app.pneu.setMode(isPneu && tp.workspace !== 'elec');
-    if (isPneu && logic() && logic().isOn()) logic().setMode(false);
-    if (isPneu) app.sessionTab.show();
+    if ((isPneu || isNet) && logic() && logic().isOn()) logic().setMode(false);
+    // Réseau : le plan réseau, sauf un TP d'objets connectés qui commence par le montage (workspace: 'elec').
+    if (net()) net().setMode(isNet && tp.workspace !== 'elec');
+    if (isPneu || isNet) app.sessionTab.show();
     if (isLogic) {
       logic().setMode(true);
       // Le circuit change : la progression (projet compris) est gardée, sans attendre la fin du TP.

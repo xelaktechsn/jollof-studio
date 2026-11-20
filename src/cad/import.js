@@ -7,7 +7,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { tl } from '../i18n/index.js';
-import { stdMat } from '../quality.js';
+import { stdMat, LIGHT } from '../quality.js';
+import { readWithin, budgetFor } from './detail.js';
 
 let occtReady = null;
 /** Lecteur STEP (OpenCascade compilé en WebAssembly, ~7 Mo) : chargé seulement au premier import. */
@@ -20,10 +21,12 @@ function occt() {
 }
 
 /** STEP → groupe three.js (Z vers le haut dans le fichier → Y vers le haut), couleurs par face conservées. */
-async function fromStep(buffer) {
-  const lib = await occt();
-  const r = lib.ReadStepFile(new Uint8Array(buffer), { linearUnit: 'millimeter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: 0.0015, angularDeflection: 0.4 });
-  if (!r.success || !r.meshes.length) throw new Error(tl('fichier STEP illisible'));
+async function fromStep(buffer, info) {
+  const lib = await occt(), bytes = new Uint8Array(buffer);
+  // Modèle lourd : relu plus grossièrement jusqu'à tenir dans le budget de triangles (cad/detail.js).
+  const r = readWithin(l => { const o = lib.ReadStepFile(bytes, { linearUnit: 'millimeter', linearDeflectionType: 'bounding_box_ratio', linearDeflection: l.linear, angularDeflection: l.angular }); return o.success ? o.meshes : null; }, budgetFor(LIGHT));
+  if (!r) throw new Error(tl('fichier STEP illisible'));
+  info.tris = r.tris; if (r.level > 0) info.reduced = { from: r.first, to: r.tris };
   const group = new THREE.Group(), mats = new Map();
   const matFor = c => {
     const key = c.map(v => v.toFixed(3)).join(',');
@@ -77,14 +80,28 @@ export function toGlb(root) {
 export async function importCad(file, onStep = () => {}) {
   const ext = file.name.split('.').pop().toLowerCase(), buffer = await file.arrayBuffer();
   let root;
-  if (ext === 'step' || ext === 'stp') { onStep(tl('Lecture du STEP (premier import : chargement du lecteur, quelques secondes)…')); root = await fromStep(buffer); }
-  else if (ext === 'glb' || ext === 'gltf') root = await fromGltf(buffer);
+  const info = {};
+  if (ext === 'step' || ext === 'stp') { onStep(tl('Lecture du STEP (premier import : chargement du lecteur, quelques secondes)…')); root = await fromStep(buffer, info); }
+  else if (ext === 'glb' || ext === 'gltf') { root = await fromGltf(buffer); info.tris = triCount(root); if (info.tris > budgetFor(LIGHT)) info.heavy = true; }
   else throw new Error(tl('format non pris en charge : utilisez .step, .stp, .glb ou .gltf'));
   onStep(tl('Conversion…'));
   const holder = normalize(root);
   const size = new THREE.Box3().setFromObject(holder).getSize(new THREE.Vector3());
   if (Math.max(size.x, size.y, size.z) > 600) throw new Error(tl('modèle de {0} × {1} mm : trop grand pour une carte, vérifiez l’unité du fichier', Math.round(size.x), Math.round(size.z)));
-  return { glb: await toGlb(holder), size, name: file.name.replace(/\.(step|stp|glb|gltf)$/i, '').slice(0, 32) || tl('Modèle') };
+  return { glb: await toGlb(holder), size, name: file.name.replace(/\.(step|stp|glb|gltf)$/i, '').slice(0, 32) || tl('Modèle'), ...info, note: detailNote(info) };
+}
+/** Triangles d'un modèle three.js. */
+export function triCount(root) {
+  let n = 0;
+  root.traverse(o => { if (o.isMesh && o.geometry) n += Math.floor((o.geometry.index ? o.geometry.index.count : (o.geometry.attributes.position || { count: 0 }).count) / 3); });
+  return n;
+}
+/** Ce qu'il faut dire après l'import : maillage allégé (STEP), ou modèle lourd qu'on ne sait pas alléger (glTF). */
+function detailNote(info) {
+  const k = n => Math.round(n / 1000).toLocaleString();
+  if (info.reduced) return tl('Modèle détaillé : maillage allégé de {0} à {1} milliers de triangles pour garder l’atelier fluide. Les formes sont celles du fichier.', k(info.reduced.from), k(info.reduced.to));
+  if (info.heavy) return tl('Modèle lourd ({0} milliers de triangles) : l’atelier peut ralentir. Un fichier STEP serait allégé automatiquement ; sinon réduisez le maillage avant l’export glTF.', k(info.tris));
+  return '';
 }
 /** Fait pivoter un GLB normalisé d'un quart de tour autour de X (modèle couché) et le renormalise. */
 export async function rotateGlb(buffer, axis = 'x') {

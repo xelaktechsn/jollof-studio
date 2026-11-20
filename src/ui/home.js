@@ -20,13 +20,15 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;'
 /** Étapes de la présentation : icône, titre, texte, et trois points concrets. */
 const STEPS = () => [
   { icon: 'flask', title: tl('Un labo d’électronique. Sans labo.'), text: tl('Jollof Studio est une paillasse complète sur votre ordinateur : on câble, on programme, on simule et on mesure, sans matériel et sans rien casser.'),
-    points: [['cpu', tl('Arduino, ESP32, Pico')], ['zap', tl('Simulation en direct')], ['graduation', tl('57 TP guidés')]] },
+    points: [['cpu', tl('Arduino, ESP32, Pico')], ['zap', tl('Simulation en direct')], ['graduation', tl('73 TP guidés')]] },
   { icon: 'cable', title: tl('Câblez et programmez en 3D'), text: tl('Posez les composants, tirez les fils broche à broche ou laissez le câblage automatique le faire. Programmez par règles, par blocs ou en vrai code Arduino.'),
     points: [['wand', tl('Câblage automatique')], ['puzzle', tl('Règles, blocs, code')], ['schematic', tl('Schéma en direct')]] },
   { icon: 'check', title: tl('Le vérificateur prouve que rien ne grille'), text: tl('Avant de toucher une vraie carte, il essaie chaque état du montage et de son programme, et explique chaque faute avec sa correction en un clic.'),
     points: [['check', tl('Tous les états essayés')], ['alert', tl('Fautes expliquées')], ['usb', tl('Puis la vraie carte')]] },
   { icon: 'pneu', title: tl('Pneumatique, GRAFCET et logique'), text: tl('Vérins, distributeurs et GRAFCET, commandés par une carte dans un projet électropneumatique, avec la machine en 3D. Et un plan de travail pour la logique numérique.'),
-    points: [['split', tl('Électropneumatique')], ['workflow', tl('GRAFCET')], ['logic', tl('Logique numérique')]] }
+    points: [['split', tl('Électropneumatique')], ['workflow', tl('GRAFCET')], ['logic', tl('Logique numérique')]] },
+  { icon: 'network', title: tl('Réseaux et objets connectés'), text: tl('Sertissez des câbles RJ45 et testez-les, câblez switchs, box et Wi-Fi, réglez les adresses IP et faites des ping. Puis reliez une carte au réseau : page web, MQTT, Modbus TCP.'),
+    points: [['rj45', tl('Sertir et tester')], ['network', tl('Adresses, DHCP, ping')], ['iot', tl('Page web, MQTT')]] }
 ];
 
 /**

@@ -43,7 +43,9 @@ const LIBS = {
   // GPS NEO-6M : TinyGPSPlus de Mikal Hart.
   'TinyGPSPlus.h': ['TinyGPSPlus'], 'TinyGPS++.h': ['TinyGPSPlus'],
   // Radio LoRa SX1278 (bibliothèque de Sandeep Mistry).
-  'LoRa.h': ['LoRa']
+  'LoRa.h': ['LoRa'],
+  // Modules Ethernet : W5500 (bibliothèque Ethernet d'Arduino), ENC28J60 (UIPEthernet, EtherCard) ; client MQTT.
+  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient']
 };
 
 export function installUpload(app) {

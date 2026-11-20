@@ -56,7 +56,10 @@ const SNAPSHOT = {
   '10-regulateur-zener.jollof': [],
   '11-analyseur-bus-i2c.jollof': [],
   '12-feu-pietons-sequence.jollof': [],
-  '13-compteur-visiteurs.jollof': []
+  '13-compteur-visiteurs.jollof': [],
+  '14-reseau-salle-info.jollof': [],
+  '15-objet-connecte-w5500.jollof': [],
+  '16-esp32-mqtt-wifi.jollof': []
 };
 
 test('Instantané des erreurs : exemples, puis départ et solution de chaque TP', () => {

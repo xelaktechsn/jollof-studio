@@ -1,0 +1,363 @@
+{
+ "id": "net02-droit-ou-croise",
+ "series": "cablage",
+ "level": "lycee",
+ "minutes": 25,
+ "title": {
+  "fr": "Câble droit ou câble croisé ?",
+  "en": "Straight or crossover cable?"
+ },
+ "summary": {
+  "fr": "Deux PC anciens reliés directement, sans switch : avec un câble droit, rien ne passe. Pourquoi ? Émission et réception, MDI et MDI-X, câble croisé T568A/T568B, et l’Auto-MDIX des cartes récentes qui rend le choix inutile.",
+  "en": "Two old PCs connected directly, without a switch: with a straight cable, nothing gets through. Why? Transmit and receive, MDI and MDI-X, the T568A/T568B crossover cable, and the Auto-MDIX of modern cards that makes the choice unnecessary."
+ },
+ "objectives": [
+  {
+   "fr": "Expliquer pourquoi deux PC reliés directement ont besoin d’un câble croisé",
+   "en": "Explain why two directly connected PCs need a crossover cable"
+  },
+  {
+   "fr": "Fabriquer un câble croisé (T568A d’un côté, T568B de l’autre)",
+   "en": "Make a crossover cable (T568A at one end, T568B at the other)"
+  },
+  {
+   "fr": "Savoir ce que change l’Auto-MDIX",
+   "en": "Know what Auto-MDIX changes"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "En 10/100 Mb/s, un PC émet sur 1-2 et reçoit sur 3-6 ; un switch fait l’inverse.",
+   "en": "At 10/100 Mb/s, a PC transmits on 1-2 and receives on 3-6; a switch does the opposite."
+  },
+  {
+   "fr": "Deux appareils du même genre sans Auto-MDIX : câble croisé (T568A d’un côté, T568B de l’autre).",
+   "en": "Two devices of the same kind without Auto-MDIX: crossover cable (T568A at one end, T568B at the other)."
+  },
+  {
+   "fr": "Avec l’Auto-MDIX, la carte croise elle-même : un câble droit suffit partout.",
+   "en": "With Auto-MDIX, the card crosses by itself: a straight cable works everywhere."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Câble droit ou croisé",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 120,
+       "y": 160,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.0.1",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": true
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 520,
+       "y": 160,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.0.2",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": true
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "pc2",
+        "eth0"
+       ],
+       "cat": "cat6",
+       "len": 2,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 120,
+     "y": 160,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.0.1",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": true
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 520,
+     "y": 160,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.0.2",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": true
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "pc2",
+      "eth0"
+     ],
+     "cat": "cat6",
+     "len": 2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wg",
+        "g",
+        "wo",
+        "bl",
+        "wbl",
+        "o",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Émettre et recevoir",
+    "en": "Transmit and receive"
+   },
+   "text": {
+    "fr": "En 10 et 100 Mb/s, un câble Ethernet n’utilise que deux paires :\n- un **PC** (port **MDI**) émet sur les broches **1-2** et écoute sur **3-6** ;\n- un **switch** (port **MDI-X**) fait l’inverse : il écoute sur 1-2 et émet sur 3-6.\nUn câble droit relie donc l’émetteur de l’un au récepteur de l’autre. Ici, PC1 et PC2 sont deux PC **anciens** (réglage « appareil ancien » : 100 Mb/s, sans Auto-MDIX), reliés directement par un câble droit.",
+    "en": "At 10 and 100 Mb/s, an Ethernet cable uses only two pairs:\n- a **PC** (**MDI** port) transmits on pins **1-2** and listens on **3-6**;\n- a **switch** (**MDI-X** port) does the opposite: it listens on 1-2 and transmits on 3-6.\nA straight cable therefore connects one side’s transmitter to the other side’s receiver. Here, PC1 and PC2 are two **old** PCs (“legacy device” setting: 100 Mb/s, no Auto-MDIX), connected directly by a straight cable."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Que se passe-t-il ?",
+    "en": "What happens?"
+   },
+   "text": {
+    "fr": "Deux PC anciens, un câble droit entre eux. Regardez leurs ports dans le plan.",
+    "en": "Two old PCs, a straight cable between them. Look at their ports on the plan."
+   },
+   "keep": {
+    "fr": "Émetteur contre émetteur : personne n’écoute ce que l’autre envoie. L’onglet Problèmes le dit aussi (J1213).",
+    "en": "Transmitter facing transmitter: nobody listens to what the other sends. The Problems tab says so too (J1213)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le lien s’établit à 100 Mb/s",
+      "en": "The link comes up at 100 Mb/s"
+     },
+     {
+      "fr": "Pas de lien : chacun émet sur les broches où l’autre émet aussi",
+      "en": "No link: each one transmits on the pins where the other also transmits"
+     },
+     {
+      "fr": "Le lien s’établit à 1 Gb/s",
+      "en": "The link comes up at 1 Gb/s"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Fabriquer un câble croisé",
+    "en": "Make a crossover cable"
+   },
+   "text": {
+    "fr": "Gardez la fiche A en T568B et refaites la fiche **B** en **T568A** : 1 blanc-vert, 2 vert, 3 blanc-orange, 4 bleu, 5 blanc-bleu, 6 orange, 7 blanc-marron, 8 marron. Les paires orange et verte changent de place : les broches 1-2 d’un bout arrivent sur 3-6 de l’autre.",
+    "en": "Keep plug A in T568B and redo plug **B** in **T568A**: 1 white-green, 2 green, 3 white-orange, 4 blue, 5 white-blue, 6 orange, 7 white-brown, 8 brown. The orange and green pairs swap places: pins 1-2 at one end arrive on 3-6 at the other."
+   },
+   "hint": {
+    "fr": "T568A et T568B ne diffèrent que par l’échange des paires orange et verte.",
+    "en": "T568A and T568B differ only by swapping the orange and green pairs."
+   },
+   "spot": [
+    "#tab-nprop",
+    "[data-nt=\"crimpB\"]"
+   ],
+   "check": {
+    "type": "net-cable",
+    "a": "PC1",
+    "b": "PC2",
+    "kind": "crossover"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le lien",
+    "en": "The link"
+   },
+   "text": {
+    "fr": "Avec le câble croisé, le lien s’établit à **100 Mb/s**, la vitesse de ces cartes anciennes.",
+    "en": "With the crossover cable, the link comes up at **100 Mb/s**, the speed of these old cards."
+   },
+   "check": {
+    "type": "net-link",
+    "a": "PC1",
+    "b": "PC2",
+    "speed": 100
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping entre les deux PC",
+    "en": "Ping between the two PCs"
+   },
+   "text": {
+    "fr": "Les deux PC ont une adresse fixe dans le même réseau (192.168.0.1 et 192.168.0.2, masque 255.255.255.0). Faites un ping de PC1 vers PC2 (outil **Ping**).",
+    "en": "Both PCs have a fixed address in the same network (192.168.0.1 and 192.168.0.2, mask 255.255.255.0). Ping PC2 from PC1 (**Ping** tool)."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "PC1",
+    "to": "PC2"
+   }
+  },
+  {
+   "title": {
+    "fr": "Et avec des cartes récentes ?",
+    "en": "And with modern cards?"
+   },
+   "text": {
+    "fr": "Les cartes réseau d’aujourd’hui ont l’**Auto-MDIX** : elles détectent le câble et croisent elles-mêmes émission et réception (et en 1 Gb/s, les quatre paires servent dans les deux sens). Deux PC récents reliés par un câble **droit** :",
+    "en": "Today’s network cards have **Auto-MDIX**: they detect the cable and cross transmit and receive by themselves (and at 1 Gb/s, all four pairs work both ways). Two modern PCs connected by a **straight** cable:"
+   },
+   "hint": {
+    "fr": "Décochez « appareil ancien » sur les deux PC pour l’essayer dans le plan.",
+    "en": "Untick “legacy device” on both PCs to try it on the plan."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Pas de lien, il faut toujours un câble croisé entre deux PC",
+      "en": "No link, two PCs always need a crossover cable"
+     },
+     {
+      "fr": "Le lien s’établit : la carte croise elle-même",
+      "en": "The link comes up: the card crosses by itself"
+     },
+     {
+      "fr": "Le lien s’établit, mais à 10 Mb/s seulement",
+      "en": "The link comes up, but only at 10 Mb/s"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

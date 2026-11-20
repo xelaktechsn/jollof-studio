@@ -448,7 +448,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
   }
 
   // Serial1 du cœur arduino-pico : TX sur GP0, RX sur GP1 (un module série s'y branche croisé).
-  const devices = attachDevices({ cpu: mcu, MHZ, hw, pinApi, uart, uarts: [{ name: 'Serial1', rx: 'GP1', tx: 'GP0', api: uart }], now: cyc, after, i2c, spiBus });
+  const devices = attachDevices({ cpu: mcu, MHZ, hw, pinApi, uart, uarts: [{ name: 'Serial1', rx: 'GP1', tx: 'GP0', api: uart }], now: cyc, after, i2c, spiBus, warnings });
   devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {
@@ -465,7 +465,7 @@ export function createRp2040Runtime(image, hw, opts = {}) {
     get state() { return state; }, get error() { return error; }, get line() { return null; },
     takeSerial() { const s = out; out = ''; return s; },
     send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); feedSerial(); }, // tout de suite, pas à la fin de l'image
-    stop() { state = 'stopped'; },
+    stop() { state = 'stopped'; devices.dispose(); },
     /** Pour les tests et les modèles de modules : le processeur émulé et ses périphériques. */
     hw: { mcu, cpu: core, clock, cdc, usbOpen: () => usbOpen, pinApi, uart, devices, i2c: () => i2cHandler }
   };

@@ -4,7 +4,7 @@
 // La timeline automatique doit redonner exactement l'animation d'avant (formules recopiées ici).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAuto, fitCam, evalAt, end, doneAt, sync, normalize, appendWires, clone, together, LEAD } from './timeline.js';
+import { buildAuto, fitCam, evalAt, end, doneAt, sync, normalize, appendWires, clone, together, planCam, LEAD } from './timeline.js';
 
 /* ---------- Ancienne animation (main.js avant la timeline), recopiée telle quelle ---------- */
 const ease = t => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -147,4 +147,46 @@ test('normalize : rejette ce qui n’est pas une timeline et borne le reste', ()
   assert.equal(tl.caps.length, 1); assert.ok(!/[<>]/.test(tl.caps[0].text));
   const ids = [...tl.wires, ...tl.cam, ...tl.caps].map(x => x.id);
   assert.equal(new Set(ids).size, ids.length, 'identifiants uniques');
+});
+
+/* ---------- Caméra calculée et démonstration ---------- */
+test('planCam : vue d’ensemble, puis chaque plan tenu pendant ses fils, retour à la vue d’ensemble', () => {
+  const tl = buildAuto('seq', ['w1', 'w2', 'w3'], 1);
+  tl.camPlan = true;
+  const shots = [{ id: 's1', auto: 'all', p: [0, 9, 9], t: [0, 0, 0] }, { id: 's2', auto: 'wire', ws: ['w1', 'w2'], p: [1, 5, 5], t: [1, 0, 0] }, { id: 's3', auto: 'wire', ws: ['w3'], p: [9, 5, 5], t: [9, 0, 0] }];
+  sync(tl, ['w1', 'w2', 'w3'], shots.map(s => s.id), 1, shots);
+  assert.equal(tl.camAuto, false);
+  assert.deepEqual(tl.cam.map(k => k.shot), ['s1', 's2', 's2', 's3', 's3', 's1']);
+  for (let i = 1; i < tl.cam.length; i++) assert.ok(tl.cam[i].t >= tl.cam[i - 1].t);
+  assert.ok(tl.cam[tl.cam.length - 1].t <= end(tl));
+  const map = new Map(shots.map(s => [s.id, s]));
+  // Pendant le tracé du fil 2 (même plan que le fil 1), la caméra ne bouge pas.
+  const c2 = tl.wires[1];
+  assert.deepEqual(evalAt(tl, c2.t + 0.3, map).cam, evalAt(tl, c2.t + 0.6, map).cam);
+  assert.deepEqual(evalAt(tl, c2.t + 0.5, map).cam.p, [1, 5, 5]);
+  // Pendant le fil 3, elle est sur son plan ; à la fin, sur la vue d'ensemble.
+  assert.deepEqual(evalAt(tl, tl.wires[2].t + 0.5, map).cam.p, [9, 5, 5]);
+  assert.deepEqual(evalAt(tl, end(tl), map).cam.p, [0, 9, 9]);
+  // Fils tracés ensemble : la vue d'ensemble tout du long.
+  const all = buildAuto('all', ['w1', 'w2', 'w3'], 1, tl);
+  assert.equal(all.camPlan, true);
+  planCam(all, shots);
+  assert.ok(all.cam.every(k => k.shot === 's1'));
+  // Sans vue d'ensemble, rien ne change.
+  const none = buildAuto('seq', ['w1'], 1); none.cam = [{ id: 'k1', shot: 's9', t: 0, ease: 'cut' }];
+  assert.deepEqual(planCam(none, []).cam, [{ id: 'k1', shot: 's9', t: 0, ease: 'cut' }]);
+});
+
+test('démonstration : allonge la vidéo, commence après le câblage, survit à normalize', () => {
+  const tl = buildAuto('seq', ['w1', 'w2'], 1), base = end(tl);
+  tl.demo = 5;
+  assert.equal(end(tl), base + 5);
+  assert.equal(evalAt(tl, doneAt(tl) - 0.1, new Map()).demo, false);
+  assert.equal(evalAt(tl, doneAt(tl) + 0.7, new Map()).demo, true);
+  assert.equal(evalAt(buildAuto('seq', ['w1'], 1), 99, new Map()).demo, false);
+  assert.equal(buildAuto('seq', ['w1'], 1, tl).demo, 5);
+  const n = normalize(JSON.parse(JSON.stringify({ ...tl, camPlan: true })));
+  assert.equal(n.demo, 5); assert.equal(n.camPlan, true); assert.equal(n.camAuto, false);
+  assert.equal(normalize({ wires: [], demo: 1e9 }).demo, 120);
+  assert.equal('demo' in normalize({ wires: [], demo: -4 }), false);
 });

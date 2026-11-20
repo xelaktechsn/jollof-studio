@@ -1,0 +1,540 @@
+{
+ "id": "net01-tutoriel-sertir-rj45",
+ "series": "tuto",
+ "tutorial": true,
+ "level": "college",
+ "minutes": 20,
+ "title": {
+  "fr": "Tutoriel : sertir un câble RJ45 en T568B",
+  "en": "Tutorial: crimp an RJ45 cable in T568B"
+ },
+ "summary": {
+  "fr": "Pas à pas, le geste du câbleur : ranger les huit conducteurs dans l’ordre T568B, sertir les deux fiches, passer le câble au testeur, puis voir le PC rejoindre le réseau et répondre au ping. Chaque étape se valide toute seule.",
+  "en": "Step by step, the cable installer’s craft: lay the eight conductors in T568B order, crimp both plugs, run the cable through the tester, then watch the PC join the network and answer the ping. Each step checks itself."
+ },
+ "objectives": [
+  {
+   "fr": "Connaître l’ordre des couleurs T568B et les quatre paires torsadées",
+   "en": "Know the T568B colour order and the four twisted pairs"
+  },
+  {
+   "fr": "Sertir une fiche RJ45 et contrôler le câble au testeur",
+   "en": "Crimp an RJ45 plug and check the cable with the tester"
+  },
+  {
+   "fr": "Vérifier un lien et un ping",
+   "en": "Check a link and a ping"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "T568B, broches 1 à 8 : blanc-orange, orange, blanc-vert, bleu, blanc-bleu, vert, blanc-marron, marron.",
+   "en": "T568B, pins 1 to 8: white-orange, orange, white-green, blue, white-blue, green, white-brown, brown."
+  },
+  {
+   "fr": "La même norme aux deux bouts donne un câble droit, celui qui relie un poste à un switch.",
+   "en": "The same standard at both ends makes a straight cable, the one that connects a computer to a switch."
+  },
+  {
+   "fr": "Le testeur montre les défauts avant qu’on cherche la panne ailleurs.",
+   "en": "The tester shows faults before you look for the problem elsewhere."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Tutoriel sertissage RJ45",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 80,
+       "y": 60,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 420,
+       "y": 80,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 160,
+       "y": 300,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+         ],
+         "crimped": false,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+         ],
+         "crimped": false,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 80,
+     "y": 60,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 420,
+     "y": 80,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 160,
+     "y": 300,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Ce que vous allez faire",
+    "en": "What you will do"
+   },
+   "text": {
+    "fr": "Le plan réseau montre une **box**, un **switch** et un **PC**. Le câble entre le PC et le switch est posé, mais ses deux fiches RJ45 ne sont **pas serties** : aucun signal ne passe.\nUn câble Ethernet a **huit conducteurs** torsadés par paires : orange, vert, bleu et marron, chacun avec son blanc rayé. Vous allez les ranger dans l’ordre de la norme **T568B**, sertir les deux fiches, tester le câble, puis vérifier que le PC rejoint le réseau.\nCe tutoriel se vérifie tout seul : faites ce qui est demandé, l’étape se valide d’elle-même. Le bouton **Montrer** entoure ce sur quoi cliquer.",
+    "en": "The network plan shows a **box**, a **switch** and a **PC**. The cable between the PC and the switch is laid, but its two RJ45 plugs are **not crimped**: no signal gets through.\nAn Ethernet cable has **eight conductors** twisted in pairs: orange, green, blue and brown, each with its striped white partner. You will lay them in the order of the **T568B** standard, crimp both plugs, test the cable, then check that the PC joins the network.\nThis tutorial checks itself: do what is asked and the step validates on its own. The **Show me** button circles what to click."
+   },
+   "spot": [
+    ".ntHost"
+   ],
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Ouvrir l’atelier de sertissage",
+    "en": "Open the crimping bench"
+   },
+   "text": {
+    "fr": "Avec l’outil **Sélection**, cliquez sur le câble entre PC1 et SW1. Dans l’onglet **Réseau** de l’inspecteur, cliquez sur **Sertir le côté A** : l’atelier de sertissage s’ouvre, avec la fiche vue de dessus, languette en dessous, broche 1 à gauche.",
+    "en": "With the **Select** tool, click the cable between PC1 and SW1. In the **Network** tab of the inspector, click **Crimp side A**: the crimping bench opens, with the plug seen from above, latch underneath, pin 1 on the left."
+   },
+   "hint": {
+    "fr": "Le câble se choisit en cliquant sur son tracé dans le plan. L’onglet Réseau de l’inspecteur montre alors ses deux fiches.",
+    "en": "Pick the cable by clicking its line on the plan. The Network tab of the inspector then shows its two plugs."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"select\"]",
+    "#tab-nprop",
+    "[data-nt=\"crimpA\"]"
+   ],
+   "check": {
+    "type": "ui",
+    "need": [
+     "crimp"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "La fiche A, en T568B",
+    "en": "Plug A, in T568B"
+   },
+   "text": {
+    "fr": "Rangez les huit conducteurs dans les huit fentes, de la broche 1 à la broche 8 :\n- 1 **blanc-orange**, 2 **orange** ;\n- 3 **blanc-vert**, 4 **bleu**, 5 **blanc-bleu**, 6 **vert** ;\n- 7 **blanc-marron**, 8 **marron**.\nPuis **sertissez** : la pince enfonce les lames de la fiche dans les conducteurs.",
+    "en": "Lay the eight conductors in the eight slots, from pin 1 to pin 8:\n- 1 **white-orange**, 2 **orange**;\n- 3 **white-green**, 4 **blue**, 5 **white-blue**, 6 **green**;\n- 7 **white-brown**, 8 **brown**.\nThen **crimp**: the tool pushes the plug’s blades into the conductors."
+   },
+   "hint": {
+    "fr": "L’aide-mémoire de l’atelier montre les deux normes. Une fiche sertie dans le mauvais ordre se recommence : on coupe et on refait.",
+    "en": "The bench’s reference card shows both standards. A plug crimped in the wrong order is redone: cut it off and start again."
+   },
+   "keep": {
+    "fr": "Le vert entoure le bleu (broches 3 et 6) : la paire verte est « coupée » par la paire bleue. C’est voulu, et c’est l’erreur la plus fréquente.",
+    "en": "Green surrounds blue (pins 3 and 6): the green pair is “split” by the blue pair. That is on purpose, and it is the most common mistake."
+   },
+   "spot": [
+    ".nt-ov .nt-slots",
+    "[data-nt=\"crimpA\"]"
+   ],
+   "check": {
+    "type": "net-cable",
+    "a": "PC1",
+    "b": "SW1",
+    "side": "a",
+    "std": "B"
+   }
+  },
+  {
+   "title": {
+    "fr": "La fiche B, dans le même ordre",
+    "en": "Plug B, in the same order"
+   },
+   "text": {
+    "fr": "Revenez au câble et cliquez sur **Sertir le côté B**. Même ordre T568B, puis sertissez. Les deux bouts dans la même norme : c’est un **câble droit**.",
+    "en": "Go back to the cable and click **Crimp side B**. Same T568B order, then crimp. Both ends with the same standard: this is a **straight cable**."
+   },
+   "spot": [
+    "[data-nt=\"crimpB\"]",
+    ".nt-ov .nt-slots"
+   ],
+   "check": {
+    "type": "net-cable",
+    "a": "PC1",
+    "b": "SW1",
+    "side": "b",
+    "std": "B"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le testeur de câble",
+    "en": "The cable tester"
+   },
+   "text": {
+    "fr": "Un câbleur ne pose jamais un câble sans le tester. Cliquez sur **Tester** dans l’inspecteur du câble (ou prenez l’outil **Testeur** et cliquez sur le câble) : le boîtier maître envoie sur les broches 1 à 8 tour à tour, les voyants du bouchon distant s’allument dans le même ordre si le câble est droit et bon.",
+    "en": "An installer never lays a cable without testing it. Click **Test** in the cable inspector (or take the **Tester** tool and click the cable): the main unit sends on pins 1 to 8 in turn, and the remote unit’s lights come on in the same order if the cable is straight and good."
+   },
+   "spot": [
+    "[data-nt=\"test\"]",
+    ".ntTools [data-tool=\"tester\"]"
+   ],
+   "check": {
+    "type": "ui",
+    "need": [
+     "tester"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le lien s’établit",
+    "en": "The link comes up"
+   },
+   "text": {
+    "fr": "Câble bon, les deux cartes réseau négocient leur vitesse : **1 Gb/s** entre ce PC et ce switch, sur les quatre paires. Le port du PC passe au vert dans le plan.",
+    "en": "With a good cable, the two network cards negotiate their speed: **1 Gb/s** between this PC and this switch, over all four pairs. The PC’s port turns green on the plan."
+   },
+   "spot": [
+    ".ntDev[data-id=\"pc1\"] .ntPort[data-port=\"eth0\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "PC1",
+    "b": "SW1",
+    "speed": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping",
+    "en": "The ping"
+   },
+   "text": {
+    "fr": "Le PC a reçu une adresse de la box (DHCP). Prenez l’outil **Ping**, choisissez PC1 puis la box : un ping envoie un petit message, la box répond. Réponse reçue : le réseau fonctionne de bout en bout.",
+    "en": "The PC got an address from the box (DHCP). Take the **Ping** tool, pick PC1 then the box: a ping sends a short message and the box answers. Reply received: the network works end to end."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]",
+    "[data-nt=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "PC1",
+    "to": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Bilan",
+    "en": "Wrap-up"
+   },
+   "text": {
+    "fr": "Les deux fiches sont en T568B. Quel câble avez-vous fabriqué ?",
+    "en": "Both plugs are in T568B. Which cable did you make?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Un câble droit : il relie un poste à un switch ou à une box",
+      "en": "A straight cable: it connects a computer to a switch or a box"
+     },
+     {
+      "fr": "Un câble croisé : il relie deux PC sans switch",
+      "en": "A crossover cable: it connects two PCs without a switch"
+     },
+     {
+      "fr": "Un câble console : il relie un PC au port de configuration d’un routeur",
+      "en": "A console cable: it connects a PC to a router’s configuration port"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

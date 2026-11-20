@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { bench, rule, act, variable, compile, hasCli, FQBN } from './rulekit.mjs';
 
 const { LIBRARY } = await import('../library/catalog.js');
@@ -189,13 +190,17 @@ test('Interpréteur, montage réel : message Bluetooth reçu et réponse, horlog
 // adresses I2C distinctes, assez de broches et de voies d'adaptateur de niveau sur chaque carte.
 const AVR_GROUPS = [
   ['vl53l0x', 'max30102', 'ccs811', 'bme680', 'ds3231', 'at24c256', 'pca9685'], ['tcs34725', 'ds1307', 'mcp23017'], ['pcf8574', 'acs712', 'ir', 'ky040'],
-  ['keypad', 'tm1637'], ['rc522', 'nrf24', 'sdcard'], ['st7735'], ['sx1278'], ['ili9341'], ['hc05', 'neo6m', 'max485'], ['sim800', 'hc12'],
+  ['keypad', 'tm1637'], ['rc522', 'nrf24', 'sdcard'], ['st7735'], ['sx1278'], ['ili9341'], ['hc05', 'neo6m', 'max485'], ['sim800', 'hc12', 'w5500'],
   ['max7219m', 'max7219s', 'lcd2004', 'hc595', 'hc165']
 ];
 const ESP_GROUPS = [
   ['vl53l0x', 'max30102', 'ccs811', 'bme680', 'ds3231', 'at24c256', 'pca9685'], ['tcs34725', 'ds1307', 'mcp23017', 'acs712', 'ir', 'ky040', 'hc12'],
-  ['pcf8574', 'keypad', 'tm1637', 'lcd2004'], ['max7219m', 'max7219s', 'hc595', 'hc165'], ['rc522', 'nrf24', 'sdcard', 'st7735'], ['sx1278', 'ili9341', 'hc05', 'neo6m'], ['max485', 'sim800']
+  ['pcf8574', 'keypad', 'tm1637', 'lcd2004'], ['max7219m', 'max7219s', 'hc595', 'hc165'], ['rc522', 'nrf24', 'sdcard', 'st7735'], ['sx1278', 'ili9341', 'hc05', 'neo6m'], ['max485', 'sim800', 'w5500']
 ];
+// ENC28J60 : bibliothèque EthernetENC (arduino-cli lib install EthernetENC) ; sans elle, son montage n'est pas compilé.
+const libs = hasCli ? spawnSync('arduino-cli', ['lib', 'list'], { encoding: 'utf8' }).stdout || '' : '';
+const NO_LIB = /^EthernetENC\s/m.test(libs) ? [] : ['enc28j60'];
+if (!NO_LIB.length) { AVR_GROUPS.push(['enc28j60']); ESP_GROUPS.push(['enc28j60']); }
 const PLAN = [
   ['uno', AVR_GROUPS], ['esp32', ESP_GROUPS],
   // Nano (ancien chargeur : 30 720 octets de flash) : le montage aux sept capteurs I2C (31,9 Ko) n'y tient pas.
@@ -205,7 +210,7 @@ const PLAN = [
 ];
 test('arduino-cli : chaque montage compile sans aucun avertissement du croquis (Uno, ESP32 ; Nano, Mega, Pico en partie)', { skip: !hasCli && 'arduino-cli absent' }, () => {
   // Chaque composant est compilé au moins une fois sur Uno et sur ESP32.
-  for (const [b, groups] of PLAN.slice(0, 2)) assert.deepEqual(PARTS.filter(t => !groups.flat().includes(t)), [], `${b} : composants jamais compilés`);
+  for (const [b, groups] of PLAN.slice(0, 2)) assert.deepEqual(PARTS.filter(t => !groups.flat().includes(t) && !NO_LIB.includes(t)), [], `${b} : composants jamais compilés`);
   const report = [];
   try {
     for (const [b, groups] of PLAN) for (const g of groups) {

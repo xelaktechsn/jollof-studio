@@ -364,7 +364,7 @@ export function createEsp32Runtime(image, hw, opts = {}) {
   }
 
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
-  const stop = () => { if (state === 'run') state = 'stopped'; transport.stop(); };
+  const stop = () => { if (state === 'run') state = 'stopped'; transport.stop(); if (bridge.devices && bridge.devices.dispose) bridge.devices.dispose(); };
   return {
     pins, warnings, run, clock: vt,
     probe(k) {

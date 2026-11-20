@@ -8,6 +8,8 @@
 //   { v: 1,
 //     auto: 'seq' | 'all' | null,   // non nul : refaite à partir des fils et de la « Durée par fil »
 //     camAuto: true,                // vrai : les plans de caméra sont répartis sur toute la durée
+//     camPlan: true,                // vrai : plans calculés (video/planner.js), un par fil ou groupe de fils voisins
+//     demo: 0,                      // secondes de simulation après le câblage (« le circuit fonctionne »)
 //     pad, hold,                    // pause après le dernier fil, puis fin (« Circuit câblé »)
 //     wires: [{ id:'c1', ws:['w3'], t, d, grp? }],      // un extrait trace un ou plusieurs fils
 //                                                       // (grp : « tracés ensemble », même s'il n'y en a qu'un)
@@ -42,6 +44,7 @@ export function buildAuto(mode, wireIds, D, prev) {
   const tl = {
     v: 1, auto: mode === 'all' ? 'all' : 'seq', camAuto: prev ? prev.camAuto !== false : true,
     pad: 0, hold: HOLD, wires: [],
+    ...(prev && prev.camPlan ? { camPlan: true } : {}), ...(prev && prev.demo ? { demo: prev.demo } : {}),
     cam: prev ? prev.cam.map(k => ({ ...k })) : [], caps: prev ? prev.caps.map(c => ({ ...c })) : []
   };
   if (tl.auto === 'all') { if (wireIds.length) tl.wires.push({ id: 'c1', ws: [...wireIds], t: LEAD, d: D * 1.8, grp: true }); }
@@ -55,7 +58,7 @@ export function buildAuto(mode, wireIds, D, prev) {
 /** Instant où le dernier fil est tracé : la légende passe à « Circuit câblé ». */
 export function doneAt(tl) { let e = 0; for (const c of tl.wires) e = Math.max(e, c.t + c.d); return e + tl.pad; }
 /** Fin sans compter la caméra (sert à répartir les plans). */
-function baseEnd(tl) { let e = doneAt(tl) + tl.hold; for (const c of tl.caps) e = Math.max(e, c.t + c.d); return e; }
+function baseEnd(tl) { let e = doneAt(tl) + tl.hold + (tl.demo || 0); for (const c of tl.caps) e = Math.max(e, c.t + c.d); return e; }
 /** Durée totale de la vidéo, en secondes. */
 export function end(tl) { let e = baseEnd(tl); for (const k of tl.cam) e = Math.max(e, k.t); return e; }
 
@@ -68,10 +71,38 @@ export function fitCam(tl, shotIds) {
 }
 
 /**
+ * Caméra calculée : chaque plan automatique (`auto: 'all'` vue d'ensemble, `auto: 'wire'` avec `ws`, les fils
+ * qu'il montre) est tenu pendant le tracé de ses fils. La caméra glisse vers le plan suivant entre la fin d'un
+ * fil (80 % de sa durée : il est presque tracé) et le début du suivant (10 % : rien n'a encore bougé).
+ * Ouvre et ferme sur la vue d'ensemble, qui reste pendant la démonstration.
+ */
+export function planCam(tl, shots) {
+  const all = shots.find(s => s.auto === 'all');
+  if (!all) return tl;
+  const by = new Map();
+  for (const s of shots) if (s.auto === 'wire' && Array.isArray(s.ws)) for (const w of s.ws) by.set(w, s.id);
+  const segs = [{ shot: all.id, a: 0, b: 0 }];
+  for (const c of tl.wires) {
+    const shot = (!together(c) && by.get(c.ws[0])) || all.id, last = segs[segs.length - 1];
+    const a = Math.max(last.b, c.t + c.d * 0.1), b = Math.max(a, c.t + c.d * 0.8);
+    if (last.shot === shot) last.b = b; else segs.push({ shot, a, b });
+  }
+  const fin = doneAt(tl) + Math.min(0.9, tl.hold), last = segs[segs.length - 1];
+  if (last.shot === all.id) last.b = Math.max(last.b, fin); else segs.push({ shot: all.id, a: Math.max(last.b, fin), b: Math.max(last.b, fin) });
+  tl.cam = [];
+  for (const s of segs) {
+    tl.cam.push({ id: 'k' + (tl.cam.length + 1), shot: s.shot, t: s.a, ease: 'smooth' });
+    if (s.b > s.a + 1e-6) tl.cam.push({ id: 'k' + (tl.cam.length + 1), shot: s.shot, t: s.b, ease: 'smooth' });
+  }
+  tl.camAuto = false;
+  return tl;
+}
+
+/**
  * Met la timeline d'accord avec le montage. Automatique : refaite. Manuelle : les fils retirés
  * quittent leurs extraits, les nouveaux fils sont ajoutés à la suite. Rend le nombre de fils ajoutés.
  */
-export function sync(tl, wireIds, shotIds, D) {
+export function sync(tl, wireIds, shotIds, D, shotList) {
   let added = 0;
   if (tl.auto) Object.assign(tl, buildAuto(tl.auto, wireIds, D, tl));
   else {
@@ -82,7 +113,8 @@ export function sync(tl, wireIds, shotIds, D) {
   }
   const shots = new Set(shotIds);
   tl.cam = tl.cam.filter(k => shots.has(k.shot));
-  if (!tl.camAuto) {
+  if (tl.camPlan && shotList) planCam(tl, shotList);
+  else if (!tl.camAuto) {
     // Plan ajouté depuis l'onglet Vidéo : il prend place à la fin de la timeline.
     const used = new Set(tl.cam.map(k => k.shot)), last = tl.cam.length ? tl.cam[tl.cam.length - 1].t : 0;
     shotIds.filter(s => !used.has(s)).forEach((s, i) => tl.cam.push({ id: nextId('k', tl.cam), shot: s, t: Math.max(last, doneAt(tl)) + i * 1.5, ease: 'smooth' }));
@@ -116,7 +148,9 @@ export function evalAt(tl, T, shots) {
   const started = cur >= 0;
   if (!started && tl.wires.length) cur = 0;
   const cap = tl.caps.find(c => T >= c.t && T < c.t + c.d) || null;
-  return { prog, cur, started, done: T >= doneAt(tl), cap, cam: camAt(tl, T, shots) };
+  const done = T >= doneAt(tl);
+  // Démonstration : le circuit simulé tourne après le câblage, jusqu'à la fin de la vidéo.
+  return { prog, cur, started, done, demo: done && (tl.demo || 0) > 0 && T >= doneAt(tl) + Math.min(0.6, tl.hold), cap, cam: camAt(tl, T, shots) };
 }
 
 /** Position de la caméra à l'instant T : glisse d'un plan au suivant, ou coupe nette. */
@@ -157,6 +191,8 @@ export function normalize(raw, clean = (s, max) => String(s ?? '').slice(0, max)
     v: 1, auto: raw.auto === 'seq' || raw.auto === 'all' ? raw.auto : null, camAuto: raw.camAuto !== false,
     pad: Math.min(60, at(raw.pad) ?? 0), hold: Math.min(60, at(raw.hold) ?? HOLD), wires: [], cam: [], caps: []
   };
+  if (raw.camPlan === true) { tl.camPlan = true; tl.camAuto = false; }
+  const demo = Math.min(120, at(raw.demo) ?? 0); if (demo > 0) tl.demo = demo;
   const seen = new Set();
   for (const c of list(raw.wires).slice(0, 2000)) {
     const t = at(c.t), d = dur(c.d);

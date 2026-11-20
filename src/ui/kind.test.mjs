@@ -7,8 +7,10 @@ import fs from 'node:fs';
 import { KINDS, KIND_IDS, spacesOf, inferKind } from './kind.js';
 
 const read = f => JSON.parse(fs.readFileSync(new URL(f, import.meta.url), 'utf8'));
-test('seul l’électropneumatique réunit deux plans de travail', () => {
-  assert.deepEqual(KIND_IDS.filter(k => spacesOf(k).length > 1), ['epneu']);
+test('seuls l’électropneumatique et les objets connectés réunissent deux plans de travail', () => {
+  assert.deepEqual(KIND_IDS.filter(k => spacesOf(k).length > 1), ['epneu', 'iot']);
+  assert.deepEqual(spacesOf('iot'), ['elec', 'net']);
+  assert.deepEqual(spacesOf('net'), ['net']);
   assert.deepEqual(spacesOf('epneu'), ['elec', 'pneu']);
   assert.deepEqual(spacesOf('pneu'), ['pneu']);
   assert.deepEqual(spacesOf('inconnu'), ['elec']);
@@ -23,6 +25,9 @@ test('type déclaré gardé, sinon déduit du contenu', () => {
   assert.equal(inferKind({ comps: [{}], settings: { modules: { logic } } }), 'elec');
   assert.equal(inferKind({ comps: [{}] }), 'elec');
   assert.equal(inferKind(null), 'elec');
+  const net = { devices: [{ id: 'pc1', type: 'pc' }], cables: [] };
+  assert.equal(inferKind({ comps: [], settings: { modules: { net } } }), 'net');
+  assert.equal(inferKind({ comps: [{}], settings: { modules: { net } } }), 'iot');
 });
 test('exemple 08 et TP : électropneumatique avec une carte, pneumatique sans', () => {
   assert.equal(inferKind(read('../../exemples/08-verin-electropneumatique.jollof')), 'epneu');

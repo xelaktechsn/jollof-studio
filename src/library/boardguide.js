@@ -45,6 +45,16 @@ export function renderBoardGuide() {
       <td>${yes(five)}</td><td>${n.io}</td><td>${n.adc} · ${tl('{0} bits', p.adcBits)}</td><td class="bgNw">${yes(c.wifi)}${c.bt ? ` <small>+ ${c.ble ? 'BLE' : 'BT'}</small>` : ''}</td>
       <td class="bgUse">${esc(c.use)}<small>${esc(c.price)}</small></td></tr>`;
   }).join('');
+  // Broches piégeuses, lues dans les profils (strap : niveau attendu au démarrage ; entrée seule ; mémoire flash).
+  const avoid = cards.map(c => {
+    const p = BOARDS[c.id], alias = new Set((p.alias || []).map(a => a[0])), g = Object.entries(p.gpio).filter(([k]) => !alias.has(k));
+    const strap = Object.entries(p.strap || {}).map(([k, v]) => `${esc(k)} <small>${v ? 'HIGH' : 'LOW'}</small>`);
+    const inOnly = g.filter(([, x]) => x.caps.has('in') && !x.caps.has('out') && !x.caps.has('flash')).map(([k]) => esc(k));
+    const flash = g.filter(([, x]) => x.caps.has('flash')).map(([k]) => esc(k));
+    if (!strap.length && !inOnly.length && !flash.length) return '';
+    const cell = l => (l.length ? l.join(', ') : '<span class="bgNo">—</span>');
+    return `<tr><th><b>${esc(p.label)}</b></th><td>${cell(strap)}</td><td>${cell(inOnly)}</td><td>${cell(flash)}</td></tr>`;
+  }).join('');
   const head = `<small>${tl('Guide')}</small><h1>${tl('Quelle carte choisir ?')}</h1>
     <p class="lead">${tl('Les cartes simulées par Jollof Studio, comparées pour un club, une salle de TP ou un projet : ce qu’elles savent faire, leurs pièges, par laquelle commencer.')}</p>`;
   const body = `
@@ -60,6 +70,9 @@ export function renderBoardGuide() {
       <li>${tl('L’ESP32, le NodeMCU et le Pico travaillent en 3,3 V et aucune de leurs broches n’accepte 5 V : un signal 5 V (écho d’un HC-SR04, sortie d’un module 5 V) peut les détruire. Passez par un pont diviseur (1 kΩ / 2 kΩ) ou un adaptateur de niveau.')}</li>
       <li>${tl('À l’inverse, un module 3,3 V (BMP280, RC522…) alimenté en 5 V grille : regardez toujours sa tension avant de le brancher.')}</li>
       <li>${tl('Le simulateur signale ces erreurs en rouge dans l’onglet Simulation : essayez avant d’acheter.')}</li></ul></section>
+    ${avoid ? `<section class="bgWide"><h3>${tl('Broches à éviter ou à manier avec soin')}</h3>
+      <div class="bgScroll"><table class="boardTable"><thead><tr><th>${tl('Carte')}</th><th>${tl('Broches de démarrage (niveau à garder au démarrage)')}</th><th>${tl('Entrée seulement')}</th><th>${tl('Réservées à la mémoire')}</th></tr></thead><tbody>${avoid}</tbody></table></div>
+      <p class="hintline">${tl('Une broche de démarrage tirée au mauvais niveau empêche la carte de démarrer ou de recevoir un programme : le vérificateur le signale. Lues dans les profils du simulateur.')}</p></section>` : ''}
     <section><h3>${tl('Par où commencer ?')}</h3><ol class="bgPath">
       <li><b>${tl('Apprendre')}</b> — ${tl('Uno, ou Nano pour un montage compact. Des milliers de tutoriels en français ; tous les TP de base de Jollof Studio l’utilisent.')}</li>
       <li><b>${tl('Connecter')}</b> — ${tl('ESP32 dès qu’il faut le Wi-Fi ou le Bluetooth (mêmes programmes Arduino, quelques broches à éviter) ; ESP32-C3 ou NodeMCU si le budget est très serré, ESP32-S3 pour les projets plus lourds.')}</li>

@@ -27,7 +27,8 @@ export function sanitizeProject(d) {
     return o;
   });
   out.wires = (Array.isArray(d.wires) ? d.wires : []).filter(w => w && Array.isArray(w.a) && Array.isArray(w.b)).map(w => ({
-    ...w, a: [cleanId(w.a[0]), pinKey(w.a[1])], b: [cleanId(w.b[0]), pinKey(w.b[1])], color: cleanColor(w.color), role: w.role == null ? w.role : cleanText(w.role, 80)
+    ...w, a: [cleanId(w.a[0]), pinKey(w.a[1])], b: [cleanId(w.b[0]), pinKey(w.b[1])], color: cleanColor(w.color), role: w.role == null ? w.role : cleanText(w.role, 80),
+    shape: w.shape && typeof w.shape === 'object' && !Array.isArray(w.shape) ? w.shape : undefined // nombres seulement : bornés par cleanShape (main.js)
   })).filter(w => w.a[0] && w.b[0]);
   if (Array.isArray(d.blocks)) out.blocks = d.blocks.map(b => ({ ...b, id: cleanId(b && b.id) || undefined, name: cleanText(b && b.name, 40), color: cleanColor(b && b.color, '#3b82f6'), comps: Array.isArray(b && b.comps) ? b.comps.map(cleanId).filter(Boolean) : [] }));
   if (d.settings && typeof d.settings === 'object') {

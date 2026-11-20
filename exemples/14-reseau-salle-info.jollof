@@ -1,0 +1,939 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "Réseau de la salle informatique",
+ "description": "Le réseau d’une salle de classe : box (DHCP), switch PoE dans la baie, panneau de brassage, cinq prises murales, deux PC, une imprimante à adresse fixe, un point d’accès Wi-Fi et une caméra alimentés par PoE, un portable en Wi-Fi. Liens permanents de 42 à 63 m, cordons de 1 et 3 m.",
+ "en": {
+  "name": "Computer room network",
+  "description": "A classroom network: box (DHCP), PoE switch in the rack, patch panel, five wall outlets, two PCs, a printer with a fixed address, a Wi-Fi access point and a camera powered by PoE, a laptop on Wi-Fi. Permanent links from 42 to 63 m, 1 m and 3 m cords."
+ },
+ "comps": [],
+ "wires": [],
+ "settings": {
+  "kind": "net",
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 35,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {}
+  },
+  "modules": {
+   "net": {
+    "view": "net",
+    "devices": [
+     {
+      "id": "box1",
+      "type": "router",
+      "x": 60,
+      "y": 40,
+      "name": "BOX1",
+      "p": {
+       "lan": {
+        "ip": "192.168.1.1",
+        "prefix": 24
+       },
+       "dhcp": {
+        "on": true,
+        "from": 100,
+        "to": 199
+       },
+       "wan": {
+        "mode": "none",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "wifi": {
+        "on": false,
+        "ssid": "Box-Jollof",
+        "pass": "jollof2024"
+       }
+      }
+     },
+     {
+      "id": "sw1",
+      "type": "poeswitch",
+      "x": 60,
+      "y": 160,
+      "name": "SW1",
+      "p": {
+       "budget": 64,
+       "pseType": "at",
+       "portW": 30
+      }
+     },
+     {
+      "id": "pb1",
+      "type": "patch",
+      "x": 40,
+      "y": 280,
+      "name": "PB1",
+      "p": {}
+     },
+     {
+      "id": "pr1",
+      "type": "outlet",
+      "x": 520,
+      "y": 80,
+      "name": "PR1",
+      "p": {}
+     },
+     {
+      "id": "pr2",
+      "type": "outlet",
+      "x": 520,
+      "y": 180,
+      "name": "PR2",
+      "p": {}
+     },
+     {
+      "id": "pr3",
+      "type": "outlet",
+      "x": 520,
+      "y": 280,
+      "name": "PR3",
+      "p": {}
+     },
+     {
+      "id": "pr4",
+      "type": "outlet",
+      "x": 520,
+      "y": 380,
+      "name": "PR4",
+      "p": {}
+     },
+     {
+      "id": "pr5",
+      "type": "outlet",
+      "x": 520,
+      "y": 480,
+      "name": "PR5",
+      "p": {}
+     },
+     {
+      "id": "pc1",
+      "type": "pc",
+      "x": 720,
+      "y": 60,
+      "name": "PC1",
+      "p": {
+       "ip": {
+        "mode": "dhcp",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "legacy": false
+      }
+     },
+     {
+      "id": "pc2",
+      "type": "pc",
+      "x": 720,
+      "y": 170,
+      "name": "PC2",
+      "p": {
+       "ip": {
+        "mode": "dhcp",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "legacy": false
+      }
+     },
+     {
+      "id": "imp1",
+      "type": "printer",
+      "x": 720,
+      "y": 280,
+      "name": "IMP1",
+      "p": {
+       "ip": {
+        "mode": "static",
+        "ip": "192.168.1.20",
+        "prefix": 24,
+        "gw": "192.168.1.1",
+        "dns": ""
+       },
+       "legacy": false
+      }
+     },
+     {
+      "id": "ap1",
+      "type": "ap",
+      "x": 720,
+      "y": 390,
+      "name": "AP1",
+      "p": {
+       "ssid": "Salle-Info",
+       "pass": "jollof2024",
+       "power": "poe",
+       "poeClass": 3
+      }
+     },
+     {
+      "id": "cam1",
+      "type": "camera",
+      "x": 720,
+      "y": 490,
+      "name": "CAM1",
+      "p": {
+       "ip": {
+        "mode": "dhcp",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "power": "poe",
+       "poeClass": 3
+      }
+     },
+     {
+      "id": "pt1",
+      "type": "laptop",
+      "x": 900,
+      "y": 390,
+      "name": "PORTABLE1",
+      "p": {
+       "ip": {
+        "mode": "dhcp",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "legacy": false,
+       "wifi": {
+        "ssid": "Salle-Info",
+        "pass": "jollof2024"
+       }
+      }
+     }
+    ],
+    "cables": [
+     {
+      "id": "c0",
+      "a": [
+       "box1",
+       "lan1"
+      ],
+      "b": [
+       "sw1",
+       "p8"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "s1",
+      "a": [
+       "sw1",
+       "p5"
+      ],
+      "b": [
+       "pb1",
+       "f1"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "m1",
+      "a": [
+       "pb1",
+       "b1"
+      ],
+      "b": [
+       "pr1",
+       "back"
+      ],
+      "cat": "cat6",
+      "len": 42,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "d1",
+      "a": [
+       "pr1",
+       "front"
+      ],
+      "b": [
+       "pc1",
+       "eth0"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "s2",
+      "a": [
+       "sw1",
+       "p6"
+      ],
+      "b": [
+       "pb1",
+       "f2"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "m2",
+      "a": [
+       "pb1",
+       "b2"
+      ],
+      "b": [
+       "pr2",
+       "back"
+      ],
+      "cat": "cat6",
+      "len": 45,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "d2",
+      "a": [
+       "pr2",
+       "front"
+      ],
+      "b": [
+       "pc2",
+       "eth0"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "s3",
+      "a": [
+       "sw1",
+       "p7"
+      ],
+      "b": [
+       "pb1",
+       "f3"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "m3",
+      "a": [
+       "pb1",
+       "b3"
+      ],
+      "b": [
+       "pr3",
+       "back"
+      ],
+      "cat": "cat6",
+      "len": 50,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "d3",
+      "a": [
+       "pr3",
+       "front"
+      ],
+      "b": [
+       "imp1",
+       "eth0"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "s4",
+      "a": [
+       "sw1",
+       "p1"
+      ],
+      "b": [
+       "pb1",
+       "f4"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "m4",
+      "a": [
+       "pb1",
+       "b4"
+      ],
+      "b": [
+       "pr4",
+       "back"
+      ],
+      "cat": "cat6",
+      "len": 58,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "d4",
+      "a": [
+       "pr4",
+       "front"
+      ],
+      "b": [
+       "ap1",
+       "eth0"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "s5",
+      "a": [
+       "sw1",
+       "p2"
+      ],
+      "b": [
+       "pb1",
+       "f5"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "m5",
+      "a": [
+       "pb1",
+       "b5"
+      ],
+      "b": [
+       "pr5",
+       "back"
+      ],
+      "cat": "cat6",
+      "len": 63,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "d5",
+      "a": [
+       "pr5",
+       "front"
+      ],
+      "b": [
+       "cam1",
+       "eth0"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     }
+    ],
+    "ext": {}
+   }
+  }
+ }
+}

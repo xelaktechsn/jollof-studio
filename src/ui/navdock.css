@@ -46,7 +46,7 @@
 @media (max-width: 760px) { .ndCols { grid-template-columns: 1fr; } }
 
 /* Le plan de travail principal (scène 3D, schéma) se cache sous la logique et la pneumatique en plein écran. */
-body.logicOpen .ndStage, body.pneuOpen .ndStage, .app.presenting .ndDock, .app.presenting .ndMini { display: none !important; }
+body.logicOpen .ndStage, body.pneuOpen .ndStage, body.netOpen .ndStage, .app.presenting .ndDock, .app.presenting .ndMini { display: none !important; }
 @media (prefers-reduced-motion: reduce) { .ndDock, .ndMini, .ndHelp { animation: none; } }
 /* Vue 3D de la machine ouverte (pneumatique) : elle occupe le coin de la mini-carte. */
 .pnHost:has(> .pn3d:not([hidden])) > .ndMini { display: none; }

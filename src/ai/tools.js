@@ -10,6 +10,16 @@ import { PARTS } from '../sim/parts.js';
 import { BOARDS, boardOf, kindOf } from '../sim/boards.js';
 import { DOCS } from '../library/docs.js';
 import { SIGNALS, ACTIONS, signalOf, uid, defArg, migrate, ident, varText, involves, srcSignal, termDefaults, SERIAL, SERIAL_ACTS } from '../prog/rules.js';
+// Plan réseau : ses modules (appareils, câbles, contrôles) se chargent au premier outil net_* (voir netWs).
+let NETDEV, makeCable, STD, cleanEnd, analyzeCable, analyzeChain, cleanNet, netIssues, prefixOf, whyText;
+async function netLibs() {
+  if (NETDEV) return;
+  const [d, c, cl, is, ip, lc] = await Promise.all([import('../net/devices.js'), import('../net/cable.js'), import('../net/clean.js'), import('../net/issues.js'), import('../net/ip.js'), import('../net/labcheck.js')]);
+  ({ makeCable, STD, cleanEnd, analyzeCable, analyzeChain } = c);
+  ({ cleanNet } = cl); ({ netIssues } = is); ({ prefixOf } = ip); ({ whyText } = lc);
+  NETDEV = d.DEVICES;
+}
+import { NET, NET_SIG, NET_ACTS, cleanTopic } from '../prog/rules-net.js';
 import { QUANT, ENV, INPUTS, MODELS, encTurn, remotePress } from '../sim/models.js';
 import { compile } from '../prog/lang.js';
 import * as J from '../library/jpart.js';
@@ -77,6 +87,11 @@ export function createTools(H) {
     if (!x || typeof x !== 'object') fail('source expected: {"part","signal"} or {"variable"}');
     if (x.variable) return { var: declNamed('var', x.variable).id };
     if (x.serial) return { comp: SERIAL, sig: 'line' };
+    if (x.net) { // réseau (rules-net.js) : message ou nombre reçu sur un sujet MQTT, demande de la page web, connexions
+      const sig = { message: 'msg', number: 'num', page: 'page', online: 'online', mqtt: 'mqtt' }[x.net];
+      if (!sig) fail('net must be "message", "number", "page", "online" or "mqtt"');
+      return NET_SIG[sig].topic ? { comp: NET, sig, topic: cleanTopic(x.topic, false) } : { comp: NET, sig };
+    }
     const c = part(x.part), sigs = SIGNALS[c.type];
     if (!sigs) fail(`${c.name} measures nothing (no signals): see get_part`);
     const key = x.signal || Object.keys(sigs)[0];
@@ -127,6 +142,13 @@ export function createTools(H) {
       if (!SERIAL_ACTS[it.serial]) fail('serial must be "print", "show" or "plot"');
       const o = { kind: 'act', id: uid('a'), comp: SERIAL, act: it.serial, arg: it.serial === 'print' ? String(it.value ?? '') : null };
       if (it.show) o.what = source(it.show, prof); else if (it.serial !== 'print') fail('give "show": the value to write');
+      return o;
+    }
+    if (it.net) { // réseau : publier sur un sujet MQTT, une ligne de la page web
+      if (!NET_ACTS[it.net]) fail('net must be "publish" or "page"');
+      const o = { kind: 'act', id: uid('a'), comp: NET, act: it.net, arg: it.show ? defArg(NET, it.net) : String(it.value ?? defArg(NET, it.net)) };
+      if (it.show) o.what = source(it.show, prof);
+      if (it.net === 'publish') o.topic = cleanTopic(it.topic, true); else if (it.line) o.line = +it.line;
       return o;
     }
     const c = part(it.part), A = ACTIONS[c.type];
@@ -186,6 +208,51 @@ export function createTools(H) {
   }
   const PH = new Proxy({}, { get: (t, k) => (typeof k === 'string' ? k : undefined) }); // broches de l'exemple : leur nom
 
+  /* Plan réseau : chargé à la demande ; noms ou identifiants des équipements, « NOM.port » pour un port. */
+  async function netWs() {
+    if (!H.net) fail('the network workspace is not available');
+    const k = H.kind ? H.kind() : 'elec';
+    if (!['net', 'iot'].includes(k)) fail('this project has no network workspace: create a project of kind "net" (or "iot" with a board) with new_project');
+    const [W] = await Promise.all([H.net.ready(), netLibs()]);
+    return W;
+  }
+  const netNode = (W, ref) => { const st = W.lan().state(), s = norm(ref); const n = st.all.find(x => x.id === ref) || st.all.find(x => norm(x.name || '') === s); if (!n) fail(`no network device "${ref}" (see net_get)`); return n; };
+  const netDev = (W, ref) => { const n = netNode(W, ref); const d = W.data().devices.find(x => x.id === n.id); if (!d) fail(`${ref} comes from the electronics bench: change it there`); return d; };
+  const netName = (W, id) => { const n = W.lan().state().byId.get(id); return n ? n.name : id; };
+  const netPorts = d => NETDEV[d.type] ? NETDEV[d.type].ports(d.p || {}) : [];
+  function netPort(W, ref) {
+    const s = String(ref ?? ''), i = s.lastIndexOf('.');
+    if (i <= 0) fail(`port "${s}" must look like NAME.port, e.g. "PC1.eth0"`);
+    const n = netNode(W, s.slice(0, i)), want = s.slice(i + 1), ports = n.ext ? [{ id: n.type === 'wifi' ? '' : 'eth' }] : netPorts(n);
+    const p = ports.find(x => x.id === want) || ports.find(x => norm(x.id) === norm(want));
+    if (!p || !p.id) fail(`${n.name} has no port "${want}". Ports: ${ports.map(x => x.id).filter(Boolean).join(', ') || '(none: Wi-Fi only)'}`);
+    return [n.id, p.id];
+  }
+  function applyNetSettings(W, d, st) {
+    const merged = JSON.parse(JSON.stringify(d.p || {}));
+    for (const [k, v] of Object.entries(st || {})) {
+      if (k === 'name') { d.name = String(v).slice(0, 24); continue; }
+      if (v && typeof v === 'object' && !Array.isArray(v)) merged[k] = { ...(merged[k] || {}), ...v };
+      else merged[k] = v;
+    }
+    if (merged.ip && merged.ip.prefix != null) merged.ip.prefix = prefixOf(merged.ip.prefix) ?? merged.ip.prefix;
+    const clean = cleanNet({ devices: [{ ...d, p: merged }], cables: [] }).devices[0];
+    if (!clean) fail('invalid settings');
+    d.p = clean.p;
+  }
+  /** Résultat d'un test de câble, en anglais pour l'assistant. */
+  const testerSummary = segs => { const r = analyzeChain(segs); return r.kind === 'none' ? 'not crimped' : `${r.kind}${r.faults.length ? ': ' + r.faults.map(f => `${f.type} (pins ${f.pins.join(', ')})`).join('; ') : ' — no fault'}`; };
+  function cableInfo(c) { const r = analyzeCable(c.wire); return { id: c.id, category: c.cat, length_m: c.len, kind: r.kind, faults: r.faults.map(f => `${f.type} ${f.pins.join('-')}`) }; }
+  function netSummary(W) {
+    const lan = W.lan(), st = lan.state(), data = W.data();
+    return {
+      devices: st.all.map(n => { const f = lan.ipOf(n.id), pw = lan.power(n.id); return { id: n.id, name: n.name, type: n.type, ...(f && f.ip ? { ip: `${f.ip}/${f.prefix}`, ip_source: f.src, gateway: f.gw || null } : {}), ...(pw && !pw.on ? { powered: false, why: whyText(pw.why) } : {}), ports: (n.ext ? [] : netPorts(n)).map(p => p.id) }; }),
+      cables: data.cables.map(c => ({ ...cableInfo(c), a: `${netName(W, c.a[0])}.${c.a[1]}`, b: `${netName(W, c.b[0])}.${c.b[1]}` })),
+      links: [...st.links].filter(([k, l]) => l.up && l.peer && k < l.peer.n + '|' + l.peer.p).map(([k, l]) => ({ a: `${netName(W, k.split('|')[0])}.${k.split('|')[1]}`, b: `${netName(W, l.peer.n)}.${l.peer.p}`, speed_mbps: l.speed, auto_mdix: !!l.mdix, errors: !!l.errors })),
+      problems: netIssues(lan, data).map(i => `${i.code} ${i.text}`)
+    };
+  }
+
   const tools = [
     {
       name: 'get_project',
@@ -195,7 +262,7 @@ export function createTools(H) {
       run() {
         const ws = H.wires().map(w => ({ from: pinName(w.a), to: pinName(w.b) }));
         return {
-          project: H.projectTitle(), kind: { elec: 'electronics', analog: 'analog', pneu: 'pneumatic', epneu: 'electropneumatic', logic: 'logic' }[H.kind ? H.kind() : 'elec'], simulation: H.simOn() ? 'running' : 'stopped',
+          project: H.projectTitle(), kind: { elec: 'electronics', analog: 'analog', pneu: 'pneumatic', epneu: 'electropneumatic', logic: 'logic', net: 'network', iot: 'connected objects' }[H.kind ? H.kind() : 'elec'], simulation: H.simOn() ? 'running' : 'stopped',
           parts: comps().map(summary), wires: ws,
           boards: boards().map(b => { const st = H.prog.ai.state(b); return { name: b.name, type: b.type, kind: kindOf(b), mode: st.mode, rules: st.rules.length }; }),
           // Projet électropneumatique : le plan pneumatique et ses liaisons avec le montage (repère, composant, broche).
@@ -337,10 +404,10 @@ export function createTools(H) {
     {
       name: 'add_rule',
       description: 'Add a rule "when <conditions> then <items> otherwise <items>" (no "when": always). The board program is then written from its rules (robust Arduino code: no String, non-blocking millis() timing, sensor failures handled). Signals and actions of each part are listed by get_part. '
-        + 'Condition: {"part":"DHT1","signal":"temp","op":">","value":28} — or {"variable":"compteur","op":">=","value":10}, {"serial":true,"op":"==","value":"marche"} (a line received on the serial monitor; op "any" for any line), {"every_ms":2000} (true once every period), {"at_start":true} (first loop only), {"sequence":"Feu","step":"Rouge"} (that step is active). '
+        + 'Condition: {"part":"DHT1","signal":"temp","op":">","value":28} — or {"variable":"compteur","op":">=","value":10}, {"serial":true,"op":"==","value":"marche"} (a line received on the serial monitor; op "any" for any line), {"every_ms":2000} (true once every period), {"at_start":true} (first loop only), {"sequence":"Feu","step":"Rouge"} (that step is active), network (board with a W5500/ENC28J60 module or Wi-Fi): {"net":"message","topic":"maison/led","op":"==","value":"ON"} (MQTT message received on a topic; op "any" for any message), {"net":"number","topic":"maison/consigne"} (number received), {"net":"page","op":"==","value":"/on"} (web page request), {"net":"online","value":true}, {"net":"mqtt","value":true} (connected). '
         + 'Options on a condition: "edge":true (only the moment it becomes true, debounced: "dès que"), "hold_ms":2000 (true for at least that long), "hysteresis":2 (with > or <: turns false only 2 units back), "compare_to":{"part","signal"}|{"variable"} (instead of value), "not":true. Text signals (received message, RFID tag, key) use op "==", "!=", "has" (contains) or "any". '
         + 'More conditions: "and":[conditions] or "or":[conditions] (evaluated left to right). Use op "follow" to make actions follow a measurement (servo angle follows a potentiometer). '
-        + 'Items (then/otherwise): {"part":"FAN1","action":"on","value":…} (displays and comm modules: "show":{"part","signal"}|{"variable"} chooses the value shown or sent, "line":2 the screen line), {"serial":"print","value":"text"} | {"serial":"show","show":{…}} | {"serial":"plot","show":{…}}, {"variable":"compteur","set":0} | {"variable":"compteur","add":1} | {"variable":"compteur","subtract":1} | {"variable":"alarme","toggle":true} | {"variable":"x","set_from":{"part","signal"}}, {"wait_ms":2000} ("then wait 2 s then…", non-blocking), {"sequence":"Feu","step":"Vert"} (go to that step; "step":null stops it), {"rule":{when,then,otherwise}} (nested). '
+        + 'Items (then/otherwise): {"part":"FAN1","action":"on","value":…} (displays and comm modules: "show":{"part","signal"}|{"variable"} chooses the value shown or sent, "line":2 the screen line), {"serial":"print","value":"text"} | {"serial":"show","show":{…}} | {"serial":"plot","show":{…}}, {"variable":"compteur","set":0} | {"variable":"compteur","add":1} | {"variable":"compteur","subtract":1} | {"variable":"alarme","toggle":true} | {"variable":"x","set_from":{"part","signal"}}, {"wait_ms":2000} ("then wait 2 s then…", non-blocking), {"net":"publish","topic":"maison/temp","show":{…}} | {"net":"publish","topic":"maison/porte","value":"ouverte"} (MQTT publish: a value when it changes under a lasting condition, at most once per second, or each time on an event/timer), {"net":"page","show":{…}|"value":"text","line":1} (a line of the board web page at http://<board ip>/; network settings default to DHCP, Wi-Fi "Atelier", MQTT broker 192.168.1.10:1883), {"sequence":"Feu","step":"Vert"} (go to that step; "step":null stops it), {"rule":{when,then,otherwise}} (nested). '
         + 'Under a lasting condition, counting, writing to serial, sending and changing step happen once when it becomes true. Example: {"when":{"part":"BTN1","signal":"pressed","edge":true},"then":[{"variable":"compteur","add":1},{"part":"LED1","action":"on"},{"wait_ms":1000},{"part":"LED1","action":"off"}]}.',
       inputSchema: {
         type: 'object',
@@ -676,12 +743,12 @@ export function createTools(H) {
     },
     {
       name: 'new_project',
-      description: 'Start an empty project of a given kind: "electronics" (a board, sensors, a program; default), "analog" (no board: passives, NE555, op-amps, scope), "pneumatic" (compressed air only, no bench), "electropneumatic" (a board drives a pneumatic circuit: both workspaces), "logic" (gates, flip-flops). The kind decides which workspaces the user sees; it widens by itself when you add parts of another workspace. If the current circuit is not empty, the user is asked to confirm in Jollof Studio.',
-      inputSchema: { type: 'object', properties: { name: { type: 'string' }, kind: { type: 'string', enum: ['electronics', 'analog', 'pneumatic', 'electropneumatic', 'logic'] } } },
+      description: '"network" (network cabling only: PCs, switches, box, RJ45 cables, IP addresses; tools net_*), "iot" (a board with a W5500 Ethernet module or Wi-Fi, plus the network workspace), Start an empty project of a given kind: "electronics" (a board, sensors, a program; default), "analog" (no board: passives, NE555, op-amps, scope), "pneumatic" (compressed air only, no bench), "electropneumatic" (a board drives a pneumatic circuit: both workspaces), "logic" (gates, flip-flops). The kind decides which workspaces the user sees; it widens by itself when you add parts of another workspace. If the current circuit is not empty, the user is asked to confirm in Jollof Studio.',
+      inputSchema: { type: 'object', properties: { name: { type: 'string' }, kind: { type: 'string', enum: ['electronics', 'analog', 'pneumatic', 'electropneumatic', 'logic', 'network', 'iot'] } } },
       annotations: { destructiveHint: true },
       async run({ name, kind }) {
         if (comps().length && !(await H.confirmReplace(H.projectTitle()))) fail('the user kept the current project');
-        await H.newProject({ electronics: 'elec', analog: 'analog', pneumatic: 'pneu', electropneumatic: 'epneu', logic: 'logic' }[kind] || 'elec'); if (name) H.setProjectName(String(name).slice(0, 80));
+        await H.newProject({ electronics: 'elec', analog: 'analog', pneumatic: 'pneu', electropneumatic: 'epneu', logic: 'logic', network: 'net', iot: 'iot' }[kind] || 'elec'); if (name) H.setProjectName(String(name).slice(0, 80));
         return { project: H.projectTitle(), kind: kind || 'electronics' };
       }
     },
@@ -703,6 +770,128 @@ export function createTools(H) {
         if (comps().length && !(await H.confirmReplace(H.projectTitle()))) fail('the user kept the current project');
         await H.loadExample(i);
         return { opened: H.EXAMPLES[i].data.name, parts: comps().length };
+      }
+    },
+    /* ---------- Plan réseau (src/net) : projets Réseau et Objets connectés ---------- */
+    {
+      name: 'net_get',
+      description: 'The network workspace (project kinds "net" and "iot"): devices [{ id, name, type, ip, ip_source, powered, ports }], cables [{ id, a: "NAME.port", b, category, length_m, kind: straight|crossover|fault|none (not crimped), faults }], links up with their speed, and network problems (codes J1201–J1216). Device types: pc, laptop, printer, nas, switch, poeswitch, router (box with DHCP and optional Wi-Fi), ap (Wi-Fi access point, PoE), camera and phone (PoE devices), outlet (wall RJ45: ports front/back), patch (patch panel: f1..f12 front, b1..b12 back), broker (MQTT server, port 1883), plc (Modbus TCP PLC, port 502). In an iot project the bench W5500/ENC28J60 modules appear as nodes "e:<part id>" with port "eth".',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { readOnlyHint: true },
+      async run() { const W = await netWs(); return netSummary(W); }
+    },
+    {
+      name: 'net_add',
+      description: 'Place a network device (see net_get for the types). Optional name, position x/y (workspace units, about 1 unit = 1 px at 100 %) and settings (same keys as net_set). Returns its id. Undoable.',
+      inputSchema: { type: 'object', properties: { type: { type: 'string' }, name: { type: 'string' }, x: { type: 'number' }, y: { type: 'number' }, settings: { type: 'object' } }, required: ['type'] },
+      async run({ type, name, x, y, settings }) {
+        const W = await netWs();
+        if (!NETDEV[type]) fail(`unknown device type "${type}". Types: ${Object.keys(NETDEV).join(', ')}`);
+        const d = W.place(type, x ?? 0, y ?? 0);
+        if (name) d.name = String(name).slice(0, 24);
+        if (settings) applyNetSettings(W, d, settings);
+        W.commit();
+        return { id: d.id, name: d.name, ports: netPorts(d).map(p => p.id) };
+      }
+    },
+    {
+      name: 'net_cable',
+      description: 'Lay a cable between two device ports, written "NAME.port" (e.g. "PC1.eth0", "SW1.p3", "BOX1.lan1", "PB1.f1", "PR1.back", "W5500_1.eth" for a bench module). kind: "straight" (T568B both ends, default), "crossover" (T568A–T568B) or "blank" (ends to crimp with net_crimp). category: cat5e | cat6 | cat6a; length_m (default 3). Each port takes one cable. Undoable.',
+      inputSchema: { type: 'object', properties: { a: { type: 'string' }, b: { type: 'string' }, kind: { type: 'string', enum: ['straight', 'crossover', 'blank'] }, category: { type: 'string', enum: ['cat5e', 'cat6', 'cat6a'] }, length_m: { type: 'number' } }, required: ['a', 'b'] },
+      async run({ a, b, kind, category, length_m }) {
+        const W = await netWs(), pa = netPort(W, a), pb = netPort(W, b), data = W.data();
+        const used = p => data.cables.some(c => (c.a[0] === p[0] && c.a[1] === p[1]) || (c.b[0] === p[0] && c.b[1] === p[1]));
+        if (used(pa)) fail(`${a} already has a cable`); if (used(pb)) fail(`${b} already has a cable`);
+        let id = 'c1', i = 1; while (data.cables.some(c => c.id === id)) id = 'c' + ++i;
+        data.cables.push({ id, a: pa, b: pb, cat: category || 'cat6', len: Math.max(0.1, Math.min(500, +length_m || 3)), wire: makeCable(kind || 'straight') });
+        W.commit();
+        const l = W.lan().port(pa[0], pa[1]);
+        return { cable: id, link: l ? { up: l.up, speed_mbps: l.speed, why: l.why } : null };
+      }
+    },
+    {
+      name: 'net_crimp',
+      description: 'Crimp one end ("a" or "b", the order of net_cable) of a cable: either standard "T568A" / "T568B", or order: 8 conductor colours from pin 1 to pin 8, among wo (white-orange), o, wg (white-green), g, wbl (white-blue), bl, wbr (white-brown), br; null for an empty slot (open). Mistakes are allowed and simulated. Returns the cable test result.',
+      inputSchema: { type: 'object', properties: { cable: { type: 'string' }, end: { type: 'string', enum: ['a', 'b'] }, standard: { type: 'string', enum: ['T568A', 'T568B'] }, order: { type: 'array' } }, required: ['cable', 'end'] },
+      async run({ cable, end, standard, order }) {
+        const W = await netWs(), c = W.data().cables.find(x => x.id === cable); if (!c) fail(`no cable "${cable}" (see net_get)`);
+        const o = standard ? STD[standard.slice(-1)] : order; if (!Array.isArray(o) || o.length !== 8) fail('give standard "T568A"/"T568B" or order: 8 colours');
+        c.wire[end === 'b' ? 'b' : 'a'] = cleanEnd({ order: o, crimped: true, shorts: [] });
+        W.commit();
+        return { test: testerSummary([c.wire]), ...cableInfo(c) };
+      }
+    },
+    {
+      name: 'net_set',
+      description: 'Change the settings of a network device. Keys by type: name; hosts (pc, laptop, printer, nas, camera, phone, broker, plc): ip {mode:"dhcp"|"static", ip, prefix (24 or "255.255.255.0"), gw}, legacy (true: 100 Mb/s and no Auto-MDIX); laptop: wifi {ssid, pass}; router: lan {ip, prefix}, dhcp {on, from, to}, wan {mode:"none"|"dhcp"|"static", ip, prefix, gw}, wifi {on, ssid, pass}; ap: ssid, pass, power ("poe"|"adapter"); camera/phone/ap: poeClass 0–8, power; poeswitch: budget (W), pseType af|at|bt3|bt4; cable: category, length_m (give "cable" instead of "device"). Undoable.',
+      inputSchema: { type: 'object', properties: { device: { type: 'string' }, cable: { type: 'string' }, settings: { type: 'object' } }, required: ['settings'] },
+      async run({ device, cable, settings }) {
+        const W = await netWs();
+        if (cable) {
+          const c = W.data().cables.find(x => x.id === cable); if (!c) fail(`no cable "${cable}"`);
+          if (settings.category) { if (!['cat5e', 'cat6', 'cat6a'].includes(settings.category)) fail('category: cat5e, cat6 or cat6a'); c.cat = settings.category; }
+          if (settings.length_m != null) c.len = Math.max(0.1, Math.min(500, +settings.length_m || c.len));
+          W.commit(); return cableInfo(c);
+        }
+        const d = netDev(W, device); applyNetSettings(W, d, settings); W.commit();
+        return netSummary(W).devices.find(x => x.id === d.id);
+      }
+    },
+    {
+      name: 'net_remove',
+      description: 'Remove a network device (and its cables) or a cable. Undoable.',
+      inputSchema: { type: 'object', properties: { device: { type: 'string' }, cable: { type: 'string' } } },
+      async run({ device, cable }) {
+        const W = await netWs(), data = W.data();
+        if (cable) { const n = data.cables.length; data.cables = data.cables.filter(c => c.id !== cable); if (n === data.cables.length) fail(`no cable "${cable}"`); }
+        else { const d = netDev(W, device); data.devices = data.devices.filter(x => x !== d); data.cables = data.cables.filter(c => c.a[0] !== d.id && c.b[0] !== d.id); }
+        W.commit(); return { devices: data.devices.length, cables: data.cables.length };
+      }
+    },
+    {
+      name: 'net_ping',
+      description: 'Ping from a device (name) to an address or a device name. Returns ok, the address, time, the devices crossed, or why it fails (no link, no IP address, other subnet without gateway, gateway outside the subnet, broadcast storm, split pair errors…). Learns the switches MAC tables like a real ping.',
+      inputSchema: { type: 'object', properties: { from: { type: 'string' }, to: { type: 'string' } }, required: ['from', 'to'] },
+      annotations: { readOnlyHint: true },
+      async run({ from, to }) { const W = await netWs(), d = netNode(W, from), r = W.ping(d.id, to); return { ok: r.ok, ip: r.ip, ms: r.ms ?? null, reason: r.ok ? null : whyText(r.why), crossed: (r.hops || []).map(h => netName(W, h.node)) }; }
+    },
+    {
+      name: 'net_test_cable',
+      description: 'Pass a cable (or the whole channel from a port "NAME.port", through wall outlets and patch panels) to the cable tester: wire map pin by pin (which far pins light for each near pin), kind (straight, crossover) and faults (open, short, reversed pair, crossed pairs, split pair).',
+      inputSchema: { type: 'object', properties: { cable: { type: 'string' }, port: { type: 'string' } } },
+      annotations: { readOnlyHint: true },
+      async run({ cable, port }) {
+        const W = await netWs();
+        let segs;
+        if (port) { const p = netPort(W, port), ch = W.lan().channel(p[0], p[1]); if (!ch || !ch.segs.length) fail(`no cable on ${port}`); segs = ch.segs; }
+        else { const c = W.data().cables.find(x => x.id === cable); if (!c) fail(`no cable "${cable}"`); segs = [c.wire]; }
+        const r = analyzeChain(segs);
+        return { result: testerSummary(segs), kind: r.kind, faults: r.faults, wire_map: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map(p => [p, r.leds[p]])) };
+      }
+    },
+    {
+      name: 'net_check',
+      description: 'The network checker problems (codes J1201–J1216, the same ones as the Problems panel): miswired cables, split pairs, channel over 100 m, category too low, PoE budget, switch loops, two DHCP servers, duplicate IP, wrong subnet or gateway, unconnected devices.',
+      inputSchema: { type: 'object', properties: {} },
+      annotations: { readOnlyHint: true },
+      async run() { const W = await netWs(); return { problems: netIssues(W.lan(), W.data()).map(i => ({ code: i.code, level: i.kind === 'err' ? 'error' : 'warning', text: i.text, where: i.id ? netName(W, i.id) : null })) }; }
+    },
+    {
+      name: 'net_browse',
+      description: 'Open an http:// address from a PC or laptop of the network (its browser): returns the HTTP code and the page text. Board web servers answer only while the simulation runs.',
+      inputSchema: { type: 'object', properties: { from: { type: 'string' }, url: { type: 'string' } }, required: ['from', 'url'] },
+      annotations: { readOnlyHint: true },
+      async run({ from, url }) { const W = await netWs(), d = netNode(W, from), r = await W.lan().http(d.id, url); return { code: r.code, type: r.type || null, body: String(r.body || '').slice(0, 4000), reason: r.code ? null : whyText(r.why) }; }
+    },
+    {
+      name: 'mqtt_publish',
+      description: 'Publish a message on a topic of a « Serveur MQTT » device of the network (like the publish form of its panel), and return the topics it has seen with their last message.',
+      inputSchema: { type: 'object', properties: { broker: { type: 'string' }, topic: { type: 'string' }, message: { type: 'string' } }, required: ['topic', 'message'] },
+      async run({ broker, topic, message }) {
+        const W = await netWs(), d = broker ? netDev(W, broker) : W.data().devices.find(x => x.type === 'broker');
+        if (!d) fail('no MQTT server device: add one with net_add type "broker"');
+        const b = W.lan().broker(d.id); if (!b) fail('the MQTT server is not running');
+        b.publish(String(topic), String(message)); return { topics: b.topics().map(t => ({ topic: t.topic, last: t.text, from: t.from })) };
       }
     },
     {

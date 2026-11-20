@@ -45,6 +45,7 @@ import { SERIAL_PINS } from '../sim/serialmods.js';
 import { ACS712, acsRange } from '../sim/parts.js';
 import { rOf } from '../sim/circuit.js';
 import { isResistor } from '../sim/pkgparts.js';
+import { ethRead } from './rules-net.js';
 
 /* ---------------- Outils communs ---------------- */
 /** État de génération d'un composant (une fois par programme produit). */
@@ -635,6 +636,13 @@ const COMMS = {
     }
   }
 };
+// Modules Ethernet W5500 et ENC28J60 : le lien du câble et l'adresse de la carte. Le réseau lui-même (publier sur un
+// serveur MQTT, réagir aux messages, page web) passe par le pseudo-composant « Réseau » de rules-net.js.
+const ETH_SIG = {
+  link: { label: tl('est relié au réseau'), neg: tl('n’est pas relié au réseau'), kind: 'bool', v: 'lien', short: tl('Lien') },
+  ip: { label: tl('a une adresse IP'), neg: tl('n’a pas d’adresse IP'), kind: 'bool', v: 'adresse', short: 'IP' }
+};
+COMMS.w5500 = COMMS.enc28j60 = { sig: ETH_SIG, gen: { read: (g, c, key) => ethRead(g, c, key) } };
 /** nRF24L01 : objet, adresse, réglages ; rend le nom de l'objet ou null. */
 function nrfInit(g, c) {
   const s = st(g, c); if (s.o !== undefined) return s.o;

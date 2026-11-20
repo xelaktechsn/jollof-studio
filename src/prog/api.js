@@ -165,7 +165,13 @@ export const CONSTS = {
   ILI9341_BLACK: 0x0000, ILI9341_NAVY: 0x000f, ILI9341_DARKGREEN: 0x03e0, ILI9341_DARKCYAN: 0x03ef, ILI9341_MAROON: 0x7800, ILI9341_PURPLE: 0x780f, ILI9341_OLIVE: 0x7be0,
   ILI9341_LIGHTGREY: 0xc618, ILI9341_DARKGREY: 0x7bef, ILI9341_BLUE: 0x001f, ILI9341_GREEN: 0x07e0, ILI9341_CYAN: 0x07ff, ILI9341_RED: 0xf800, ILI9341_MAGENTA: 0xf81f,
   ILI9341_YELLOW: 0xffe0, ILI9341_WHITE: 0xffff, ILI9341_ORANGE: 0xfd20, ILI9341_GREENYELLOW: 0xafe5, ILI9341_PINK: 0xfc18,
-  ILI9341_TFTWIDTH: 240, ILI9341_TFTHEIGHT: 320, ST7735_TFTWIDTH_128: 128, ST7735_TFTHEIGHT_160: 160, ST7735_TFTHEIGHT_128: 128
+  ILI9341_TFTWIDTH: 240, ILI9341_TFTHEIGHT: 320, ST7735_TFTWIDTH_128: 128, ST7735_TFTHEIGHT_160: 160, ST7735_TFTHEIGHT_128: 128,
+  // Réseau informatique (prog/netlib.js) : Ethernet (puce, lien, renouvellement DHCP), PubSubClient (état, tailles, QoS).
+  EthernetNoHardware: 0, EthernetW5100: 1, EthernetW5200: 2, EthernetW5500: 3, EthernetENC28J60: 10, Unknown: 0, LinkON: 1, LinkOFF: 2,
+  DHCP_CHECK_NONE: 0, DHCP_CHECK_RENEW_FAIL: 1, DHCP_CHECK_RENEW_OK: 2, DHCP_CHECK_REBIND_FAIL: 3, DHCP_CHECK_REBIND_OK: 4,
+  MQTT_CONNECTION_TIMEOUT: -4, MQTT_CONNECTION_LOST: -3, MQTT_CONNECT_FAILED: -2, MQTT_DISCONNECTED: -1, MQTT_CONNECTED: 0,
+  MQTT_CONNECT_BAD_PROTOCOL: 1, MQTT_CONNECT_BAD_CLIENT_ID: 2, MQTT_CONNECT_UNAVAILABLE: 3, MQTT_CONNECT_BAD_CREDENTIALS: 4, MQTT_CONNECT_UNAUTHORIZED: 5,
+  MQTT_MAX_PACKET_SIZE: 256, MQTT_KEEPALIVE: 15, MQTT_SOCKET_TIMEOUT: 15, MQTTQOS0: 0, MQTTQOS1: 1, MQTTQOS2: 2
 };
 /** Types des constantes non entières (les autres sont des int). */
 export const CONST_TYPES = {
@@ -228,6 +234,20 @@ const SERIAL = {
   begin: m('void'), end: m('void'), ...PRINT, printf: m('u32'), available: m('int'), read: m('int'), peek: m('int'),
   readString: m('str'), readStringUntil: m('str'), parseInt: m('i32'), parseFloat: m('float'), flush: m('void'), setTimeout: m('void'),
   availableForWrite: m('int')
+};
+// Réseau informatique (prog/netlib.js) : client TCP (EthernetClient, WiFiClient), serveur, UDP.
+const NET_CLIENT = {
+  connect: m('int', { block: true }), connected: m('u8'), available: m('int'), read: m('int', { ref: [0] }), peek: m('int'),
+  readString: m('str'), readStringUntil: m('str'), parseInt: m('i32'), parseFloat: m('float'), find: m('bool'), ...PRINT, flush: m('void'), stop: m('void'),
+  remoteIP: m('obj:IPAddress'), remotePort: m('u16'), localPort: m('u16'), setTimeout: m('void'), setConnectionTimeout: m('void'), setNoDelay: m('void'), status: m('u8')
+};
+const netServer = client => ({
+  begin: m('void'), available: m('obj:' + client), accept: m('obj:' + client), hasClient: m('bool'), ...PRINT, end: m('void'), close: m('void'), stop: m('void'),
+  setNoDelay: m('void'), getNoDelay: m('bool')
+});
+const NET_UDP = {
+  begin: m('u8'), beginPacket: m('int'), endPacket: m('int'), parsePacket: m('int'), available: m('int'), read: m('int', { ref: [0] }), peek: m('int'),
+  ...PRINT, remoteIP: m('obj:IPAddress'), remotePort: m('u16'), flush: m('void'), stop: m('void')
 };
 const GFX = {
   begin: m('bool'), clearDisplay: m('void'), display: m('void'), setTextSize: m('void'), setTextColor: m('void'), setCursor: m('void'),
@@ -508,7 +528,28 @@ export const CLASSES = {
     begin: m('bool'), end: m('void'), GET: m('int', { block: true }), POST: m('int', { block: true }), PUT: m('int', { block: true }),
     addHeader: m('void'), getString: m('str'), getSize: m('int'), errorToString: m('str'), setTimeout: m('void'), setConnectTimeout: m('void'), connected: m('bool')
   },
-  WiFiClient: { stop: m('void'), connected: m('u8'), connect: m('int'), available: m('int'), read: m('int'), ...PRINT },
+  // Réseau informatique (prog/netlib.js) sur le plan réseau du projet : clients et serveurs TCP, UDP, MQTT, Modbus TCP, ping.
+  WiFiClient: NET_CLIENT, NetworkClient: NET_CLIENT, EthernetClient: NET_CLIENT,
+  WiFiServer: netServer('WiFiClient'), NetworkServer: netServer('NetworkClient'), EthernetServer: netServer('EthernetClient'),
+  WiFiUDP: NET_UDP, NetworkUDP: NET_UDP, EthernetUDP: NET_UDP,
+  EthernetClass: {
+    begin: m('int', { block: true }), init: m('void'), hardwareStatus: m('int'), linkStatus: m('int'), maintain: m('int'),
+    localIP: m('obj:IPAddress'), subnetMask: m('obj:IPAddress'), gatewayIP: m('obj:IPAddress'), dnsServerIP: m('obj:IPAddress'),
+    setLocalIP: m('void'), setSubnetMask: m('void'), setGatewayIP: m('void'), setDnsServerIP: m('void'), setMACAddress: m('void'), MACAddress: m('void'),
+    setRetransmissionTimeout: m('void'), setRetransmissionCount: m('void'), setHostname: m('void')
+  },
+  PubSubClient: {
+    setServer: m('obj:PubSubClient'), setCallback: m('obj:PubSubClient'), setClient: m('obj:PubSubClient'), setKeepAlive: m('obj:PubSubClient'),
+    setSocketTimeout: m('obj:PubSubClient'), setBufferSize: m('bool'), getBufferSize: m('u16'),
+    connect: m('bool', { block: true }), connected: m('bool'), state: m('int'), disconnect: m('void'), loop: m('bool', { block: true }),
+    publish: m('bool'), publish_P: m('bool'), subscribe: m('bool'), unsubscribe: m('bool')
+  },
+  ModbusTCPClient: {
+    begin: m('int', { block: true }), connected: m('int'), stop: m('void'), end: m('void'), setTimeout: m('void'), lastError: m('str'),
+    coilRead: m('int', { block: true }), discreteInputRead: m('int', { block: true }), holdingRegisterRead: m('i32', { block: true }),
+    inputRegisterRead: m('i32', { block: true }), coilWrite: m('int', { block: true }), holdingRegisterWrite: m('int', { block: true })
+  },
+  PingClass: { ping: m('bool', { block: true }), averageTime: m('float') },
   // ESP-NOW : description d'un pair (adresse MAC, canal, chiffrement) et de l'émetteur d'un message reçu.
   esp_now_peer_info_t: { peer_addr: fd('u8[]'), channel: fd('u8'), encrypt: fd('bool'), ifidx: fd('int') },
   esp_now_recv_info_t: { src_addr: fd('u8[]'), des_addr: fd('u8[]') },
@@ -518,7 +559,7 @@ CLASSES.ESP8266WebServer = CLASSES.WebServer;
 /** Objets globaux prédéfinis. */
 export const OBJECTS = {
   Serial: 'HardwareSerial', Serial1: 'HardwareSerial', Serial2: 'HardwareSerial', Serial3: 'HardwareSerial', Wire: 'TwoWire', SPI: 'SPIClass', IrReceiver: 'IRrecv',
-  EEPROM: 'EEPROMClass', WiFi: 'WiFiClass', MDNS: 'MDNSResponder', SD: 'SDClass', LoRa: 'LoRaClass'
+  EEPROM: 'EEPROMClass', WiFi: 'WiFiClass', MDNS: 'MDNSResponder', SD: 'SDClass', LoRa: 'LoRaClass', Ethernet: 'EthernetClass', Ping: 'PingClass'
 };
 /**
  * Bibliothèques, objets et classes propres à certaines cartes : un programme pour une autre carte ne compile pas
@@ -533,16 +574,21 @@ export const BOARD_ONLY = {
     // Bluetooth classique (BluetoothSerial) : l'ESP32 d'origine seulement ; l'ESP32-S3 et l'ESP32-C3 n'ont que le BLE.
     'WiFi.h': ESP, 'WebServer.h': ESP, 'HTTPClient.h': ESP, 'esp_now.h': ESP, 'BluetoothSerial.h': ['esp32'], 'Preferences.h': ESP, 'ESPmDNS.h': ESP,
     'ESP8266WiFi.h': ['nodemcu'], 'ESP8266WebServer.h': ['nodemcu'], 'ESP8266HTTPClient.h': ['nodemcu'], 'espnow.h': ['nodemcu'], 'ESP8266mDNS.h': ['nodemcu'],
-    'WiFiClient.h': WIFI_BOARDS, 'avr/sleep.h': ['uno', 'nano', 'mega']
+    'WiFiClient.h': WIFI_BOARDS, 'WiFiServer.h': WIFI_BOARDS, 'WiFiUdp.h': WIFI_BOARDS, 'avr/sleep.h': ['uno', 'nano', 'mega'],
+    'ESP32Ping.h': ESP, 'ESP8266Ping.h': ['nodemcu']
   },
-  object: { WiFi: WIFI_BOARDS, MDNS: WIFI_BOARDS },
-  class: { BluetoothSerial: ['esp32'], WebServer: ESP, ESP8266WebServer: ['nodemcu'], HTTPClient: WIFI_BOARDS, WiFiClient: WIFI_BOARDS, Preferences: ESP },
+  object: { WiFi: WIFI_BOARDS, MDNS: WIFI_BOARDS, Ping: WIFI_BOARDS },
+  class: {
+    BluetoothSerial: ['esp32'], WebServer: ESP, ESP8266WebServer: ['nodemcu'], HTTPClient: WIFI_BOARDS, WiFiClient: WIFI_BOARDS, Preferences: ESP,
+    WiFiServer: WIFI_BOARDS, WiFiUDP: WIFI_BOARDS, NetworkClient: ESP, NetworkServer: ESP, NetworkUDP: ESP
+  },
   fn: /^esp_now_/
 };
 /** Même bibliothèque sous un autre nom sur l'autre carte Wi-Fi. */
 export const INCLUDE_TWIN = {
   'WiFi.h': 'ESP8266WiFi.h', 'ESP8266WiFi.h': 'WiFi.h', 'WebServer.h': 'ESP8266WebServer.h', 'ESP8266WebServer.h': 'WebServer.h',
-  'HTTPClient.h': 'ESP8266HTTPClient.h', 'ESP8266HTTPClient.h': 'HTTPClient.h', 'esp_now.h': 'espnow.h', 'espnow.h': 'esp_now.h', 'ESPmDNS.h': 'ESP8266mDNS.h', 'ESP8266mDNS.h': 'ESPmDNS.h'
+  'HTTPClient.h': 'ESP8266HTTPClient.h', 'ESP8266HTTPClient.h': 'HTTPClient.h', 'esp_now.h': 'espnow.h', 'espnow.h': 'esp_now.h', 'ESPmDNS.h': 'ESP8266mDNS.h', 'ESP8266mDNS.h': 'ESPmDNS.h',
+  'ESP32Ping.h': 'ESP8266Ping.h', 'ESP8266Ping.h': 'ESP32Ping.h'
 };
 /** Constantes d'une classe, écrites Classe::NOM (Adafruit_BMP280::MODE_NORMAL, MFRC522::PICC_TYPE_MIFARE_1K). */
 export const CLASS_CONSTS = {
@@ -586,7 +632,8 @@ export const TYPE_ALIASES = {
   esp_err_t: { t: 'int' },
   // Texte en mémoire flash : PGM_P (const char * de pgmspace.h), const __FlashStringHelper * (F("…")).
   PGM_P: { t: 'cptr' }, __FlashStringHelper: { t: 'str' }, esp_now_send_status_t: { t: 'int' }, wl_status_t: { t: 'int' }, HTTPMethod: { t: 'int' }, wifi_mode_t: { t: 'int' },
-  VL53L0X_Error: { t: 'i8' }, VL53L0X_Sense_config_t: { t: 'u8' }
+  VL53L0X_Error: { t: 'i8' }, VL53L0X_Sense_config_t: { t: 'u8' },
+  EthernetLinkStatus: { t: 'int' }, EthernetHardwareStatus: { t: 'int' }
 };
 
 /** Bibliothèques connues : #include accepté sans avertissement. */
@@ -601,10 +648,13 @@ export const KNOWN_INCLUDES = new Set([
   'TinyGPSPlus.h', 'TinyGPS++.h',
   'Adafruit_VL53L0X.h', 'VL53L0X.h', 'MAX30105.h', 'heartRate.h', 'spo2_algorithm.h', 'Adafruit_TCS34725.h', 'Adafruit_CCS811.h', 'Adafruit_BME680.h', 'bme68x.h', 'bme68x_defs.h',
   'EEPROM.h', 'Preferences.h', 'BluetoothSerial.h', 'WiFi.h', 'ESP8266WiFi.h', 'WiFiClient.h', 'WebServer.h', 'ESP8266WebServer.h',
-  'HTTPClient.h', 'ESP8266HTTPClient.h', 'esp_now.h', 'espnow.h', 'ESPmDNS.h', 'ESP8266mDNS.h', 'esp_wifi.h', 'SD.h', 'LoRa.h'
+  'HTTPClient.h', 'ESP8266HTTPClient.h', 'esp_now.h', 'espnow.h', 'ESPmDNS.h', 'ESP8266mDNS.h', 'esp_wifi.h', 'SD.h', 'LoRa.h',
+  // Réseau informatique (prog/netlib.js) : Ethernet (W5500 ; ENC28J60 par UIPEthernet ou EthernetENC), MQTT, Modbus TCP, ping.
+  'Ethernet.h', 'EthernetClient.h', 'EthernetServer.h', 'EthernetUdp.h', 'UIPEthernet.h', 'EthernetENC.h', 'PubSubClient.h',
+  'ArduinoModbus.h', 'ArduinoRS485.h', 'ESP32Ping.h', 'ESP8266Ping.h', 'WiFiServer.h', 'WiFiUdp.h'
 ]);
 /** Bibliothèques reconnues mais non simulées : un message clair plutôt qu'une erreur obscure. */
 export const UNSUPPORTED_INCLUDES = {
-  'PubSubClient.h': 'MQTT', 'WiFiClientSecure.h': 'HTTPS', 'ESPAsyncWebServer.h': tl('le serveur web asynchrone'),
-  'ArduinoJson.h': 'ArduinoJson', 'WiFiUdp.h': 'UDP', 'NTPClient.h': 'NTP'
+  'WiFiClientSecure.h': 'HTTPS', 'ESPAsyncWebServer.h': tl('le serveur web asynchrone'),
+  'ArduinoJson.h': 'ArduinoJson', 'NTPClient.h': 'NTP'
 };

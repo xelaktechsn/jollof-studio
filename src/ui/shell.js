@@ -144,20 +144,21 @@ function installEditorTabs(host = {}) {
   const app = $('.app'), stage = $('#stage');
   const ws = k => $(`.wsSwitch [data-ws="${k}"]`), sv = k => $(`#stageView [data-stage="${k}"]`);
   const kind = () => app.dataset.kind || 'elec', has = sp => spacesOf(kind()).includes(sp);
-  const logicOn = () => app.classList.contains('logicMode'), pneuOn = () => app.classList.contains('pneuMode');
+  const logicOn = () => app.classList.contains('logicMode'), pneuOn = () => app.classList.contains('pneuMode'), netOn = () => app.classList.contains('netMode');
   // Code (main.js, setCodeView) : 'off' dans l'inspecteur, 'center' à la place du plan de travail, 'split' à côté du
   // montage ou du schéma. Montage 3D et Schéma gardent le côte à côte ; Logique et Pneumatique rendent le code à l'inspecteur.
   const codeMode = () => (host.codeMode ? host.codeMode() : 'off'), setCode = m => { if (host.setCodeView && codeMode() !== m) host.setCodeView(m); };
   const codeOn = () => codeMode() === 'center', splitOn = () => codeMode() === 'split', noCode = () => setCode('off');
-  const inElec = () => !logicOn() && !pneuOn() && !codeOn(), is2d = () => stage.classList.contains('sch2d');
+  const inElec = () => !logicOn() && !pneuOn() && !netOn() && !codeOn(), is2d = () => stage.classList.contains('sch2d');
   const click = b => { if (b) b.click(); };
-  const toElec = () => { if (codeOn()) noCode(); if (logicOn() || pneuOn()) click(ws('elec')); };
+  const toElec = () => { if (codeOn()) noCode(); if (logicOn() || pneuOn() || netOn()) click(ws('elec')); };
   const TABS = [
     { id: '3d', cls: 'elec', icon: 'cube', label: () => tl('Montage 3D'), tip: () => tl('Montage en 3D : placer, câbler, simuler · S'), show: () => has('elec'), on: () => inElec() && !is2d(), go() { toElec(); if (is2d()) click(sv('3d')); } },
     { id: '2d', cls: 'elec', icon: 'schematic', label: () => tl('Schéma'), tip: () => tl('Schéma électrique en direct : on y voit le courant circuler · S'), show: () => has('elec'), on: () => inElec() && is2d(), go() { toElec(); if (!is2d()) click(sv('2d')); } },
     { id: 'code', cls: 'code', icon: 'code', label: () => tl('Code'), tip: () => tl('Programme de la carte : règles, blocs ou code, débogueur, moniteur série'), show: () => hasProgram(kind()) && !!host.setCodeView, on: () => codeOn() || splitOn(), go() { setCode('center'); } },
     { id: 'logic', cls: 'logic', icon: 'logic', label: () => (isEn ? 'Logic' : 'Logique'), tip: () => tl('Logique : portes, bascules, compteurs, tables de vérité'), show: () => has('logic'), on: logicOn, go() { noCode(); if (!logicOn()) click(ws('logic')); } },
-    { id: 'pneu', cls: 'pneu', icon: 'pneu', label: () => tl('Pneumatique'), tip: () => tl('Pneumatique : distributeurs, vérins, électrovannes commandées par la carte'), show: () => has('pneu'), on: pneuOn, go() { noCode(); if (!pneuOn()) click(ws('pneu')); } }
+    { id: 'pneu', cls: 'pneu', icon: 'pneu', label: () => tl('Pneumatique'), tip: () => tl('Pneumatique : distributeurs, vérins, électrovannes commandées par la carte'), show: () => has('pneu'), on: pneuOn, go() { noCode(); if (!pneuOn()) click(ws('pneu')); } },
+    { id: 'net', cls: 'net', icon: 'network', label: () => tl('Réseau'), tip: () => tl('Réseau : PC, switchs, box, câbles RJ45, adresses IP'), show: () => has('net'), on: netOn, go() { noCode(); if (!netOn()) click(ws('net')); } }
   ];
   const btns = TABS.map(t => {
     const b = el('button', `edTab ${t.cls}`, `${icon(t.icon)}<span>${esc(t.label())}</span>`);
@@ -184,9 +185,9 @@ function installEditorTabs(host = {}) {
   function paint() {
     // Un autre plan ouvert d'ailleurs (sélecteur, TP, type du projet changé) : le code rentre dans l'inspecteur.
     const codeTab = TABS.find(t => t.id === 'code');
-    if (codeMode() !== 'off' && (logicOn() || pneuOn() || !codeTab.show())) noCode();
+    if (codeMode() !== 'off' && (logicOn() || pneuOn() || netOn() || !codeTab.show())) noCode();
     if (splitOn() && app.classList.contains('pnSplitOn')) noCode(); // la vue partagée pneumatique prend la place
-    codeSplit.hidden = !codeTab.show() || logicOn() || pneuOn(); codeSplit.setAttribute('aria-pressed', String(splitOn()));
+    codeSplit.hidden = !codeTab.show() || logicOn() || pneuOn() || netOn(); codeSplit.setAttribute('aria-pressed', String(splitOn()));
     TABS.forEach((t, i) => { const b = btns[i], on = t.on(); b.hidden = !t.show(); b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
     late(); if (splitM) splitM.sync();
   }
@@ -197,7 +198,7 @@ function installEditorTabs(host = {}) {
   paint();
   return {
     paint,
-    /** Ouvre un plan par son onglet ('3d', '2d', 'logic', 'pneu'), s'il est montré par le type du projet. */
+    /** Ouvre un plan par son onglet ('3d', '2d', 'logic', 'pneu', 'net'), s'il est montré par le type du projet. */
     go(id) { const t = TABS.find(x => x.id === id); if (t && t.show()) { t.go(); paint(); } },
     /** Onglets montrés : [{ id, label, icon, on }] (palette de commandes). */
     list: () => TABS.filter(t => t.show()).map(t => ({ id: t.id, label: t.label(), icon: t.icon, on: t.on() }))

@@ -20,3 +20,6 @@ brag-output/
 
 # ffmpeg livré avec l'application : préparé par scripts/ffmpeg.mjs (binaire et licence), jamais versionné
 src-tauri/binaries/
+
+# Démonstration en ligne : construite par le flux Pages (vite build --outDir site/app), jamais versionnée
+site/app/

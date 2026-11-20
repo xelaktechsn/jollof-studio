@@ -996,6 +996,42 @@ function sx1278(c) {
   cyl(c, 0.6, 3, 11, b.top, -12.5, M.silver);
   for (let i = 0; i < 9; i++) add(c, new THREE.TorusGeometry(1.4, 0.22, 6, 18), mat(0xc9a35a, { m: 0.7 }), 11, b.top + 3.6 + i * 1.1, -12.5, [Math.PI / 2 + 0.12, 0, 0]);
 }
+/**
+ * Prise RJ45 blindée à transformateurs intégrés (MagJack) posée sur le module, ouverture vers −z : boîtier métallique,
+ * contacts dorés, voyants de lien (vert) et d'activité (jaune). Elle n'est pas câblée sur le banc : elle devient un
+ * appareil du plan réseau (projet Objets connectés).
+ */
+function rj45(c, x, y, z) {
+  block(c, 15.9, 13.4, 21, x, y, z, 0xb3b8bd, { m: 0.35, r: 0.45 });
+  decal(c, 15.9, 21, x, y + 13.42, z, (g, k, cv) => {
+    const gr = g.createLinearGradient(0, 0, cv.width, cv.height); gr.addColorStop(0, '#d3d7db'); gr.addColorStop(1, '#a4a9ae');
+    g.fillStyle = gr; g.fillRect(0, 0, cv.width, cv.height);
+    g.strokeStyle = '#8d9297'; g.lineWidth = 0.4 * k; g.strokeRect(1.2 * k, 1.2 * k, 13.5 * k, 18.6 * k); // pli du blindage
+  }, 12, { m: 0.4, r: 0.4 });
+  block(c, 11.7, 8.2, 0.8, x, y + 2.2, z - 10.3, 0x0c0c0c);
+  block(c, 6, 1.6, 0.9, x, y + 8.3, z - 10.3, 0x0c0c0c); // passage de l'ergot du connecteur
+  for (let i = 0; i < 8; i++) block(c, 0.45, 0.35, 4, x - 3.6 + i * 1.02, y + 9.4, z - 8.4, M.gold);
+  block(c, 3, 1.8, 0.4, x - 5.4, y + 10.8, z - 10.6, 0x1f8f3a, { e: 0x0b3f18 });
+  block(c, 3, 1.8, 0.4, x + 5.4, y + 10.8, z - 10.6, 0xd9a520, { e: 0x4a3608 });
+}
+/** Module W5500 (type WIZ850io, une rangée de 8 broches) : puce W5500, quartz 25 MHz, prise RJ45 au bout. */
+function w5500(c) {
+  const b = moduleBoard(c, 24, 40, GREEN, ['3V3', 'GND', 'MISO', 'MOSI', 'SCK', 'CS', 'RST', 'INT']);
+  b.finish((x, k) => { text(x, k, 'W5500 Ethernet', 12, 29, 1.25); text(x, k, '3.3V ONLY', 12, 30.9, 1.0, { weight: 500 }); });
+  rj45(c, 0, b.top, -11);
+  chipOnBoard(c, b, 7, 7, -4, 3.8, 'W5500');
+  block(c, 3.2, 1, 2.5, 5.5, b.top, 3.8, M.silver, { r: 0.4 });
+  block(c, 1.6, 0.6, 0.8, 8.5, b.top, 7.5, 0x2a6aff, { e: 0x0d2a66 });
+}
+/** Module ENC28J60 (carte bleue courante) : puce ENC28J60 en SOIC-28, quartz 25 MHz, régulation absente, prise RJ45. */
+function enc28j60(c) {
+  const b = moduleBoard(c, 26, 50, BLUE, ['VCC', 'GND', 'SO', 'SI', 'SCK', 'CS', 'RST', 'INT']);
+  b.finish((x, k) => { text(x, k, 'ENC28J60', 13, 37, 1.4); text(x, k, 'ETHERNET 10BASE-T', 13, 39.2, 1.0, { weight: 500 }); });
+  rj45(c, 0, b.top, -16);
+  chipOnBoard(c, b, 17.8, 7.5, -2, 1, 'ENC28J60');
+  block(c, 11, 3.5, 4.5, 6, b.top, 9, M.silver, { r: 1.2 });
+  block(c, 1.6, 0.6, 0.8, -9, b.top, 10, 0xff2a2a, { e: 0x991111 });
+}
 /** Adaptateur de niveau BSS138 4 voies : côté LV (3,3 V) d'un bord, côté HV (5 V) de l'autre, comme le module courant. */
 function lvlshift(c) {
   const b = board(c, 16, 16, BLUE);
@@ -1337,6 +1373,8 @@ export const LIBRARY = [
   { id: 'rc522', name: tl('Lecteur RFID RC522'), cat: tl('Communication'), pre: 'RFID', build: rc522 },
   { id: 'nrf24', name: tl('Radio nRF24L01'), cat: tl('Communication'), pre: 'RF', build: nrf24 },
   { id: 'sx1278', name: tl('Radio LoRa SX1278 433 MHz (Ra-02)'), cat: tl('Communication'), pre: 'LORA', build: sx1278 },
+  { id: 'w5500', name: tl('Module Ethernet W5500 (SPI)'), cat: tl('Communication'), pre: 'ETH', build: w5500 },
+  { id: 'enc28j60', name: tl('Module Ethernet ENC28J60 (SPI)'), cat: tl('Communication'), pre: 'ETH', build: enc28j60 },
   { id: 'sim800', name: 'GSM SIM800L', cat: tl('Communication'), pre: 'GSM', build: sim800 },
   { id: 'neo6m', name: tl('GPS NEO-6M (série)'), cat: tl('Communication'), pre: 'GPS', build: neo6m },
   { id: 'hc12', name: tl('Radio HC-12 433 MHz (série)'), cat: tl('Communication'), pre: 'HC', build: hc12 },

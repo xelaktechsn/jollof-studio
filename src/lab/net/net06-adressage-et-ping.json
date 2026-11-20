@@ -1,0 +1,730 @@
+{
+ "id": "net06-adressage-et-ping",
+ "series": "cablage",
+ "level": "college",
+ "minutes": 25,
+ "title": {
+  "fr": "Adresses IP et ping",
+  "en": "IP addresses and ping"
+ },
+ "summary": {
+  "fr": "Une petite salle sans box : chaque poste reçoit une adresse fixe. Une adresse en double, un PC sans adresse, une imprimante dans un autre réseau : on corrige, puis le ping le prouve.",
+  "en": "A small room without a box: each computer gets a fixed address. A duplicate address, a PC without an address, a printer in another network: fix them, then the ping proves it."
+ },
+ "objectives": [
+  {
+   "fr": "Lire une adresse IPv4 et son masque",
+   "en": "Read an IPv4 address and its mask"
+  },
+  {
+   "fr": "Donner à chaque poste une adresse unique dans le même réseau",
+   "en": "Give each computer a unique address in the same network"
+  },
+  {
+   "fr": "Vérifier avec un ping",
+   "en": "Check with a ping"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Masque 255.255.255.0 (/24) : les trois premiers nombres désignent le réseau, le dernier le poste.",
+   "en": "Mask 255.255.255.0 (/24): the first three numbers are the network, the last one the computer."
+  },
+  {
+   "fr": "Deux postes ne peuvent pas avoir la même adresse (J1208).",
+   "en": "Two computers cannot have the same address (J1208)."
+  },
+  {
+   "fr": "Pour se parler sans routeur, deux postes doivent être dans le même réseau.",
+   "en": "To talk without a router, two computers must be in the same network."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Adressage IP",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 360,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 120,
+       "y": 280,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.10.11",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 300,
+       "y": 280,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.10.11",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc3",
+       "type": "pc",
+       "x": 480,
+       "y": 280,
+       "name": "PC3",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "imp1",
+       "type": "printer",
+       "x": 660,
+       "y": 280,
+       "name": "IMP1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.1.20",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "pc2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "pc3",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "imp1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 360,
+     "y": 60,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 120,
+     "y": 280,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.10.11",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 300,
+     "y": 280,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.10.12",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc3",
+     "type": "pc",
+     "x": 480,
+     "y": 280,
+     "name": "PC3",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.10.13",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "imp1",
+     "type": "printer",
+     "x": 660,
+     "y": 280,
+     "name": "IMP1",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "192.168.10.20",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "pc2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "pc3",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "imp1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’adresse IP",
+    "en": "The IP address"
+   },
+   "text": {
+    "fr": "Une adresse **IPv4** s’écrit avec quatre nombres de 0 à 255 : `192.168.10.11`. Le **masque** dit quelle partie désigne le réseau : avec `255.255.255.0` (ou /24), les trois premiers nombres sont le **réseau** (192.168.10), le dernier est le **poste** (11).\nDeux postes du même réseau se parlent directement, à travers le switch. Chaque poste doit avoir une adresse **à lui**.",
+    "en": "An **IPv4** address is written as four numbers from 0 to 255: `192.168.10.11`. The **mask** says which part is the network: with `255.255.255.0` (or /24), the first three numbers are the **network** (192.168.10), the last one is the **host** (11).\nTwo computers in the same network talk directly, through the switch. Each computer needs an address **of its own**."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Même réseau ?",
+    "en": "Same network?"
+   },
+   "text": {
+    "fr": "Quelle adresse est dans le même réseau que `192.168.10.11/24` ?",
+    "en": "Which address is in the same network as `192.168.10.11/24`?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "192.168.1.20",
+      "en": "192.168.1.20"
+     },
+     {
+      "fr": "192.168.10.200",
+      "en": "192.168.10.200"
+     },
+     {
+      "fr": "192.168.11.11",
+      "en": "192.168.11.11"
+     },
+     {
+      "fr": "10.168.10.11",
+      "en": "10.168.10.11"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Une adresse en double",
+    "en": "A duplicate address"
+   },
+   "text": {
+    "fr": "Ouvrez l’onglet **Problèmes** : PC1 et PC2 ont la même adresse (J1208). Choisissez PC2 et donnez-lui `192.168.10.12`, masque `255.255.255.0` (onglet **Réseau** de l’inspecteur).",
+    "en": "Open the **Problems** tab: PC1 and PC2 have the same address (J1208). Select PC2 and give it `192.168.10.12`, mask `255.255.255.0` (**Network** tab of the inspector)."
+   },
+   "spot": [
+    ".ntDev[data-id=\"pc2\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1208"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "PC3 sans adresse",
+    "en": "PC3 without an address"
+   },
+   "text": {
+    "fr": "PC3 attend une adresse d’un serveur DHCP, mais il n’y en a pas ici : il s’est donné une adresse `169.254.x.x` qui ne sert à rien. Passez-le en adresse **fixe** : `192.168.10.13`, masque `255.255.255.0`.",
+    "en": "PC3 waits for an address from a DHCP server, but there is none here: it gave itself a useless `169.254.x.x` address. Switch it to a **fixed** address: `192.168.10.13`, mask `255.255.255.0`."
+   },
+   "spot": [
+    ".ntDev[data-id=\"pc3\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-ip",
+    "of": "PC3",
+    "mode": "static",
+    "net": "192.168.10.0/24"
+   }
+  },
+  {
+   "title": {
+    "fr": "L’imprimante",
+    "en": "The printer"
+   },
+   "text": {
+    "fr": "L’imprimante est en `192.168.1.20` : un autre réseau, les PC ne la voient pas. Donnez-lui `192.168.10.20`.",
+    "en": "The printer is at `192.168.1.20`: another network, the PCs cannot see it. Give it `192.168.10.20`."
+   },
+   "spot": [
+    ".ntDev[data-id=\"imp1\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-ip",
+    "of": "IMP1",
+    "net": "192.168.10.0/24"
+   }
+  },
+  {
+   "title": {
+    "fr": "Ping vers l’imprimante",
+    "en": "Ping the printer"
+   },
+   "text": {
+    "fr": "Prenez l’outil **Ping** et faites un ping de chaque PC vers l’imprimante. Chaque réponse prouve que l’adresse, le masque et le câble sont bons.",
+    "en": "Take the **Ping** tool and ping the printer from each PC. Each reply proves that the address, the mask and the cable are right."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "pc",
+    "to": "IMP1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Adresses interdites",
+    "en": "Forbidden addresses"
+   },
+   "text": {
+    "fr": "Dans le réseau `192.168.10.0/24`, quelles adresses ne peut-on pas donner à un poste ?",
+    "en": "In the `192.168.10.0/24` network, which addresses cannot be given to a computer?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "192.168.10.0 (le réseau lui-même) et 192.168.10.255 (la diffusion)",
+      "en": "192.168.10.0 (the network itself) and 192.168.10.255 (broadcast)"
+     },
+     {
+      "fr": "192.168.10.1 et 192.168.10.2",
+      "en": "192.168.10.1 and 192.168.10.2"
+     },
+     {
+      "fr": "Aucune : de 0 à 255, tout est permis",
+      "en": "None: from 0 to 255, everything is allowed"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

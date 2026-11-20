@@ -51,6 +51,8 @@ npm run tauri build    # construire l’installateur
 - [Guide complet](docs/GUIDE.md) : toutes les fonctions, raccourcis, structure du code, limites connues.
 - [Ce que prouve le vérificateur](docs/PROVEN.md)
 - [Architecture](docs/ARCHITECTURE.md)
+- [Performances mesurées](docs/PERFORMANCE.md) et comment refaire les mesures
+- [Plan de démonstration](docs/DEMO.md) : quoi montrer dans une vidéo ou en salle, et quoi ne pas promettre
 - [Contribuer](CONTRIBUTING.md)
 
 ## English

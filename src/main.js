@@ -19,6 +19,7 @@ import { installUpload } from './hil/upload.js'; // téléversement sur une vrai
 import { installGuide } from './schematic/guide.js'; // guide de montage en PDF
 import { installLogic } from './logic/index.js';
 import { installPneu } from './pneu/index.js';
+import { installNet } from './net/ui/install.js'; // plan réseau : chargé à la demande (src/net/ui/workspace.js)
 import { Q, LIGHT, LEVEL, CHOICE, stdMat, setQuality, autoLevel } from './quality.js';
 import { menu as popMenu, confirm as confirmDlg, download as downloadText } from './school/ui.js';
 import { createNavDock, dragRect } from './ui/navdock.js';
@@ -49,7 +50,7 @@ import { installSdPanel } from './sim/sdpanel.js';
 import { installInstruments } from './sim/instruments.js';
 import { driveActuators, resetActuators } from './sim/actuators.js';
 import * as audio from './sim/audio.js';
-import { buildSchematic, frame as sheetFrame, SHEET_SCALE } from './schematic/sheet.js';
+import { buildSchematic, buildNets, frame as sheetFrame, SHEET_SCALE } from './schematic/sheet.js';
 import { createSchView } from './schematic/live.js';
 import { installCheck } from './check/ui.js';
 import { pinCountOf } from './check/load.js';
@@ -69,6 +70,8 @@ import { creditsHtml } from './library/credits.js';
 import * as parts from './library/parteditor.js'; // composants en paquet (.jpart) : éditeur, import, bibliothèque
 import { installAi } from './ai/panel.js'; // assistants IA : pont MCP (application de bureau) et copier-coller
 import * as TL from './video/timeline.js';
+import { planAll } from './video/planner.js';
+import { mapPins, clashes } from './sim/replace.js';
 import * as VX from './video/encode.js';
 import { emptyAudio, normalizeAudio, isSilent, wav24 } from './audio/mix.js';
 import { createTimelineDock } from './video/dock.js';
@@ -121,14 +124,14 @@ const MARK = new THREE.SphereGeometry(1.1, 12, 8);
 
 /* ---------- Broches ---------- */
 const same = (x, y) => !!x && !!y && x.comp === y.comp && x.key === y.key;
-function regPin(comp, name, mesh, attach) {
+function regPin(comp, name, mesh, attach, exit) {
   let key = name, n = 2;
   while (comp.pins[key]) key = `${name} (${n++})`;
   const hit = mk(HIT, M.hit);
   hit.position.copy(attach).add(new V3(0, -1.2, 0));
   hit.userData.pin = { comp, key };
   comp.group.add(hit);
-  comp.pins[key] = { mesh, base: mesh.material, hit, attach };
+  comp.pins[key] = { mesh, base: mesh.material, hit, attach, exit: exit || null };
   S.pinHits.push(hit);
 }
 let hlPins = [];
@@ -155,7 +158,7 @@ function createComp(type, o = {}) {
   const comp = { id: o.id || type + '_' + Math.random().toString(36).slice(2, 8), type, group: new THREE.Group(), pins: {} };
   comp.name = o.name || nextName(type, o.custom && o.custom.name.toUpperCase().slice(0, 10));
   comp.group.userData.comp = comp;
-  const ctx = { g: comp.group, pin: (name, mesh, attach) => regPin(comp, name, mesh, attach) };
+  const ctx = { g: comp.group, pin: (name, mesh, attach, exit) => regPin(comp, name, mesh, attach, exit) };
   if (type === 'custom') {
     comp.model = o.model; comp.custom = o.custom; comp.group.add(o.model);
     o.custom.pins.forEach(p => addPointPin(comp, p.name, new V3(p.x, p.y, p.z), false));
@@ -201,6 +204,69 @@ function removeComp(comp, silent) {
   if (S.sel === comp) select(null);
   if (!silent) { renderWires(); changed(); }
 }
+/* ---------- Remplacer un composant : les fils suivent, broche par broche ---------- */
+let repl = null;
+/** Broches d'un composant de la bibliothèque (il est construit le temps de les lire, puis retiré). */
+function pinsOfType(type) {
+  const probe = createComp(type, { name: '\u2026' }), keys = Object.keys(probe.pins);
+  removeComp(probe, true);
+  return keys;
+}
+function openReplace(comp) {
+  if (!comp || S.simOn || S.anim || S.rec || S.vr) return;
+  const cur = BY_ID[comp.type], cat = cur && cur.cat;
+  // Même catégorie d'abord : c'est le plus souvent un modèle voisin qu'on veut.
+  const list = LIBRARY.filter(e => e.id !== comp.type && !/^breadboard/.test(e.id)).sort((a, b) => (b.cat === cat) - (a.cat === cat));
+  if (!list.length) return;
+  const groups = new Map(); list.forEach(e => { if (!groups.has(e.cat)) groups.set(e.cat, []); groups.get(e.cat).push(e); });
+  $('#rpType').innerHTML = [...groups].map(([c, es]) => `<optgroup label="${esc(c)}">${es.map(e => `<option value="${esc(e.id)}">${esc(e.name)}</option>`).join('')}</optgroup>`).join('');
+  $('#rpTitle').textContent = tl('Remplacer {0}', comp.name);
+  repl = { comp, used: Object.keys(comp.pins).filter(k => busy({ comp, key: k })), map: {}, keys: [] };
+  $('#replModal').hidden = false; replType();
+  $('#rpType').focus();
+}
+/** Nouveau composant choisi : proposition de correspondance, refaite. */
+function replType() {
+  const R = repl; R.type = $('#rpType').value;
+  try { R.keys = pinsOfType(R.type); } catch (e) { R.keys = []; console.warn(e); }
+  R.map = mapPins(R.used, R.keys);
+  replRender();
+}
+function replRender() {
+  const R = repl, bad = new Set(clashes(R.map)), lost = R.used.filter(k => !R.map[k]).length;
+  const row = k => {
+    const w = wiresOn({ comp: R.comp, key: k })[0], other = w ? (same(w.a, { comp: R.comp, key: k }) ? w.b : w.a) : null;
+    return `<tr class="${bad.has(k) ? 'bad' : ''}"><th><span class="c" style="background:${w ? w.color : 'transparent'}"></span>${esc(k)}</th><td class="rpTo">${other ? `${esc(other.comp.name)} ${esc(other.key)}` : ''}</td><td>→</td>
+      <td><select data-k="${esc(k)}" aria-label="${tl('Broche du nouveau composant pour {0}', esc(k))}"><option value="">${tl('— retirer ce fil —')}</option>${R.keys.map(n => `<option value="${esc(n)}"${R.map[k] === n ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select></td></tr>`;
+  };
+  $('#rpMap').innerHTML = R.used.length
+    ? `<table class="rpTable"><thead><tr><th>${tl('Broche actuelle')}</th><th>${tl('Reliée à')}</th><th></th><th>${tl('Nouvelle broche')}</th></tr></thead><tbody>${R.used.map(row).join('')}</tbody></table>`
+    : `<p class="note">${tl('Ce composant n’a aucun fil : il est simplement remplacé, à la même place.')}</p>`;
+  $('#rpNote').textContent = bad.size ? tl('Une broche ne reçoit qu’un fil : deux lignes visent la même.') : lost ? tl('{0} fil(s) sans équivalent seront retirés.', lost) : R.used.length ? tl('Tous les fils sont gardés.') : '';
+  $('#rpNote').dataset.kind = bad.size ? 'err' : lost ? 'warn' : 'ok';
+  $('#rpGo').disabled = bad.size > 0 || !R.keys.length;
+}
+function closeReplace() { repl = null; $('#replModal').hidden = true; }
+/** Pose le nouveau composant à la place de l'ancien et rebranche ses fils. Un seul pas d'historique. */
+function applyReplace() {
+  const R = repl; if (!R || clashes(R.map).length) return;
+  const old = R.comp, g = old.group, wires = S.wires.filter(w => w.a.comp === old || w.b.comp === old);
+  let nc;
+  // Même famille de repère (LED1 → une autre LED) : le repère est gardé, programmes et légendes le retrouvent.
+  const pre = n => (/^[A-Za-z_]+/.exec(n) || [''])[0], keep = pre(nextName(R.type)) === pre(old.name) ? old.name : undefined;
+  try { nc = createComp(R.type, { x: g.position.x, z: g.position.z, r: g.rotation.y, name: keep }); }
+  catch (e) { status(tl('Remplacement impossible : {0}', e.message || e), 'err'); return; }
+  let kept = 0, lost = 0;
+  for (const w of wires) {
+    const end = w.a.comp === old ? 'a' : 'b', to = R.map[w[end].key];
+    if (to && nc.pins[to]) { w[end] = { comp: nc, key: to }; delete w.shape; buildWire(w); kept++; }
+    else { removeWire(w); lost++; }
+  }
+  const name = old.name, model = (BY_ID[R.type] && BY_ID[R.type].name) || nc.name;
+  closeReplace(); removeComp(old, true); select(nc);
+  renderWires(); updatePower(); changed();
+  status(lost ? tl('{0} remplacé par {1} : {2} fil(s) gardé(s), {3} retiré(s). Ctrl+Z pour revenir.', name, model, kept, lost) : tl('{0} remplacé par {1} : {2} fil(s) gardé(s). Ctrl+Z pour revenir.', name, model, kept), lost ? 'warn' : 'ok');
+}
 /** Centre libre le plus proche de (ox, oz) pour une emprise `size`, en spirale ; null si tout est pris. */
 function freeSpot(size, ox, oz, others, r0, dr) {
   for (let i = 0; i < 400; i++) {
@@ -228,6 +294,56 @@ try { if (localStorage.getItem('jollof-wires') === 'soft') WIRES.style = 'soft';
  * dépend des autres : il est recalculé une fois, à la prochaine image (ou à la demande).
  */
 function buildWire(w) { w.sig = null; S.wiresDirty = true; }
+/* Forme d'un fil : `w.shape = { lift, round, via }`. lift : hauteur ajoutée au tracé rangé (mm) ; round : rayon
+   des coudes ; via : points de passage posés à la main (le fil ne suit plus le rangement automatique). */
+const WIRE_RISE = 4.5, Y_UP = new V3(0, 1, 0), ROUND = 2.6;
+/**
+ * Sortie du fil d'une broche. Vers le haut (le connecteur est debout sur la broche), ou sur le côté pour une
+ * broche couchée (bornier, connecteur coudé : champ `exit` du .jpart). P : broche, top : où le fil quitte son
+ * connecteur, d : direction de sortie dans le monde (null : vers le haut).
+ */
+function pinOut(ref) {
+  const P = pinWorld(ref), e = ref.comp.pins[ref.key].exit;
+  if (!e) return { P, top: P.clone().add(new V3(0, WIRE_RISE, 0)), d: null };
+  const d = e.clone().applyAxisAngle(Y_UP, ref.comp.group.rotation.y).normalize();
+  return { P, top: P.clone().addScaledVector(d, 6.5), d };
+}
+/** Point de départ donné au rangement : il ajoute lui-même la montée de 4,5 mm d'une broche debout. */
+function routeEnd(ref) { const o = pinOut(ref); return o.d ? new V3(o.top.x, o.top.y - WIRE_RISE, o.top.z) : o.P; }
+const viaOf = w => (w.shape && Array.isArray(w.shape.via) && w.shape.via.length ? w.shape.via : null);
+/** Points du fil, d'une broche à l'autre. `w.inner` garde ceux du milieu : ce sont eux qu'on déplace à la main. */
+function wirePts(w, r) {
+  const A = pinOut(w.a), B = pinOut(w.b), sh = w.shape || {}, via = viaOf(w), inner = [];
+  if (via) via.forEach(q => inner.push(new V3(q[0], q[1], q[2])));
+  else {
+    const h = r.h + (sh.lift || 0);
+    if (h - A.top.y > 0.05) inner.push(new V3(A.top.x, h, A.top.z));
+    for (const q of r.p.slice(1, -1)) inner.push(new V3(q[0], h, q[1]));
+    if (h - B.top.y > 0.05) inner.push(new V3(B.top.x, h, B.top.z));
+  }
+  const pts = [...(A.d ? [A.P.clone().addScaledVector(A.d, 2)] : []), A.top, ...inner, B.top, ...(B.d ? [B.P.clone().addScaledVector(B.d, 2)] : [])];
+  w.inner = inner; w.tops = [A.top, B.top];
+  return pts.filter((q, i) => i === 0 || q.distanceTo(pts[i - 1]) > 1e-3);
+}
+/** Retrace un seul fil, tout de suite (réglage de sa forme) : les autres ne bougent pas. */
+function reshape(w) { w.sig = null; applyWire(w, WIRES.style === 'tidy' ? w.route || null : null); if (w === S.selWire) placeBends(w); invalidate(); }
+/** Forme sans réglage par défaut ; plus aucun réglage : le champ disparaît du projet. */
+function tidyShape(w) {
+  const sh = w.shape; if (!sh) return;
+  if (!sh.lift) delete sh.lift;
+  if (sh.round == null || Math.abs(sh.round - ROUND) < 1e-6) delete sh.round;
+  if (!viaOf(w)) delete sh.via;
+  if (!Object.keys(sh).length) delete w.shape;
+}
+/** Forme reçue d'un fichier : nombres bornés, 24 points de passage au plus. */
+function cleanShape(raw) {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const sh = {}, n = v => typeof v === 'number' && Number.isFinite(v);
+  if (n(raw.lift) && raw.lift > 0) sh.lift = Math.min(60, raw.lift);
+  if (n(raw.round)) sh.round = Math.max(0, Math.min(12, raw.round));
+  if (Array.isArray(raw.via)) { const via = raw.via.filter(q => Array.isArray(q) && q.length === 3 && q.every(v => n(v) && Math.abs(v) < 1e5)).slice(0, 24).map(q => [q[0], Math.max(0.5, q[1]), q[2]]); if (via.length) sh.via = via; }
+  return Object.keys(sh).length ? sh : undefined;
+}
 function flushWires() { if (S.wiresDirty) layoutWires(); }
 /** Emprise d'un composant, gardée tant qu'il ne bouge pas. */
 function compBox(c) {
@@ -253,8 +369,8 @@ function roundedPath(pts, r = 2.6) {
 }
 /** Arc souple d'un fil (ancien style). */
 function softCurve(w) {
-  const a = pinWorld(w.a), b = pinWorld(w.b); a.y += 4.5; b.y += 4.5;
-  const d = a.distanceTo(b), h = 6 + d * 0.28;
+  const a = pinOut(w.a).top, b = pinOut(w.b).top;
+  const d = a.distanceTo(b), h = 6 + d * 0.28 + ((w.shape && w.shape.lift) || 0);
   const mid = a.clone().add(b).multiplyScalar(0.5); mid.y = Math.max(a.y, b.y) + h;
   const dir = b.clone().sub(a); dir.y = 0;
   if (dir.lengthSq() > 0) { const perp = new V3(-dir.z, 0, dir.x).normalize(); mid.addScaledVector(perp, ((S.wires.indexOf(w) % 5) - 2) * 1.6); }
@@ -272,7 +388,7 @@ function layoutWires() {
   const boxes = S.comps.map(c => { const b = compBox(c); return { comp: c.id, x0: b.min.x, z0: b.min.z, x1: b.max.x, z1: b.max.z, top: b.max.y }; });
   const moving = S.drag && S.drag.comp, partial = !!moving && live.length > 40;
   const items = live.map((w, i) => {
-    const it = { id: i, A: pinWorld(w.a), B: pinWorld(w.b), own: [w.a.comp.id, w.b.comp.id] };
+    const it = { id: i, A: routeEnd(w.a), B: routeEnd(w.b), own: [w.a.comp.id, w.b.comp.id] };
     if (partial && w.route && w.a.comp !== moving && w.b.comp !== moving) it.fixed = { p: w.route.p, h: w.route.h };
     return it;
   });
@@ -310,25 +426,27 @@ function routeAside(live, items, boxes) {
 }
 /** Reconstruit un fil seulement si son tracé ou sa couleur a changé. route = null : arc souple. */
 function applyWire(w, r) {
-  let sig, curve;
-  if (r) {
-    w.route = r;
-    sig = r.pts.map(q => q.map(v => v.toFixed(2)).join(',')).join(';');
-    curve = () => roundedPath(r.pts.map(q => new V3(q[0], q[1], q[2])));
+  let sig, curve, corners = 4;
+  if (r) w.route = r;
+  if (r || viaOf(w)) {
+    const pts = wirePts(w, r), round = (w.shape && w.shape.round) ?? ROUND;
+    sig = pts.map(q => q.toArray().map(v => v.toFixed(2)).join(',')).join(';') + '|' + round;
+    curve = () => roundedPath(pts, round); corners = pts.length;
   } else {
-    const a = pinWorld(w.a), b = pinWorld(w.b);
-    sig = `soft|${a.toArray().map(v => v.toFixed(2))}|${b.toArray().map(v => v.toFixed(2))}|${S.wires.indexOf(w) % 5}`;
+    const a = pinOut(w.a).top, b = pinOut(w.b).top;
+    w.inner = []; w.tops = [a, b];
+    sig = `soft|${a.toArray().map(v => v.toFixed(2))}|${b.toArray().map(v => v.toFixed(2))}|${S.wires.indexOf(w) % 5}|${(w.shape && w.shape.lift) || 0}`;
     curve = () => softCurve(w);
   }
   sig += '|' + w.color;
   if (w.sig === sig && w.mesh) return;
-  w.sig = sig; makeWireMesh(w, curve(), r ? r.pts.length : 4);
+  w.sig = sig; makeWireMesh(w, curve(), corners);
 }
 function makeWireMesh(w, curve, corners) {
   disposeWire(w);
-  const a = pinWorld(w.a), b = pinWorld(w.b);
-  w.cA = mk(CONN, M.plastic); w.cA.position.copy(a).add(new V3(0, 1.5, 0));
-  w.cB = mk(CONN, M.plastic); w.cB.position.copy(b).add(new V3(0, 1.5, 0));
+  // Connecteur debout sur la broche, ou couché dans le sens de sortie d'une broche de côté.
+  const conn = o => { const m = mk(CONN, M.plastic); if (o.d) { m.position.copy(o.P).addScaledVector(o.d, 3.2); m.quaternion.setFromUnitVectors(Y_UP, o.d); } else m.position.copy(o.P).add(new V3(0, 1.5, 0)); return m; };
+  w.cA = conn(pinOut(w.a)); w.cB = conn(pinOut(w.b));
   w.curve = curve;
   // Assez de tronçons pour des coins bien ronds, pas davantage : la scène reste légère.
   w.tub = Math.max(16, Math.min(360, Math.round((curve.getLength() / 1.8 + corners * 6) * Q.wireDiv)));
@@ -458,6 +576,7 @@ function startAnim(list) {
   flushWires();
   if (!S.wires.length || (list && !list.length)) { status(tl('Ajoutez au moins un fil avant de lancer une animation.')); return false; }
   cancelPending(); if (!list) select(null); selectWire(null);
+  if (!list && S.timeline.camPlan && planShots.late) { planShots.late = false; planShots(); TL.sync(S.timeline, S.wires.map(w => w.id), S.shots.map(s => s.id), +$('#dur').value, S.shots); }
   const line = list ? TL.buildAuto('seq', list.map(w => w.id), +$('#dur').value) : S.timeline;
   S.anim = { tl: line, temp: !!list, t0: performance.now(), T: 0, paused: false, done: null };
   controls.autoRotate = $('#orbitOn').checked;
@@ -467,7 +586,7 @@ function startAnim(list) {
 }
 function runAnim(now) {
   const A = S.anim; if (A.paused) return;
-  A.T = (now - A.t0) / 1000;
+  A.T = (now - A.t0) / 1000; A.now = now;
   applyAt(A.T);
   if (A.T >= TL.end(A.tl)) finishAnim();
 }
@@ -478,6 +597,7 @@ function captionFor(line, r) {
   const clip = r.cur >= 0 ? line.wires[r.cur] : null, grp = TL.together(clip), w = clip && !grp ? wireById(clip.ws[0]) : null;
   let cap;
   if (r.cap) cap = r.cap.text;
+  else if (r.demo) cap = `${tl('Mise sous tension')}|${tl('Le circuit fonctionne')}`;
   else if (r.done || !clip) cap = tl('Circuit câblé');
   else if (grp) cap = tl('Câblage de {0} fils', clip.ws.length);
   else cap = w ? `${tl('Fil {0}/{1}', r.cur + 1, line.wires.length)}${w.role ? ' · ' + w.role : ''}|${wireLabel(w)}` : '';
@@ -491,13 +611,24 @@ function applyAt(T) {
   const want = w && r.started && !r.done ? [w.a, w.b] : [];
   if (want.length !== hlPins.length || want.some((p, i) => !same(p, hlPins[i]))) setHL(want);
   if (!A.temp && r.cam) applyCam(r.cam);
+  if (!A.temp && !!r.demo !== !!S.demoSim) setDemo(!!r.demo, A.now);
   const on = w && !r.done ? S.wires.indexOf(w) : -1;
   [...$('#wires').children].forEach((li, i) => li.classList.toggle('on', i === on));
   $('#wireParts').querySelectorAll('li[data-i]').forEach(li => li.classList.toggle('on', +li.dataset.i === on));
   setCaption(cap);
   if (r.done !== A.done) { A.done = r.done; updatePower(); }
 }
+/**
+ * Démonstration à la fin de la vidéo : la simulation tourne une fois le câblage terminé. `now` : horloge de
+ * l'image en cours (celle de la vidéo pendant un rendu), pour que le premier pas de simulation parte aussitôt.
+ * Une simulation lancée à la main n'est pas touchée.
+ */
+function setDemo(on, now) {
+  if (on && !S.simOn) { S.demoSim = true; setSim(true); if (now) { S.simLast = now - 1000; S.progLast = now; } }
+  else if (!on && S.demoSim) { S.demoSim = false; if (S.simOn) setSim(false); }
+}
 function finishAnim() {
+  if (S.demoSim) setDemo(false);
   S.anim = null; controls.autoRotate = false; setHL([]); setCaption('');
   S.wires.forEach(w => setProgress(w, 1)); updatePower();
   [...$('#wires').children].forEach(li => li.classList.remove('on'));
@@ -512,7 +643,7 @@ function previewAt(T) {
   if (S.rec || S.vr) return;
   if (S.anim && S.anim.temp) finishAnim();
   if (!S.anim && !startAnim()) return;
-  const A = S.anim; A.paused = true; A.T = Math.max(0, Math.min(TL.end(A.tl), T));
+  const A = S.anim; A.paused = true; A.T = Math.max(0, Math.min(TL.end(A.tl), T)); A.now = performance.now();
   applyAt(A.T); invalidate(); timelineDock.update(); audioFollow();
 }
 function playTimeline() {
@@ -595,7 +726,7 @@ function showVideo(v, ext, facts, cues = []) {
 
 /* ---------- Plans de caméra ---------- */
 const v3a = v => v.toArray().map(x => +x.toFixed(2));
-function addShot() { S.shots.push({ id: TL.nextId('s', S.shots), p: v3a(camera.position), t: v3a(controls.target) }); renderShots(); changed(); status(tl('Plan {0} ajouté : la vidéo passera par cette vue.', S.shots.length), 'ok'); }
+function addShot() { leavePlan(); S.shots.push({ id: TL.nextId('s', S.shots), p: v3a(camera.position), t: v3a(controls.target) }); renderShots(); changed(); status(tl('Plan {0} ajouté : la vidéo passera par cette vue.', S.shots.length), 'ok'); }
 /** Plans d'un projet : positions vérifiées, identifiants uniques (les anciens projets n'en ont pas). */
 function loadShots(list) {
   const v3 = a => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
@@ -604,12 +735,67 @@ function loadShots(list) {
     if (!s || !v3(s.p) || !v3(s.t)) continue;
     const id = typeof s.id === 'string' && /^s\d{1,6}$/.test(s.id) && !seen.has(s.id) ? s.id : null;
     if (id) seen.add(id);
-    out.push({ ...s, id, p: [...s.p], t: [...s.t] });
+    const auto = s.auto === 'all' || s.auto === 'wire' ? s.auto : undefined;
+    const ws = auto === 'wire' && Array.isArray(s.ws) ? s.ws.filter(w => typeof w === 'string' && /^w\d{1,6}$/.test(w)).slice(0, 2000) : undefined;
+    out.push({ ...s, id, p: [...s.p], t: [...s.t], auto, ws });
   }
   out.forEach(s => { if (!s.id) { s.id = TL.nextId('s', out); } });
   return out;
 }
+/* Plans automatiques (src/video/planner.js) : une vue d'ensemble et la meilleure vue de chaque fil. */
+/** Emprises et fils du montage, dans l'ordre de la timeline, pour le calcul des plans. */
+function planInput() {
+  flushWires();
+  const boxes = S.comps.map(c => { const b = compBox(c); return { min: b.min.toArray(), max: b.max.toArray() }; });
+  const seen = new Set(), wires = [];
+  for (const id of [...S.timeline.wires.flatMap(c => c.ws), ...S.wires.map(w => w.id)]) {
+    const w = wireById(id); if (!w || seen.has(id) || !w.a.comp.pins[w.a.key] || !w.b.comp.pins[w.b.key]) continue;
+    seen.add(id);
+    const a = pinWorld(w.a).toArray(), b = pinWorld(w.b).toArray();
+    wires.push({ id, a, b, pts: w.curve ? w.curve.getSpacedPoints(10).map(q => q.toArray()) : [a, b] });
+  }
+  return { wires, boxes };
+}
+/** Recalcule les plans automatiques (les plans posés à la main sont gardés). Sans effet si le montage n'a pas bougé. */
+function planShots() {
+  const input = planInput(), sig = JSON.stringify(input);
+  if (sig === planShots.sig && S.shots.some(s => s.auto === 'all')) return;
+  planShots.sig = sig;
+  const r = planAll(input.wires, input.boxes), out = S.shots.filter(s => !s.auto);
+  if (r.overview) {
+    out.push({ id: TL.nextId('s', out), auto: 'all', p: r.overview.p, t: r.overview.t });
+    for (const sh of r.shots) out.push({ id: TL.nextId('s', out), auto: 'wire', ws: sh.ws, p: sh.p, t: sh.t });
+  }
+  S.shots = out;
+}
+/** Active ou retire les plans automatiques. */
+function setAutoShots(on) {
+  if (on) {
+    if (!S.wires.length) { status(tl('Ajoutez au moins un fil : les plans automatiques suivent le câblage.'), 'warn'); return; }
+    S.timeline.camPlan = true; planShots.sig = null;
+    changed();
+    const n = S.shots.filter(s => s.auto === 'wire').length;
+    status(tl('Plans automatiques : une vue d’ensemble et {0} vue(s) de détail. La caméra suit chaque fil.', n), 'ok');
+  } else {
+    delete S.timeline.camPlan; S.timeline.camAuto = true; S.shots = S.shots.filter(s => !s.auto);
+    changed(); status(tl('Plans automatiques retirés.'), 'ok');
+  }
+  renderShots();
+}
+/** Un plan modifié à la main : les plans calculés deviennent des plans ordinaires, qu'on règle comme les autres. */
+function leavePlan() {
+  if (S.timeline.camPlan) delete S.timeline.camPlan;
+  for (const s of S.shots) if (s.auto) { delete s.auto; delete s.ws; }
+}
 function renderShots() {
+  const plan = !!S.timeline.camPlan, btn = $('#autoShots');
+  if (btn) { btn.setAttribute('aria-pressed', plan); btn.querySelector('span').textContent = plan ? tl('Recalculer les plans') : tl('Plans automatiques'); }
+  if (plan) {
+    const all = S.shots.findIndex(s => s.auto === 'all'), n = S.shots.filter(s => s.auto === 'wire').length;
+    $('#shots').innerHTML = `<li><span class="n">${icon('wand')}</span><span class="l">${tl('Vue d’ensemble + {0} vue(s) de détail', n)}</span>
+    <button type="button" data-go="${all}" title="${tl('Voir la vue d’ensemble')}" aria-label="${tl('Voir la vue d’ensemble')}">${icon('eye')}</button><button type="button" data-edit="1" title="${tl('Régler ces plans à la main')}" aria-label="${tl('Régler ces plans à la main')}">${icon('frame')}</button><button type="button" data-auto-off="1" title="${tl('Retirer les plans automatiques')}" aria-label="${tl('Retirer les plans automatiques')}">${icon('trash')}</button></li>`;
+    return;
+  }
   $('#shots').innerHTML = S.shots.length ? S.shots.map((s, i) => `<li><span class="n">${i + 1}</span><span class="l">${tl('Plan {0}', i + 1)}</span>
     <button type="button" data-go="${i}" title="${tl('Voir ce plan')}" aria-label="${tl('Voir le plan {0}', i + 1)}">${icon('eye')}</button><button type="button" data-set="${i}" title="${tl('Remplacer par la vue actuelle')}" aria-label="${tl('Remplacer le plan {0}', i + 1)}">${icon('frame')}</button><button type="button" data-del="${i}" title="${tl('Supprimer')}" aria-label="${tl('Supprimer le plan {0}', i + 1)}">${icon('trash')}</button></li>`).join('')
     : `<li class="emptyRow">${icon('frame')}<span>${tl('Aucun plan : la vidéo garde la vue actuelle. Placez la caméra puis ajoutez des vues : elle passera de l’une à l’autre.')}</span></li>`;
@@ -617,7 +803,13 @@ function renderShots() {
 function applyCam(c) { camera.position.fromArray(c.p); controls.target.fromArray(c.t); camera.lookAt(controls.target); }
 /** Accorde la timeline au montage (fils, plans) : refaite si elle est automatique, complétée sinon. */
 function syncTimeline() {
-  TL.sync(S.timeline, S.wires.map(w => w.id), S.shots.map(s => s.id), +$('#dur').value);
+  // Plans calculés : refaits quand le montage a changé (pas pendant un voyage dans l'historique, qui les porte déjà).
+  // Grand montage (calcul de plusieurs dixièmes de seconde, voir docs/PERFORMANCE.md) : remis au lancement de l'animation.
+  if (S.timeline.camPlan) { if (!S.restoring) { if (S.wires.length > 400 && S.shots.some(s => s.auto === 'all')) planShots.late = true; else planShots(); } }
+  else if (S.shots.some(s => s.auto)) leavePlan();
+  TL.sync(S.timeline, S.wires.map(w => w.id), S.shots.map(s => s.id), +$('#dur').value, S.shots);
+  const dm = $('#demo'); if (dm) { dm.value = S.timeline.demo || 0; $('#demoOut').textContent = S.timeline.demo ? `${S.timeline.demo} s` : tl('non'); }
+  if (S.timeline.camPlan || $('#autoShots')?.getAttribute('aria-pressed') === 'true') renderShots();
   const sel = $('#animMode'); if (sel) sel.value = S.timeline.auto || 'custom';
   timelineDock.refresh();
 }
@@ -744,6 +936,7 @@ async function renderMaster(kind) {
 async function renderVideo() {
   if (S.rec || S.vr) return;
   if (!S.wires.length) { status(tl('Ajoutez au moins un fil avant de rendre une vidéo.'), 'warn'); return; }
+  if ($('#vFmt').value === 'png') { renderPngFrames(); return; }
   if ($('#vFmt').value !== 'mp4') { renderMaster($('#vFmt').value); return; }
   const [W, H] = VX.SIZES[$('#vRes').value] || VX.SIZES[1080], rate = VX.parseRate($('#vFps').value);
   const want = $('#vCodec').value, quality = $('#vQual').value;
@@ -863,6 +1056,148 @@ function stopRec() { const r = S.rec; S.rec = null; $('#recBadge').hidden = true
  * Image finale : rendu 3D, marque et légende, placées dans la zone de sécurité titre (UER R 95 : 5 % de marge) pour
  * rester lisibles sur tout écran et ne jamais être rognées. La légende rétrécit si elle dépasse cette zone.
  */
+/* ---------- Image fixe, suite d'images PNG, mode présentation ---------- */
+/**
+ * Rend la scène, à la taille déjà donnée au moteur, dans la toile 2D `out`. bg : 'scene' (telle qu'à l'écran),
+ * 'white' (fond blanc de studio, sans tapis) ou 'none' (fond transparent). La transparence vient de deux rendus,
+ * sur fond noir puis sur fond blanc : leur écart donne l'opacité de chaque point, bords lissés et reflets compris.
+ */
+function stillFrame(out, bg) {
+  const { cv, ctx } = out, W = cv.width, H = cv.height;
+  const shot = () => { renderer.render(scene, camera); ctx.globalCompositeOperation = 'copy'; ctx.drawImage(renderer.domElement, 0, 0, W, H); ctx.globalCompositeOperation = 'source-over'; };
+  if (bg === 'scene') { shot(); return; }
+  const keep = { color: scene.background.getHex(), fog: scene.fog, ground: ground.visible };
+  scene.fog = null; ground.visible = false;
+  try {
+    if (bg === 'white') { scene.background.setHex(0xffffff); shot(); return; }
+    scene.background.setHex(0x000000); shot();
+    const black = ctx.getImageData(0, 0, W, H);
+    scene.background.setHex(0xffffff); shot();
+    const white = ctx.getImageData(0, 0, W, H), b = black.data, w = white.data;
+    for (let i = 0; i < b.length; i += 4) {
+      const a = 255 - Math.max(0, Math.min(255, Math.round((w[i] - b[i] + w[i + 1] - b[i + 1] + w[i + 2] - b[i + 2]) / 3)));
+      if (a <= 0) { b[i] = b[i + 1] = b[i + 2] = b[i + 3] = 0; continue; }
+      if (a < 255) { const k = 255 / a; b[i] = Math.min(255, b[i] * k); b[i + 1] = Math.min(255, b[i + 1] * k); b[i + 2] = Math.min(255, b[i + 2] * k); }
+      b[i + 3] = a;
+    }
+    ctx.putImageData(black, 0, 0);
+  } finally { scene.background.setHex(keep.color); scene.fog = keep.fog; ground.visible = keep.ground; }
+}
+const pngOf = cv => new Promise((res, rej) => cv.toBlob(b => (b ? res(b) : rej(new Error('PNG'))), 'image/png'));
+const fileBase = () => moduleApi.projectTitle().replace(/[\\/:*?"<>|]+/g, '-');
+/** Image PNG de la vue actuelle, jusqu'en 4K, sur le fond choisi : pour une fiche de TP, un diaporama, un article. */
+async function exportStill() {
+  if (S.rec || S.vr) return;
+  if (S.anim) finishAnim();
+  const [W, H] = VX.SIZES[$('#imgRes').value] || VX.SIZES[1080], bg = $('#imgBg').value;
+  select(null); selectWire(null); cancelPending(); flushWires();
+  const saved = { pr: renderer.getPixelRatio() }, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  let blob = null, failure = null;
+  S.vr = { cancel: false };
+  try {
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
+    followView(); placeLamps(); guides.update(); blocks.update();
+    stillFrame({ cv, ctx: cv.getContext('2d', { willReadFrequently: bg === 'none' }) }, bg);
+    blob = await pngOf(cv);
+  } catch (e) { failure = e; }
+  S.vr = null; renderer.setPixelRatio(saved.pr); resize(); invalidate(300);
+  if (failure) { console.error(failure); status(tl('Image impossible à rendre : ') + (failure.message || failure), 'err'); return; }
+  try {
+    const path = await native.saveFile(blob, `${fileBase()}-${W}x${H}.png`, tl('Image PNG'), 'png');
+    if (path) status(native.isTauri() ? tl('Image enregistrée : {0}', path) : tl('Image {0} × {1} téléchargée.', W, H), 'ok');
+  } catch (e) { status(tl('Enregistrement de l’image impossible : ') + (e.message || e), 'err'); }
+}
+/** Au-delà, l'archive ne tient plus en mémoire : on demande de réduire la cadence, la taille ou la durée. */
+const MAX_PNG_FRAMES = 900;
+/**
+ * Suite d'images PNG numérotées dans une archive .zip : pour un logiciel de montage, pour un système sans encodeur
+ * vidéo, et seule sortie qui garde un fond transparent. Mêmes images que la vidéo (timeline, caméra, légendes).
+ */
+async function renderPngFrames() {
+  const [W, H] = VX.SIZES[$('#vRes').value] || VX.SIZES[1080], rate = VX.parseRate($('#vFps').value);
+  if (S.anim) finishAnim();
+  const line = S.timeline, frames = VX.frameCount(TL.end(line), rate), bg = $('#vAlpha').checked ? 'none' : 'scene';
+  if (frames > MAX_PNG_FRAMES) { status(tl('{0} images : trop pour une archive (au plus {1}). Réduisez les images/s, la durée par fil ou la démonstration.', frames, MAX_PNG_FRAMES), 'warn'); return; }
+  const { Zip, ZipPassThrough } = await import('fflate');
+  const chunks = []; let zipErr = null;
+  const zip = new Zip((err, data) => { if (err) zipErr = err; else chunks.push(data); });
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H;
+  const out = { cv, ctx: cv.getContext('2d', { willReadFrequently: bg === 'none' }) };
+  const saved = { pos: camera.position.clone(), tgt: controls.target.clone(), pr: renderer.getPixelRatio() };
+  let failure = null;
+  S.vr = { cancel: false };
+  $('#renderModal').hidden = false; $('#rFrames').textContent = `0 / ${frames}`; $('#rBar').style.width = '0%';
+  $('#rInfo').textContent = tl('{0} × {1} · {2} images/s · PNG{3} · archive .zip', W, H, VX.rateLabel(rate.fps, DEC), bg === 'none' ? tl(' · fond transparent') : '');
+  const started = performance.now();
+  try {
+    startAnim();
+    const t0 = S.anim.t0, orbit = $('#orbitOn').checked && !S.shots.length;
+    controls.autoRotate = false;
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
+    for (let i = 0; i < frames && !S.vr.cancel && !zipErr; i++) {
+      const T = VX.frameTime(i, rate);
+      sceneFrame(T, t0 + T * 1000, orbit, saved);
+      stillFrame(out, bg); drawMarks(out.ctx, W, H);
+      const bytes = new Uint8Array(await (await pngOf(cv)).arrayBuffer());
+      const f = new ZipPassThrough(`${tl('image')}-${String(i + 1).padStart(5, '0')}.png`); zip.add(f); f.push(bytes, true); // PNG déjà compressé : rangé tel quel
+      if (i % 2 === 0) {
+        const el = (performance.now() - started) / 1000, left = el / (i + 1) * (frames - i - 1);
+        $('#rFrames').textContent = `${i + 1} / ${frames}${i > 10 ? ' · ' + tl('reste {0} s', Math.ceil(left)) : ''}`;
+        $('#rBar').style.width = `${(100 * (i + 1) / frames).toFixed(1)}%`;
+      }
+    }
+    if (zipErr) throw zipErr;
+    if (!S.vr.cancel) zip.end();
+  } catch (e) { failure = e; }
+  const cancelled = S.vr.cancel;
+  S.vr = null; $('#renderModal').hidden = true;
+  if (S.anim) finishAnim();
+  renderer.setPixelRatio(saved.pr); camera.position.copy(saved.pos); controls.target.copy(saved.tgt); resize();
+  if (failure) { console.error(failure); status(tl('Rendu interrompu : ') + (failure.message || failure), 'err'); return; }
+  if (cancelled) { status(tl('Rendu annulé.'), 'warn'); return; }
+  try {
+    const path = await native.saveFile(new Blob(chunks, { type: 'application/zip' }), `${fileBase()}-${tl('images')}-${W}x${H}.zip`, tl('Archive ZIP'), 'zip');
+    if (path) status(native.isTauri() ? tl('{0} images PNG enregistrées : {1}', frames, path) : tl('{0} images PNG téléchargées (archive .zip).', frames), 'ok');
+  } catch (e) { status(tl('Enregistrement des images impossible : ') + (e.message || e), 'err'); }
+}
+/* ---------- Synoptique (src/schematic/synoptic.js) : le montage en blocs reliés ---------- */
+const SYN_ROLE = () => ({ [tl('Cartes')]: 'board', [tl('Capteurs')]: 'in', [tl('Entrées')]: 'in', [tl('Affichage')]: 'out', [tl('Sorties')]: 'out', [tl('Moteurs')]: 'out' });
+let synSvg = '';
+async function openSynoptic() {
+  const comps = S.comps.filter(c => !isBreadboard(c) && Object.keys(c.pins).length);
+  if (!comps.length) { status(tl('Posez des composants : le synoptique montre comment ils sont reliés.'), 'warn'); return; }
+  const { synopticSvg } = await import('./schematic/synoptic.js');
+  const roles = SYN_ROLE(), A = analyze(S.comps, S.wires, { open: true }), { nets } = buildNets(comps, A, S.netNames || {});
+  synSvg = synopticSvg({
+    title: tl('{0} — synoptique', moduleApi.projectTitle()),
+    blocks: comps.map(c => ({ id: c.id, name: c.name, model: (BY_ID[c.type] && BY_ID[c.type].name) || (c.custom && c.custom.name) || c.type, role: (BY_ID[c.type] && roles[BY_ID[c.type].cat]) || 'other' })),
+    nets: nets.map(n => ({ name: n.name, kind: n.kind, pins: n.pins.map(p => [p.comp.id, p.key]) })),
+    labels: { in: tl('Entrées'), out: tl('Sorties'), none: tl('Non reliés') }
+  });
+  $('#synView').innerHTML = synSvg; // dessin produit ici, textes échappés par le module
+  $('#synModal').hidden = false; $('#synClose').focus();
+}
+function closeSynoptic() { $('#synModal').hidden = true; $('#synView').innerHTML = ''; }
+async function saveSynoptic(png) {
+  try {
+    let blob = new Blob([synSvg], { type: 'image/svg+xml' });
+    if (png) {
+      const img = new Image(), url = URL.createObjectURL(blob);
+      await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('SVG')); img.src = url; });
+      const cv = document.createElement('canvas'), k = 2; cv.width = img.width * k; cv.height = img.height * k;
+      cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height); URL.revokeObjectURL(url);
+      blob = await pngOf(cv);
+    }
+    const ext = png ? 'png' : 'svg', path = await native.saveFile(blob, `${fileBase()}-${tl('synoptique')}.${ext}`, png ? tl('Image PNG') : tl('Dessin SVG'), ext);
+    if (path) status(native.isTauri() ? tl('Synoptique enregistré : {0}', path) : tl('Synoptique téléchargé.'), 'ok');
+  } catch (e) { status(tl('Enregistrement du synoptique impossible : ') + (e.message || e), 'err'); }
+}
+/** Mode présentation : seul le montage reste à l'écran (projection en classe, capture d'écran). Échap pour en sortir. */
+function setPresenting(on) {
+  moduleApi.presenting(on); $('#presentExit').hidden = !on;
+  setTimeout(() => { resize(); invalidate(400); }, 260); // après le glissement des panneaux
+  if (on) status(tl('Mode présentation : Échap pour revenir à l’atelier.'), 'ok');
+}
 function composite(target = S.rec) {
   const { cv, ctx: x } = target;
   x.drawImage(renderer.domElement, 0, 0, cv.width, cv.height);
@@ -1016,7 +1351,7 @@ const benchCtx = {
   onShow: on => { $('#benchBtn').setAttribute('aria-pressed', on); invalidate(); }
 };
 function invalidate(ms = 0) { FRAME.need = true; if (ms) FRAME.until = Math.max(FRAME.until, performance.now() + ms); }
-const busyScene = now => FRAME.need || now < FRAME.until || (S.anim && !S.anim.paused) || S.fly || S.rec || S.wiresDirty || S.wiresPartial || S.drag || S.endDrag || S.wireDrag || S.blockDrag || S.blockResize || S.blockRect || S.simOn;
+const busyScene = now => FRAME.need || now < FRAME.until || (S.anim && !S.anim.paused) || S.fly || S.rec || S.wiresDirty || S.wiresPartial || S.drag || S.endDrag || S.bendDrag || S.wireDrag || S.blockDrag || S.blockResize || S.blockRect || S.simOn;
 function tick(now) {
   requestAnimationFrame(tick);
   if (S.vr) return; // rendu image par image en cours : il pilote lui-même la scène
@@ -1026,7 +1361,7 @@ function tick(now) {
   const moving = controls.update();
   if (!moving && !busyScene(now) && gap < 1000) return;
   if (document.body.classList.contains('hubOpen') && !S.rec && !S.simOn) { FRAME.last = now; return; }
-  if ((document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('codeOpen')) && !S.rec && !S.simOn) { FRAME.last = now; return; } // plan de travail logique ou pneumatique : la scène 3D est cachée
+  if ((document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('netOpen') || document.body.classList.contains('codeOpen')) && !S.rec && !S.simOn) { FRAME.last = now; return; } // plan de travail logique ou pneumatique : la scène 3D est cachée
   watchSpeed(gap, moving || busyScene(now));
   FRAME.last = now; FRAME.need = false;
   if (S.anim) runAnim(now);
@@ -1037,7 +1372,7 @@ function tick(now) {
   if (S.simOn) simFrame(now);
   if (bench && bench.visible) bench.draw(now);
   if (S.view2d) { if (!document.body.classList.contains('hubOpen')) sch.frame(now); if (!S.rec) return; } // vue Schéma : la scène 3D, cachée, n'est pas dessinée
-  if ((document.body.classList.contains('hubOpen') || document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('codeOpen')) && !S.rec) return; // l'espace classe, la logique ou la pneumatique cache la scène
+  if ((document.body.classList.contains('hubOpen') || document.body.classList.contains('logicOpen') || document.body.classList.contains('pneuOpen') || document.body.classList.contains('netOpen') || document.body.classList.contains('codeOpen')) && !S.rec) return; // l'espace classe, la logique ou la pneumatique cache la scène
   renderer.render(scene, camera);
   if (S.rec) composite();
 }
@@ -1236,7 +1571,7 @@ function installNav() {
   const in2d = () => S.view2d && sch;
   nav = createNavDock($('#stage'), {
     cls: 'ndStage',
-    active: () => !['logicOpen', 'pneuOpen', 'hubOpen', 'codeOpen'].some(c => document.body.classList.contains(c)),
+    active: () => !['logicOpen', 'pneuOpen', 'netOpen', 'hubOpen', 'codeOpen'].some(c => document.body.classList.contains(c)),
     target: () => (in2d() ? sch.el : renderer.domElement),
     tools: () => (in2d() ? ['select', 'pan', 'zoom'] : ['orbit', 'select', 'pan', 'zoom']),
     get tips() { return in2d() ? { select: tl('Sélection · V : cliquer pour choisir, glisser un symbole pour le déplacer, R pour le faire pivoter (Maj+R : miroir)') } : { select: tl('Sélection · V : glisser dans le vide pour encadrer des composants (clic droit glissé : déplacer la vue)') }; },
@@ -1296,9 +1631,11 @@ function installChecker() {
     // Plans pneumatique et logique : leurs fautes rejoignent le rapport quand le projet les montre.
     extra: () => [
       ...(moduleApi.pneu && spacesOf(S.kind).includes('pneu') ? moduleApi.pneu.diags() : []),
-      ...(moduleApi.logic && moduleApi.logic.diags && spacesOf(S.kind).includes('logic') ? moduleApi.logic.diags() : [])
+      ...(moduleApi.logic && moduleApi.logic.diags && spacesOf(S.kind).includes('logic') ? moduleApi.logic.diags() : []),
+      ...(moduleApi.net && spacesOf(S.kind).includes('net') ? moduleApi.net.diags() : [])
     ],
     focus(d) {
+      if (d.space === 'net' && moduleApi.net) { moduleApi.net.reveal(d.el); return; }
       if (d.space === 'logic' && moduleApi.logic) { moduleApi.logic.reveal(d.el); return; }
       if (d.space === 'pneu' && moduleApi.pneu) { if (!moduleApi.pneu.isOn() && !moduleApi.pneu.isSplit()) moduleApi.pneu.setMode(true); if (d.el) moduleApi.pneu.editor.select({ el: d.el }); if (!d.loc || !d.loc.comp) return; }
       if (d.fault && d.fault.pins && d.fault.pins.length) { focusFault(d.fault); return; }
@@ -1449,6 +1786,8 @@ function onDown(e) {
     const h = ray.intersectObjects(meshes, false)[0];
     if (h) { placePin(h); down = null; return; }
   }
+  const bend = S.simOn ? null : bendAt();
+  if (bend) { startBend(S.selWire, bend); controls.enabled = false; renderer.domElement.setPointerCapture(e.pointerId); return; }
   const end = handleAt();
   if (end) {
     const w = S.selWire;
@@ -1553,6 +1892,7 @@ function onMove(e) {
   $('#cursorPos').textContent = gp ? tl('X {0} · Z {1} mm', fmtMm(gp.x), fmtMm(gp.z)) : '';
   if (S.anim) { showTip(null); return; }
   const p = S.simOn ? null : pinAt(e, r); setHover(p); showTip(p, e, r);
+  if (S.bendDrag) { moveBend(e); renderer.domElement.style.cursor = 'grabbing'; return; }
   if (S.endDrag) {
     const ed = S.endDrag, a = pinWorld(ed.fixed), b = p && !same(p, ed.fixed) ? pinWorld(p) : groundAt();
     if (b) { rubber.geometry.setFromPoints([a, b]); rubber.visible = true; handles[ed.end === 'a' ? 0 : 1].position.copy(b).add(new V3(0, p ? 4.5 : 0, 0)); }
@@ -1645,6 +1985,7 @@ function onUp(e) {
   const r = setNdc(e), moved = down ? Math.hypot(e.clientX - down.x, e.clientY - down.y) > 5 : true; down = null;
   if (S.shiftPick) { S.shiftPick = false; controls.enabled = true; return; }
   if (S.drag) { if (S.drag.moved) { autoBlocks(S.drag.comp); (S.drag.group || []).forEach(m => autoBlocks(m.c)); changed(); } S.drag = null; controls.enabled = true; return; }
+  if (S.bendDrag) { endBend(); return; }
   if (S.endDrag) {
     const { w, end, fixed } = S.endDrag; S.endDrag = null; controls.enabled = true; rubber.visible = false;
     const p = pinAt(e, r), cur = w[end];
@@ -1881,6 +2222,65 @@ function updateSel() {
   if (f !== $('#tR')) $('#tR').value = Math.round((((-g.rotation.y * 180 / Math.PI) % 360) + 360) % 360);
   selHelper.box.setFromObject(S.sel.group); selHelper.box.expandByScalar(1.5); selHelper.visible = true;
 }
+/* Points de passage du fil sélectionné : on glisse un point bleu pour courber le fil, un petit point clair pour
+   en ajouter un. Maj : en hauteur. Double-clic : retirer le point. */
+const bendPool = [];
+let bendMats = null;
+function placeBends(w) {
+  bendPool.forEach(h => (h.visible = false));
+  if (!w || !w.inner || !w.tops || S.simOn || S.anim) return;
+  if (!bendMats) bendMats = { real: new THREE.MeshBasicMaterial({ color: 0x3b82f6, depthTest: false }), ghost: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.6, depthTest: false }), geo: new THREE.SphereGeometry(1, 16, 12) };
+  let n = 0;
+  const put = (pos, i, ghost) => {
+    let h = bendPool[n++];
+    if (!h) { h = mk(bendMats.geo, bendMats.real); h.renderOrder = 5; scene.add(h); bendPool.push(h); }
+    h.material = ghost ? bendMats.ghost : bendMats.real; h.scale.setScalar(ghost ? 1.05 : 1.6);
+    h.position.copy(pos); h.userData.bend = { i, ghost }; h.visible = true;
+  };
+  const chain = [w.tops[0], ...w.inner, w.tops[1]];
+  w.inner.forEach((q, i) => put(q, i, false));
+  if (w.inner.length < 24) for (let i = 0; i < chain.length - 1; i++) if (chain[i].distanceTo(chain[i + 1]) > 9) put(chain[i].clone().add(chain[i + 1]).multiplyScalar(0.5), i, true);
+}
+function bendAt() { if (!S.selWire) return null; const h = ray.intersectObjects(bendPool.filter(x => x.visible), false)[0]; return h ? { ...h.object.userData.bend, pos: h.object.position.clone() } : null; }
+/** Les points du milieu deviennent des points de passage posés à la main. */
+function viaFromInner(w) { return (w.inner || []).map(q => q.toArray().map(v => +v.toFixed(2))); }
+function startBend(w, bh) {
+  const prev = w.shape ? JSON.stringify(w.shape) : null, via = viaFromInner(w);
+  if (bh.ghost) via.splice(bh.i, 0, bh.pos.toArray().map(v => +v.toFixed(2)));
+  w.shape = { ...(w.shape || {}), via };
+  S.bendDrag = { w, i: bh.i, prev, moved: bh.ghost };
+  reshape(w);
+}
+function moveBend(e) {
+  const { w, i } = S.bendDrag, q = w.shape.via[i], hit = new V3();
+  if (e.shiftKey) {
+    // En hauteur : plan vertical face à la caméra, qui passe par le point.
+    const n = camera.position.clone().sub(new V3(q[0], q[1], q[2])); n.y = 0;
+    if (n.lengthSq() < 1e-6 || !ray.ray.intersectPlane(new THREE.Plane().setFromNormalAndCoplanarPoint(n.normalize(), new V3(q[0], q[1], q[2])), hit)) return;
+    q[1] = +Math.max(0.5, Math.min(400, hit.y)).toFixed(2);
+  } else {
+    if (!ray.ray.intersectPlane(new THREE.Plane(Y_UP, -q[1]), hit)) return;
+    q[0] = +hit.x.toFixed(2); q[2] = +hit.z.toFixed(2);
+  }
+  S.bendDrag.moved = true; reshape(w);
+}
+function endBend() {
+  const { w, prev, moved } = S.bendDrag; S.bendDrag = null; controls.enabled = true;
+  if (!moved) { if (prev) w.shape = JSON.parse(prev); else delete w.shape; reshape(w); return; }
+  tidyShape(w); showWireShape(w); changed();
+  status(tl('Fil courbé à la main. Maj + glisser : en hauteur ; double-clic sur un point : le retirer.'), 'ok');
+}
+/** Réglages de forme du fil sélectionné (onglet Câblage). */
+function showWireShape(w) {
+  const box = $('#wireShape'); if (!box) return;
+  box.hidden = !w; if (!w) return;
+  const sh = w.shape || {}, manual = !!viaOf(w);
+  $('#wsLift').value = sh.lift || 0; $('#wsLift').disabled = manual; $('#wsLiftOut').textContent = `${sh.lift || 0} mm`;
+  const r = sh.round ?? ROUND; $('#wsRound').value = r; $('#wsRoundOut').textContent = `${String(+(+r).toFixed(1)).replace('.', DEC)} mm`;
+  $('#wsRound').disabled = WIRES.style !== 'tidy' && !manual;
+  $('#wsReset').disabled = !w.shape;
+  $('#wsMode').textContent = manual ? tl('Tracé à la main ({0} point(s))', sh.via.length) : tl('Tracé automatique');
+}
 function selectWire(w) {
   if (w && !w.mesh) flushWires();
   if (S.selWire && S.selWire.mesh) S.selWire.mesh.material.emissive.setHex(0x000000);
@@ -1889,9 +2289,10 @@ function selectWire(w) {
   if (w) {
     if (S.sel || S.multi.size) { S.sel = null; S.multi.clear(); $('#selBox').hidden = true; setPlacing(false); updateSel(); }
     if (w.mesh) w.mesh.material.emissive.copy(new THREE.Color(w.color)).multiplyScalar(0.35);
-    handles[0].position.copy(pinWorld(w.a)).add(new V3(0, 4.5, 0));
-    handles[1].position.copy(pinWorld(w.b)).add(new V3(0, 4.5, 0));
+    handles[0].position.copy(pinOut(w.a).top);
+    handles[1].position.copy(pinOut(w.b).top);
   }
+  placeBends(w); showWireShape(w);
   const i = w ? S.wires.indexOf(w) : -1;
   [...$('#wires').children].forEach((li, j) => li.classList.toggle('sel', j === i));
   $('#wireParts').querySelectorAll('li[data-i]').forEach(li => li.classList.toggle('sel', +li.dataset.i === i));
@@ -2359,6 +2760,7 @@ function changed() {
   // Le type suit ce qu'on pose : un composant dans un projet pneumatique le rend électropneumatique, une carte dans
   // un projet analogique le rend électronique. Rien ne reste caché à simuler.
   if (S.kind === 'pneu' && S.comps.length) setKind('epneu', true);
+  else if (S.kind === 'net' && S.comps.length) setKind('iot', true);
   else if (S.kind === 'analog' && boards().length) setKind('elec', true);
   autoBlocks(); // avant l'instantané : annuler retire aussi le composant du bloc
   syncTimeline(); // avant l'instantané : la timeline suit les fils ajoutés ou retirés
@@ -2403,7 +2805,9 @@ const prog = createProgram({
   markDirty() { S.dirty = true; $('#projectName').classList.add('dirty'); clearTimeout(changed.t); changed.t = setTimeout(autosave, 400); if (chk) chk.schedule(); },
   refreshSel() { if (S.sel) renderBehavior(); },
   /** Valeurs de départ posées : curseurs d'environnement et commandes des entrées suivent. */
-  envChanged() { renderSim.sig = null; renderSim(); S.comps.forEach(c => { if (c.type === 'button' || c.type === 'joystick') syncPress(c); }); }
+  envChanged() { renderSim.sig = null; renderSim(); S.comps.forEach(c => { if (c.type === 'button' || c.type === 'joystick') syncPress(c); }); },
+  /** Réseau simulé du plan réseau (src/net/lan.js) : Ethernet, Wi-Fi, MQTT, Modbus des programmes ; null sans plan réseau. */
+  lan: () => (moduleApi.net && spacesOf(S.kind).includes('net') ? moduleApi.net.lan() : null)
 });
 const screenLines = (c, list) => (c.type === 'lcd1602' ? [list[0], list[1] || ''] : c.type === 'lcd2004' ? [0, 1, 2, 3].map(i => list[i] || '') : [list[0], list.slice(1).join('  ')]);
 /** Afficheurs qui ne montrent rien sans programme (pas de texte des capteurs) : matrices et chiffres à pilote. */
@@ -2419,8 +2823,9 @@ installInstruments({ bench: () => bench, comps: () => S.comps, wires: () => S.wi
 /** Onglet Simulation : carte réelle en USB (StandardFirmata) qui recopie les sorties et montre ses vraies entrées. */
 /** Masters (ProRes, DNxHR) : codec et qualité web n'ont plus de sens ; formats offerts si ffmpeg est livré. */
 function syncFmt() {
-  const master = $('#vFmt').value !== 'mp4';
+  const master = $('#vFmt').value !== 'mp4', png = $('#vFmt').value === 'png';
   for (const id of ['#vCodec', '#vQual']) $(id).disabled = master;
+  $('#vAlphaField').hidden = !png; $('#vSubs').disabled = png;
 }
 function enableMasters() {
   native.ffmpegInfo().then(ff => {
@@ -2446,7 +2851,7 @@ import('./hil/panel.js').then(m => m.installHil({ comps: () => S.comps, simOn: (
 let serialShownOnce = false; // le moniteur série s'ouvre seul une fois par session, au premier programme qui écrit
 function setSim(on) {
   S.simOn = on; S.simLast = performance.now() - 1000; S.simT = 0;
-  if (on && shell && !serialShownOnce && !shell.dock.isOpen() && hasProgram(S.kind) && boards().some(b => /\bSerial\d?\.(print|write)|\bprint\s*\(/.test(prog.programOf(b) || ''))) { serialShownOnce = true; shell.dock.show('serial'); }
+  if (on && shell && !S.demoSim && !serialShownOnce && !shell.dock.isOpen() && hasProgram(S.kind) && boards().some(b => /\bSerial\d?\.(print|write)|\bprint\s*\(/.test(prog.programOf(b) || ''))) { serialShownOnce = true; shell.dock.show('serial'); }
   $('#simBtn').innerHTML = icon(on ? 'stop' : 'play') + `<span>${on ? tl('Arrêter') : tl('Simuler')}</span>`;
   $('#simBtn').classList.toggle('running', on); $('#simBtn').dataset.tip = on ? tl('Arrêter la simulation') : tl('Lancer la simulation');
   $('#simLive').hidden = !on; $('#simEmpty').hidden = on; $('#faultSec').hidden = !on;
@@ -2457,7 +2862,7 @@ function setSim(on) {
     audio.unlock(); S.progLast = performance.now(); S.simA = null;
     prog.applyInits();
     const r = prog.startAll();
-    if ($('#pane-prog').hidden) setTab('sim');
+    if ($('#pane-prog').hidden && !S.demoSim) setTab('sim');
     if (r.n && !r.bad) status(`${r.n > 1 ? tl('{0} programmes s’exécutent', r.n) : tl('Le programme s’exécute')}.${S.comps.some(c => c.type === 'button') ? tl(' Cliquez sur un bouton du montage pour l’appuyer.') : ''}`, 'ok');
   }
   if (!on) {
@@ -2968,6 +3373,65 @@ async function saveSchematicPdf() {
     if (path) status(native.isTauri() ? tl('Schéma enregistré : {0}', path) : tl('Schéma PDF téléchargé.'), 'ok');
   } catch (e) { status(tl('Enregistrement du PDF impossible : ') + (e.message || e), 'err'); }
 }
+/**
+ * Guide illustré (src/export/guide.js), à côté du guide PDF du schéma (schematic/guide.js) : une page HTML autonome, une étape illustrée par fil dans l'ordre du
+ * câblage, chaque image prise depuis la vue calculée pour ce fil (video/planner.js). Elle s'imprime en PDF
+ * depuis n'importe quel navigateur.
+ */
+async function exportGuide() {
+  if (S.rec || S.vr) return;
+  if (S.simOn) { status(tl('Arrêtez la simulation avant d’exporter le guide.'), 'warn'); return; }
+  if (!S.wires.length) { status(tl('Ajoutez au moins un fil : le guide suit le câblage.'), 'warn'); return; }
+  // Comme le guide PDF (schematic/guide.js) : un guide sert à câbler en vrai, seulement pour un montage sans erreur.
+  if (chk) { const r = await chk.verify(false); if (r && r.errors) { status(tl('Guide de montage refusé : le montage a {0} erreur(s). Corrigez-les d’abord (rapport ouvert).', r.errors), 'err'); chk.open(); return; } }
+  if (S.rec || S.vr || S.simOn) return;
+  if (S.anim) finishAnim();
+  select(null); selectWire(null); cancelPending();
+  const W = 960, H = 600, { wires, boxes } = planInput(), plan = planAll(wires, boxes, { aspect: W / H });
+  if (!plan.overview) return;
+  const camOf = new Map(); plan.shots.forEach(sh => sh.ws.forEach(id => camOf.set(id, sh)));
+  const order = wires.map(x => wireById(x.id)), colorName = Object.fromEntries(COLORS.map(([n, c]) => [c.toLowerCase(), n]));
+  const saved = { pos: camera.position.clone(), tgt: controls.target.clone(), pr: renderer.getPixelRatio() };
+  const steps = [];
+  let cover = null, failure = null, html = null;
+  S.vr = { cancel: false }; // la boucle d'affichage s'efface : les images sont rendues ici
+  status(tl('Guide illustré : préparation des images…'));
+  try {
+    const { guideHtml } = await import('./export/guide.js');
+    renderer.setPixelRatio(1); renderer.setSize(W, H, false); camera.aspect = W / H; camera.updateProjectionMatrix();
+    const snap = cam => { applyCam(cam); followView(); placeLamps(); guides.update(); blocks.update(); renderer.render(scene, camera); return renderer.domElement.toDataURL('image/jpeg', 0.82); };
+    S.wires.forEach(w => setProgress(w, 0));
+    // Câblage hors tension : les LED restent éteintes jusqu'à l'image du montage terminé.
+    S.comps.filter(c => c.led).forEach(c => { c.led.mat.emissive.setHex(0); c.led.mat.emissiveIntensity = 0; c.led.light.intensity = 0; });
+    for (let i = 0; i < order.length; i++) {
+      const w = order[i];
+      setProgress(w, 1); setHL([w.a, w.b]);
+      // Le fil de l'étape ressort : il brille, les fils déjà posés restent tels quels.
+      w.mesh.material.emissive.copy(new THREE.Color(w.color)).multiplyScalar(0.55);
+      const img = snap(camOf.get(w.id) || plan.overview);
+      w.mesh.material.emissive.setHex(0);
+      steps.push({ img, a: { comp: w.a.comp.name, pin: baseKey(w.a.key) }, b: { comp: w.b.comp.name, pin: baseKey(w.b.key) }, color: w.color, colorName: colorName[String(w.color).toLowerCase()] || '', role: w.role || '' });
+      if (i % 4 === 3) { status(tl('Guide illustré : image {0} sur {1}…', i + 1, order.length)); await new Promise(r => setTimeout(r, 0)); }
+    }
+    setHL([]); S.wires.forEach(w => setProgress(w, 1)); updatePower();
+    cover = snap(plan.overview);
+    const r = chk && chk.result;
+    html = guideHtml({
+      title: moduleApi.projectTitle(), lang: isEn ? 'en' : 'fr', date: new Date().toLocaleDateString(locale()), cover, steps,
+      comps: S.comps.map(c => ({ name: c.name, model: (BY_ID[c.type] && BY_ID[c.type].name) || (c.custom && c.custom.name) || c.type })),
+      checked: !!r, issues: r ? r.diags.filter(d => d.accepted == null).map(d => ({ level: d.level, text: d.title })) : [],
+      program: hasProgram(S.kind) && boards().some(b => (prog.programOf(b) || '').trim()), footer: tl('Guide produit par Jollof Studio à partir du projet : les images montrent le montage simulé.')
+    });
+  } catch (e) { failure = e; }
+  setHL([]); S.wires.forEach(w => { setProgress(w, 1); if (w.mesh) w.mesh.material.emissive.setHex(0); });
+  updatePower();
+  S.vr = null; renderer.setPixelRatio(saved.pr); camera.position.copy(saved.pos); controls.target.copy(saved.tgt); resize(); invalidate(300);
+  if (failure) { console.error(failure); status(tl('Guide de montage impossible : ') + (failure.message || failure), 'err'); return; }
+  try {
+    const path = await native.saveFile(new Blob([html], { type: 'text/html' }), `${moduleApi.projectTitle().replace(/[\\/:*?"<>|]+/g, '-')}-${tl('guide-illustre')}.html`, tl('Guide illustré'), 'html');
+    if (path) status(native.isTauri() ? tl('Guide enregistré : {0}. Ouvrez-le dans un navigateur pour le lire ou l’imprimer en PDF.', path) : tl('Guide téléchargé : ouvrez-le pour le lire ou l’imprimer en PDF.'), 'ok');
+  } catch (e) { status(tl('Enregistrement du guide impossible : ') + (e.message || e), 'err'); }
+}
 /** Projet KiCad (.zip : netlist .net et schéma .kicad_sch) : le circuit imprimé se dessine ensuite dans KiCad. */
 async function saveKicadNetlist() {
   try {
@@ -3171,7 +3635,7 @@ function stateOf() {
       for (const k of DESIGN_INP) if (i[k] != null && i[k] !== false) keep[k] = i[k];
       return { id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom && custom, skin: c.skin && skin, inp: Object.keys(keep).length ? keep : undefined };
     }),
-    wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role })),
+    wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role, shape: w.shape })),
     blocks: blocks.data(),
     // Réglages annulables (sans programmes ni modules, qui restent hors de l'historique).
     hist: { dur: +$('#dur').value, shots: S.shots, netNames: S.netNames, timeline: S.timeline }
@@ -3222,13 +3686,13 @@ function serialize() {
     app: 'jollof-studio', version: 1, name: S.projectName,
     comps: S.comps.map(c => ({ id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom, skin: c.skin, inp: Object.keys(c.inp).length ? c.inp : undefined, env: c.env || undefined })),
     packages: parts.embed(S.comps), // composants en paquet utilisés : le projet s'ouvre ailleurs
-    wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role })),
+    wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role, shape: w.shape })),
     blocks: blocks.data(),
     settings: {
       kind: S.kind, // type de projet (src/ui/kind.js)
       dur: +$('#dur').value, env: { ...ENV }, shots: S.shots, netNames: S.netNames, prog: prog.data, modules: moduleData(),
       check: { allow: S.checkAllow || [] },
-      timeline: S.timeline, audio: isSilent(S.audio) && !Object.keys(S.audio.clips).length ? undefined : S.audio, video: { res: $('#vRes').value, fps: Math.round(VX.parseRate($('#vFps').value).fps), rate: $('#vFps').value, codec: $('#vCodec').value, quality: $('#vQual').value, subs: $('#vSubs').checked, fmt: $('#vFmt').value, cap: $('#capOn').checked, orbit: $('#orbitOn').checked }
+      timeline: S.timeline, audio: isSilent(S.audio) && !Object.keys(S.audio.clips).length ? undefined : S.audio, video: { res: $('#vRes').value, fps: Math.round(VX.parseRate($('#vFps').value).fps), rate: $('#vFps').value, codec: $('#vCodec').value, quality: $('#vQual').value, subs: $('#vSubs').checked, fmt: $('#vFmt').value, alpha: $('#vAlpha').checked || undefined, cap: $('#capOn').checked, orbit: $('#orbitOn').checked }
     }
   };
 }
@@ -3269,7 +3733,7 @@ async function restore(raw) {
   (data.wires || []).forEach(w => {
     const a = byId[w.a[0]], b = byId[w.b[0]];
     const id = typeof w.id === 'string' && /^w\d{1,6}$/.test(w.id) && !ids.has(w.id) ? w.id : null;
-    if (a && b && a.pins[w.a[1]] && b.pins[w.b[1]]) { addWire({ comp: a, key: w.a[1] }, { comp: b, key: w.b[1] }, w.color, true, id).role = w.role; if (id) ids.add(id); }
+    if (a && b && a.pins[w.a[1]] && b.pins[w.b[1]]) { const nw = addWire({ comp: a, key: w.a[1] }, { comp: b, key: w.b[1] }, w.color, true, id); nw.role = w.role; const sh = cleanShape(w.shape); if (sh) nw.shape = sh; if (id) ids.add(id); }
   });
   S.wires.forEach(w => { if (!w.id) w.id = TL.nextId('w', S.wires); });
   // Projet complet (settings) ou instantané de l'historique (hist) : durée, plans, nœuds, timeline.
@@ -3291,7 +3755,8 @@ async function restore(raw) {
     if (VX.CODEC_NAME[vs.codec]) $('#vCodec').value = vs.codec;
     if (vs.quality === 'web' || vs.quality === 'master') $('#vQual').value = vs.quality;
     if (typeof vs.subs === 'boolean') $('#vSubs').checked = vs.subs;
-    if (['mp4', 'prores', 'dnxhr'].includes(vs.fmt)) { const o = $('#vFmt').querySelector(`option[value="${vs.fmt}"]`); if (o && !o.disabled) $('#vFmt').value = vs.fmt; }
+    if (typeof vs.alpha === 'boolean') $('#vAlpha').checked = vs.alpha;
+    if (['mp4', 'prores', 'dnxhr', 'png'].includes(vs.fmt)) { const o = $('#vFmt').querySelector(`option[value="${vs.fmt}"]`); if (o && !o.disabled) $('#vFmt').value = vs.fmt; }
     syncFmt();
     if (typeof vs.cap === 'boolean') $('#capOn').checked = vs.cap;
     if (typeof vs.orbit === 'boolean') $('#orbitOn').checked = vs.orbit;
@@ -3313,16 +3778,17 @@ async function restore(raw) {
 function setKind(k, quiet = false) {
   if (!KINDS[k]) k = 'elec';
   const was = S.kind; S.kind = k; $('.app').dataset.kind = k;
-  const P = moduleApi.pneu, Lg = moduleApi.logic, spaces = spacesOf(k);
-  if (P && Lg && !kindBusy) {
+  const P = moduleApi.pneu, Lg = moduleApi.logic, N = moduleApi.net, spaces = spacesOf(k);
+  if (P && Lg && N && !kindBusy) {
     kindBusy = true;
     try {
       if (k !== 'epneu' && P.isSplit()) P.setSplit(false);
-      const cur = P.isOn() ? 'pneu' : Lg.isOn() ? 'logic' : 'elec';
+      const cur = P.isOn() ? 'pneu' : Lg.isOn() ? 'logic' : N.isOn() ? 'net' : 'elec';
       if (!spaces.includes(cur)) {
-        if (cur === 'pneu') P.setMode(false); if (cur === 'logic') Lg.setMode(false);
-        if (spaces[0] === 'pneu') P.setMode(true); else if (spaces[0] === 'logic') Lg.setMode(true);
+        if (cur === 'pneu') P.setMode(false); if (cur === 'logic') Lg.setMode(false); if (cur === 'net') N.setMode(false);
+        if (spaces[0] === 'pneu') P.setMode(true); else if (spaces[0] === 'logic') Lg.setMode(true); else if (spaces[0] === 'net') N.setMode(true);
       }
+      N.kindChanged();
       if (P.refresh) P.refresh();
     } finally { kindBusy = false; }
   }
@@ -3332,12 +3798,12 @@ function setKind(k, quiet = false) {
 /** Un plan de travail s'ouvre ou reçoit du contenu : le type du projet s'élargit pour le contenir. */
 function ensureSpace(space) {
   if (kindBusy || spacesOf(S.kind).includes(space)) return;
-  setKind(space === 'logic' ? 'logic' : S.comps.length ? 'epneu' : 'pneu', true);
+  setKind(space === 'logic' ? 'logic' : space === 'net' ? (S.comps.length ? 'iot' : 'net') : S.comps.length ? 'epneu' : 'pneu', true);
 }
 /** Changement de type demandé par l'utilisateur : confirmé s'il cache du contenu. */
 async function askKind(k) {
-  const spaces = spacesOf(k), P = moduleApi.pneu, Lg = moduleApi.logic;
-  const hides = (S.comps.length && !spaces.includes('elec')) || (P && P.circuit().elements.length && !spaces.includes('pneu')) || (Lg && Lg.circuit().elements.length && !spaces.includes('logic'));
+  const spaces = spacesOf(k), P = moduleApi.pneu, Lg = moduleApi.logic, N = moduleApi.net;
+  const hides = (S.comps.length && !spaces.includes('elec')) || (P && P.circuit().elements.length && !spaces.includes('pneu')) || (Lg && Lg.circuit().elements.length && !spaces.includes('logic')) || (N && N.hasContent() && !spaces.includes('net'));
   if (hides && !(await confirmDlg(tl('Type de projet'), tl('Passer ce projet en « {0} » ? Ce qui appartient aux autres plans de travail reste enregistré dans le projet, mais n’est plus affiché ni simulé.', KINDS[k].name()), tl('Changer de type')))) return;
   if (S.simOn) setSim(false);
   setKind(k); status(tl('Projet {0}.', KINDS[k].name().toLowerCase()), 'ok');
@@ -3365,7 +3831,7 @@ let home = null, startData = null;
 function closeHome() { if (home) home.hide(); S.homeGuard = false; startData = null; }
 function showHome(o = {}) {
   if (!home) home = createHome({
-    resume: () => resumeInfo(startData || (S.comps.length || (moduleApi.pneu && moduleApi.pneu.circuit().elements.length) || (moduleApi.logic && moduleApi.logic.circuit().elements.length) ? serialize() : null)),
+    resume: () => resumeInfo(startData || (S.comps.length || (moduleApi.pneu && moduleApi.pneu.circuit().elements.length) || (moduleApi.logic && moduleApi.logic.circuit().elements.length) || (moduleApi.net && moduleApi.net.hasContent()) ? serialize() : null)),
     async onResume() {
       const d = startData;
       if (!d) { closeHome(); return; } // accueil rouvert depuis le menu : le projet est déjà là
@@ -3375,7 +3841,7 @@ function showHome(o = {}) {
     onKind: k => newProject(k),
     onOpen: () => openProjectFile(),
     onExamples: () => { S.homeGuard = false; openEx(); },
-    onLabs: () => { S.homeGuard = false; if (moduleApi.openLabs) moduleApi.openLabs(S.kind === 'pneu' || S.kind === 'epneu' ? 'pneu' : S.kind === 'logic' ? 'logic' : 'elec'); },
+    onLabs: () => { S.homeGuard = false; if (moduleApi.openLabs) moduleApi.openLabs(S.kind === 'pneu' || S.kind === 'epneu' ? 'pneu' : S.kind === 'logic' ? 'logic' : S.kind === 'net' || S.kind === 'iot' ? 'net' : 'elec'); },
     onTutorial: () => { S.homeGuard = false; if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); },
     onClose: () => closeHome()
   });
@@ -3470,6 +3936,14 @@ function bindUI() {
   renderer.domElement.addEventListener('dblclick', e => {
     if (S.anim || S.view2d) return;
     setNdc(e);
+    const bh = S.simOn ? null : bendAt();
+    if (bh && !bh.ghost) {
+      // Point de passage retiré ; le dernier parti, le fil reprend son tracé automatique.
+      const w = S.selWire; e.preventDefault();
+      w.shape = { ...(w.shape || {}), via: viaFromInner(w).filter((_, i) => i !== bh.i) };
+      tidyShape(w); buildWire(w); flushWires(); selectWire(w); changed();
+      return;
+    }
     let c = guides.hitTag(ray);
     if (!c) { const h = ray.intersectObjects(S.comps.filter(x => x.label).map(x => x.label), false)[0]; if (h) c = S.comps.find(x => x.label === h.object) || null; }
     if (!c) return;
@@ -3531,6 +4005,11 @@ function bindUI() {
   $('#alertClose').onclick = () => ($('#alert').hidden = true);
   $('#docBtn').onclick = () => openDoc(S.sel && BY_ID[S.sel.type] ? S.sel.type : null);
   $('#docSel').onclick = () => S.sel && openDoc(S.sel.type);
+  $('#replSel').onclick = () => S.sel && openReplace(S.sel);
+  $('#rpType').onchange = replType;
+  $('#rpMap').onchange = e => { const k = e.target.dataset.k; if (repl && k != null) { repl.map[k] = e.target.value || null; replRender(); } };
+  $('#rpGo').onclick = applyReplace; $('#rpClose').onclick = closeReplace;
+  $('#replModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeReplace(); } });
   $('#docClose').onclick = closeDoc;
   $('#docCredits').onclick = showCredits;
   $('#docBoards').onclick = showBoardGuide;
@@ -3546,6 +4025,7 @@ function bindUI() {
   $('#schFormat').onchange = renderSchematic;
   $('#schLists').onchange = renderSchematic;
   $('#schPdf').onclick = saveSchematicPdf;
+  $('#guideBtn').onclick = exportGuide;
   $('#schKicad').onclick = saveKicadNetlist;
   $('#schPrint').onclick = printSchematic;
   $('#exClose').onclick = closeEx;
@@ -3783,13 +4263,13 @@ function bindUI() {
     addShotAt: T => {
       // Vue actuelle ajoutée comme plan, placée à l'instant T : la caméra devient manuelle.
       const shot = { id: TL.nextId('s', S.shots), p: v3a(camera.position), t: v3a(controls.target) };
-      S.shots.push(shot); S.timeline.camAuto = false;
+      leavePlan(); S.shots.push(shot); S.timeline.camAuto = false;
       S.timeline.cam.push({ id: TL.nextId('k', S.timeline.cam), shot: shot.id, t: T, ease: 'smooth' });
       renderShots(); changed();
       status(tl('Plan {0} ajouté à {1} s.', S.shots.length, T.toFixed(1).replace('.', DEC)), 'ok');
     },
-    replaceShot: id => { const s = S.shots.find(x => x.id === id); if (!s) return; s.p = v3a(camera.position); s.t = v3a(controls.target); renderShots(); changed(); status(tl('Plan remplacé par la vue actuelle.'), 'ok'); },
-    deleteShot: id => { S.shots = S.shots.filter(x => x.id !== id); renderShots(); },
+    replaceShot: id => { const s = S.shots.find(x => x.id === id); if (!s) return; leavePlan(); s.p = v3a(camera.position); s.t = v3a(controls.target); renderShots(); changed(); status(tl('Plan remplacé par la vue actuelle.'), 'ok'); },
+    deleteShot: id => { leavePlan(); S.shots = S.shots.filter(x => x.id !== id); renderShots(); },
     onToggle: on => {
       $('.app').classList.toggle('tlOpen', on); $('#tlToggle').setAttribute('aria-pressed', on);
       if (!on && S.anim && S.anim.paused) finishAnim();
@@ -3798,11 +4278,38 @@ function bindUI() {
   $('#tlToggle').onclick = () => timelineDock.toggle();
   $('#recBtn').onclick = renderVideo;
   $('#vFmt').onchange = () => { syncFmt(); changed(); };
-  $('#vFmtField').hidden = !native.isTauri();
+  $('#vAlpha').onchange = () => changed();
+  $('#stillBtn').onclick = exportStill;
+  $('#synBtn').onclick = openSynoptic; $('#synClose').onclick = closeSynoptic;
+  $('#synSvgBtn').onclick = () => saveSynoptic(false); $('#synPngBtn').onclick = () => saveSynoptic(true);
+  $('#synModal').addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeSynoptic(); } });
+  // Un bloc cliqué : son composant est sélectionné et cadré dans le montage.
+  const synPick = e => { const g = e.target.closest('.bk'); const c = g && S.comps.find(x => x.id === g.dataset.id); if (c) { closeSynoptic(); select(c); frameComp(c); } };
+  $('#synView').addEventListener('click', synPick);
+  $('#synView').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); synPick(e); } });
+  $('#presentBtn').onclick = () => setPresenting(true);
+  $('#presentExit').onclick = () => setPresenting(false);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && $('.app').classList.contains('presenting') && !$('#presentExit').hidden) { e.stopPropagation(); setPresenting(false); } }, true);
   $('#rCancel').onclick = () => { if (S.vr) S.vr.cancel = true; };
   $('#addShot').onclick = addShot;
+  // Forme du fil sélectionné : le fil suit le curseur, l'historique garde le réglage au lâcher.
+  const shapeSet = (k, v) => { const w = S.selWire; if (!w) return; w.shape = { ...(w.shape || {}), [k]: v }; reshape(w); showWireShape(w); };
+  $('#wsLift').oninput = e => shapeSet('lift', +e.target.value);
+  $('#wsRound').oninput = e => shapeSet('round', +e.target.value);
+  $('#wsLift').onchange = $('#wsRound').onchange = () => { const w = S.selWire; if (!w) return; tidyShape(w); showWireShape(w); changed(); };
+  $('#wsReset').onclick = () => { const w = S.selWire; if (!w || !w.shape) return; delete w.shape; buildWire(w); flushWires(); selectWire(w); changed(); status(tl('Le fil reprend son tracé automatique.'), 'ok'); };
+  $('#autoShots').onclick = () => setAutoShots(true);
+  $('#demo').oninput = e => ($('#demoOut').textContent = +e.target.value ? `${+e.target.value} s` : tl('non'));
+  $('#demo').onchange = e => {
+    const v = +e.target.value; if (S.anim) finishAnim();
+    if (v > 0) S.timeline.demo = v; else delete S.timeline.demo;
+    changed();
+    if (v > 0) status(tl('La vidéo se termine par {0} s de simulation : le circuit fonctionne à l’image.', v), 'ok');
+  };
   $('#shots').onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.autoOff) { setAutoShots(false); return; }
+    if (b.dataset.edit) { leavePlan(); S.timeline.camAuto = false; renderShots(); changed(); status(tl('Plans gardés : réglez-les ici ou sur la timeline.'), 'ok'); return; }
     const i = +(b.dataset.go ?? b.dataset.set ?? b.dataset.del);
     if (b.dataset.go != null) { const c = S.shots[i]; S.fly = { t0: performance.now(), a: controls.target.clone(), b: new V3().fromArray(c.t), pa: camera.position.clone(), pb: new V3().fromArray(c.p) }; }
     if (b.dataset.set != null) { S.shots[i] = { ...S.shots[i], p: v3a(camera.position), t: v3a(controls.target) }; status(tl('Plan {0} remplacé par la vue actuelle.', i + 1), 'ok'); }
@@ -3840,7 +4347,7 @@ function bindUI() {
       const r = await (await cadImport()).importCad(f, m => status(m));
       const comp = await addCustom({ v: 2, name: r.name, glb: bufToB64(r.glb), pins: [], kind: 'deco' });
       placeFree(comp); select(comp); refreshQuick(); changed(); frameComp(comp);
-      status(tl('{0} importé ({1} × {2} mm). Dites ce qu’il représente, puis placez ses broches.', comp.name, Math.round(r.size.x), Math.round(r.size.z)), 'ok');
+      status(tl('{0} importé ({1} × {2} mm). Dites ce qu’il représente, puis placez ses broches.', comp.name, Math.round(r.size.x), Math.round(r.size.z)) + (r.note ? ' ' + r.note : ''), r.heavy ? 'warn' : 'ok');
     } catch (err) { status(tl('Import impossible : ') + (err.message || err), 'err'); }
   };
   // Assistant d'import : nature du modèle, broches, utilisation.
@@ -3938,7 +4445,7 @@ function bindUI() {
 function registerCommands() {
   const click = sel => { const b = $(sel); if (b) b.click(); };
   const shown = sel => { const b = $(sel); return !!b && !b.hidden && getComputedStyle(b).display !== 'none'; };
-  const elecOn = () => !document.body.classList.contains('logicOpen') && !document.body.classList.contains('pneuOpen');
+  const elecOn = () => !document.body.classList.contains('logicOpen') && !document.body.classList.contains('pneuOpen') && !document.body.classList.contains('netOpen');
   const has = sp => spacesOf(S.kind).includes(sp);
   const CATS = { proj: tl('Projet'), view: isEn ? 'View' : 'Vue', ins: tl('Inspecteur'), sim: tl('Simulation'), edit: isEn ? 'Edit' : 'Édition', res: tl('Ressources') };
   const C = (cat, list) => list.map(([id, label, ic, run, extra]) => ({ id: `${cat}:${id}`, cat: CATS[cat], label, icon: ic, run, ...(extra || {}) }));
@@ -3950,6 +4457,12 @@ function registerCommands() {
       ['save', tl('Enregistrer'), 'save', () => saveProjectFile(false), { keys: shortcut('S') }],
       ['saveAs', tl('Enregistrer sous…'), 'save', () => saveProjectFile(true), { keys: shortcut('S', true) }],
       ['import', tl('Importer un projet Wokwi…'), 'upload', () => click('#importBtn'), { when: () => shown('#importBtn') }],
+      ['synoptic', tl('Synoptique : le montage en blocs reliés'), 'blockFrame', () => openSynoptic(), { when: () => elecOn() && S.comps.length > 0 }],
+      ['still', tl('Exporter une image PNG de la vue (jusqu’en 4K, fond transparent)'), 'frame', () => exportStill(), { when: () => elecOn() }],
+      ['present', tl('Mode présentation (montage seul à l’écran)'), 'eye', () => setPresenting(!$('.app').classList.contains('presenting')), { when: () => elecOn() }],
+      ['guide', tl('Exporter le guide illustré (une image par fil)'), 'list', () => exportGuide(), { when: () => elecOn() && S.wires.length > 0 }],
+      ['autoShots', tl('Vidéo : plans de caméra automatiques'), 'wand', () => setAutoShots(true), { when: () => elecOn() && S.wires.length > 0 }],
+      ['replace', tl('Remplacer le composant sélectionné…'), 'swap', () => openReplace(S.sel), { when: () => elecOn() && !!S.sel && !S.simOn }],
       ['kind', tl('Changer le type de projet…'), 'swap', () => click('#kindBtn')],
       ['update', tl('Rechercher les mises à jour…'), 'download', () => click('#updBtn'), { when: () => shown('#updBtn') }],
       ['logs', tl('Ouvrir le dossier des journaux'), 'folder', () => click('#logBtn'), { when: () => shown('#logBtn') }]
@@ -3966,6 +4479,7 @@ function registerCommands() {
       ['serial', tl('Moniteur série'), 'terminal', () => shell.dock.show('serial'), { when: () => hasProgram(S.kind) }],
       ['tabLogic', isEn ? 'Logic' : 'Logique', 'logic', () => shell.tabs.go('logic'), { when: () => has('logic') }],
       ['tabPneu', tl('Pneumatique'), 'pneu', () => shell.tabs.go('pneu'), { when: () => has('pneu') }],
+      ['tabNet', tl('Réseau'), 'network', () => shell.tabs.go('net'), { when: () => has('net') }],
       ['split', tl('Vue partagée'), 'split', () => click('.pnSplitBtn'), { when: () => shown('.pnSplitBtn') }],
       ['frame', tl('Tout voir'), 'frame', () => click('#frameBtn'), { keys: 'F' }],
       ['simple', tl('Rendu simple'), 'shapes', () => click('#renderSimple'), { when: elecOn }],
@@ -4169,6 +4683,7 @@ async function start() {
   mark('school');
   moduleApi.logic = installLogic(moduleApi); // plan de travail logique : portes, bascules, compteurs
   moduleApi.pneu = installPneu(moduleApi); // plan de travail pneumatique, simulé avec le montage (électrovannes, capteurs de vérin)
+  moduleApi.net = installNet(moduleApi); // plan réseau : câbles RJ45, switchs, box, adresses IP (le plan se charge à la demande)
   kindUi = installKind({ anchor: document.querySelector('.brand'), get: () => S.kind, set: k => askKind(k) });
   setKind(S.kind || 'elec', true);
   installLab(moduleApi); // travaux pratiques guidés (hors ligne, sans compte)

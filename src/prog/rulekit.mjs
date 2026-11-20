@@ -90,6 +90,24 @@ export const seq = (name, steps, o = {}) => ({ kind: 'seq', id: id('q'), name, s
 export const step = (name, doList = [], go = []) => ({ kind: 'step', id: id('e'), name, do: doList, go });
 export const go = (to, { after = 0, when = null } = {}) => ({ kind: 'go', id: id('t'), after, when, to: to ? to.id : null });
 
+/**
+ * Règles d'un atelier connecté (réseau, rules-net.js) sur un montage qui a POT1 et LED1 : la position publiée toutes
+ * les 2 s, un compteur publié quand il change, page web (position, état de la LED), messages « ON » / « OFF » du sujet
+ * atelier/led, nombre reçu sur atelier/seuil écrit sur le moniteur série, demande « /on », « bonjour » à la connexion.
+ */
+export function netRules(M) {
+  const L = M.c('LED1'), POT = M.c('POT1'), n = variable('compte', 'int', 0);
+  return [n,
+    rule({ every: 2000 }, [act('@net', 'publish', null, { topic: 'atelier/pot', what: { comp: POT.id, sig: 'pos' } })]),
+    rule(null, [act('@net', 'publish', null, { topic: 'atelier/compte', what: { var: n.id } }), act('@net', 'page', null, { what: { comp: POT.id, sig: 'pos' } })]),
+    rule({ comp: '@net', sig: 'msg', topic: 'atelier/led' }, [act(L, 'on'), act('@net', 'page', 'LED allumée'), set(n, '+', 1)], [], { op: '==', v: 'ON' }),
+    rule({ comp: '@net', sig: 'msg', topic: 'atelier/led' }, [act(L, 'off'), act('@net', 'page', 'LED éteinte')], [], { op: '==', v: 'OFF' }),
+    rule({ comp: '@net', sig: 'num', topic: 'atelier/seuil' }, [act('@serial', 'show', null, { what: { comp: '@net', sig: 'num', topic: 'atelier/seuil' } })], [], { op: 'any' }),
+    rule({ comp: '@net', sig: 'page' }, [act(L, 'on')], [], { op: '==', v: 'on' }),
+    rule({ comp: '@net', sig: 'mqtt' }, [act('@net', 'publish', 'bonjour', { topic: 'atelier/etat' })], [], { op: '==', v: 1 })
+  ];
+}
+
 /* ---------- Compilation par arduino-cli ---------- */
 export const hasCli = spawnSync('arduino-cli', ['version']).status === 0;
 export const FQBN = { uno: 'arduino:avr:uno', nano: 'arduino:avr:nano', mega: 'arduino:avr:mega', pico: 'rp2040:rp2040:rpipico', esp32: 'esp32:esp32:esp32' };

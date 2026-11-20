@@ -33,14 +33,17 @@ function extent(pins) {
   const xs = pins.map(p => p.x), zs = pins.map(p => p.z), ys = pins.map(p => p.y);
   return [Math.min(...xs), Math.max(...xs), Math.min(...zs), Math.max(...zs), Math.max(...ys)];
 }
+/** Sens de sortie du fil d'une broche couchée (champ `exit` du .jpart), dans le repère du composant. */
+const EXIT = { 'x+': [1, 0, 0], 'x-': [-1, 0, 0], 'z+': [0, 0, 1], 'z-': [0, 0, -1] };
+const exitOf = p => (EXIT[p.exit] ? new V3(...EXIT[p.exit]) : null);
 /** Patte dorée verticale de y0 jusqu'à la broche, ou pastille quand la broche est au niveau de la surface. */
 function legTo(c, p, y0) {
   const h = p.y - y0;
   const m = h > 0.6 ? block(c, 0.64, h, 0.64, p.x, y0, p.z, M.gold) : add(c, boxGeo(1.6, 0.2, 1.6), M.gold, p.x, p.y - 0.1, p.z);
-  c.pin(p.name, m, new V3(p.x, p.y, p.z));
+  c.pin(p.name, m, new V3(p.x, p.y, p.z), exitOf(p));
 }
 /** Point doré posé sur un modèle importé. */
-function dotAt(c, p) { const m = add(c, PIN_DOT, M.gold, p.x, p.y, p.z); c.pin(p.name, m, new V3(p.x, p.y, p.z)); }
+function dotAt(c, p) { const m = add(c, PIN_DOT, M.gold, p.x, p.y, p.z); c.pin(p.name, m, new V3(p.x, p.y, p.z), exitOf(p)); }
 
 /** Plaquette de circuit imprimé à la taille du module : en-têtes mâles sous chaque broche, nom sérigraphié. */
 function lookModule(c, m) {

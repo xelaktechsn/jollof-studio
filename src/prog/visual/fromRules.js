@@ -9,7 +9,7 @@
 // - écrans sans règle et mesures sur le moniteur série → « toutes les 1000 ms », comme le code des règles.
 // Sans Blockly : rend le JSON de l'espace de travail (Blockly.serialization).
 import { tl } from '../../i18n/index.js';
-import { ACTIONS, SIGNALS, signalOf, numberRules, ruleText, isSensor, isActuator, defaultActs, boardRules, TIMED, screenLabel, termsOf, SERIAL } from '../rules.js';
+import { ACTIONS, SIGNALS, signalOf, numberRules, ruleText, isSensor, isActuator, defaultActs, boardRules, TIMED, screenLabel, termsOf, SERIAL, NET } from '../rules.js';
 import { boardOf } from '../../sim/boards.js';
 import { B, F, emptyWorkspace } from './types.js';
 import { visualActs } from './generator.js';
@@ -89,6 +89,7 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
   function emitAct(it, ctx) {
     if (it.kind && it.kind !== 'act') { skipped.push(tl('« {0} » : pas d’équivalent en blocs', ruleText({ kind: 'rule', src: null, then: [it], else: [] }, byAny, prof).replace(/^Toujours\s*:\s*|\.$/g, ''))); return []; }
     if (it.comp === SERIAL) { skipped.push(tl('Moniteur série : action sans équivalent en blocs')); return []; }
+    if (it.comp === NET) { skipped.push(tl('Réseau : action sans équivalent en blocs')); return []; }
     const d = byId(it.comp);
     if (!d) return [];
     const db = boardOfComp(d);
@@ -129,7 +130,7 @@ export function rulesToBlocks(board, cx, { extras = true } = {}) {
   /** Condition d'une règle (bloc booléen), ou null si sa mesure manque. */
   /** Une condition en bloc, ou null : mesure retirée, ou condition sans équivalent (front, durée, marge, variable, temps…). */
   function termOf(t) {
-    if (!t.src || !t.src.comp || t.src.comp === SERIAL || t.edge || t.hold || t.hyst || (t.vs && !t.vs.comp)) return null;
+    if (!t.src || !t.src.comp || t.src.comp === SERIAL || t.src.comp === NET || t.edge || t.hold || t.hyst || (t.vs && !t.vs.comp)) return null;
     const s = byId(t.src.comp), sig = s && signalOf(s.type, t.src.sig, prof);
     if (!sig || sig.kind === 'text' || sig.event) return null;
     const m = sigBlock(s, t.src.sig, sig), vs = t.vs && byId(t.vs.comp), vsig = vs && signalOf(vs.type, t.vs.sig, prof);

@@ -235,6 +235,7 @@ test('Capteur : sa sortie est une source de 1 kΩ ; LED en parallèle de couleur
 test('Tous les exemples se résolvent sans erreur, en continu comme pas à pas', () => {
   for (const f of fs.readdirSync(EX).filter(f => f.endsWith('.jollof'))) {
     const { comps, wires } = load(f), A = analyze(comps, wires);
+    if (!comps.length) continue; // projet Réseau : aucun montage à résoudre
     const ctx = ctxOf(Object.fromEntries(['D2', 'D4', 'D7', 'D13', 'GP15', 'D9'].map(k => [k, OUT(1)])));
     const s = solveDC(comps, A, ctx), t = solveDC(comps, A, { ...ctx, dt: 0.1, commit: true });
     assert.equal(s.ok, true, f);

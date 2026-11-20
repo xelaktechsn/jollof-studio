@@ -1,0 +1,166 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Atelier de sertissage RJ45 (src/net/ui/crimp.js) et testeur de câble (src/net/ui/tester.js) : fenêtre posée sur le
+ * plan de travail Réseau. Préfixe « nt » : rien d'autre ne s'appelle ainsi. Les couleurs des conducteurs, des contacts
+ * dorés et des boîtiers du testeur sont des couleurs d'objets réels (les mêmes dans les deux thèmes) ; tout le reste suit
+ * les jetons de src/styles.css. */
+
+/* ---------- Fenêtre commune ---------- */
+.nt-ov { position: absolute; inset: 0; z-index: 40; container-type: size; display: flex; padding: 12px; background: var(--backdrop); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fadeIn .15s ease-out; color: var(--fg); font: 13px/1.45 var(--sans); }
+.nt-dlg { margin: auto; width: min(1120px, 100%); height: min(700px, 100%); min-height: 0; display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; animation: sheetIn .18s ease-out; }
+.nt-dlg:focus { outline: none; }
+.nt-hd { flex: none; display: flex; align-items: center; gap: 10px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.nt-hd > .ic { width: 18px; height: 18px; color: var(--accent); }
+.nt-ttl { min-width: 0; flex: 1; display: flex; flex-direction: column; }
+.nt-ttl b { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-ttl span { color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.nt-x { all: unset; box-sizing: border-box; flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 7px; color: var(--fg-2); cursor: pointer; }
+.nt-x:hover { background: var(--raise-2); color: var(--fg); }
+.nt-x:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.nt-body { flex: 1; min-height: 0; display: flex; }
+.nt-ft { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line); background: var(--panel-2); }
+.nt-ft .nt-sp { flex: 1; }
+.nt-kbd { font: 600 11px/1 var(--mono); padding: 2px 5px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--raise); color: var(--fg-2); }
+
+/* Échantillon de conducteur (carte de référence, sélection) */
+.nt-sw { flex: none; display: inline-block; vertical-align: middle; }
+
+/* ---------- Sertissage ---------- */
+.nt-stage { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; background: var(--stage); }
+.nt-cap { flex: none; display: flex; align-items: center; gap: 8px; padding: 8px 12px 0; color: var(--fg-2); font-size: 12px; }
+.nt-cap .ic { width: 14px; height: 14px; color: var(--muted); }
+.nt-svg { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; -webkit-user-select: none; user-select: none; }
+.nt-side { flex: none; width: 318px; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 12px; padding: 12px 14px; border-left: 1px solid var(--line); }
+.nt-steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 5px; color: var(--fg-2); }
+.nt-steps li::marker { color: var(--accent); font-weight: 600; }
+.nt-status { display: flex; flex-direction: column; gap: 6px; padding: 9px 10px; border-radius: var(--r); background: var(--raise); border: 1px solid var(--line); }
+.nt-count { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.nt-meter { flex: 1; height: 6px; border-radius: 3px; background: var(--hi-1); overflow: hidden; }
+.nt-meter i { display: block; height: 100%; background: var(--accent); border-radius: 3px; transition: width .2s; }
+.nt-selrow { display: flex; align-items: center; gap: 8px; min-height: 26px; color: var(--fg-2); }
+.nt-selrow b { color: var(--fg); font-weight: 600; }
+.nt-selrow .btn { margin-left: auto; }
+.nt-hint { color: var(--muted); font-size: 12px; }
+.nt-verdict { display: flex; flex-direction: column; gap: 6px; padding: 10px 11px; border-radius: var(--r); border: 1px solid; }
+.nt-verdict:empty { display: none; }
+.nt-verdict .nt-vh { display: flex; align-items: flex-start; gap: 8px; font-weight: 600; }
+.nt-verdict .nt-vh .ic { width: 18px; height: 18px; margin-top: 1px; }
+.nt-verdict ul { margin: 0; padding-left: 26px; display: flex; flex-direction: column; gap: 3px; color: var(--fg-2); font-size: 12px; }
+.nt-ok { border-color: color-mix(in srgb, var(--ok) 45%, transparent); background: color-mix(in srgb, var(--ok) 10%, transparent); }
+.nt-ok .nt-vh { color: var(--ok-ink); }
+.nt-bad { border-color: color-mix(in srgb, var(--danger) 45%, transparent); background: color-mix(in srgb, var(--danger) 9%, transparent); }
+.nt-bad .nt-vh { color: var(--danger-ink); }
+.nt-info { border-color: color-mix(in srgb, var(--info) 45%, transparent); background: color-mix(in srgb, var(--info) 9%, transparent); }
+.nt-info .nt-vh { color: var(--info); }
+.nt-refbtn { align-self: flex-start; }
+.nt-ref { border: 1px solid var(--line); border-radius: var(--r); overflow: hidden; }
+.nt-ref table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.nt-ref th, .nt-ref td { padding: 4px 5px; text-align: left; white-space: nowrap; }
+.nt-ref th { background: var(--raise); color: var(--fg-2); font-weight: 600; }
+.nt-ref tr + tr td { border-top: 1px solid var(--line); }
+.nt-ref th:first-child { width: 30px; }
+.nt-ref td:first-child { width: 30px; font: 600 12px var(--mono); color: var(--muted); text-align: center; }
+.nt-ref td span { display: inline-flex; align-items: center; gap: 5px; }
+.nt-ref p { margin: 0; padding: 6px 8px; color: var(--muted); font-size: 11.5px; border-top: 1px solid var(--line); }
+
+/* Dessin de la fiche (SVG) */
+.nt-svg text { font-family: var(--sans); }
+.nt-pbody { fill: var(--hi-1); stroke: var(--line-3); stroke-width: 2.5; }
+.nt-pshine { fill: none; stroke: var(--hi-2); stroke-width: 2; }
+.nt-clip { fill: none; stroke: var(--muted); stroke-width: 1.6; stroke-dasharray: 7 6; opacity: .75; }
+.nt-chan { fill: var(--hi-0); stroke: var(--line-2); stroke-width: 1.5; }
+.nt-chan.nt-full { fill: none; }
+.nt-armed .nt-chan:not(.nt-full) { stroke: var(--accent); stroke-dasharray: 5 4; fill: var(--accent-soft); }
+.nt-chan.nt-tgt { stroke: var(--accent) !important; stroke-width: 3; stroke-dasharray: none !important; fill: var(--accent-soft); }
+.nt-slot { fill: transparent; cursor: pointer; outline: none; }
+.nt-slot:focus-visible { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 3; }
+.nt-locked .nt-slot { cursor: default; }
+.nt-num { fill: var(--fg); font: 700 17px var(--mono); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.nt-num.nt-one { fill: var(--accent); }
+.nt-lbl { fill: var(--muted); font-size: 13px; pointer-events: none; }
+.nt-lead { stroke: var(--muted); stroke-width: 1.2; fill: none; pointer-events: none; }
+.nt-blade { fill: #e0b23a; stroke: #8a6a12; stroke-width: 1; pointer-events: none; transition: transform .25s ease-in; }
+.nt-crimped .nt-blade { transform: translateY(12px); }
+.nt-wedge { fill: var(--hi-2); stroke: var(--line-3); stroke-width: 1.2; pointer-events: none; transition: transform .25s ease-in; }
+.nt-crimped .nt-wedge { transform: translateY(5px); fill: var(--hi-3); }
+.nt-jacket { fill: #8b95a1; stroke: #5b6470; stroke-width: 1.5; }
+.nt-jacket-cut { fill: #6b7480; }
+.nt-w { cursor: grab; outline: none; }
+.nt-locked .nt-w { cursor: default; }
+.nt-w path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.nt-w .nt-stripe { stroke-linecap: butt; }
+.nt-w .nt-halo { stroke: transparent; stroke-width: 30; }
+.nt-w.nt-sel .nt-halo { stroke: var(--accent); stroke-opacity: .45; }
+.nt-w:focus-visible .nt-halo { stroke: var(--accent); stroke-opacity: .7; }
+.nt-w .nt-hit { stroke: transparent; stroke-width: 32; }
+.nt-w.nt-drag { cursor: grabbing; }
+.nt-jaw { fill: var(--raise-2); stroke: var(--line-3); stroke-width: 2; opacity: 0; pointer-events: none; }
+.nt-pressing .nt-jaw { animation: nt-press .8s ease-in-out; }
+@keyframes nt-press { 0% { opacity: 0; transform: translateY(-120px); } 15% { opacity: 1; } 45%, 62% { opacity: 1; transform: translateY(0); } 100% { opacity: 0; transform: translateY(-120px); } }
+.nt-seal { fill: var(--ok); opacity: 0; pointer-events: none; }
+.nt-crimped .nt-seal { opacity: 1; }
+.nt-sealtx { fill: #fff; font: 700 13px var(--sans); text-anchor: middle; dominant-baseline: central; }
+@media (prefers-reduced-motion: reduce) { .nt-pressing .nt-jaw { animation-duration: .2s; } .nt-blade, .nt-wedge { transition: none; } }
+
+/* Miniatures (inspecteur) */
+.nt-thumb, .nt-cablesvg { display: inline-block; vertical-align: middle; overflow: visible; }
+.nt-th-plug { fill: var(--hi-1); stroke: var(--line-3); stroke-width: 1.2; }
+.nt-th-open { stroke-dasharray: 3 2; }
+.nt-th-empty { fill: none; stroke: var(--line-3); stroke-width: .8; stroke-dasharray: 1.5 1.5; }
+.nt-th-blade { fill: #e0b23a; }
+.nt-th-blade.nt-th-up { fill: var(--muted); opacity: .6; }
+.nt-th-tx { fill: currentColor; font: 600 9px var(--sans); text-anchor: middle; }
+.nt-th-cut { stroke: var(--danger); stroke-width: 2; stroke-linecap: round; }
+
+/* ---------- Testeur ---------- */
+.nt-tbody { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--stage); }
+.nt-seg { display: inline-flex; padding: 2px; gap: 2px; border-radius: 8px; background: var(--raise); border: 1px solid var(--line); }
+.nt-seg button { all: unset; box-sizing: border-box; height: 26px; padding: 0 11px; border-radius: 6px; font-weight: 500; font-size: 12.5px; color: var(--fg-2); cursor: pointer; white-space: nowrap; display: inline-flex; align-items: center; }
+.nt-seg button:hover { color: var(--fg); background: var(--raise-2); }
+.nt-seg button[aria-pressed="true"] { background: var(--accent-fill); color: var(--accent-ink); }
+.nt-seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.nt-dev { width: 100%; max-height: 190px; flex: none; display: block; }
+.nt-dev text { font-family: var(--sans); }
+.nt-dev .nt-name { fill: var(--fg); font-size: 15px; font-weight: 600; text-anchor: middle; }
+.nt-dev .nt-plbl { fill: var(--muted); font-size: 12px; text-anchor: middle; }
+.nt-outlet { fill: var(--raise-2); stroke: var(--line-3); stroke-width: 1.5; }
+.nt-steprow { flex: none; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.nt-step { flex: 1; min-width: 220px; padding: 7px 10px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--line); color: var(--fg-2); }
+.nt-step b { color: var(--fg); }
+.nt-low { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; }
+.nt-low.nt-nomap { grid-template-columns: minmax(0, 1fr); }
+.nt-res { display: flex; flex-direction: column; gap: 8px; padding: 11px 12px; border-radius: var(--r); border: 1px solid; }
+.nt-res .nt-vh { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; }
+.nt-res .nt-vh .ic { width: 20px; height: 20px; }
+.nt-res ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.nt-res li b { display: block; color: var(--fg); font-weight: 600; }
+.nt-res li span { color: var(--fg-2); }
+.nt-res .nt-note { margin: 0; color: var(--muted); font-size: 12px; border-top: 1px solid var(--line); padding-top: 7px; }
+.nt-map { width: 340px; padding: 6px 8px 4px; border-radius: var(--r); background: var(--panel); border: 1px solid var(--line); }
+.nt-map h4 { margin: 0 0 2px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.nt-map svg { width: 100%; height: auto; display: block; }
+.nt-map text { font-family: var(--sans); }
+.nt-mpin { fill: var(--fg); font: 600 12px var(--mono); text-anchor: middle; dominant-baseline: central; }
+.nt-mdot { fill: var(--raise-2); stroke: var(--line-3); stroke-width: 1.2; }
+.nt-mdot.nt-mbad { stroke: var(--danger); stroke-width: 2.2; }
+.nt-mhead { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+.nt-mpair { fill: none; stroke: var(--line-3); stroke-width: 1.6; }
+.nt-mpair.nt-msplit { stroke: var(--danger); stroke-width: 2.2; }
+.nt-mleg { fill: var(--danger-ink); font-size: 11px; font-weight: 600; }
+.nt-mopen { stroke: var(--danger); stroke-width: 2.4; stroke-linecap: round; }
+.nt-mline { fill: none; stroke-linecap: round; }
+
+/* Plan de travail étroit (petit portable, fenêtre réduite) : panneau latéral sous le dessin, le tout défile. */
+@container (max-width: 760px) {
+  .nt-dlg { border-radius: 10px; }
+  .nt-body { flex-direction: column; overflow: auto; }
+  .nt-stage { flex: none; height: max(340px, 62cqh); }
+  .nt-side { width: auto; overflow: visible; border-left: 0; border-top: 1px solid var(--line); }
+  .nt-low { grid-template-columns: minmax(0, 1fr); }
+  .nt-map { width: auto; max-width: 380px; }
+  .nt-hd .nt-seg button { padding: 0 8px; }
+}
+@container (max-height: 520px) {
+  .nt-ov { padding: 4px; }
+  .nt-steps { display: none; }
+}

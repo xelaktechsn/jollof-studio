@@ -1,0 +1,1004 @@
+{
+ "id": "net05-budget-poe",
+ "series": "cablage",
+ "level": "lycee",
+ "minutes": 30,
+ "title": {
+  "fr": "Le budget PoE d’un switch",
+  "en": "A switch’s PoE budget"
+ },
+ "summary": {
+  "fr": "Un switch PoE alimente les caméras, le point d’accès et le téléphone par leur câble réseau. Mais son budget est de 64 W : chaque appareil réserve la puissance de sa classe, et le dernier servi reste éteint. Calculer, trouver qui manque, et trouver une solution.",
+  "en": "A PoE switch powers the cameras, the access point and the phone through their network cable. But its budget is 64 W: each device reserves the power of its class, and the last one served stays off. Compute, find who is missing, and find a fix."
+ },
+ "objectives": [
+  {
+   "fr": "Connaître les classes PoE et la puissance réservée par chacune",
+   "en": "Know the PoE classes and the power each one reserves"
+  },
+  {
+   "fr": "Calculer le budget PoE d’un switch",
+   "en": "Compute a switch’s PoE budget"
+  },
+  {
+   "fr": "Choisir une solution quand le budget est dépassé",
+   "en": "Choose a fix when the budget is exceeded"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Le switch réserve la puissance de la classe annoncée : 4 W en classe 1, 15,4 W en classe 3, 30 W en classe 4.",
+   "en": "The switch reserves the power of the announced class: 4 W for class 1, 15.4 W for class 3, 30 W for class 4."
+  },
+  {
+   "fr": "Budget dépassé : le dernier appareil servi n’est pas alimenté (J1212).",
+   "en": "Budget exceeded: the last device served gets no power (J1212)."
+  },
+  {
+   "fr": "Solutions : un bloc secteur pour un appareil, un switch au budget plus grand, ou un appareil d’une classe plus basse.",
+   "en": "Fixes: a mains adapter for one device, a switch with a larger budget, or a device of a lower class."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Budget PoE",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "poeswitch",
+       "x": 380,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "budget": 64,
+        "pseType": "at",
+        "portW": 30
+       }
+      },
+      {
+       "id": "cam1",
+       "type": "camera",
+       "x": 140,
+       "y": 300,
+       "name": "CAM1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "power": "poe",
+        "poeClass": 4
+       }
+      },
+      {
+       "id": "cam2",
+       "type": "camera",
+       "x": 300,
+       "y": 300,
+       "name": "CAM2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "power": "poe",
+        "poeClass": 3
+       }
+      },
+      {
+       "id": "ap1",
+       "type": "ap",
+       "x": 460,
+       "y": 300,
+       "name": "AP1",
+       "p": {
+        "ssid": "Atelier",
+        "pass": "jollof2024",
+        "power": "poe",
+        "poeClass": 3
+       }
+      },
+      {
+       "id": "tel1",
+       "type": "phone",
+       "x": 620,
+       "y": 300,
+       "name": "TEL1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "power": "poe",
+        "poeClass": 1
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 780,
+       "y": 300,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "cam1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 25,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "cam2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 30,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "ap1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 15,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c5",
+       "a": [
+        "tel1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6",
+       "len": 10,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c6",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p5"
+       ],
+       "cat": "cat6",
+       "len": 10,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 60,
+     "y": 40,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "poeswitch",
+     "x": 380,
+     "y": 60,
+     "name": "SW1",
+     "p": {
+      "budget": 64,
+      "pseType": "at",
+      "portW": 30
+     }
+    },
+    {
+     "id": "cam1",
+     "type": "camera",
+     "x": 140,
+     "y": 300,
+     "name": "CAM1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "power": "poe",
+      "poeClass": 4
+     }
+    },
+    {
+     "id": "cam2",
+     "type": "camera",
+     "x": 300,
+     "y": 300,
+     "name": "CAM2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "power": "poe",
+      "poeClass": 3
+     }
+    },
+    {
+     "id": "ap1",
+     "type": "ap",
+     "x": 460,
+     "y": 300,
+     "name": "AP1",
+     "p": {
+      "ssid": "Atelier",
+      "pass": "jollof2024",
+      "power": "poe",
+      "poeClass": 3
+     }
+    },
+    {
+     "id": "tel1",
+     "type": "phone",
+     "x": 620,
+     "y": 300,
+     "name": "TEL1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "power": "adapter",
+      "poeClass": 1
+     }
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 780,
+     "y": 300,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "cam1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 25,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "cam2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 30,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "ap1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 15,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "tel1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6",
+     "len": 10,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p5"
+     ],
+     "cat": "cat6",
+     "len": 10,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le PoE",
+    "en": "PoE"
+   },
+   "text": {
+    "fr": "Le **PoE** (Power over Ethernet) fait passer le courant dans le câble réseau : une caméra au plafond n’a pas besoin de prise électrique. L’appareil annonce sa **classe**, le switch réserve la puissance correspondante :\n- classe 1 : **4 W** (téléphone IP) ;\n- classe 3 : **15,4 W** (caméra, point d’accès) ;\n- classe 4 : **30 W** (caméra motorisée, PoE+).\nCe switch (TL-SG1008P) a 4 ports PoE et un **budget de 64 W** en tout.",
+    "en": "**PoE** (Power over Ethernet) carries power in the network cable: a ceiling camera needs no mains socket. The device announces its **class**, the switch reserves the matching power:\n- class 1: **4 W** (IP phone);\n- class 3: **15.4 W** (camera, access point);\n- class 4: **30 W** (motorised camera, PoE+).\nThis switch (TL-SG1008P) has 4 PoE ports and a **64 W budget** in total."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le calcul",
+    "en": "The sum"
+   },
+   "text": {
+    "fr": "CAM1 est en classe 4, CAM2 et AP1 en classe 3, TEL1 en classe 1. Quelle puissance le switch doit-il réserver pour les quatre ?",
+    "en": "CAM1 is class 4, CAM2 and AP1 class 3, TEL1 class 1. How much power must the switch reserve for all four?"
+   },
+   "keep": {
+    "fr": "30 + 15,4 + 15,4 + 4 = 64,8 W : 0,8 W de trop pour un budget de 64 W.",
+    "en": "30 + 15.4 + 15.4 + 4 = 64.8 W: 0.8 W too much for a 64 W budget."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "60,8 W",
+      "en": "60.8 W"
+     },
+     {
+      "fr": "64,8 W",
+      "en": "64.8 W"
+     },
+     {
+      "fr": "49,4 W",
+      "en": "49.4 W"
+     },
+     {
+      "fr": "72 W",
+      "en": "72 W"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Qui reste éteint ?",
+    "en": "Who stays off?"
+   },
+   "text": {
+    "fr": "Le switch sert ses ports dans l’ordre, du port 1 au port 4. Regardez le plan : quel appareil n’est pas alimenté ?",
+    "en": "The switch serves its ports in order, from port 1 to port 4. Look at the plan: which device gets no power?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "CAM1",
+      "en": "CAM1"
+     },
+     {
+      "fr": "CAM2",
+      "en": "CAM2"
+     },
+     {
+      "fr": "AP1",
+      "en": "AP1"
+     },
+     {
+      "fr": "TEL1",
+      "en": "TEL1"
+     }
+    ],
+    "answer": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Alimenter tout le monde",
+    "en": "Power everyone"
+   },
+   "text": {
+    "fr": "Le téléphone a une prise pour un **bloc secteur**. Choisissez TEL1 et réglez son alimentation sur le bloc secteur (onglet **Réseau** de l’inspecteur) : il ne prend plus rien au budget du switch, qui suffit alors pour les trois autres.",
+    "en": "The phone has a socket for a **mains adapter**. Select TEL1 and set its power to the mains adapter (**Network** tab of the inspector): it no longer takes anything from the switch’s budget, which is then enough for the other three."
+   },
+   "hint": {
+    "fr": "Autre solution, en vrai : un switch au budget plus grand. Ici, on garde le switch.",
+    "en": "Another real-life fix: a switch with a bigger budget. Here, we keep the switch."
+   },
+   "spot": [
+    ".ntDev[data-id=\"tel1\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-poe",
+    "of": "*"
+   }
+  },
+  {
+   "title": {
+    "fr": "Plus d’erreur PoE",
+    "en": "No PoE error left"
+   },
+   "text": {
+    "fr": "L’onglet **Problèmes** ne signale plus de budget dépassé (J1212).",
+    "en": "The **Problems** tab no longer reports an exceeded budget (J1212)."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1212"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Le téléphone sur le réseau",
+    "en": "The phone on the network"
+   },
+   "text": {
+    "fr": "Alimenté, le téléphone démarre et demande une adresse à la box (DHCP), puis répond au ping du PC.",
+    "en": "Powered, the phone boots and asks the box for an address (DHCP), then answers the PC’s ping."
+   },
+   "check": {
+    "type": "net-dhcp",
+    "of": "TEL1",
+    "server": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping",
+    "en": "The ping"
+   },
+   "text": {
+    "fr": "Faites un ping de TEL1 vers PC1.",
+    "en": "Ping PC1 from TEL1."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "TEL1",
+    "to": "PC1"
+   }
+  }
+ ]
+}

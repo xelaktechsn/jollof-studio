@@ -1,0 +1,992 @@
+{
+ "id": "net04-panneau-et-prise",
+ "series": "cablage",
+ "level": "lycee",
+ "minutes": 30,
+ "title": {
+  "fr": "Panneau de brassage et prise murale",
+  "en": "Patch panel and wall outlet"
+ },
+ "summary": {
+  "fr": "Le câblage d’un bâtiment : du switch au panneau de brassage par un cordon, du panneau à la prise du bureau par le câble du mur, de la prise au PC par un autre cordon. 90 m au plus dans le mur, 100 m en tout : un bureau trop loin n’a plus un lien fiable.",
+  "en": "A building’s cabling: from the switch to the patch panel by a patch cord, from the panel to the office outlet by the in-wall cable, from the outlet to the PC by another cord. 90 m at most in the wall, 100 m in total: an office too far away no longer has a reliable link."
+ },
+ "objectives": [
+  {
+   "fr": "Décrire un canal : cordon de brassage, lien permanent, cordon de poste",
+   "en": "Describe a channel: patch cord, permanent link, work-area cord"
+  },
+  {
+   "fr": "Appliquer les longueurs maximales (90 m et 100 m)",
+   "en": "Apply the maximum lengths (90 m and 100 m)"
+  },
+  {
+   "fr": "Relier un poste à sa prise murale",
+   "en": "Connect a computer to its wall outlet"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Lien permanent (panneau → prise) : 90 m au plus. Canal complet : 100 m au plus, cordons compris (10 m de cordons en tout).",
+   "en": "Permanent link (panel → outlet): 90 m at most. Whole channel: 100 m at most, cords included (10 m of cords in total)."
+  },
+  {
+   "fr": "Au-delà de 100 m, le lien perd des trames ou retombe à 100 Mb/s.",
+   "en": "Beyond 100 m, the link loses frames or falls back to 100 Mb/s."
+  },
+  {
+   "fr": "Le panneau et la prise sont passifs : broche n d’un côté vers broche n de l’autre.",
+   "en": "The panel and the outlet are passive: pin n on one side to pin n on the other."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Panneau de brassage",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 60,
+       "y": 140,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pb1",
+       "type": "patch",
+       "x": 40,
+       "y": 260,
+       "name": "PB1",
+       "p": {}
+      },
+      {
+       "id": "pr1",
+       "type": "outlet",
+       "x": 560,
+       "y": 120,
+       "name": "PR1",
+       "p": {}
+      },
+      {
+       "id": "pr2",
+       "type": "outlet",
+       "x": 560,
+       "y": 320,
+       "name": "PR2",
+       "p": {}
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 760,
+       "y": 120,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc2",
+       "type": "pc",
+       "x": 760,
+       "y": 320,
+       "name": "PC2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "sw1",
+        "p1"
+       ],
+       "b": [
+        "pb1",
+        "f1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "pb1",
+        "b1"
+       ],
+       "b": [
+        "pr1",
+        "back"
+       ],
+       "cat": "cat6",
+       "len": 82,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "sw1",
+        "p2"
+       ],
+       "b": [
+        "pb1",
+        "f2"
+       ],
+       "cat": "cat6",
+       "len": 2,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c5",
+       "a": [
+        "pb1",
+        "b2"
+       ],
+       "b": [
+        "pr2",
+        "back"
+       ],
+       "cat": "cat6",
+       "len": 96,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c6",
+       "a": [
+        "pr2",
+        "front"
+       ],
+       "b": [
+        "pc2",
+        "eth0"
+       ],
+       "cat": "cat6",
+       "len": 8,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {}
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 60,
+     "y": 40,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 60,
+     "y": 140,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pb1",
+     "type": "patch",
+     "x": 40,
+     "y": 260,
+     "name": "PB1",
+     "p": {}
+    },
+    {
+     "id": "pr1",
+     "type": "outlet",
+     "x": 560,
+     "y": 120,
+     "name": "PR1",
+     "p": {}
+    },
+    {
+     "id": "pr2",
+     "type": "outlet",
+     "x": 560,
+     "y": 320,
+     "name": "PR2",
+     "p": {}
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 760,
+     "y": 120,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "pc2",
+     "type": "pc",
+     "x": 760,
+     "y": 320,
+     "name": "PC2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "sw1",
+      "p1"
+     ],
+     "b": [
+      "pb1",
+      "f1"
+     ],
+     "cat": "cat6",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "pb1",
+      "b1"
+     ],
+     "b": [
+      "pr1",
+      "back"
+     ],
+     "cat": "cat6",
+     "len": 82,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "sw1",
+      "p2"
+     ],
+     "b": [
+      "pb1",
+      "f2"
+     ],
+     "cat": "cat6",
+     "len": 2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "pb1",
+      "b2"
+     ],
+     "b": [
+      "pr2",
+      "back"
+     ],
+     "cat": "cat6",
+     "len": 85,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "pr2",
+      "front"
+     ],
+     "b": [
+      "pc2",
+      "eth0"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c7",
+     "a": [
+      "pr1",
+      "front"
+     ],
+     "b": [
+      "pc1",
+      "eth0"
+     ],
+     "cat": "cat6",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le canal",
+    "en": "The channel"
+   },
+   "text": {
+    "fr": "Dans un bâtiment, un poste ne se branche pas directement au switch :\n- un **cordon de brassage** court va du switch au **panneau de brassage** (dans la baie du local technique) ;\n- le **câble du mur** (lien permanent, rigide) va du dos du panneau au dos de la **prise murale** du bureau ;\n- un **cordon de poste** va de la prise au PC.\nTout cela forme le **canal** : 100 m au plus, dont 90 m de lien permanent.",
+    "en": "In a building, a computer is not plugged straight into the switch:\n- a short **patch cord** goes from the switch to the **patch panel** (in the rack of the wiring closet);\n- the **in-wall cable** (permanent link, solid core) goes from the back of the panel to the back of the office **wall outlet**;\n- a **work-area cord** goes from the outlet to the PC.\nAll of this forms the **channel**: 100 m at most, of which 90 m of permanent link."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Brancher PC1",
+    "en": "Connect PC1"
+   },
+   "text": {
+    "fr": "PC1 n’est pas branché. Avec l’outil **Câble**, tirez un cordon de 3 m entre la face avant de la prise **PR1** et le port de PC1. Le lien doit monter à **1 Gb/s** jusqu’au switch, à travers la prise et le panneau.",
+    "en": "PC1 is not connected. With the **Cable** tool, draw a 3 m cord between the front of outlet **PR1** and PC1’s port. The link must come up at **1 Gb/s** all the way to the switch, through the outlet and the panel."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"cable\"]",
+    ".ntDev[data-id=\"pr1\"] .ntPort[data-port=\"front\"]",
+    ".ntDev[data-id=\"pc1\"] .ntPort[data-port=\"eth0\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "PC1",
+    "b": "SW1",
+    "speed": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Le canal de PC2",
+    "en": "PC2’s channel"
+   },
+   "text": {
+    "fr": "Choisissez les câbles du chemin de PC2 et lisez leurs longueurs dans l’inspecteur : cordon du switch au panneau, câble du mur, cordon de poste. Quelle est la longueur du canal ?",
+    "en": "Select the cables on PC2’s path and read their lengths in the inspector: cord from switch to panel, in-wall cable, work-area cord. How long is the channel?"
+   },
+   "keep": {
+    "fr": "2 + 96 + 8 = 106 m : plus que les 100 m d’un canal, et le câble du mur dépasse aussi ses 90 m.",
+    "en": "2 + 96 + 8 = 106 m: more than the 100 m of a channel, and the in-wall cable also exceeds its 90 m."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "96 m",
+      "en": "96 m"
+     },
+     {
+      "fr": "98 m",
+      "en": "98 m"
+     },
+     {
+      "fr": "106 m",
+      "en": "106 m"
+     },
+     {
+      "fr": "104 m",
+      "en": "104 m"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Raccourcir le chemin",
+    "en": "Shorten the path"
+   },
+   "text": {
+    "fr": "L’installateur a fait un grand détour. En passant par le faux plafond, le câble du mur ne fait que **85 m** : changez sa longueur dans l’inspecteur. Prenez aussi un cordon de poste de **3 m**. L’onglet Problèmes ne doit plus signaler de canal trop long (J1203) ni de lien permanent trop long (J1204).",
+    "en": "The installer took a long detour. Through the false ceiling, the in-wall cable is only **85 m**: change its length in the inspector. Also use a **3 m** work-area cord. The Problems tab must no longer report a channel that is too long (J1203) or a permanent link that is too long (J1204)."
+   },
+   "spot": [
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1203",
+     "J1204"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Deux postes à 1 Gb/s",
+    "en": "Two computers at 1 Gb/s"
+   },
+   "text": {
+    "fr": "Les deux PC ont maintenant un lien à 1 Gb/s, sans erreur.",
+    "en": "Both PCs now have an error-free 1 Gb/s link."
+   },
+   "check": {
+    "type": "net-link",
+    "a": "pc",
+    "b": "SW1",
+    "speed": 1000
+   }
+  },
+  {
+   "title": {
+    "fr": "Le ping vers la box",
+    "en": "Ping the box"
+   },
+   "text": {
+    "fr": "Les deux PC reçoivent leur adresse de la box. Faites un ping de chaque PC vers la box.",
+    "en": "Both PCs get their address from the box. Ping the box from each PC."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"ping\"]"
+   ],
+   "check": {
+    "type": "net-ping",
+    "from": "pc",
+    "to": "BOX1"
+   }
+  },
+  {
+   "title": {
+    "fr": "Rigide ou souple ?",
+    "en": "Solid or stranded?"
+   },
+   "text": {
+    "fr": "Le câble du mur a des conducteurs **rigides** (monobrins), les cordons des conducteurs **souples** (multibrins). Pourquoi ?",
+    "en": "The in-wall cable has **solid** conductors, the cords have **stranded** ones. Why?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Le rigide transmet mieux sur une grande longueur et ne bouge plus une fois posé ; le souple supporte d’être plié et rebranché souvent",
+      "en": "Solid conducts better over a long run and never moves once laid; stranded copes with being bent and replugged often"
+     },
+     {
+      "fr": "C’est seulement une question de couleur de gaine",
+      "en": "It is only a matter of jacket colour"
+     },
+     {
+      "fr": "Le souple est réservé au PoE",
+      "en": "Stranded is reserved for PoE"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

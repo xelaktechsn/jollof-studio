@@ -216,7 +216,7 @@ export function createTimelineDock(root, api) {
   function touched(trs) {
     const line = api.timeline();
     if (trs.has('w')) line.auto = null;
-    if (trs.has('k')) line.camAuto = false;
+    if (trs.has('k')) { line.camAuto = false; delete line.camPlan; }
     sortClips(line);
   }
   function commit(trs) { touched(trs); api.commit(); render(); }

@@ -11,6 +11,7 @@ import { EMULATED, QEMU_KINDS, setQemuReady } from '../emu/boards.js';
 import { esp32Refusal, UNBRIDGED } from '../emu/esp32-limits.js';
 import { generate, skeleton, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, TEXT_OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs,
   SERIAL, SERIAL_ACTS, SHOWS, termsOf, termDefaults, srcSignal, varSignal, fmtTime, VAR_TYPE_LABELS, varText, seqText, uid, ident } from './rules.js';
+import { NET, NET_SIG, NET_ACTS, PAGE_ROWS, TOPIC_PUB, TOPIC_SUB, netLink, netItem, netText, fixNet, autoMac, cleanTopic } from './rules-net.js';
 import './rules.css';
 import { QUANT, ENV, MODELS, NET_DEFAULT, envOf } from '../sim/models.js';
 import { createEditor, highlight } from './editor.js';
@@ -56,7 +57,7 @@ class Runs extends Map {
 
 /**
  * app : { comps(), wires(), sim() → { A, ins, drive, pinComps }, simOn(), setSim(on), setTab(name),
- *         status(text, kind), markDirty(), refreshSel() }
+ *         status(text, kind), markDirty(), refreshSel(), lan?() → réseau simulé du plan réseau (src/net/lan.js) ou null }
  */
 export function createProgram(app) {
   // mem : EEPROM et Preferences de chaque carte (survivent au redémarrage et sont enregistrées avec le projet) ;
@@ -269,6 +270,8 @@ export function createProgram(app) {
       linked(c, key) { const s = sim(); if (!s.A || !c.pins || !c.pins[key]) return []; return s.A.members({ comp: c, key }).filter(m => m.comp !== c).map(m => ({ comp: m.comp, key: m.key })); },
       /** Réseaux Wi-Fi et journal du projet. */
       net: netData, netChanged: softDirty,
+      /** Réseau simulé du plan réseau (src/net/lan.js), null si le projet n'en a pas : Ethernet, sockets, MQTT, Modbus. */
+      lan: () => (app.lan ? app.lan() : null),
       /** Niveau d'une broche d'un module : 1 (alimentation ou sortie HIGH d'une carte), 0 (masse ou sortie LOW), null (en l'air). */
       level(c, key) {
         const s = sim(); if (!s.A || !c.pins || !c.pins[key]) return null;
@@ -869,7 +872,7 @@ export function createProgram(app) {
     const inner = hasSrc || !!r.src;
     for (const b of ['then', 'else']) for (const it of r[b] || []) {
       if (it.kind === 'rule') { fixTree(it, inner); continue; }
-      if (it.kind !== 'act' || it.comp === SERIAL) continue;
+      if (it.kind !== 'act' || it.comp === SERIAL || it.comp === NET) continue;
       const d = byId(it.comp); if (!d || !ACTIONS[d.type]) continue;
       const ok = actsFor(d.type, b === 'then' ? modeOf(r, hasSrc) : 'cond').map(([k]) => k);
       if (!ok.includes(it.act)) { it.act = ok[0] || null; it.arg = defArg(d.type, it.act); }
@@ -885,9 +888,14 @@ export function createProgram(app) {
     return `<span class="num"><input type="number" ${attr} value="${esc(val ?? a.def)}" min="${a.min}" max="${a.max}" step="${a.step || 1}" aria-label="${tl('Réglage')}">${a.unit ? `<small>${esc(a.unit)}</small>` : ''}</span>`;
   }
   /* --- Sources : mesures, ligne reçue, variables, étapes, temps --- */
-  const srcKey = s => (!s ? '' : s.every ? 't:every' : s.start ? 't:start' : s.var ? `v:${s.var}` : s.seq ? `q:${s.seq}:${s.step || ''}` : s.comp === SERIAL ? `s:${s.sig || 'line'}` : `c:${s.comp}:${s.sig}`);
+  const srcKey = s => (!s ? '' : s.every ? 't:every' : s.start ? 't:start' : s.var ? `v:${s.var}` : s.seq ? `q:${s.seq}:${s.step || ''}` : s.comp === SERIAL ? `s:${s.sig || 'line'}`
+    : s.comp === NET ? `n:${s.sig}:${s.topic || ''}` : `c:${s.comp}:${s.sig}`);
   function srcDecode(v, old) {
     if (!v) return null;
+    if (v.startsWith('n:')) { // réseau : n:msg:sujet (le sujet peut contenir « : »)
+      const [, sig, ...rest] = v.split(':'), topic = rest.join(':') || (old && old.comp === NET && old.topic) || TOPIC_SUB;
+      return NET_SIG[sig] && NET_SIG[sig].topic ? { comp: NET, sig, topic } : { comp: NET, sig };
+    }
     const [k, a, b] = v.split(':');
     if (k === 't') return a === 'every' ? { every: (old && old.every) || 1000 } : { start: true };
     if (k === 'v') return { var: a };
@@ -906,16 +914,60 @@ export function createProgram(app) {
       return sigs.length ? `<optgroup label="${esc(c.name)}">${sigs.map(([k, g]) => opt(`c:${c.id}:${k}`, `${c.name} · ${g.kind === 'bool' ? (g.short || g.label).toLowerCase() : g.label}`)).join('')}</optgroup>` : '';
     }).join('');
     if (!kinds || kinds.includes('text')) html += `<optgroup label="${tl('Moniteur série')}">${opt('s:line', values ? tl('la ligne reçue') : tl('reçoit une ligne'))}</optgroup>`;
+    html += netOptions(cur, key, opt, okKind, values);
     const vs = varsAll().filter(d => okKind(varSignal(d)));
     if (vs.length) html += `<optgroup label="${tl('Variables')}">${vs.map(d => opt(`v:${d.id}`, d.name)).join('')}</optgroup>`;
     if (!values) for (const q of seqsAll()) if (q.steps.length) html += `<optgroup label="${esc(tl('Séquence {0}', q.name))}">${q.steps.map(s => opt(`q:${q.id}:${s.id}`, tl('étape {0} active', s.name))).join('')}</optgroup>`;
     return `<select data-f="${f}" aria-label="${tl('Mesure')}">${html}</select>`;
   }
   const sigOfSrc = (src, prof) => srcSignal(src, byAny, prof);
+  /* --- Réseau (rules-net.js) : module Ethernet relié ou carte Wi-Fi ; réglages ; sujets MQTT --- */
+  let netNow; // lien réseau de la carte affichée, calculé à chaque rendu des règles (l'analyse du montage coûte)
+  const netOf = (b, sn) => (b === undefined && netNow !== undefined ? netNow : netLink(b || board(), comps(), (sn || snapshot()).inspect));
+  /** Sujets déjà suivis par les règles (messages, nombres reçus), pour choisir une valeur reçue. */
+  const netTopics = () => { const out = new Set(); P.rules.forEach(r => walkTerms(r, t => { if (t.src && t.src.comp === NET && t.src.topic) out.add(t.src.topic); })); return [...out]; };
+  function walkTerms(r, fn) {
+    if (r.kind === 'rule') { termsOf(r).forEach(fn); for (const b of ['then', 'else']) (r[b] || []).forEach(it => { if (it.kind === 'rule') walkTerms(it, fn); }); }
+    if (r.kind === 'seq') for (const st of r.steps || []) { (st.go || []).forEach(g => { if (g.when) fn(g.when); }); st.do.forEach(it => { if (it.kind === 'rule') walkTerms(it, fn); }); }
+  }
+  /** Options « Réseau » d'une liste de sources ; values : valeurs reçues (avec leur sujet) au lieu des événements. */
+  function netOptions(cur, key, opt, okKind, values) {
+    const here = key.startsWith('n:'); if (!here && !netOf()) return '';
+    const curTopic = cur && cur.comp === NET && cur.topic, list = [];
+    const add = (sig, label, topic) => { if (okKind(NET_SIG[sig])) list.push(opt(`n:${sig}:${topic || ''}`, label)); };
+    if (values) {
+      for (const t of [...new Set([...netTopics(), ...(curTopic ? [curTopic] : [])])]) { add('msg', tl('message du sujet {0}', t), t); add('num', tl('nombre reçu sur {0}', t), t); }
+      add('page', tl('page web demandée'));
+    } else {
+      add('msg', tl('message reçu sur un sujet…'), cur && cur.sig === 'msg' ? curTopic : '');
+      add('num', tl('nombre reçu sur un sujet…'), cur && cur.sig === 'num' ? curTopic : '');
+      add('page', tl('demande de la page web'));
+    }
+    add('online', tl('connexion au réseau')); add('mqtt', tl('connexion au serveur MQTT'));
+    return list.length ? `<optgroup label="${tl('Réseau')}">${list.join('')}</optgroup>` : '';
+  }
+  /** Réglages du réseau de la carte : créés (valeurs par défaut) la première fois qu'une règle se sert du réseau. */
+  function ensureNet(b = board()) {
+    if (netItem(P.rules, b)) return;
+    const n = fixNet({ kind: 'net', id: uid('n') });
+    if (b && boards().length > 1) n.board = b.id;
+    P.rules.unshift(n);
+  }
+  const topicInput = (val, pub) => `<span class="rl-topic">${tl('sur le sujet')}<input type="text" data-f="topic" value="${esc(val || (pub ? TOPIC_PUB : TOPIC_SUB))}" maxlength="48" spellcheck="false" aria-label="${tl('Sujet MQTT')}"></span>`;
+  function netCard(n, cx) {
+    const b = board(), L = netOf(b, cx.sn), used = P.rules.some(r => r !== n && JSON.stringify(r).includes(`"${NET}"`));
+    const eth = !L || L.via === 'eth', wifi = !L || L.via === 'wifi';
+    return `<li class="rule rl-net" data-rid="${esc(n.id)}"><div class="rh"><span class="rn rl-badge">⇄</span><p>${esc(netText(n, L && L.via))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer les réglages du réseau')}" data-tip="${tl('Les valeurs par défaut s’appliquent')}">${icon('trash')}</button></div>
+      ${eth ? `<div class="rrow"><em>${tl('Câble')}</em><select data-f="dhcp" aria-label="${tl('Adresse')}"><option value="1"${n.dhcp ? ' selected' : ''}>${tl('adresse donnée par la box (DHCP)')}</option><option value="0"${n.dhcp ? '' : ' selected'}>${tl('adresse fixe')}</option></select>${n.dhcp ? '' : `<input type="text" data-f="ip" value="${esc(n.ip)}" maxlength="15" spellcheck="false" aria-label="${tl('Adresse IP')}">`}<label class="rl-chk">MAC <input type="text" data-f="mac" value="${esc(n.mac)}" placeholder="${esc(autoMac(b))}" maxlength="17" spellcheck="false" aria-label="${tl('Adresse MAC')}"></label></div>` : ''}
+      ${wifi ? `<div class="rrow"><em>Wi-Fi</em><input type="text" data-f="ssid" value="${esc(n.ssid)}" maxlength="32" spellcheck="false" aria-label="${tl('Nom du réseau Wi-Fi')}"><input type="text" data-f="pass" value="${esc(n.pass)}" maxlength="63" spellcheck="false" aria-label="${tl('Mot de passe du Wi-Fi')}"></div>` : ''}
+      <div class="rrow"><em>MQTT</em><input type="text" data-f="broker" value="${esc(n.broker)}" maxlength="63" spellcheck="false" aria-label="${tl('Serveur MQTT (adresse ou nom)')}"><span class="num">${tl('port')}<input type="number" data-f="port" min="1" max="65535" value="${n.port}" aria-label="${tl('Port')}"></span></div>
+      ${!L && b ? `<p class="rwarn">${tl('⚠ {0} n’a ni module Ethernet relié (W5500, ENC28J60) ni Wi-Fi : les règles du réseau sont ignorées.', esc(b.name))}</p>` : !used ? `<p class="rl-hint">${tl('Les règles choisissent « Réseau » comme effecteur (publier, page web) ou comme mesure (message reçu, demande de page).')}</p>` : ''}</li>`;
+  }
   /** Une condition : source, comparaison, valeur ; options dépliables (⋯). first : première condition d'une règle de premier niveau. */
   function termHtml(t, prof, { first = false, top = false, key = '' } = {}) {
     const src = t.src, sig = src && !src.every && !src.start && !src.seq ? sigOfSrc(src, prof) : null;
     let html = srcSelect(src, 'src', { always: first });
+    if (src && src.comp === NET && NET_SIG[src.sig] && NET_SIG[src.sig].topic) html += topicInput(src.topic, false);
     if (src && src.every) html += `<span class="num"><input type="number" step="any" min="0.01" data-f="every" value="${(src.every || 1000) / 1000}" aria-label="${tl('Période')}"><small>s</small></span>`;
     else if (sig && sig.kind === 'bool') html += `<select data-f="v" aria-label="${tl('État')}"><option value="1"${t.v ? ' selected' : ''}>${esc(src.var ? tl('est vraie') : sig.label)}</option><option value="0"${t.v ? '' : ' selected'}>${esc(src.var ? tl('est fausse') : sig.neg)}</option></select>`;
     else if (sig && sig.kind === 'text') {
@@ -959,8 +1011,18 @@ export function createProgram(app) {
   /* --- Éléments : action, variable, attente, étape --- */
   const SCREEN_ROWS = { lcd1602: 2, lcd2004: 4, oled: 8, st7735: 8, ili9341: 15 };
   function actRow(it, mode) {
-    const ser = it.comp === SERIAL, d = ser ? null : byId(it.comp);
-    let html = `<select data-f="comp" aria-label="${tl('Effecteur')}"><option value="">${tl('— choisir —')}</option>${comps().filter(isActuator).map(c => `<option value="${esc(c.id)}"${d === c ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="${SERIAL}"${ser ? ' selected' : ''}>${tl('Moniteur série')}</option></select>`;
+    const ser = it.comp === SERIAL, net = it.comp === NET, d = ser || net ? null : byId(it.comp);
+    let html = `<select data-f="comp" aria-label="${tl('Effecteur')}"><option value="">${tl('— choisir —')}</option>${comps().filter(isActuator).map(c => `<option value="${esc(c.id)}"${d === c ? ' selected' : ''}>${esc(c.name)}</option>`).join('')}<option value="${SERIAL}"${ser ? ' selected' : ''}>${tl('Moniteur série')}</option>${net || netOf() ? `<option value="${NET}"${net ? ' selected' : ''}>${tl('Réseau')}</option>` : ''}</select>`;
+    if (net) {
+      // Réseau : publier (valeur choisie ou texte) sur un sujet MQTT, une ligne de la page web.
+      const A = NET_ACTS[it.act] || NET_ACTS.publish;
+      html += `<select data-f="act" aria-label="${tl('Action')}">${Object.entries(NET_ACTS).map(([k, a]) => `<option value="${k}"${it.act === k ? ' selected' : ''}>${esc(a.label)}</option>`).join('')}</select>`;
+      html += srcSelect(it.what, 'what', { values: true, none: tl('le texte :') });
+      if (!it.what) html += `<input type="text" data-f="arg" value="${esc(it.arg ?? A.arg.def)}" maxlength="64" aria-label="${tl('Texte')}">`;
+      if (it.act === 'page') html += `<select data-f="line" aria-label="${tl('Ligne')}"><option value="">${tl('ligne auto')}</option>${Array.from({ length: PAGE_ROWS }, (_, i) => `<option value="${i + 1}"${+it.line === i + 1 ? ' selected' : ''}>${tl('ligne {0}', i + 1)}</option>`).join('')}</select>`;
+      else html += topicInput(it.topic, true);
+      return `<div class="act" data-aid="${esc(it.id)}">${html}<button type="button" class="tb mini" data-del="act" aria-label="${tl('Retirer cette action')}">${icon('x')}</button></div>`;
+    }
     const acts = ser ? Object.entries(SERIAL_ACTS) : d ? actsFor(d.type, mode === 'cond' ? 'any' : mode) : null;
     if (acts) {
       const A = ser ? SERIAL_ACTS[it.act] : ACTIONS[d.type][it.act];
@@ -1000,7 +1062,7 @@ export function createProgram(app) {
     return actRow(it, mode);
   }
   const addsHtml = (b, follow) => `<div class="adds"><button type="button" class="add" data-add="act">${icon('plus')}action</button>${follow ? '' : `<button type="button" class="add" data-add="rule">${icon('plus')}condition${b === 'else' ? tl(' (sinon si)') : ''}</button>
-    <select class="rl-addsel" data-addsel aria-label="${tl('Ajouter')}"><option value="">${tl('+ autre…')}</option><option value="wait">${tl('puis attendre…')}</option><option value="set">${tl('changer une variable')}</option><option value="goto">${tl('passer à une étape')}</option><option value="serial">${tl('écrire sur le moniteur série')}</option></select>`}</div>`;
+    <select class="rl-addsel" data-addsel aria-label="${tl('Ajouter')}"><option value="">${tl('+ autre…')}</option><option value="wait">${tl('puis attendre…')}</option><option value="set">${tl('changer une variable')}</option><option value="goto">${tl('passer à une étape')}</option><option value="serial">${tl('écrire sur le moniteur série')}</option>${netOf() ? `<option value="publish">${tl('publier sur le réseau (MQTT)')}</option><option value="page">${tl('afficher sur la page web')}</option>` : ''}</select>`}</div>`;
   function ruleCard(r, cx, hasSrc, top) {
     const mode = modeOf(r, hasSrc), inner = hasSrc || !!r.src;
     const branch = (b, label) => {
@@ -1008,13 +1070,15 @@ export function createProgram(app) {
       return `<div class="branch" data-branch="${b}"><em>${label}</em><div class="items">${items.map(it => itemHtml(it, m, cx, inner)).join('')}</div>${addsHtml(b, mode === 'follow')}</div>`;
     };
     const warn = [];
+    const usesNet = JSON.stringify(r).includes(`"${NET}"`);
+    if (usesNet && board() && !netOf(board(), cx.sn)) warn.push(tl('{0} n’a ni module Ethernet relié ni Wi-Fi', board().name));
     for (const t of termsOf(r)) {
-      if (!t.src || !t.src.comp || t.src.comp === SERIAL) continue;
+      if (!t.src || !t.src.comp || t.src.comp === SERIAL || t.src.comp === NET) continue;
       const s = byId(t.src.comp);
       if (!s) warn.push(tl('la mesure choisie a été retirée du montage'));
       else if (!cx.sn.inspect(s).board) warn.push(tl('{0} n’est relié à aucune carte', s.name));
     }
-    r.then.concat(r.else).forEach(it => { if (it.kind !== 'act' || it.comp === SERIAL) return; const d = byId(it.comp); if (it.comp && !d) warn.push(tl('un effecteur a été retiré du montage')); else if (d && !ruleBoard({ src: null, then: [it], else: [] }, cx.sn, true)) warn.push(tl('{0} n’est relié à aucune carte', d.name)); });
+    r.then.concat(r.else).forEach(it => { if (it.kind !== 'act' || it.comp === SERIAL || it.comp === NET) return; const d = byId(it.comp); if (it.comp && !d) warn.push(tl('un effecteur a été retiré du montage')); else if (d && !ruleBoard({ src: null, then: [it], else: [] }, cx.sn, true)) warn.push(tl('{0} n’est relié à aucune carte', d.name)); });
     const tag = top ? 'li' : 'div';
     return `<${tag} class="rule${top ? '' : ' nested'}" data-rid="${esc(r.id)}">
       <div class="rh"><span class="rn">${cx.nums.get(r.id) || ''}</span><p title="${esc(ruleText(r, byAny, cx.prof))}">${esc(condText(r, byAny, cx.prof))}</p><button type="button" class="tb danger" data-del="rule" aria-label="${tl('Supprimer cette {0}', top ? tl('règle') : 'condition')}">${icon('trash')}</button></div>
@@ -1045,10 +1109,11 @@ export function createProgram(app) {
   function renderRules() {
     const b = board(); if (!b) return;
     const sn = snapshot(), list = rulesOf(b, sn), cx = { sn, prof: boardOf(b), nums: numberRules(list) };
+    netNow = netLink(b, comps(), sn.inspect);
     $('#ruleCount').textContent = list.filter(r => r.kind === 'rule').length || '';
-    $('#rules').innerHTML = list.map(r => (r.kind === 'var' ? varCard(r) : r.kind === 'seq' ? seqCard(r, cx) : ruleCard(r, cx, false, true))).join('');
+    $('#rules').innerHTML = list.map(r => (r.kind === 'var' ? varCard(r) : r.kind === 'seq' ? seqCard(r, cx) : r.kind === 'net' ? netCard(r, cx) : ruleCard(r, cx, false, true))).join('');
     $('#rulesHint').hidden = !!list.length;
-    $('#ruleAdd').disabled = !comps().some(isActuator);
+    $('#ruleAdd').disabled = !comps().some(isActuator) && !netNow; // une carte en réseau peut publier sans effecteur
     renderStates(sn);
   }
   /** Règles ou états changés : code régénéré, et relancé tout de suite si la simulation tourne. */
@@ -1085,6 +1150,8 @@ export function createProgram(app) {
       if (!src) { delete t.more; delete t.edge; delete t.hold; }
     }
     if (f === 'every' && t.src) t.src.every = Math.max(1, Math.round((+v || 1) * 1000));
+    if (f === 'topic' && t.src && t.src.comp === NET) t.src.topic = cleanTopic(v, false);
+    if (f === 'src' && t.src && t.src.comp === NET) ensureNet();
     if (f === 'op') { t.op = v; if (v === 'follow') { delete t.more; delete t.edge; delete t.hold; } }
     if (f === 'v') { const sg = t.src && sigOfSrc(t.src, prof); t.v = sg && sg.kind === 'text' ? v : sg && sg.kind === 'time' ? ((+v.split(':')[0] || 0) * 60 + (+v.split(':')[1] || 0)) : +v || 0; }
     if (f === 'from0' || f === 'from1') t.from[f === 'from0' ? 0 : 1] = +v || 0;
@@ -1109,9 +1176,14 @@ export function createProgram(app) {
       } else if (it.kind === 'wait') { if (f === 'ms') it.ms = Math.max(1, Math.round((+v || 0) * 1000)); }
       else if (it.kind === 'goto') { const [q, s] = v.split(':'); it.seq = q || null; it.step = s || null; }
       else {
-        const d = it.comp === SERIAL ? null : byId(it.comp), type = it.comp === SERIAL ? SERIAL : d && d.type;
-        if (f === 'comp') { it.comp = v || null; it.act = v === SERIAL ? 'print' : null; it.arg = v === SERIAL ? defArg(SERIAL, 'print') : null; delete it.what; delete it.line; }
-        if (f === 'act' && type) { it.act = v; it.arg = defArg(type, v); }
+        const pseudo = it.comp === SERIAL || it.comp === NET, d = pseudo ? null : byId(it.comp), type = pseudo ? it.comp : d && d.type;
+        if (f === 'comp') {
+          it.comp = v || null; it.act = v === SERIAL ? 'print' : v === NET ? 'publish' : null; it.arg = v === SERIAL || v === NET ? defArg(v, it.act) : null; delete it.what; delete it.line; delete it.topic;
+          if (v === NET) { it.topic = TOPIC_PUB; ensureNet(); }
+        }
+        if (f === 'act' && type === NET) { it.act = v; if (v === 'publish') { it.topic = it.topic || TOPIC_PUB; delete it.line; } else delete it.topic; }
+        else if (f === 'act' && type) { it.act = v; it.arg = defArg(type, v); }
+        if (f === 'topic' && type === NET) it.topic = cleanTopic(v, true);
         if (f === 'arg') it.arg = el.type === 'number' ? +v || 0 : v;
         if ((f === 'out0' || f === 'out1') && Array.isArray(it.arg)) it.arg[f === 'out0' ? 0 : 1] = +v || 0;
         if (f === 'what') { if (v) it.what = srcDecode(v); else delete it.what; }
@@ -1132,6 +1204,11 @@ export function createProgram(app) {
     } else if (it.kind === 'seq') {
       if (f === 'name') it.name = ident(v.trim()) || it.name;
       if (f === 'start') it.start = v;
+    } else if (it.kind === 'net') {
+      if (f === 'dhcp') it.dhcp = v === '1';
+      else if (f === 'port') it.port = +v || 0;
+      else if (['ip', 'mac', 'ssid', 'pass', 'broker'].includes(f)) it[f] = v;
+      fixNet(it);
     } else onTermField(termOf(el, it), f, el, prof, false);
     rulesChanged();
     const again = holder.dataset.aid ? $(`[data-aid="${holder.dataset.aid}"] [data-f="${f}"]`) : null;
@@ -1158,6 +1235,7 @@ export function createProgram(app) {
     if (kind === 'act') item = actItem(eff, null);
     else if (kind === 'wait') item = { kind: 'wait', id: uid('a'), ms: 1000 };
     else if (kind === 'serial') item = { kind: 'act', id: uid('a'), comp: SERIAL, act: 'print', arg: defArg(SERIAL, 'print') };
+    else if (kind === 'publish' || kind === 'page') { item = { kind: 'act', id: uid('a'), comp: NET, act: kind, arg: defArg(NET, kind), ...(kind === 'publish' ? { topic: TOPIC_PUB } : {}) }; ensureNet(home); }
     else if (kind === 'set') {
       let d = varsAll()[0];
       if (!d) { d = migrate({ kind: 'var', id: uid('v'), name: tl('compteur'), type: 'int', init: 0 }); P.rules.unshift(d); }

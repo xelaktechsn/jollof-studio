@@ -31,6 +31,6 @@ test('setup() absente (J1105), constante modifiée (J1107), return dans une fonc
 });
 
 test('Bibliothèque non simulée : avertissement J1109', () => {
-  const r = compile('#include <PubSubClient.h>\n' + wrap(''), { board: 'esp32' });
+  const r = compile('#include <NTPClient.h>\n' + wrap(''), { board: 'esp32' });
   assert.ok(r.warnings.some(w => w.code === 'J1109'));
 });

@@ -312,3 +312,6 @@ section { padding: 110px 0; position: relative; }
   .btn, .card { transition: none; }
   .traces .spark { display: none; }
 }
+
+/* Démonstration en ligne : ce qu'elle fait, sous les boutons */
+.tryNote { margin: 14px auto 0; max-width: 620px; font-size: 13.5px; color: var(--muted, #8a949e); text-align: center; }

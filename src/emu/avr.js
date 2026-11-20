@@ -210,7 +210,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     tapBuf = '';
   }
 
-  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi, uart, uarts: uarts.map(U => ({ name: U.name, rx: U.rx, tx: U.tx, api: U.api })) });
+  const devices = attachDevices({ cpu, MHZ, twi, spi, hw, pinApi, uart, uarts: uarts.map(U => ({ name: U.name, rx: U.rx, tx: U.tx, api: U.api })), warnings });
   devices.frame();
   const debug = { enabled: false, paused: false, at: { line: 0, fn: null }, pause() {}, resume() {}, step() {}, setBreakpoints() {}, locals: () => [], globals: () => [] };
   return {
@@ -227,7 +227,7 @@ export function createAvrRuntime(hexText, hw, opts = {}) {
     get state() { return state; }, get error() { return error; }, get line() { return null; },
     takeSerial() { const s = out; out = ''; return s; },
     send(s) { for (const ch of String(s)) serialIn.push(ch.charCodeAt(0) & 0xff); },
-    stop() { state = 'stopped'; },
+    stop() { state = 'stopped'; devices.dispose(); },
     /** Pour les tests et les modèles de modules : le processeur émulé et ses périphériques. */
     hw: { cpu, ports, usart, uarts: Object.fromEntries(uarts.map(U => [U.name, U.api])), adc, twi, spi, eeprom: eeBack, pinApi, devices }
   };

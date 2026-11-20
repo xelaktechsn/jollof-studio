@@ -19,6 +19,7 @@ import { createDevLibs } from './devlibs.js';
 import { createInputLibs } from './inputlibs.js';
 import { createSdLib } from '../sim/sdcard.js';
 import { createLoraLib } from './loralib.js';
+import { createNetLib } from './netlib.js';
 import { TftGfx } from '../sim/tft.js';
 import { periph, serialDevice, btSerial, macOf, hashBytes, fakeHttp, parseUrl, parseQuery, NET_DEFAULT, FAKE_HOSTS, BADGES, hex2 } from '../sim/models.js';
 import { tl, quote } from '../i18n/index.js';
@@ -1990,8 +1991,11 @@ export function createRuntime(js, hw, meta = {}) {
     toString() { return this.s; }
     fromString(t) { if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(String(t))) return false; this.s = String(t); return true; }
   }
+  // Réseau informatique (prog/netlib.js) : Ethernet, sockets, MQTT, Modbus TCP, ping, sur le plan réseau du projet (hw.lan()).
+  const netl = createNetLib({ hw, me, myMac, warn, tl, fmt, now: () => vt, Wait, IPAddress, periph, refStore, cbuf: s => $.cbuf(0, s, 'c') });
   /** Réseaux visibles : ceux du projet et les points d'accès des autres cartes. */
-  const networks = () => [...net().networks, ...peerBoards().filter(b => b !== me && b.periph && b.periph.wifi && b.periph.wifi.ap).map(b => ({ ssid: b.periph.wifi.ap.ssid, pass: b.periph.wifi.ap.pass, rssi: -40, ap: b }))];
+  // Avec un plan réseau, ses points d'accès et ses box d'abord ; un réseau du bac à sable de même nom est masqué.
+  const networks = () => { const ln = netl.wifiNetworks(); return [...ln, ...net().networks.filter(n => !ln.some(x => x.ssid === n.ssid)), ...peerBoards().filter(b => b !== me && b.periph && b.periph.wifi && b.periph.wifi.ap).map(b => ({ ssid: b.periph.wifi.ap.ssid, pass: b.periph.wifi.ap.pass, rssi: -40, ap: b }))]; };
   class WiFiClass {
     constructor() { this.scan = []; this.host = `esp32-${myMac.slice(-5).replace(':', '')}`; this.last = null; }
     s() { const st = periph(me); return st.wifi || (st.wifi = { mode: 0, status: 0, ssid: '', ip: '', gw: '', mac: myMac, t0: 0, want: null, ap: null, fixed: null, rssi: 0 }); }
@@ -2009,12 +2013,16 @@ export function createRuntime(js, hw, meta = {}) {
         const want = w.want, n = networks().find(x => x.ssid === want.ssid);
         w.want = null; w.tried = want.ssid;
         if (!n) { w.status = 1; warn(tl('WiFi.begin("{0}") : aucun réseau de ce nom. Réseaux visibles : {1}', want.ssid, networks().map(x => x.ssid).join(', '))); }
+        else if (n.lan) netl.wifiJoin(w, n, want);
         else if (n.pass && n.pass !== want.pass) { w.status = 4; warn(tl('WiFi.begin("{0}", …) : mot de passe refusé par le réseau', want.ssid)); }
-        else { w.status = 3; w.ssid = n.ssid; w.rssi = n.rssi; w.ip = this.lease(n); w.gw = n.ap ? '192.168.4.1' : '192.168.1.1'; }
+        else {
+          w.status = 3; w.ssid = n.ssid; w.rssi = n.rssi; w.ip = this.lease(n); w.gw = n.ap ? '192.168.4.1' : '192.168.1.1'; w.prefix = 24; w.lan = false;
+          if (netl.hasLan()) warn(tl('WiFi.begin("{0}") : ce réseau est celui du bac à sable, hors du plan réseau : le PC et les équipements du plan ne voient pas la carte', want.ssid));
+        }
         periph(me).ver++;
       }
       // Réseau renommé ou supprimé (carte « Réseau Wi-Fi ») : la connexion est perdue.
-      if (w.status === 3 && !networks().some(x => x.ssid === w.ssid)) { w.status = 5; w.ip = ''; periph(me).ver++; }
+      if (w.status === 3 && !networks().some(x => x.ssid === w.ssid)) { netl.wifiLeave(w); w.status = 5; w.ip = ''; periph(me).ver++; }
       return w;
     }
     mode(m) { const w = this.s(); w.mode = m | 0; if (!(w.mode & 2)) w.ap = null; periph(me).ver++; return true; }
@@ -2024,17 +2032,18 @@ export function createRuntime(js, hw, meta = {}) {
       if (ssid === undefined) { if (!this.last) return w.status; [ssid, pass] = this.last; }
       if (!(w.mode & 1)) w.mode |= 1;
       this.last = [fmt(ssid), pass == null ? '' : fmt(pass)];
+      netl.wifiLeave(w);
       Object.assign(w, { want: { ssid: this.last[0], pass: this.last[1] }, t0: vt, status: 6, ip: '', ssid: '' });
       periph(me).ver++;
       return w.status;
     }
     status() { return this.update().status; }
     isConnected() { return this.status() === 3; }
-    disconnect() { const w = this.s(); Object.assign(w, { want: null, status: 6, ip: '', ssid: '' }); periph(me).ver++; return true; }
+    disconnect() { const w = this.s(); netl.wifiLeave(w); Object.assign(w, { want: null, status: 6, ip: '', ssid: '' }); periph(me).ver++; return true; }
     reconnect() { if (!this.last) return false; this.begin(...this.last); return true; }
     localIP() { const w = this.update(); return new IPAddress(w.status === 3 ? w.ip : '0.0.0.0'); }
     gatewayIP() { const w = this.update(); return new IPAddress(w.status === 3 ? w.gw : '0.0.0.0'); }
-    subnetMask() { return new IPAddress(this.update().status === 3 ? '255.255.255.0' : '0.0.0.0'); }
+    subnetMask() { const w = this.update(), p = w.prefix ?? 24, m = p ? (0xffffffff << (32 - p)) >>> 0 : 0; return new IPAddress(w.status === 3 ? [24, 16, 8, 0].map(s => (m >>> s) & 255).join('.') : '0.0.0.0'); }
     dnsIP() { return this.gatewayIP(); }
     macAddress(a) { if (Array.isArray(a)) myMac.split(':').forEach((h, i) => { a[i] = parseInt(h, 16); }); return myMac; }
     softAPmacAddress() { return myMac.replace(/^(..)/, m => hex2(parseInt(m, 16) + 1)); }
@@ -2059,7 +2068,12 @@ export function createRuntime(js, hw, meta = {}) {
     softAPIP() { return new IPAddress(this.s().ap ? '192.168.4.1' : '0.0.0.0'); }
     softAPdisconnect() { const w = this.s(); w.ap = null; w.mode &= 1; periph(me).ver++; return true; }
     softAPgetStationNum() { return peerBoards().filter(b => b !== me && b.periph && b.periph.wifi && b.periph.wifi.status === 3 && b.periph.wifi.ip.startsWith('192.168.4.') && this.s().ap && b.periph.wifi.ssid === this.s().ap.ssid).length; }
-    config(ip) { this.s().fixed = ip ? String(ip) : null; return true; }
+    /** config(ip[, passerelle, masque]) : adresse fixe au lieu du DHCP. */
+    config(ip, gw, sn) {
+      const w = this.s(); w.fixed = ip && String(ip) !== '0.0.0.0' ? String(ip) : null;
+      w.fixedGw = gw ? String(gw) : null; w.fixedPrefix = sn ? String(sn).split('.').reduce((n, x) => n + ((+x).toString(2).match(/1/g) || []).length, 0) : null;
+      return true;
+    }
     setHostname(h) { this.host = fmt(h); return true; } getHostname() { return this.host; } hostname(h) { if (h !== undefined) this.host = fmt(h); return this.host; }
     setAutoReconnect() { return true; } persistent() {} setSleep() { return true; }
   }
@@ -2090,10 +2104,12 @@ export function createRuntime(js, hw, meta = {}) {
     begin(port) {
       if (port) this.port = port | 0;
       const st = periph(me);
+      if (st.web && st.web.unl) st.web.unl();
       st.web = { port: this.port, queue: [], on: true }; st.ver++; this.st = st.web;
+      netl.webListen(st.web, newReq); // joignable aussi depuis le plan réseau (navigateur du PC, autres machines)
       if (!online()) warn(tl('server.begin() : la carte n’est connectée à aucun réseau Wi-Fi (ni point d’accès) : personne ne peut joindre le serveur'));
     }
-    close() { if (this.st) this.st.on = false; } stop() { this.close(); }
+    close() { if (this.st) { this.st.on = false; if (this.st.unl) this.st.unl(); } } stop() { this.close(); }
     handleClient() {
       const q = this.st && this.st.on ? this.st.queue : null;
       if (!q || !q.length) return undefined;
@@ -2112,6 +2128,7 @@ export function createRuntime(js, hw, meta = {}) {
         this.cur = null;
         if (!req.resp) { warn(tl('Le gestionnaire de {0} n’a rien répondu : appelez server.send(…)', req.path)); req.resp = { code: 0, type: '', body: '', headers: [] }; }
         req.state = 'done';
+        if (req.done) req.done(req); // requête venue du plan réseau : la réponse repart sur sa connexion
       }
     }
     send(code, type = 'text/html', body = '') {
@@ -2160,6 +2177,8 @@ export function createRuntime(js, hw, meta = {}) {
         if (u.host === 'journal.jollof' && hw.netChanged) hw.netChanged();
         return new Wait(120, (this.resp = fake).code);
       }
+      // Carte sur le plan réseau : la requête passe par lui (box, PC, autres cartes, broker…).
+      if (u.scheme === 'http' && netl.lanHttp()) return netl.http(method, u, body, this.hdr, this.timeout, r => { this.resp = r; });
       // Serveur web d'une carte du montage (ou de celle-ci : elle ne peut pas se répondre pendant qu'elle attend).
       const b = u.scheme === 'http' && serverAt(u.host, u.port);
       if (b) {
@@ -2181,12 +2200,7 @@ export function createRuntime(js, hw, meta = {}) {
     connected() { return false; }
     end() { this.u = null; }
   }
-  /** WiFiClient : seulement pour http.begin(client, adresse) ; les connexions directes ne sont pas simulées. */
-  class WiFiClient {
-    connect() { warn(tl('client.connect() : les connexions directes (sockets) ne sont pas simulées, utilisez HTTPClient')); return 0; }
-    stop() {} connected() { return 0; } available() { return 0; } read() { return -1; }
-    print(x, f, tag) { return fmt(x, f, tag).length; } println(x, f, tag) { return fmt(x, f, tag).length + 2; } write() { return 1; }
-  }
+  // WiFiClient, WiFiServer, WiFiUDP : prog/netlib.js (sockets sur le plan réseau).
 
   /* ---------- ESP-NOW ---------- */
   // Messages directs entre cartes (250 octets au plus), sans point d'accès : la carte dont WiFi.macAddress() est l'adresse
@@ -2275,13 +2289,15 @@ export function createRuntime(js, hw, meta = {}) {
     Adafruit_MCP23X17, PCF8574, Adafruit_PWMServoDriver,
     SDClass, File, LoRaClass: lora.LoRaClass,
     Adafruit_NeoPixel, Stepper, AccelStepper, IRrecv, decode_results, MFRC522, Uid, MIFARE_Key, Keypad, RF24, MPU6050, EEPROMClass, Preferences, BluetoothSerial,
-    WiFiClass, IPAddress, MDNSResponder, WebServer, ESP8266WebServer: WebServer, HTTPClient, WiFiClient,
+    WiFiClass, IPAddress, MDNSResponder, WebServer, ESP8266WebServer: WebServer, HTTPClient,
+    ...netl.classes,
     esp_now_peer_info_t: class { constructor() { this.peer_addr = new Array(6).fill(0); this.channel = 0; this.encrypt = false; this.ifidx = 0; } },
     esp_now_recv_info_t: class { constructor() { this.src_addr = new Array(6).fill(0); this.des_addr = new Array(6).fill(0); } },
     wifi_tx_info_t: class { constructor() { this.des_addr = new Array(6).fill(0); this.src_addr = new Array(6).fill(0); } }
   };
   $.O.IrReceiver = new IRrecv();
   $.O.EEPROM = new EEPROMClass(); $.O.WiFi = new WiFiClass(); $.O.MDNS = new MDNSResponder(); $.O.SD = new SDClass(); $.O.LoRa = new lora.LoRaClass();
+  $.O.Ethernet = netl.objects.Ethernet; $.O.Ping = netl.objects.Ping;
 
   /* ---------- Ordonnanceur ---------- */
   let mod, gen, pass = 0, spun = false; // spun : la tranche s'est arrêtée au milieu d'une boucle active (pas dans un delay())
@@ -2465,6 +2481,8 @@ export function createRuntime(js, hw, meta = {}) {
     get state() { return state; }, get error() { return error; }, get line() { return $.l; },
     takeSerial() { const s = out; out = ''; return s; },
     send(s) { serialIn += s; },
-    stop() { state = 'stopped'; }
+    stop() { state = 'stopped'; netl.close(); },
+    /** Moteur retiré (panel.js) : connexions du réseau fermées. */
+    dispose() { state = 'stopped'; netl.close(); }
   };
 }

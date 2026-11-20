@@ -15,7 +15,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { bench, rule, act, wait, set, goTo, variable, seq, step, go, compile, hasCli, FQBN } from './rulekit.mjs';
+import { bench, rule, act, wait, set, goTo, variable, seq, step, go, compile, hasCli, FQBN, netRules } from './rulekit.mjs';
+import { spawnSync } from 'node:child_process';
 import { SIGNALS, ACTIONS, signalOf, defArg, isSensor, isActuator, generate } from './rules.js';
 import { compile as interp } from './lang.js';
 import { loadProject } from '../check/load.js';
@@ -147,6 +148,35 @@ test('anciennes règles (format d’avant, sans kind) : même programme qu’apr
   const legacy = { id: 'r1', src: { comp: M.c('BTN1').id, sig: 'pressed' }, op: '==', v: 1, dst: { comp: M.c('LED1').id, act: 'on' }, alt: { act: 'off' } };
   const code = generate(M.board, { ...M.cx([]), rules: [legacy] });
   assert.match(code, /if \(btn1_appuye\) \{\n\s+digitalWrite\(LED1, HIGH\);\n\s+\} else \{\n\s+digitalWrite\(LED1, LOW\);/);
+});
+
+/* ---------- Réseau (rules-net.js) : Ethernet (W5500) et Wi-Fi, MQTT, page web ---------- */
+// Bibliothèques Ethernet et PubSubClient : arduino-cli lib install Ethernet PubSubClient.
+const libs = hasCli ? spawnSync('arduino-cli', ['lib', 'list'], { encoding: 'utf8' }).stdout || '' : '';
+const skipNet = !hasCli ? 'arduino-cli absent' : !/^Ethernet\s/m.test(libs) || !/^PubSubClient\s/m.test(libs) ? 'bibliothèques Ethernet et PubSubClient absentes' : false;
+/** Atelier connecté, plus : texte publié quand il change, mesure à virgule, sujet à joker, réglages du réseau. */
+function netProgram(kind, types, cfg) {
+  const M = bench(kind, types), t = variable('etat', 'text', 'ok', { len: 12 }), D = M.comps.find(c => c.type === 'dht22');
+  return { M, code: M.code([...netRules(M), t, ...(cfg ? [{ kind: 'net', id: 'n1', ...cfg }] : []),
+    rule(null, [act('@net', 'publish', null, { topic: 'atelier/etat_texte', what: { var: t.id } }), act('@net', 'page', null, { what: { var: t.id }, line: 4 })]),
+    rule({ comp: '@net', sig: 'msg', topic: 'atelier/+/mode' }, [set(t, '=', null, { src: { comp: '@net', sig: 'msg', topic: 'atelier/+/mode' } })], [], { op: 'any' }),
+    rule({ comp: '@net', sig: 'online' }, [act('@net', 'page', 'en ligne', { line: 5 })], [act('@serial', 'print', 'hors ligne')], { op: '==', v: 1 }),
+    ...(D ? [rule({ every: 5000 }, [act('@net', 'publish', null, { topic: 'serre/temp', what: { comp: D.id, sig: 'temp' } })])] : [])]) };
+}
+const NET_CASES = [
+  ['uno', ['w5500', 'pot', 'led-red'], null], ['pico', ['w5500', 'pot', 'led-red'], { dhcp: false, ip: '192.168.1.60' }],
+  ['esp32', ['w5500', 'pot', 'led-red'], null], ['esp32', ['pot', 'led-red', 'dht22'], { ssid: 'Box-Jollof', broker: 'mq' }]
+];
+test('réseau : programmes robustes (rien n’attend le réseau dans loop()), acceptés par l’interpréteur', () => {
+  for (const [kind, types, cfg] of NET_CASES) {
+    const { code } = netProgram(kind, types, cfg), what = `réseau ${kind} ${types[0]}`;
+    robust(code, kind, what);
+    assert.match(code, /mqtt\.loop\(\)/, what);
+    assert.match(code, types.includes('w5500') ? new RegExp(`Ethernet\\.init\\(ETH1_CS\\);[\\s\\S]*constexpr uint8_t ETH1_CS = ${{ uno: 10, pico: 17, esp32: 5 }[kind]};|constexpr uint8_t ETH1_CS = ${{ uno: 10, pico: 17, esp32: 5 }[kind]};`) : /WiFi\.begin\(RESEAU_WIFI, RESEAU_CLE\);/, what);
+  }
+});
+test('réseau : zéro avertissement avec -Wall -Wextra (Uno + W5500, Pico + W5500, ESP32 + W5500, ESP32 en Wi-Fi)', { skip: skipNet }, () => {
+  for (const [kind, types, cfg] of NET_CASES) cc(netProgram(kind, types, cfg).code, FQBN[kind], `réseau ${types.includes('w5500') ? 'W5500' : 'Wi-Fi'} (MQTT, page web)`);
 });
 
 /* ---------- Parité : interpréteur et vraie carte ---------- */

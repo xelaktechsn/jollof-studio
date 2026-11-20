@@ -1271,6 +1271,41 @@ export const PARTS = {
     lib: 'LoRa (Sandeep Mistry)', ma: 120, ds: 'semtechSx1278', // pointe d'émission à +20 dBm : c'est elle qui fait tomber une alimentation trop faible
     code: p => tl('#include <LoRa.h>\n// setup() : LoRa.setPins({0}, {1}, {2}); // NSS, RST, DIO0\nif (!LoRa.begin(433E6)) Serial.println("LoRa absent");\n// émetteur :\nLoRa.beginPacket(); LoRa.print("Bonjour"); LoRa.endPacket();\n// récepteur, loop() :\nif (LoRa.parsePacket()) { Serial.print(LoRa.readString()); Serial.println(LoRa.packetRssi()); }', p.NSS, p.RST || -1, p.DIO0 || -1)
   },
+  // Modules Ethernet : leur prise RJ45 n'est pas câblée sur le banc, elle devient un appareil du plan réseau (projet
+  // Objets connectés, nœud 'e:' + id du composant) qu'on relie à un switch ou à une box.
+  w5500: {
+    what: tl('Module Ethernet W5500 (type WIZ850io), en SPI : la puce gère elle-même TCP, UDP et IP (8 connexions à la fois, 32 Ko de mémoire). Bibliothèque Ethernet d’Arduino. Sa prise RJ45 se relie à un switch ou à une box dans le plan réseau.'),
+    pins: [
+      pwr('3V3', [2.97, 3.63], tl('3,3 V seulement : le module n’a pas de régulateur. Il tire environ 130 mA avec un lien à 100 Mb/s : la broche 3V3 d’un Pico ou d’un ESP32 suffit, pas celle d’un Uno (50 mA) ; prenez alors un régulateur AMS1117 3,3 V.'), 'wiznetW5500Datasheet'),
+      gnd(),
+      ...spi(),
+      io('CS', 'ss', 'SPI CS', tl('Sélection du module sur le bus SPI : Ethernet.init(broche), D10 par défaut sur l’Uno.')),
+      io('RST', OUT, tl('Reset'), tl('Remise à zéro (active à LOW) : tirée au niveau haut sur le module, la bibliothèque Ethernet ne s’en sert pas.'), { opt: true }),
+      nc('INT', tl('Interruption (active à LOW) : la bibliothèque Ethernet ne s’en sert pas, elle interroge la puce.'))
+    ],
+    notes: [tl('Ses entrées tolèrent le 5 V (fiche du W5500) : il se branche directement sur un Uno ou un Mega, mais son alimentation reste en 3,3 V.'),
+      tl('Chaque module du réseau doit avoir sa propre adresse MAC (le tableau mac[] du programme).')],
+    // ma : 100M Transmitting, 132 mA typique (la fiche ne donne pas de maximum).
+    lib: 'Ethernet', ma: 132, ds: 'wiznetW5500Datasheet',
+    code: p => tl('#include <SPI.h>\n#include <Ethernet.h>\nbyte mac[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED };\n// setup() : Ethernet.init({0});\nif (Ethernet.begin(mac) == 0) Serial.println("Pas de serveur DHCP");\nSerial.println(Ethernet.localIP());', p.CS)
+  },
+  enc28j60: {
+    what: tl('Module Ethernet ENC28J60, en SPI : 10 Mb/s, la puce ne fait qu’envoyer et recevoir des trames, le programme porte toute la pile TCP/IP (bibliothèques UIPEthernet ou EtherCard, gourmandes en mémoire sur un Uno). Sa prise RJ45 se relie à un switch ou à une box dans le plan réseau.'),
+    pins: [
+      pwr('VCC', [3.1, 3.6], tl('3,1 à 3,6 V : le module n’a pas de régulateur. Il tire jusqu’à 180 mA en émission : jamais sur la broche 3V3 d’un Uno (50 mA) ; prenez un régulateur AMS1117 3,3 V.'), 'microchipEnc28j60'),
+      gnd(),
+      io('SO', 'miso', 'SPI MISO', tl('Données du module vers la carte (sortie 3,3 V).')),
+      io('SI', 'mosi', 'SPI MOSI', tl('Données de la carte vers le module (entrée tolérante au 5 V).')),
+      io('SCK', 'sck', 'SPI SCK', tl('Horloge du bus SPI, partagée par tous les modules SPI.')),
+      io('CS', 'ss', 'SPI CS', tl('Sélection du module sur le bus SPI : D10 par défaut (UIPEthernet), D8 pour EtherCard.')),
+      io('RST', OUT, tl('Reset'), tl('Remise à zéro (active à LOW), tirée au niveau haut sur le module : facultative.'), { opt: true }),
+      nc('INT', tl('Interruption (active à LOW) : les bibliothèques courantes ne s’en servent pas.'))
+    ],
+    notes: [tl('CS, SCK, SI et RESET tolèrent le 5 V ; SO et INT sortent du 3,3 V, à la limite de ce qu’une carte 5 V lit comme un niveau haut (la fiche conseille un adaptateur de niveau sur ces sorties).'),
+      tl('Mode fidèle : le vrai programme porte sa propre pile TCP/IP sur des trames brutes, que l’émulateur ne relie pas au réseau simulé ; le mode simulé (interpréteur) le fait.')],
+    lib: 'UIPEthernet', ma: 180, ds: 'microchipEnc28j60',
+    code: p => tl('#include <UIPEthernet.h>\nbyte mac[] = { 0x74, 0x69, 0x69, 0x2D, 0x30, 0x31 };\n// CS sur {0} (UIPEthernet : D10 ; EtherCard : D8)\n// setup() :\nif (Ethernet.begin(mac) == 0) Serial.println("Pas de serveur DHCP");\nSerial.println(Ethernet.localIP());', p.CS)
+  },
   sim800: {
     what: tl('Module GSM SIM800L : SMS, appels et données 2G, piloté par commandes AT sur une liaison série.'),
     pins: [

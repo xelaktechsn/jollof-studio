@@ -23,6 +23,10 @@ test('Wi-Fi et Bluetooth : le programme reste sur l’interpréteur, avec un mes
   assert.equal(netInclude('  #include "BluetoothSerial.h"'), 'BluetoothSerial.h');
   assert.equal(netInclude('#include <WebServer.h>'), 'WebServer.h');
   assert.equal(netInclude('#include <Wire.h>\n// #include <WiFi.h> en commentaire'), null);
+  // MQTT par le module Ethernet W5500 : admis ; avec le Wi-Fi ou sans Ethernet.h : refusé.
+  assert.equal(netInclude('#include <SPI.h>\n#include <Ethernet.h>\n#include <PubSubClient.h>'), null);
+  assert.equal(netInclude('#include <PubSubClient.h>'), 'PubSubClient.h');
+  assert.equal(netInclude('#include <WiFi.h>\n#include <Ethernet.h>\n#include <PubSubClient.h>'), 'WiFi.h');
   assert.match(esp32Refusal('#include <WiFi.h>'), /Wi-Fi.*WiFi\.h.*simulateur intégré/);
   assert.equal(esp32Refusal('#include <Arduino.h>\nvoid setup(){}'), null);
 });

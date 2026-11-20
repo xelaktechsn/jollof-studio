@@ -174,8 +174,11 @@ test('Chaque composant, câblé seul sur chaque carte, passe le vérificateur sa
     verify(S, board, what, advice([type], bt));
   }
 });
-/** Le module tire plus que la broche 3V3 de la carte ne fournit (SX1278 : 120 mA en émission ; 3V3 de l'Uno, du Nano, du Mega : 50 mA). */
-const WEAK_SUPPLY = new Set(['sx1278@uno', 'sx1278@nano', 'sx1278@mega']);
+/**
+ * Le module tire plus que la broche 3V3 de la carte ne fournit (SX1278 : 120 mA en émission ; modules Ethernet W5500 :
+ * 132 mA, ENC28J60 : 180 mA ; 3V3 de l'Uno, du Nano, du Mega : 50 mA).
+ */
+const WEAK_SUPPLY = new Set(['uno', 'nano', 'mega'].flatMap(b => ['sx1278', 'w5500', 'enc28j60'].map(t => `${t}@${b}`)));
 
 const COMBOS = [
   ['uno', ['lcd1602', 'bmp280', 'button', 'led-red', 'fan', 'buzzer']],

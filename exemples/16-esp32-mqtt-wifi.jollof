@@ -1,0 +1,467 @@
+{
+ "app": "jollof-studio",
+ "version": 1,
+ "name": "ESP32 MQTT en Wi-Fi",
+ "description": "ESP32 avec un potentiomètre (GPIO32) et une LED (GPIO14). Plan réseau : box, switch PoE, point d’accès « Atelier » alimenté par PoE, Serveur MQTT et PC. L’ESP32 rejoint le Wi-Fi, publie la position du potentiomètre sur atelier/pot toutes les 2 s et allume la LED quand « 1 » arrive sur atelier/led (publiez-le depuis le panneau de MQTT1).",
+ "en": {
+  "name": "ESP32 MQTT over Wi-Fi",
+  "description": "ESP32 with a potentiometer (GPIO32) and an LED (GPIO14). Network plan: box, PoE switch, PoE-powered “Atelier” access point, MQTT Server and PC. The ESP32 joins the Wi-Fi, publishes the potentiometer’s position on atelier/pot every 2 s and lights the LED when “1” arrives on atelier/led (publish it from MQTT1’s panel).",
+  "code": {
+   "esp32_0": [
+    "// ESP32 on Wi-Fi: publishes the potentiometer position on atelier/pot, drives the LED from atelier/led.",
+    "#include <WiFi.h>",
+    "#include <PubSubClient.h>",
+    "",
+    "const char* ssid = \"Atelier\";",
+    "const char* motDePasse = \"jollof2024\";",
+    "IPAddress broker(192, 168, 1, 10);   // the network plan’s MQTT Server",
+    "const int POT = 32;",
+    "const int LED = 14;",
+    "",
+    "WiFiClient wifi;",
+    "PubSubClient mqtt(wifi);",
+    "unsigned long dernier = 0;",
+    "",
+    "void recu(char* sujet, byte* message, unsigned int longueur) {",
+    "  if (longueur > 0 && message[0] == '1') digitalWrite(LED, HIGH);",
+    "  else digitalWrite(LED, LOW);",
+    "}",
+    "",
+    "void setup() {",
+    "  Serial.begin(115200);",
+    "  pinMode(LED, OUTPUT);",
+    "  WiFi.begin(ssid, motDePasse);",
+    "  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print(\".\"); }",
+    "  Serial.println();",
+    "  Serial.println(WiFi.localIP());",
+    "  mqtt.setServer(broker, 1883);",
+    "  mqtt.setCallback(recu);",
+    "}",
+    "",
+    "void loop() {",
+    "  if (!mqtt.connected()) {",
+    "    if (mqtt.connect(\"esp32-atelier\")) mqtt.subscribe(\"atelier/led\");",
+    "    else { delay(2000); return; }",
+    "  }",
+    "  mqtt.loop();",
+    "  if (millis() - dernier > 2000) {",
+    "    dernier = millis();",
+    "    mqtt.publish(\"atelier/pot\", String(analogRead(POT)).c_str());",
+    "  }",
+    "}"
+   ]
+  }
+ },
+ "comps": [
+  {
+   "id": "esp32_0",
+   "type": "esp32",
+   "name": "ESP32",
+   "x": 0,
+   "z": 0,
+   "r": 0
+  },
+  {
+   "id": "pot_1",
+   "type": "pot",
+   "name": "POT1",
+   "x": -34,
+   "z": 12,
+   "r": 0
+  },
+  {
+   "id": "led-red_2",
+   "type": "led-red",
+   "name": "LED1",
+   "x": -37,
+   "z": -14,
+   "r": 0
+  },
+  {
+   "id": "res-220_3",
+   "type": "res-220",
+   "name": "R1",
+   "x": -39,
+   "z": -36,
+   "r": 0
+  }
+ ],
+ "wires": [
+  {
+   "id": "w1",
+   "a": [
+    "pot_1",
+    "3"
+   ],
+   "b": [
+    "esp32_0",
+    "3V3"
+   ],
+   "color": "#e8833a"
+  },
+  {
+   "id": "w2",
+   "a": [
+    "pot_1",
+    "1"
+   ],
+   "b": [
+    "esp32_0",
+    "GND"
+   ],
+   "color": "#3a3f45"
+  },
+  {
+   "id": "w3",
+   "a": [
+    "pot_1",
+    "W"
+   ],
+   "b": [
+    "esp32_0",
+    "D32"
+   ],
+   "color": "#4c8bf5"
+  },
+  {
+   "id": "w4",
+   "a": [
+    "led-red_2",
+    "K"
+   ],
+   "b": [
+    "esp32_0",
+    "GND (2)"
+   ],
+   "color": "#3a3f45"
+  },
+  {
+   "id": "w5",
+   "a": [
+    "led-red_2",
+    "A"
+   ],
+   "b": [
+    "res-220_3",
+    "2"
+   ],
+   "color": "#4c8bf5"
+  },
+  {
+   "id": "w6",
+   "a": [
+    "res-220_3",
+    "1"
+   ],
+   "b": [
+    "esp32_0",
+    "D14"
+   ],
+   "color": "#4c8bf5"
+  }
+ ],
+ "settings": {
+  "kind": "iot",
+  "dur": 1.2,
+  "env": {
+   "temp": 24,
+   "hum": 55,
+   "press": 1013,
+   "lux": 300,
+   "dist": 35,
+   "motion": 0,
+   "soil": 40,
+   "gas": 0,
+   "sound": 45,
+   "tilt": 0
+  },
+  "prog": {
+   "rules": [],
+   "boards": {
+    "esp32_0": {
+     "code": "// ESP32 en Wi-Fi : publie la position du potentiomètre sur atelier/pot, allume la LED selon atelier/led.\n#include <WiFi.h>\n#include <PubSubClient.h>\n\nconst char* ssid = \"Atelier\";\nconst char* motDePasse = \"jollof2024\";\nIPAddress broker(192, 168, 1, 10);   // le Serveur MQTT du plan réseau\nconst int POT = 32;\nconst int LED = 14;\n\nWiFiClient wifi;\nPubSubClient mqtt(wifi);\nunsigned long dernier = 0;\n\nvoid recu(char* sujet, byte* message, unsigned int longueur) {\n  if (longueur > 0 && message[0] == '1') digitalWrite(LED, HIGH);\n  else digitalWrite(LED, LOW);\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  pinMode(LED, OUTPUT);\n  WiFi.begin(ssid, motDePasse);\n  while (WiFi.status() != WL_CONNECTED) { delay(500); Serial.print(\".\"); }\n  Serial.println();\n  Serial.println(WiFi.localIP());\n  mqtt.setServer(broker, 1883);\n  mqtt.setCallback(recu);\n}\n\nvoid loop() {\n  if (!mqtt.connected()) {\n    if (mqtt.connect(\"esp32-atelier\")) mqtt.subscribe(\"atelier/led\");\n    else { delay(2000); return; }\n  }\n  mqtt.loop();\n  if (millis() - dernier > 2000) {\n    dernier = millis();\n    mqtt.publish(\"atelier/pot\", String(analogRead(POT)).c_str());\n  }\n}\n",
+     "auto": false
+    }
+   }
+  },
+  "modules": {
+   "net": {
+    "view": "net",
+    "devices": [
+     {
+      "id": "box1",
+      "type": "router",
+      "x": 60,
+      "y": 40,
+      "name": "BOX1",
+      "p": {
+       "lan": {
+        "ip": "192.168.1.1",
+        "prefix": 24
+       },
+       "dhcp": {
+        "on": true,
+        "from": 100,
+        "to": 199
+       },
+       "wan": {
+        "mode": "none",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "wifi": {
+        "on": false,
+        "ssid": "Box-Jollof",
+        "pass": "jollof2024"
+       }
+      }
+     },
+     {
+      "id": "sw1",
+      "type": "poeswitch",
+      "x": 360,
+      "y": 60,
+      "name": "SW1",
+      "p": {
+       "budget": 64,
+       "pseType": "at",
+       "portW": 30
+      }
+     },
+     {
+      "id": "mqtt1",
+      "type": "broker",
+      "x": 160,
+      "y": 280,
+      "name": "MQTT1",
+      "p": {
+       "ip": {
+        "mode": "static",
+        "ip": "192.168.1.10",
+        "prefix": 24,
+        "gw": "192.168.1.1",
+        "dns": ""
+       }
+      }
+     },
+     {
+      "id": "pc1",
+      "type": "pc",
+      "x": 360,
+      "y": 280,
+      "name": "PC1",
+      "p": {
+       "ip": {
+        "mode": "dhcp",
+        "ip": "",
+        "prefix": 24,
+        "gw": "",
+        "dns": ""
+       },
+       "legacy": false
+      }
+     },
+     {
+      "id": "ap1",
+      "type": "ap",
+      "x": 600,
+      "y": 260,
+      "name": "AP1",
+      "p": {
+       "ssid": "Atelier",
+       "pass": "jollof2024",
+       "power": "poe",
+       "poeClass": 3
+      }
+     }
+    ],
+    "cables": [
+     {
+      "id": "c1",
+      "a": [
+       "box1",
+       "lan1"
+      ],
+      "b": [
+       "sw1",
+       "p8"
+      ],
+      "cat": "cat6",
+      "len": 1,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "c2",
+      "a": [
+       "mqtt1",
+       "eth0"
+      ],
+      "b": [
+       "sw1",
+       "p6"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "c3",
+      "a": [
+       "pc1",
+       "eth0"
+      ],
+      "b": [
+       "sw1",
+       "p5"
+      ],
+      "cat": "cat6",
+      "len": 3,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     },
+     {
+      "id": "c4",
+      "a": [
+       "ap1",
+       "eth0"
+      ],
+      "b": [
+       "sw1",
+       "p1"
+      ],
+      "cat": "cat6",
+      "len": 12,
+      "wire": {
+       "a": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "b": {
+        "order": [
+         "wo",
+         "o",
+         "wg",
+         "bl",
+         "wbl",
+         "g",
+         "wbr",
+         "br"
+        ],
+        "crimped": true,
+        "shorts": []
+       },
+       "cut": []
+      }
+     }
+    ],
+    "ext": {
+     "e:esp32_0": {
+      "x": 780,
+      "y": 380
+     }
+    }
+   }
+  }
+ }
+}
