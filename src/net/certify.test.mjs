@@ -13,8 +13,8 @@ import { issues, LAB, CODES, SRC, modelSig } from './checks/cert.js';
 import { cleanNet } from './clean.js';
 import { makeCable, endOf } from './cable.js';
 import { NET } from './limits.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { best, once, note } from './perf.mjs';
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what} : ${a.toFixed(2)} au lieu de ${b} (±${tol})`);
 const SPLIT = () => { const e = { order: ['wo', 'o', 'wg', 'g', 'wbl', 'bl', 'wbr', 'br'], crimped: true, shorts: [] }; return { a: e, b: { ...e, order: e.order.slice() }, cut: [] }; };
@@ -244,15 +244,15 @@ test('taille réelle : 600 liens permanents vérifiés vite (mémoire des résul
   for (let p = 0; p < 50; p++) devices.push({ id: 'pb' + p, type: 'patch', name: 'PB' + p });
   spec.forEach((s, i) => { devices.push({ id: 'o' + i, type: 'outlet', name: 'PR' + i }); cables.push({ id: 'h' + i, a: ['pb' + Math.floor(i / 12), 'b' + (i % 12 + 1)], b: ['o' + i, 'back'], cat: s.cat, len: s.len, wire: makeCable() }); });
   const data = cleanNet({ devices, cables, view: 'net' });
-  let t = performance.now(); const first = issues(data, null, {}); const t1 = performance.now() - t;
+  const f1 = once(() => issues(data, null, {})), first = f1.value, t1 = f1.ms;
   // Plan inchangé : empreinte seulement (pas de parcours des liens).
-  let t2 = Infinity; for (let k = 0; k < 5; k++) { t = performance.now(); issues(data, null, {}); t2 = Math.min(t2, performance.now() - t); }
+  const t2 = best(() => issues(data, null, {}), 5, 0);
   assert.deepEqual(issues(data, null, {}), first);
   // Un câble change : seuls ses liens sont recalculés (résultats mémorisés par empreinte de lien).
   data.cables[5].len = 104;
-  t = performance.now(); const changed = issues(data, null, {}); const t3 = performance.now() - t;
+  const f3 = once(() => issues(data, null, {})), changed = f3.value, t3 = f3.ms;
   assert.ok(changed.some(i => i.code === 'J1286' && i.id === 'h5'), 'le changement est vu');
-  assert.ok(t1 < 1500 * PERF, `premier calcul ${t1.toFixed(0)} ms`); assert.ok(t2 < 3 * PERF, `plan inchangé ${t2.toFixed(1)} ms`); assert.ok(t3 < 50 * PERF, `après un changement ${t3.toFixed(0)} ms`);
+  assert.ok(t1 < 1500, note('certification, premier calcul', t1, 1500)); assert.ok(t2 < 3, note('certification, plan inchangé', t2, 3)); assert.ok(t3 < 50, note('certification, après un changement', t3, 50));
   console.log(`    600 liens permanents : premier calcul ${t1.toFixed(0)} ms, plan inchangé ${t2.toFixed(1)} ms, après un changement ${t3.toFixed(0)} ms`);
 });
 

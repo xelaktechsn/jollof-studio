@@ -219,6 +219,8 @@ print('ok')
   const lcd = comps.find(c => c.type === 'lcd1602');
   assert.deepEqual(lcd.progScreen.lines.map(l => l.trimEnd()), ['Bonjour', 'MicroPython']);
   assert.deepEqual(rt.hw.pinApi.rec('GP6').px, [[255, 0, 0], [0, 0, 9]]);
+  // L'angle se lit sur plusieurs impulsions (fenêtre de 60 ms) : 100 ms de plus après la dernière ligne du programme.
+  for (let i = 0; i < 7; i++) rt.run(16);
   assert.ok(Math.abs(rt.pins.get('GP15').servo - 90) < 2, `servo ${rt.pins.get('GP15').servo}°`);
   assert.equal(rt.state, 'run');
 });

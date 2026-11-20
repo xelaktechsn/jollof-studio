@@ -13,7 +13,9 @@
 //   hors des réseaux intérieurs · J1236 interface hors du sous-réseau de son VLAN · J1237 traduction d'adresses sans
 //   intérieur ou sans extérieur · J1238 voisinage OSPF impossible (sous-réseau ou masque, aire, minuteries hello et dead
 //   différents) · J1239 deux routeurs OSPF avec le même identifiant · J1296 interface OSPF passive sur un lien vers un autre
-//   routeur OSPF (pas de voisinage, le lien ne sert pas de transit).
+//   routeur OSPF (pas de voisinage, le lien ne sert pas de transit) · J1297 aire OSPF sans routeur de bordure relié à
+//   l'aire 0 · J1298 routeur à plusieurs aires sans interface dans l'aire 0 · J1299 segment OSPF sans routeur désigné possible
+//   (toutes les priorités à 0).
 import { tl } from '../i18n/index.js';
 import { specOf } from './devices.js';
 import { netOf, ipStr, maskOf, sameNet } from './ip.js';
@@ -22,7 +24,7 @@ import { portCfg, parseNet, inNet, aclAllows, SERVES } from './vlan.js';
 export const SIM_CODES = {
   J1217: 'error', J1218: 'error', J1219: 'error', J1220: 'warning', J1221: 'error', J1222: 'error', J1223: 'warning', J1224: 'error',
   J1225: 'error', J1226: 'error', J1227: 'warning', J1228: 'error', J1229: 'warning', J1230: 'error', J1231: 'warning', J1232: 'warning',
-  J1233: 'warning', J1234: 'warning', J1235: 'warning', J1236: 'error', J1237: 'warning', J1238: 'error', J1239: 'error', J1296: 'warning'
+  J1233: 'warning', J1234: 'warning', J1235: 'warning', J1236: 'error', J1237: 'warning', J1238: 'error', J1239: 'error', J1296: 'warning', J1297: 'error', J1298: 'error', J1299: 'error'
 };
 export const SIM_SRC = {
   J1217: ['ciscoC9300Vlans', 'ciscoC9300Trunks'], J1218: ['ciscoC9300Trunks', 'cisco9kPvid', 'ciscoRouterOnStick'],
@@ -32,7 +34,8 @@ export const SIM_SRC = {
   J1228: ['ciscoC9300EtherChannel', 'ciscoC1300'], J1229: ['ciscoC9300Vlans'], J1230: ['rfc1812'], J1231: ['ciscoC9300Acl', 'ciscoAclConfig', 'ciscoDhcpRelay', 'ciscoReflexiveAcl'],
   J1232: ['ciscoC9300Vlans', 'cisco6500VlanRanges', 'ciscoVoiceVlan'], J1233: ['ciscoC9300Svi'], J1234: ['ciscoC9300Trunks'], J1235: ['rfc3022'],
   J1236: ['ciscoInterVlanL3', 'rfc950'], J1237: ['rfc3022'],
-  J1238: ['ciscoOspfNeighbor', 'rfc2328', 'ciscoOspfCmdI'], J1239: ['ciscoOspfDupRid', 'ciscoOspfNeighbor'], J1296: ['ciscoPassiveIf', 'ciscoOspfNeighbor']
+  J1238: ['ciscoOspfNeighbor', 'rfc2328', 'ciscoOspfCmdI'], J1239: ['ciscoOspfDupRid', 'ciscoOspfNeighbor'], J1296: ['ciscoPassiveIf', 'ciscoOspfNeighbor'],
+  J1297: ['rfc2328'], J1298: ['rfc2328'], J1299: ['rfc2328', 'ciscoOspfCmdI']
 };
 const netTxt = (ip, p) => `${ipStr(netOf(ip, p))}/${p}`;
 const overlap = (a, b) => { const p = Math.min(a.prefix, b.prefix); return ((netOf(a.ip, p) ^ netOf(b.ip, p)) & maskOf(p)) === 0; };
@@ -173,6 +176,9 @@ export function simIssues(lan, data, h) {
       if (e.why === 'passive') add('J1296', e.fa.passive ? e.a : e.b, tl('OSPF {0} : interface passive vers un autre routeur OSPF, pas de voisinage sur ce lien.', who));
       else add('J1238', e.a, tl('OSPF {0} : pas de voisinage, {1}.', who, WHY[e.why] || e.why) + (e.why === 'timers' ? ` (${e.fa.hello}/${e.fa.dead} s, ${e.fb.hello}/${e.fb.dead} s)` : e.why === 'area' ? ` (${e.fa.area}, ${e.fb.area})` : ''));
     }
+    for (const a of O.orphan || []) { const r = [...O.areas].find(([, set]) => set.has(a)); add('J1297', r ? r[0] : null, tl('OSPF : l’aire {0} n’a aucun routeur de bordure relié à l’aire 0 : ses routeurs n’apprennent pas les autres aires (liens virtuels non simulés).', a)); }
+    for (const r of O.noBackbone || []) add('J1298', r, tl('OSPF : {0} est dans les aires {1} mais pas dans l’aire 0 : il n’annonce pas une aire dans l’autre.', name(r), [...O.areas.get(r)].join(', ')));
+    for (const g of O.noDr || []) add('J1299', g.members[0].r, tl('OSPF {0} : toutes les priorités sont à 0, aucun routeur désigné : pas d’adjacence sur ce segment ({1}).', g.net, g.members.map(m => name(m.r)).join(', ')));
   }
   for (const [nid, m] of st.l2.lags) for (const g of m.values()) if (g.why && g.why !== 'down') add('J1228', nid, tl('{0}, agrégat {1} : {2}.', name(nid), g.id, lagWhyText(g.why)));
 

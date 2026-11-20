@@ -18,9 +18,11 @@
 //   - SINR = signal du serveur / (bruit + Σ brouilleurs) : chaque autre point d'accès de la même bande compte au prorata du
 //     spectre que son canal partage avec celui du serveur (hypothèse : pas de gabarit spectral ni de réjection du canal
 //     adjacent) et tous émettent en même temps (pire cas, sans l'accès au canal de 802.11) ;
-//   - 6 GHz : N et Lf extrapolés de la ligne 5,8 GHz de P.1238 (aucune valeur à 6 GHz), murs par P.2040 à 6185 MHz ;
-//     canaux et puissances des points d'accès d'intérieur à faible puissance (LPI) d'Europe et des États-Unis.
-// Réglages du projet : data.wifi = { reg: 'eu'|'us', env, target (dBm), noise (dBm), snr, sinr (dB), cover (%), cci (%),
+//   - 6 GHz : N des bureaux par le modèle général de P.1238-13 (tableau 2) ; perte d'un plancher extrapolée de la ligne
+//     5,8 GHz (aucune valeur à 6 GHz) ; murs par P.2040 à 6185 MHz ; canaux et puissances des points d'accès d'intérieur
+//     à faible puissance (LPI) d'Europe et des États-Unis, ou de puissance standard aux États-Unis (domaine 'us-sp' :
+//     l'AFC, qui accorde canaux et puissance, n'est pas simulée : elle est supposée tout accorder).
+// Réglages du projet : data.wifi = { reg: 'eu'|'us'|'us-sp', env, target (dBm), noise (dBm), snr, sinr (dB), cover (%), cci (%),
 // rxH (m), band }.
 // Réglages d'un point d'accès : d.p.radios = { b24: { on, ch, w, tx, gain }, b5: { … }, b6?: { … } } (tx : puissance
 // conduite en dBm, sans le gain d'antenne ; w : largeur en MHz ; b6 seulement pour un point d'accès Wi-Fi 6E), hauteur de
@@ -75,7 +77,7 @@ export function matOf(id) {
 export function cleanWifi(raw) {
   const r = raw && typeof raw === 'object' ? raw : {};
   return {
-    reg: r.reg === 'us' ? 'us' : 'eu', env: ENVS.includes(r.env) ? r.env : 'walls',
+    reg: ['us', 'us-sp'].includes(r.reg) ? r.reg : 'eu', env: ENVS.includes(r.env) ? r.env : 'walls',
     target: num(r.target, -90, -40, L('WIFI_TARGET_DBM')), noise: num(r.noise, -110, -70, L('WIFI_NOISE_DBM')), snr: num(r.snr, 0, 60, L('WIFI_SNR_DB')),
     // SINR visé : par défaut le même objectif que le SNR (25 dB, guides Cisco), modifiable.
     sinr: num(r.sinr, -10, 60, L('WIFI_SNR_DB')),
@@ -126,6 +128,10 @@ export function block6(ch, w) {
   const n = w / 20, i = Math.floor((ch - 1) / 4 / n) * n, a = 1 + 4 * i, b = a + 4 * (n - 1);
   return b <= 233 ? [a, b] : null;
 }
+/** Tous les canaux de 20 MHz d'un bloc [premier, dernier] sont-ils dans la liste ok ? */
+const blockIn = (bl, ok) => { for (let c = bl[0]; c <= bl[1]; c += 4) if (!ok.includes(c)) return false; return true; };
+/** Le canal (ch, w) à 6 GHz est-il utilisable dans le domaine ? */
+export const ok6 = (ch, w, reg) => { const bl = block6(ch, w); return !!bl && blockIn(bl, allowed('b6', reg)); };
 /** Canal de balayage préféré (PSC, 6 GHz) ? */
 export const isPsc = ch => L('WIFI_CH6').psc.includes(ch);
 /**
@@ -146,9 +152,13 @@ export function span(band, ch, w) {
 export const overlap = (a, b) => a[0] < b[1] && b[0] < a[1];
 /** Canaux de 20 MHz autorisés dans le domaine réglementaire. */
 export function allowed(band, reg) {
-  const k = reg === 'us' ? 'us' : 'eu';
+  const k = reg === 'eu' || !reg ? 'eu' : 'us';
   if (band === 'b24') return Array.from({ length: L('WIFI_CH24')[k] }, (_, i) => i + 1);
-  if (band === 'b6') return Array.from({ length: (L('WIFI_CH6')[k] - 1) / 4 + 1 }, (_, i) => 1 + 4 * i);
+  if (band === 'b6') {
+    const all = Array.from({ length: (L('WIFI_CH6')[k] - 1) / 4 + 1 }, (_, i) => 1 + 4 * i);
+    // Puissance standard : canaux de 20 MHz entièrement dans 5925–6425 ou 6525–6875 MHz.
+    return reg === 'us-sp' ? all.filter(c => L('WIFI_SP6').bands.some(([lo, hi]) => 5950 + 5 * c - 10 >= lo && 5950 + 5 * c + 10 <= hi)) : all;
+  }
   return L('WIFI_CH5')[k];
 }
 /** Canaux primaires possibles pour une largeur (premier canal de chaque bloc entièrement autorisé). */
@@ -159,7 +169,7 @@ export function channels(band, reg, w = 20) {
   if (band === 'b6') {
     // Un canal par bloc entièrement autorisé : le canal de balayage préféré (PSC) qu'il contient, sinon son premier canal.
     const out = [];
-    for (let a = 1; a <= 233; a += w / 5) { const bl = block6(a, w); if (!bl || !ok.includes(bl[1])) continue; let p = bl[0]; for (let c = bl[0]; c <= bl[1]; c += 4) if (isPsc(c)) { p = c; break; } out.push(p); }
+    for (let a = 1; a <= 233; a += w / 5) { const bl = block6(a, w); if (!bl || !blockIn(bl, ok)) continue; let p = bl[0]; for (let c = bl[0]; c <= bl[1]; c += 4) if (isPsc(c)) { p = c; break; } out.push(p); }
     return out;
   }
   return (L('WIFI_BLOCKS')[w] || []).filter(([a, b]) => { for (let c = a; c <= b; c += 4) if (!ok.includes(c)) return false; return true; }).map(([a]) => a);
@@ -180,7 +190,7 @@ export function radioFault(type, band, r, reg) {
     if (r.w === 40 && !channels('b24', reg, 40).includes(r.ch)) return { why: 'block' };
   } else if (band === 'b6') {
     const bl = block6(r.ch, r.w); if (!bl) return { why: 'block' };
-    if (!ok.includes(bl[1])) return { why: 'reg' };
+    if (!blockIn(bl, ok)) return { why: 'reg' };
   } else {
     const bl = block5(r.ch, r.w); if (!bl) return { why: 'block' };
     for (let c = bl[0]; c <= bl[1]; c += 4) if (!ok.includes(c)) return { why: 'reg' };
@@ -188,10 +198,10 @@ export function radioFault(type, band, r, reg) {
   return null;
 }
 /**
- * PIRE maximale d'un point d'accès LPI à 6 GHz (dBm) : la plus petite de la PIRE maximale et de la densité × largeur
- * (Europe : 23 dBm, 10 dBm/MHz ; États-Unis : 30 dBm, 5 dBm/MHz).
+ * PIRE maximale d'un point d'accès à 6 GHz (dBm) : la plus petite de la PIRE maximale et de la densité × largeur
+ * (LPI Europe : 23 dBm, 10 dBm/MHz ; LPI États-Unis : 30 dBm, 5 dBm/MHz ; puissance standard États-Unis : 36 dBm, 23 dBm/MHz).
  */
-export function lpiMax(reg, w) { const l = L('WIFI_LPI')[reg === 'us' ? 'us' : 'eu']; return Math.round(Math.min(l.eirp, l.psd + 10 * Math.log10(w)) * 10) / 10; }
+export function lpiMax(reg, w) { const l = reg === 'us-sp' ? L('WIFI_SP6') : L('WIFI_LPI')[reg === 'us' ? 'us' : 'eu']; return Math.round(Math.min(l.eirp, l.psd + 10 * Math.log10(w)) * 10) / 10; }
 /**
  * Puissance au-delà de la fiche ou de la règle : null, ou { kind: 'tx' (conduite, fiche) | 'eirp' (PIRE de la fiche en
  * Europe) | 'lpi' (PIRE au-delà de la limite LPI à 6 GHz), max, have }.
@@ -201,7 +211,7 @@ export function powerFault(type, band, r, reg) {
   const bs = spec[band]; if (!bs) return null;
   if (r.tx > bs.tx) return { kind: 'tx', max: bs.tx, have: r.tx };
   if (band === 'b6') { const max = lpiMax(reg, r.w); return r.tx + r.gain > max ? { kind: 'lpi', max, have: r.tx + r.gain } : null; }
-  if (reg !== 'us') {
+  if (reg === 'eu') {
     const max = band === 'b24' ? bs.eirp : bs.eirp && bs.eirp[subband(r.ch)];
     if (max && r.tx + r.gain > max) return { kind: 'eirp', max, have: r.tx + r.gain };
   }
@@ -472,13 +482,13 @@ export function inPoly(x, y, poly) {
   }
   return ins;
 }
-/** Cases d'une grille dans un polygone : liste d'index. */
-export function cellsIn(res, poly) {
+/** Cases d'une grille dans un polygone (hors de ses trous : cour, patio d'une pièce) : liste d'index. */
+export function cellsIn(res, poly, holes) {
   const out = []; if (!Array.isArray(poly) || poly.length < 3) return out;
   let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity; for (const [x, y] of poly) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }
   const i0 = Math.max(0, Math.floor((x0 - res.x0) / res.step)), i1 = Math.min(res.nx - 1, Math.ceil((x1 - res.x0) / res.step));
   const j0 = Math.max(0, Math.floor((y0 - res.y0) / res.step)), j1 = Math.min(res.ny - 1, Math.ceil((y1 - res.y0) / res.step));
-  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) if (inPoly(res.x0 + (i + 0.5) * res.step, res.y0 + (j + 0.5) * res.step, poly)) out.push(j * res.nx + i);
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) { const x = res.x0 + (i + 0.5) * res.step, y = res.y0 + (j + 0.5) * res.step; if (inPoly(x, y, poly) && !(holes || []).some(hh => inPoly(x, y, hh))) out.push(j * res.nx + i); }
   return out;
 }
 /** Part (%) des cases au-dessus du seuil, parmi cells (toutes les cases si absent). */
@@ -495,7 +505,7 @@ export function roomsCoverage(data, floorId, band, o = {}) {
   const at = findFloor(data, floorId); if (!at) return [];
   const set = o.set || wifiSettings(data), res = coverageOf(data, floorId, band || set.band, { step: STAT_STEP, ...o, set });
   return (at.floor.rooms || []).filter(r => r && Array.isArray(r.poly) && r.poly.length >= 3).map(room => {
-    const cells = res ? cellsIn(res, room.poly) : [];
+    const cells = res ? cellsIn(res, room.poly, room.holes) : [];
     return { room, needs: needsWifi(room), pct: res && cells.length ? pctAbove(res, set.target, cells) : 0, area: cells.length * (res ? res.step * res.step : 0) };
   });
 }
@@ -503,7 +513,7 @@ export function roomsCoverage(data, floorId, band, o = {}) {
 export function floorPct(res, floor, thr, field = 'best') {
   const rooms = ((floor && floor.rooms) || []).filter(r => r && Array.isArray(r.poly) && r.poly.length >= 3);
   if (!rooms.length) return pctAbove(res, thr, null, field);
-  const all = new Set(); for (const r of rooms) for (const c of cellsIn(res, r.poly)) all.add(c);
+  const all = new Set(); for (const r of rooms) for (const c of cellsIn(res, r.poly, r.holes)) all.add(c);
   return pctAbove(res, thr, all.size ? all : null, field);
 }
 /** Couverture de tout le projet : [{ floor, building, pct (pièces de l'étage, ou étage entier), rooms: [...] }]. */

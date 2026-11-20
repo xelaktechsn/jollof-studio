@@ -52,7 +52,7 @@ export const USAGES = {
 };
 export const USAGE_IDS = Object.keys(USAGES);
 /** Usage d'une pièce (le plan peut employer d'autres mots) → clé de USAGES. */
-const ALIAS = { bureau: 'office', office: 'office', openspace: 'open', open: 'open', 'open-office': 'open', plateau: 'open', reunion: 'meeting', meeting: 'meeting', conference: 'meeting', classe: 'classroom', classroom: 'classroom', salle: 'classroom', class: 'classroom', labo: 'lab', lab: 'lab', laboratory: 'lab', atelier: 'lab', workshop: 'lab', couloir: 'corridor', corridor: 'corridor', circulation: 'corridor', hall: 'corridor', stockage: 'storage', storage: 'storage', archive: 'storage', wc: 'storage', toilets: 'storage', sanitaires: 'storage', tech: 'tech', technical: 'tech', lt: 'tech', tr: 'tech', er: 'tech', ef: 'tech', sanitary: 'storage', server: 'tech', serveur: 'tech', local: 'tech' };
+const ALIAS = { bureau: 'office', office: 'office', openspace: 'open', open: 'open', 'open-office': 'open', plateau: 'open', reunion: 'meeting', meeting: 'meeting', conference: 'meeting', classe: 'classroom', classroom: 'classroom', salle: 'classroom', class: 'classroom', labo: 'lab', lab: 'lab', laboratory: 'lab', atelier: 'lab', workshop: 'lab', couloir: 'corridor', corridor: 'corridor', circulation: 'corridor', hall: 'corridor', stockage: 'storage', storage: 'storage', archive: 'storage', wc: 'storage', toilets: 'storage', sanitaires: 'storage', tech: 'tech', technical: 'tech', lt: 'tech', tr: 'tech', er: 'tech', ef: 'tech', sanitary: 'storage', server: 'tech', serveur: 'tech', local: 'tech', shaft: 'storage' };
 export const usageOf = u => { const k = String(u || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ''); return USAGES[k] ? k : ALIAS[k] || 'other'; };
 
 /* ---------- Paramètres (data.design) ---------- */
@@ -129,6 +129,15 @@ export function inPoly(x, y, poly) {
   let ins = false; const n = (poly || []).length;
   for (let i = 0, j = n - 1; i < n; j = i++) { const a = poly[i], b = poly[j]; if ((a[1] > y) !== (b[1] > y) && x < ((b[0] - a[0]) * (y - a[1])) / (b[1] - a[1] || 1e-12) + a[0]) ins = !ins; }
   return ins;
+}
+/** Pièces à trous (cour, patio : room.holes, voir site.js) : surface, point dans la pièce, centre hors des trous. */
+const inHole = (x, y, r) => (r.holes || []).some(hh => inPoly(x, y, hh));
+export const inRoomXY = (x, y, r) => inPoly(x, y, r.poly) && !inHole(x, y, r);
+export const roomAreaOf = r => Math.max(0, polyArea(r.poly) - (r.holes || []).reduce((s, hh) => s + polyArea(hh), 0));
+export function roomCenterOf(r) {
+  const c = polyCentroid(r.poly); if (!r.holes || !r.holes.length || inRoomXY(c[0], c[1], r)) return c;
+  for (const p of r.poly) for (const t of [0.5, 0.25, 0.75]) { const q = [p[0] + (c[0] - p[0]) * t, p[1] + (c[1] - p[1]) * t]; if (inRoomXY(q[0], q[1], r)) return q; }
+  return c;
 }
 /** Points régulièrement espacés le long du contour, à d mètres vers l'intérieur (prises au pied des murs). */
 export function alongWalls(poly, n, inset = 0.3) {
@@ -240,7 +249,7 @@ export function dimension(data, lan) {
   for (const { b, bi, f } of floors) {
     if (withTr.has(f.id) || !(f.rooms || []).length) continue;
     const tech = (f.rooms || []).find(r => usageOf(r.usage) === 'tech');
-    const c = tech ? polyCentroid(tech.poly) : centerOf(f.rooms);
+    const c = tech ? roomCenterOf(tech) : centerOf(f.rooms);
     spaces.push({ key: f.id + '|new', floor: f.id, building: b.id, bi, level: +f.level || 0, elev: +f.elev || 0, room: tech ? tech.id : null, racks: [], x: +c[0].toFixed(2), y: +c[1].toFixed(2), virtual: true });
   }
   const letter = spaceLetters(spaces), skey = new Map(spaces.map(s => [s.key, s]));
@@ -254,7 +263,7 @@ export function dimension(data, lan) {
   for (const { b, f } of floors) {
     const h = +f.height || 3;
     for (const r of f.rooms || []) {
-      const us = usageOf(r.usage), U = D.usage[us], area = polyArea(r.poly), c = polyCentroid(r.poly), ov = D.rooms[r.id] || {};
+      const us = usageOf(r.usage), U = D.usage[us], area = roomAreaOf(r), c = roomCenterOf(r), ov = D.rooms[r.id] || {};
       let wa = U.area > 0 ? Math.max(U.min, Math.ceil(area / U.area - 1e-9)) : U.min;
       const aps = placed.get(r.id) ? placed.get(r.id).aps : 0, apEst = !aps && D.apArea > 0 && U.area > 0 ? Math.ceil(area / D.apArea) : 0;
       const cams = U.cams, phones = Math.round(wa * U.phones);
@@ -387,7 +396,7 @@ function devicesByRoom(data, floors) {
   const m = new Map(), roomsOf = new Map(floors.map(x => [x.f.id, x.f.rooms || []]));
   for (const d of data.devices || []) {
     if (!d.loc || !roomsOf.has(d.loc.floor)) continue;
-    const r = roomsOf.get(d.loc.floor).find(z => inPoly(d.loc.x, d.loc.y, z.poly)); if (!r) continue;
+    const r = roomsOf.get(d.loc.floor).find(z => inRoomXY(d.loc.x, d.loc.y, z)); if (!r) continue;
     if (!m.has(r.id)) m.set(r.id, { ports: 0, aps: 0, apIds: [] });
     const e = m.get(r.id);
     if (d.type === 'outlet' || d.type === 'outlet2') e.ports += d.type === 'outlet2' ? 2 : 1;
@@ -398,7 +407,7 @@ function devicesByRoom(data, floors) {
 /** Pièce où se trouve un équipement (par sa place sur le plan) ou null. */
 export function roomOfDev(data, d) {
   if (!d || !d.loc) return null;
-  for (const { f } of floorsOf(data)) if (f.id === d.loc.floor) return (f.rooms || []).find(z => inPoly(d.loc.x, d.loc.y, z.poly)) || null;
+  for (const { f } of floorsOf(data)) if (f.id === d.loc.floor) return (f.rooms || []).find(z => inRoomXY(d.loc.x, d.loc.y, z)) || null;
   return null;
 }
 /** Liens permanents du modèle : câble entre l'arrière d'une prise et l'arrière d'un panneau. */
@@ -564,7 +573,7 @@ export function applyDesign(data, opts = {}) {
         const bk = portsOfType(T.outlet).filter(p => p.punch);
         for (let j = 0; j < Math.min(per, wall - i * per); j++) slots.push({ dev: o, port: bk[j].id, room: r, phone: i < r.phones, j });
       }
-      const c = room ? polyCentroid(room.poly) : null;
+      const c = room ? roomCenterOf(room) : null;
       for (let i = 0; i < ceiling; i++) {
         // Point d'accès déjà posé (plan Wi-Fi) : sa prise au plafond à côté de lui, et le cordon qui le relie.
         const ap = i < r.aps && r.apIds[i] ? data.devices.find(d => d.id === r.apIds[i]) : null;

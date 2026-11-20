@@ -80,10 +80,10 @@ test('recherche : étage, pièce sous un point, objet par id, ids pris', () => {
   assert.ok(Object.keys(MATERIALS).includes('concrete') && Object.keys(USAGES).includes('tr'));
 });
 
-import { detectRooms, innerPoint } from './site.js';
+import { detectRooms, innerPoint, roomArea, inRoom, roomPoint, roomPath } from './site.js';
 const Wl = (a, b) => ({ a, b });
 const BOX = [Wl([0, 0], [10, 0]), Wl([10, 0], [10, 6]), Wl([10, 6], [0, 6]), Wl([0, 6], [0, 0])];
-const areas = f => detectRooms(f).map(p => polyArea(p)).sort((a, b) => a - b);
+const areas = f => detectRooms(f).map(r => roomArea(r)).sort((a, b) => a - b);
 
 test('détection des pièces : rectangle, cloison, jonctions en T', () => {
   assert.deepEqual(areas({ walls: BOX, rooms: [] }), [60]);
@@ -97,10 +97,29 @@ test('détection des pièces : rectangle, cloison, jonctions en T', () => {
 test('détection des pièces : pièce en L, jours sous la tolérance, murs pendants, pièce déjà dessinée', () => {
   const L = [Wl([0, 0], [6, 0]), Wl([6, 0], [6, 3]), Wl([6, 3], [3, 3]), Wl([3, 3], [3, 6]), Wl([3, 6], [0, 6]), Wl([0, 6.1], [0, 0.05])];
   const r = detectRooms({ walls: L, rooms: [] });
-  assert.equal(r.length, 1); assert.equal(r[0].length, 6, 'six sommets'); assert.equal(polyArea(r[0]), 27);
-  assert.ok(inPoly(innerPoint(r[0]), r[0]));
+  assert.equal(r.length, 1); assert.equal(r[0].poly.length, 6, 'six sommets'); assert.equal(polyArea(r[0].poly), 27);
+  assert.ok(inPoly(innerPoint(r[0].poly), r[0].poly));
   assert.deepEqual(areas({ walls: [...BOX.slice(0, 3), Wl([0, 6], [0, 0.5])], rooms: [] }), [], 'jour de 50 cm : pas fermé');
   assert.deepEqual(areas({ walls: [...BOX, Wl([2, 2], [5, 2])], rooms: [] }), [60], 'mur pendant ignoré');
   assert.deepEqual(areas({ walls: [...BOX, Wl([4, 0], [4, 6])], rooms: [{ poly: [[0, 0], [4, 0], [4, 6], [0, 6]] }] }), [36], 'pièce déjà là');
   assert.deepEqual(detectRooms({ walls: BOX.slice(0, 2), rooms: [] }), []);
+});
+
+test('pièces à trous : cour au milieu du bâtiment, pièce enclavée, nettoyage stable', () => {
+  const court = [Wl([4, 2], [6, 2]), Wl([6, 2], [6, 4]), Wl([6, 4], [4, 4]), Wl([4, 4], [4, 2])];
+  const r = detectRooms({ walls: [...BOX, ...court], rooms: [] }).sort((a, b) => roomArea(b) - roomArea(a));
+  assert.equal(r.length, 2, 'la pièce autour et la cour');
+  assert.equal(r[0].holes.length, 1); assert.equal(roomArea(r[0]), 56); assert.equal(roomArea(r[1]), 4);
+  assert.ok(!inRoom([5, 3], r[0]) && inRoom([1, 1], r[0]) && inRoom(roomPoint(r[0]), r[0]));
+  assert.match(roomPath(r[0]), /Z.*M.*Z$/);
+  // Pièce enclavée déjà dessinée : seule la pièce autour (avec son trou) est créée.
+  const r2 = detectRooms({ walls: [...BOX, ...court], rooms: [{ poly: [[4, 2], [6, 2], [6, 4], [4, 4]] }] });
+  assert.equal(r2.length, 1); assert.equal(roomArea(r2[0]), 56);
+  // Deux pièces côte à côte dans le bâtiment, la cour dans la seconde.
+  const r3 = detectRooms({ walls: [...BOX, Wl([3, 0], [3, 6]), ...court], rooms: [] }).map(x => [roomArea(x), (x.holes || []).length]).sort((a, b) => a[0] - b[0]);
+  assert.deepEqual(r3, [[4, 0], [18, 0], [38, 1]]);
+  const s = cleanSite({ buildings: [{ floors: [{ rooms: [{ id: 'a', poly: BOX.map(w => w.a), holes: [[[4, 2], [6, 2], [6, 4], [4, 4]], [[50, 50], [51, 50], [51, 51]], 'x'] }] }] }] });
+  const room = s.buildings[0].floors[0].rooms[0];
+  assert.equal(room.holes.length, 1, 'trou hors du contour ou illisible retiré'); assert.deepEqual(cleanSite(s), s);
+  assert.equal(roomAt(s.buildings[0].floors[0], 5, 3), null, 'un point dans la cour n’est dans aucune pièce');
 });

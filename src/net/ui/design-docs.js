@@ -26,6 +26,8 @@ async function certHtml(ctx) {
     const m = await import('../certify.js'); if (typeof m.testState !== 'function') return '';
     const st = m.testState(ctx.data()), done = st.rows.filter(r => r.stored);
     if (!st.rows.length) return '';
+    // Mode examen (exam.js) : combien de liens sont testés, sans leurs verdicts ni leurs marges.
+    if (ctx.data().exam === true) return `<p>${esc(tl('{0} liens testés sur {1}. Mode examen : résultats sans verdict (voir le testeur de certification).', done.length, st.rows.length))}</p>`;
     const cnt = v => done.filter(r => r.stored.verdict === v).length, li = id => (m.limitInfo && m.limitInfo(id) ? m.limitInfo(id).name : id);
     const rows = done.map(r => `<tr><td>${esc(r.stored.label || (m.linkLabel ? m.linkLabel(ctx.data(), r.link) : r.link.id))}</td><td>${esc(li(r.stored.limit))}</td><td>${esc(m.verdictText ? m.verdictText(r.stored.verdict) : r.stored.verdict)}${r.stale ? ' · ' + esc(tl('périmé')) : ''}</td><td class="n">${esc(r.stored.margin ?? '')}</td><td class="n">${esc(r.stored.len ?? '')}</td></tr>`).join('');
     return `<p>${esc(tl('{0} liens testés sur {1} : {2} PASS, {3} PASS*, {4} FAIL*, {5} FAIL. Valeurs simulées par le modèle : ce n’est pas une mesure.', done.length, st.rows.length, cnt('pass'), cnt('pass*'), cnt('fail*'), cnt('fail')))}</p>${done.length ? `<table><thead><tr><th>${esc(tl('Lien'))}</th><th>${esc(tl('Limite'))}</th><th>${esc(tl('Résultat'))}</th><th class="n">${esc(tl('Marge (dB)'))}</th><th class="n">${esc(tl('Longueur (m)'))}</th></tr></thead><tbody>${rows}</tbody></table>` : ''}`;

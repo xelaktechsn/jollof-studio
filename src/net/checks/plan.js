@@ -11,7 +11,7 @@
 //   que l'accès réglé du site, 6 m par défaut : réglage de conception).
 import { tl, isEn } from '../../i18n/index.js';
 import { PLAN_LIM as L } from '../lim/plan.js';
-import { allFloors, floorOf, roomAt, isTechRoom, polyArea, polyLen, project, centroid, ACCESS_M } from '../site.js';
+import { allFloors, floorOf, roomAt, isTechRoom, isShaft, roomArea, roomPoint, polyLen, project, inPoly, ACCESS_M } from '../site.js';
 import { cablesByPath, fillOf, bendsOf, separationMm, isConduitKind, isTrayKind, locate, pathDistance, graphOf, cableOd, PATH_KINDS } from '../route.js';
 
 /** Niveau de chaque code : 'error' | 'warning'. */
@@ -37,7 +37,7 @@ const floorName = (b, f) => (b.name ? `${b.name} · ${f.name}` : f.name);
 function trPoints(data, f) {
   const out = [];
   for (const r of data.racks || []) if (r.floor === f.id && Number.isFinite(+r.x)) out.push({ floor: f.id, x: +r.x, y: +r.y, h: 2 });
-  for (const r of f.rooms) if (isTechRoom(r)) { const [x, y] = centroid(r.poly); out.push({ floor: f.id, x, y, h: 2 }); }
+  for (const r of f.rooms) if (isTechRoom(r)) { const [x, y] = roomPoint(r); out.push({ floor: f.id, x, y, h: 2 }); }
   for (const d of data.devices || []) if (d.loc && d.loc.floor === f.id && /^(patch|fibrepanel)/.test(d.type)) out.push({ floor: f.id, x: d.loc.x, y: d.loc.y, h: d.loc.h });
   return out;
 }
@@ -90,6 +90,13 @@ export function issues(data, lan, h) {
     const gap = Math.hypot(d.p.pts[0][0] - e.p.pts[0][0], d.p.pts[0][1] - e.p.pts[0][1]) * 1000 - ((d.p.w || 0) + (e.p.w || 0)) / 2;
     if (gap < need) add('J1253', d.p.id, tl('{0} monte à côté de {1} sur {2} m, à {3} mm (bord à bord) : il faut {4} mm (EN 50174-2, classe {5}, {6} circuit(s)).', pathName(d.p), pathName(e.p), dec(Math.round(run * 10) / 10), Math.max(0, Math.round(gap)), Math.round(need), cls, e.p.circuits || 1));
   }
+  // Deux étages voisins : la dalle sépare leurs cheminements (hypothèse de modélisation : aucune source publique lue ne
+  // dit qu'une dalle de béton vaut une séparation ; la seule séparation nulle de l'EN 50174-2 citée par DTECH est le
+  // cheminement métallique plein). Sauf à travers une ouverture : gaine technique ou trémie (pièce d'usage « shaft ») de
+  // l'un des deux étages, ou colonne montante qui les relie. Là, un cheminement de données d'un étage et un cheminement
+  // d'énergie de l'autre qui passent tous deux à moins de A de l'ouverture sont comparés en 3D (écart horizontal entre les
+  // tronçons, écart vertical d'après les altitudes des étages et les hauteurs des cheminements, bord à bord).
+  for (const x of crossFloor(data, cls)) add('J1253', x.d.id, tl('{0} (étage {1}) passe à {2} mm de {3} (étage {4}) par {5} : il faut {6} mm (EN 50174-2, classe {7}, {8} circuit(s)).', pathName(x.d), x.fd.name, Math.max(0, Math.round(x.gap)), pathName(x.e), x.fe.name, x.via, Math.round(x.need), cls, x.e.circuits || 1));
   // Équipements hors des pièces ; étages avec prises sans local technique ; surface desservie ; prises trop loin.
   const routed = new Set(); for (const c of data.cables || []) if (c.route && c.route.mode === 'auto' && c.route.calc && !c.route.calc.fallback) { routed.add(c.a[0]); routed.add(c.b[0]); }
   for (const { b, f } of floors) {
@@ -97,7 +104,7 @@ export function issues(data, lan, h) {
     if (f.rooms.length) for (const d of devs) if (!roomAt(f, d.loc.x, d.loc.y)) add('J1254', d.id, tl('{0} est posé hors de toute pièce ({1}).', name(d.id), floorName(b, f)));
     const trs = trPoints(data, f), nTr = f.rooms.filter(isTechRoom).length || (trs.length ? 1 : 0);
     if (outs.length && !trs.length) add('J1257', f.id, tl('{0} : {1} prise(s) mais aucun local technique ni baie à cet étage.', floorName(b, f), outs.length));
-    const area = f.rooms.filter(r => !isTechRoom(r)).reduce((s, r) => s + polyArea(r.poly), 0);
+    const area = f.rooms.filter(r => !isTechRoom(r) && !isShaft(r)).reduce((s, r) => s + roomArea(r), 0);
     if (nTr && area / nTr > L.TR_AREA_M2.v) add('J1259', f.id, tl('{0} : {1} m² desservis par {2} local(aux) technique(s), au plus {3} m² chacun.', floorName(b, f), Math.round(area), nTr, L.TR_AREA_M2.v));
     // Prises pas encore câblées (ou au tracé manuel) : distance le long des cheminements jusqu'au départ le plus proche.
     const tb = trs.length ? trs : floors.filter(x => x.b === b && x.f !== f).flatMap(x => trPoints(data, x.f));
@@ -118,6 +125,44 @@ export function issues(data, lan, h) {
     if (!fb || fb === 'noloc') continue;
     if (fb === 'noriser') add('J1256', c.id, tl('Câble {0} : ses deux bouts sont sur des étages que ne relie aucune colonne montante (longueur estimée {1} m).', who, Math.round(c.len)));
     else add('J1255', c.id, tl('Câble {0} : aucun cheminement continu ne relie ses deux bouts, longueur estimée en équerre ({1} m).', who, Math.round(c.len)));
+  }
+  return out;
+}
+/** Distance entre deux segments du plan (0 s'ils se croisent). */
+function segDist(a, b, c, d) {
+  const o = (p, q, r) => (q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]);
+  if (o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0) return 0;
+  return Math.min(project(a, c, d).d, project(b, c, d).d, project(c, a, b).d, project(d, a, b).d);
+}
+/** Distance d'un segment à un polygone (0 s'il y entre). */
+const segPoly = (a, b, poly) => (inPoly(a, poly) || inPoly(b, poly) ? 0 : Math.min(...poly.map((p, i) => segDist(a, b, p, poly[(i + 1) % poly.length]))));
+/**
+ * Couplages entre étages voisins à travers une ouverture (voir issues) : [{ d, e, fd, fe, gap, need, via }]. Modèle
+ * simplifié : les tronçons qui passent à moins de A de l'ouverture comptent, sans exiger qu'ils soient parallèles.
+ */
+export function crossFloor(data, cls = 'b') {
+  const out = [], paths = (data.paths || []).filter(p => p.kind !== 'riser' && p.kind !== 'outdoor' && p.pts.length > 1);
+  const pw = paths.filter(p => p.power), dt = paths.filter(p => !p.power); if (!pw.length || !dt.length) return out;
+  const risers = (data.paths || []).filter(p => p.kind === 'riser');
+  for (const d of dt) for (const e of pw) {
+    const A = floorOf(data.site, d.floor), B = floorOf(data.site, e.floor);
+    if (!A || !B || A.b !== B.b || Math.abs(A.f.level - B.f.level) !== 1) continue;
+    const need = separationMm(cls, d, e); if (need <= 0) continue;
+    // Ouvertures communes aux deux étages : gaines des deux étages, colonnes qui montent de l'un à l'autre.
+    const holes = [...A.f.rooms, ...B.f.rooms].filter(isShaft).map(r => ({ poly: r.poly, via: r.name || tl('une gaine technique') }));
+    for (const r of risers) { const s = verticalSpan(data, r); if (s && s.b === A.b.id && s.lo <= Math.min(A.f.elev, B.f.elev) + 1e-6 && s.hi >= Math.max(A.f.elev, B.f.elev) - 1e-6) { const q = r.pts[0], h = Math.max(0.15, (r.w || 300) / 2000); holes.push({ poly: [[q[0] - h, q[1] - h], [q[0] + h, q[1] - h], [q[0] + h, q[1] + h], [q[0] - h, q[1] + h]], via: pathName(r) }); } }
+    if (!holes.length) continue;
+    const dz = Math.abs(A.f.elev + d.z - (B.f.elev + e.z)), reach = need / 1000;
+    let best = null;
+    for (const o of holes) for (let i = 1; i < d.pts.length; i++) {
+      const a = d.pts[i - 1], b = d.pts[i]; if (segPoly(a, b, o.poly) > reach) continue;
+      for (let j = 1; j < e.pts.length; j++) {
+        const c = e.pts[j - 1], f = e.pts[j]; if (segPoly(c, f, o.poly) > reach) continue;
+        const gap = Math.hypot(segDist(a, b, c, f), dz) * 1000 - ((d.w || d.dia || 0) + (e.w || e.dia || 0)) / 2;
+        if (gap < need && (!best || gap < best.gap)) best = { d, e, fd: A.f, fe: B.f, gap, need, via: o.via };
+      }
+    }
+    if (best) out.push(best);
   }
   return out;
 }

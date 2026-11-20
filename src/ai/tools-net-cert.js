@@ -9,6 +9,17 @@ const r2 = x => (x == null || !Number.isFinite(+x) ? null : Math.round(x * 100) 
 const NOTE = 'Simulated certification. Limits: ANSI/TIA-568-C.2 tables (Cat 5e, Cat 6, Cat 6A; channel and permanent link) as reprinted in Anixter\'s Standards Reference Guide, interpolated between the table frequencies. "Measured" values are a model of the plan (category, length, cords, connections, crimping faults), not a field measurement. FAIL* counts as a failure, PASS* as a pass (ANSI/TIA-1152).';
 const LIMITS = ['cat5e-pl', 'cat5e-ch', 'cat6-pl', 'cat6-ch', 'cat6a-pl', 'cat6a-ch'];
 
+// Mode examen (src/net/exam.js, data.exam) : ni verdict, ni marge, ni défaut nommé, ni point le plus faible ; la carte de
+// câblage brute, la longueur, le délai et le décalage face à leurs limites, comme l'écran du testeur en examen.
+const EXAM_NOTE = 'EXAM MODE is on for this network plan (set by the teacher): verdicts, margins, weakest parameter and named wiring faults are withheld. Do not tell the student whether a link passes or what is wrong with it; help them read the raw wire map (pin → far-end pin, × = no single pin) and compare the measured values with the limits themselves.';
+function examOut(C, r, label) {
+  const p = r.params;
+  return {
+    link: r.link, label, kind: r.kind === 'pl' ? 'permanent link' : 'channel', limit: r.limit, limit_name: C.limitInfo(r.limit).name, exam_mode: true,
+    wire_map_raw: C.rawWireMap(r), length: { value_m: p.length.v, limit_m: p.length.lim }, delay: { max_ns: Math.max(...p.delay.v), limit_ns: p.delay.lim },
+    skew: { value_ns: p.skew.v, limit_ns: p.skew.lim }, simulated: true
+  };
+}
 function resultOut(C, r, label) {
   const p = r.params, db = k => ({ status: p[k].st.toUpperCase(), worst_margin_db: r2(p[k].margin), value_db: r2(p[k].v), limit_db: r2(p[k].lim), pair: p[k].pair || null, frequency_mhz: r2(p[k].f) });
   return {
@@ -52,6 +63,7 @@ export function tools(h) {
         const C = await import('../net/certify.js'), W = await netWs(), l = findLink(C, W, a), data = W.data();
         const band = data.tests ? data.tests.band : C.BAND_DEFAULT, r = C.certify(l, a.limit || C.defaultLimit(l), { band }), label = C.linkLabel(data, l);
         if (a.save) { C.storeResults(data, [C.resultRow(r, l, label, new Date().toISOString())]); W.commit(); }
+        if (data.exam === true) return { ...examOut(C, r, label), saved: !!a.save, note: EXAM_NOTE + ' ' + NOTE };
         return { ...resultOut(C, r, label), saved: !!a.save, note: NOTE };
       }
     },
@@ -69,6 +81,7 @@ export function tools(h) {
           return C.resultRow(C.certify(l, limit, { band }), l, C.linkLabel(data, l), at);
         });
         C.storeResults(data, rows, at); W.commit();
+        if (data.exam === true) return { tested: rows.length, links: rows.slice(0, 60).map(r => ({ link: r.link, label: r.label, limit: r.limit, length_m: r.len })), exam_mode: true, simulated: true, note: EXAM_NOTE + ' ' + NOTE };
         const n = v => rows.filter(r => r.verdict === v).length;
         return {
           tested: rows.length, pass: n('pass'), pass_marginal: n('pass*'), fail_marginal: n('fail*'), fail: n('fail'),
@@ -88,9 +101,9 @@ export function tools(h) {
         return {
           last_batch: (data.tests && data.tests.at) || null, tester_accuracy_db: data.tests ? data.tests.band : C.BAND_DEFAULT,
           links: rows.slice(0, 400).map(r => ({ link: r.link.id, label: C.linkLabel(data, r.link), kind: r.link.kind === 'pl' ? 'permanent link' : 'channel', length_m: r2(r.link.len), category: r.link.cat,
-            result: r.stored ? { verdict: C.verdictText(r.stored.verdict), limit: r.stored.limit, worst_margin: r2(r.stored.margin), weakest: r.stored.param, pair: r.stored.pair, date: r.stored.at, out_of_date: r.stale } : null })),
+            result: r.stored && data.exam === true ? { tested: true, limit: r.stored.limit, date: r.stored.at, out_of_date: r.stale } : r.stored ? { verdict: C.verdictText(r.stored.verdict), limit: r.stored.limit, worst_margin: r2(r.stored.margin), weakest: r.stored.param, pair: r.stored.pair, date: r.stored.at, out_of_date: r.stale } : null })),
           more: Math.max(0, rows.length - 400), never_tested: rows.filter(r => !r.stored).length, out_of_date: rows.filter(r => r.stale).length + st.orphans.length,
-          removed_links: st.orphans.map(o => o.link).slice(0, 50), simulated: true, note: NOTE
+          removed_links: st.orphans.map(o => o.link).slice(0, 50), simulated: true, ...(data.exam === true ? { exam_mode: true } : {}), note: data.exam === true ? EXAM_NOTE + ' ' + NOTE : NOTE
         };
       }
     }

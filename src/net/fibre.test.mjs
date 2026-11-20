@@ -14,8 +14,8 @@ import '../check/sources-net.js';
 import { CODES as ALL_CODES } from '../check/codes.js';
 import { EXPLAIN } from '../check/explain.js';
 import '../check/explain-net.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { once, best, note } from './perf.mjs';
 
 const near = (a, b, msg) => assert.ok(Math.abs(a - b) < 1e-6, `${msg} : ${a} ≠ ${b}`);
 const fc = (len, fibre, o = {}) => ({ id: o.id || 'c' + Math.random().toString(36).slice(2, 7), len, media: 'fibre', fibre, splices: o.splices || 0, ...(o.attn ? { attn: o.attn } : {}), ...(o.mcp ? { mcp: true } : {}) });
@@ -263,8 +263,8 @@ test('vérificateur : rapide sur un grand plan (600 liaisons fibre)', () => {
     devices.push(dev('a' + i, 'sw', { x1: '10GBASE-SR' }), dev('p' + i, 'fp'), dev('b' + i, 'sw', { x1: '10GBASE-SR' }));
     cables.push({ id: 'c' + i, a: ['a' + i, 'x1'], b: ['p' + i, 'f1'], len: 3, media: 'fibre', fibre: 'om4', splices: 0 }, { id: 'd' + i, a: ['p' + i, 'b1'], b: ['b' + i, 'x1'], len: 120, media: 'fibre', fibre: 'om4', splices: 0 });
   }
-  const t0 = performance.now(), out = issues({ devices, cables }, null, H, ports), dt = performance.now() - t0;
-  assert.equal(out.length, 0); assert.ok(dt < 50 * PERF, `${dt.toFixed(1)} ms`);
+  const r = once(() => issues({ devices, cables }, null, H, ports)); // premier calcul : rien en cache
+  assert.equal(r.value.length, 0); assert.ok(r.ms < 50, note('fibre, 600 liaisons, premier calcul', r.ms, 50));
 });
 
 /** Campus réel (devices.js, lan.js) : n liaisons CORE.xk ou SWk.x1 — panneau — dorsale — panneau — SWk.x1 en fibre. */
@@ -286,11 +286,10 @@ test('vérificateur avec la simulation : 600 liaisons fibre, régime établi en 
   lan.refresh();
   assert.equal(fibreLinks(data, lan).length, 600);
   issues(data, lan, h); // premier passage : tout se calcule
-  // Meilleur de 15 passages après un recalcul du réseau (la machine peut être chargée par d'autres tests).
-  let t = Infinity;
-  for (let i = 0; i < 15; i++) { lan.refresh(); lan.state(); const t0 = performance.now(); issues(data, lan, h); t = Math.min(t, performance.now() - t0); }
-  console.log(`    fibre : 600 liaisons, vérificateur en régime établi ${t.toFixed(2)} ms`);
-  assert.ok(t < 2 * PERF, `${t.toFixed(2)} ms`);
+  // Meilleur de 15 passages, chacun après un recalcul du réseau (hors mesure).
+  const t = best(() => issues(data, lan, h), 15, 0, () => { lan.refresh(); lan.state(); });
+  console.log(`    fibre : 600 liaisons, vérificateur en régime établi ${t.toFixed(2)} ms CPU`);
+  assert.ok(t < 2, note('fibre, 600 liaisons, régime établi', t, 2));
   // Le même résultat avec et sans la simulation.
   assert.deepEqual(issues(data, lan, h), issues(data, null, h));
 });

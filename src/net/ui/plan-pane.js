@@ -5,7 +5,7 @@
 import { tl, isEn } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { cleanText } from '../../sanitize.js';
-import { MATERIALS, USAGES, SEG_CLASSES, findSiteObj, polyArea, polyPerimeter, polyLen, dist, floorOf, isTechRoom } from '../site.js';
+import { MATERIALS, USAGES, SEG_CLASSES, findSiteObj, roomArea, inRoom, polyPerimeter, polyLen, dist, floorOf, isTechRoom } from '../site.js';
 import { PATH_KINDS, SHIELDS, isTrayKind, isConduitKind, cablesByPath, fillOf, bendsOf, cleanPaths } from '../route.js';
 import { PLAN_LIM } from '../lim/plan.js';
 import { fmtNum } from './plan-draw.js';
@@ -47,7 +47,7 @@ function floorPane(ctx, V, f) {
   const data = ctx.data();
   if (!f) return `${head('floorPlan', tl('Plans'), tl('Aucun étage'), false)}<p class="ntDoc">${tl('Créez un bâtiment et son premier étage, puis dessinez les murs, les pièces et les cheminements. Les prises, points d’accès et caméras se posent depuis la bibliothèque.')}</p><section class="ntSec"><div class="row">${btn('newBuilding', 'plus', tl('Nouveau bâtiment'), 'primary')}${btn('demo', 'floorPlan', tl('Étage d’exemple'))}</div></section>`;
   const F = floorOf(data.site, f.id), b = F.b, devs = data.devices.filter(d => d.loc && d.loc.floor === f.id);
-  const area = f.rooms.reduce((s, r) => s + polyArea(r.poly), 0), im = f.image;
+  const area = f.rooms.reduce((s, r) => s + roomArea(r), 0), im = f.image;
   const S = (data.design && data.design.slack) || {};
   let h = head('floorPlan', f.name, `${b.name} · ${tl('niveau {0}', f.level)}`);
   h += `<section class="ntSec">${field(tl('Nom'), inp('f.name', f.name, 'maxlength="40"'))}${field(tl('Niveau'), numIn('f.level', f.level, -20, 200, 1))}${field(tl('Altitude du sol (m)'), numIn('f.elev', f.elev, -100, 1000, 0.05))}${field(tl('Hauteur d’étage (m)'), numIn('f.height', f.height, 2, 30, 0.05), tl('De sol à sol : sert aux colonnes montantes'))}${field(tl('Sous plafond (m)'), numIn('f.ceil', f.ceil, 2, 30, 0.05))}${field(tl('Faux plafond (m)'), numIn('f.plenum', f.plenum, 0, 5, 0.05))}${field(tl('Faux plancher (m)'), numIn('f.raised', f.raised, 0, 2, 0.05))}</section>`;
@@ -68,14 +68,14 @@ function buildingPane(b) {
   return h;
 }
 function roomPane(ctx, o) {
-  const r = o.o, A = polyArea(r.poly), devs = ctx.data().devices.filter(d => d.loc && d.loc.floor === o.f.id && inside(d.loc, r));
+  const r = o.o, A = roomArea(r), devs = ctx.data().devices.filter(d => d.loc && d.loc.floor === o.f.id && inside(d.loc, r));
   let h = head('room', r.name || USAGES[r.usage].name(), `${USAGES[r.usage].name()} · ${n1(A, 1)} m²`);
-  h += `<section class="ntSec">${field(tl('Nom'), inp('r.name', r.name, 'maxlength="40" placeholder="' + esc(tl('ex. Bureau 101')) + '"'))}${field(tl('Usage'), sel('r.usage', r.usage, Object.entries(USAGES).map(([k, u]) => [k, u.name()])))}<p class="mut">${tl('Surface {0} m² · périmètre {1} m · {2} sommets', n1(A, 2), n1(polyPerimeter(r.poly), 2), r.poly.length)}</p></section>`;
+  h += `<section class="ntSec">${field(tl('Nom'), inp('r.name', r.name, 'maxlength="40" placeholder="' + esc(tl('ex. Bureau 101')) + '"'))}${field(tl('Usage'), sel('r.usage', r.usage, Object.entries(USAGES).map(([k, u]) => [k, u.name()])))}<p class="mut">${tl('Surface {0} m² · périmètre {1} m · {2} sommets', n1(A, 2), n1(polyPerimeter(r.poly), 2), r.poly.length)}${r.holes ? ' · ' + tl('{0} trou(s) (cour, patio)', r.holes.length) : ''}</p></section>`;
   const racks = (ctx.data().racks || []).filter(k => k.floor === o.f.id && inside({ x: k.x, y: k.y }, r));
   h += `<section class="ntSec"><h4>${tl('Équipements de la pièce')}</h4>${devs.length ? `<p>${devs.map(d => esc(d.name)).join(', ')}</p>` : racks.length ? '' : `<p class="mut">${tl('Aucun : glissez une prise ou un point d’accès depuis la bibliothèque.')}</p>`}${racks.length ? `<p>${icon('rack')} ${racks.map(k => esc(k.name)).join(', ')}</p>` : ''}${isTechRoom(r) ? `<div class="row">${btn('rack', 'rack', tl('Poser une baie ici'), 'primary')}${btn('wrack', 'rack', tl('Coffret mural'))}</div>` : ''}</section>`;
   return h + issList(ctx, [r.id]);
 }
-const inside = (loc, r) => { let ins = false; const p = r.poly; for (let i = 0, j = p.length - 1; i < p.length; j = i++) { const [xi, yi] = p[i], [xj, yj] = p[j]; if ((yi > loc.y) !== (yj > loc.y) && loc.x < ((xj - xi) * (loc.y - yi)) / (yj - yi) + xi) ins = !ins; } return ins; };
+const inside = (loc, r) => inRoom([loc.x, loc.y], r);
 function wallPane(w) {
   let h = head('wall', tl('Mur'), `${MATERIALS[w.mat].name()} · ${n1(dist(w.a, w.b))} m`);
   h += `<section class="ntSec">${field(tl('Matériau'), sel('w.mat', w.mat, Object.entries(MATERIALS).map(([k, m]) => [k, m.name()])), tl('Sert aussi au calcul de la couverture Wi-Fi'))}${field(tl('Épaisseur (cm)'), numIn('w.t', Math.round(w.t * 1000) / 10, 1, 200, 0.5))}${field(tl('Longueur (m)'), numIn('w.len', Math.round(dist(w.a, w.b) * 1000) / 1000, 0.05, 1000, 0.01), tl('Allonge ou raccourcit le mur depuis son extrémité de départ'))}<div class="row">${btn('door', 'plus', tl('Ajouter une porte'))}</div></section>`;
@@ -107,7 +107,7 @@ function pathPane(ctx, V, p) {
   if (p.kind === 'outdoor') h += field(tl('Arrivée'), sel('p.to', p.to, floorOpts(data))) + field(tl('Longueur (m)'), numIn('p.len', p.len, 1, 100000, 1));
   if (p.kind !== 'ceiling') h += field(tl('Cheminement métallique'), sel('p.shield', p.shield, Object.entries(SHIELDS).map(([k, f]) => [k, f()])), tl('EN 50174-2 : un cheminement métallique réduit la distance aux câbles d’énergie'));
   h += chk('p.power', p.power, tl('Cheminement d’énergie (câbles électriques)'));
-  if (p.power) h += field(tl('Circuits 230 V 20 A'), numIn('p.circuits', p.circuits || 1, 1, 500, 1));
+  if (p.power) h += field(tl('Circuits 230 V 20 A'), numIn('p.circuits', p.circuits || 1, 1, 500, 1)) + `<p class="mut">${tl('Séparation vérifiée sur cet étage, entre colonnes montantes, et vers l’étage voisin à travers une gaine technique ou une colonne. Hypothèse de modélisation : ailleurs, la dalle sépare les étages.')}</p>`;
   h += '</section>';
   if (!p.power) {
     h += `<section class="ntSec"><h4>${tl('Remplissage')}</h4>`;

@@ -5,8 +5,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseCidr, prefixFor, usableOf, planVlsm, overlaps, contains, describe, isPrivate } from './subnet.js';
 import { ipNum } from './ip.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { once, note } from './perf.mjs';
 
 test('lecture d’un réseau CIDR', () => {
   assert.deepEqual(parseCidr('10.20.0.0/16'), { net: ipNum('10.20.0.0'), prefix: 16, aligned: true });
@@ -55,7 +55,7 @@ test('chevauchements et appartenance', () => {
 
 test('VLSM : 300 VLAN en quelques millisecondes', () => {
   const reqs = Array.from({ length: 300 }, (_, i) => ({ id: i + 2, hosts: (i * 37) % 250 + 2 }));
-  const t = performance.now(), r = planVlsm('10.0.0.0/8', reqs), dt = performance.now() - t;
+  const o = once(() => planVlsm('10.0.0.0/8', reqs)), r = o.value, dt = o.ms;
   assert.equal(r.ok, true); assert.equal(overlaps(r.subnets.map(s => ({ id: s.id, net: s.cidr }))).length, 0);
-  assert.ok(dt < 50 * PERF, `${dt} ms`);
+  assert.ok(dt < 50, note('VLSM 300 VLAN', dt, 50));
 });

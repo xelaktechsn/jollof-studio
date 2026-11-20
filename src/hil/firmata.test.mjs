@@ -36,18 +36,29 @@ function standardFirmata() {
 }
 const SRC = hasCli ? standardFirmata() : null;
 
-test('StandardFirmata sur l’Uno émulé : sorties, PWM, servo, entrées numériques et analogiques', { skip: !SRC && 'arduino-cli ou bibliothèque Firmata absents' }, async () => {
+test('StandardFirmata sur l’Uno émulé : sorties, PWM, servo, entrées numériques et analogiques', { skip: !SRC && 'arduino-cli ou bibliothèque Firmata absents' }, async t => {
   const inputs = { A0: { v: 2.5 }, D2: { d: 0 }, D4: { d: 1 } };
   const { hw } = fakeBoard({ inputs });
   const rt = boot(compileSketch(SRC), hw);
   let sink = null;
   const transport = { write: bytes => rt.send(String.fromCharCode(...bytes)), onData: fn => { sink = fn; } };
+  // Horloge du client (setTimeout, Date) simulée et liée au temps virtuel de la carte : chaque pas fait avancer la carte de
+  // 10 ms puis l'horloge du client d'autant. Délais du client, attentes du test et programme de la carte partagent donc un
+  // seul temps, et le résultat ne dépend plus de la charge de la machine (tests en parallèle).
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'] });
   const fm = createFirmata(transport, { timeout: 8000 });
-  // La carte « tourne » pendant que le client attend ses réponses.
-  const tick = setInterval(() => { runFor(rt, 10); const s = rt.takeSerial(); if (s && sink) sink([...s].map(c => c.charCodeAt(0) & 0xff)); }, 1);
-  const wait = async (ms) => { await new Promise(r => setTimeout(r, ms)); };
-  // La carte avance au rythme de la machine : sous charge (tests en parallèle), on attend l'effet, 5 s au plus.
-  const until = async (ok) => { for (const end = Date.now() + 5000; !ok() && Date.now() < end;) await wait(20); };
+  let stop = false;
+  const pump = (async () => {
+    while (!stop) {
+      runFor(rt, 10); const s = rt.takeSerial(); if (s && sink) sink([...s].map(c => c.charCodeAt(0) & 0xff));
+      t.mock.timers.tick(10);
+      await new Promise(r => setImmediate(r));
+    }
+  })();
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  // On attend l'effet, 5 s de temps virtuel au plus.
+  const until = async ok => { for (const end = Date.now() + 5000; !ok() && Date.now() < end;) await wait(20); };
+  const tick = { stop: () => { stop = true; return pump; } };
   try {
     const info = await fm.ready();
     assert.match(info.name, /\.ino$/); // StandardFirmata annonce le nom de son fichier
@@ -71,5 +82,5 @@ test('StandardFirmata sur l’Uno émulé : sorties, PWM, servo, entrées numér
     await wait(120);
     await until(() => rt.pins.get('D13').d === 0);
     assert.equal(rt.pins.get('D13').d, 0);
-  } finally { clearInterval(tick); }
+  } finally { await tick.stop(); t.mock.timers.reset(); }
 });

@@ -7,8 +7,8 @@ import assert from 'node:assert/strict';
 import { cleanPaths, cleanRoute, applyRoutes, locate, routeCable, fillOf, bendsOf, powerFactor, separationMm, pathDistance, cablesByPath } from './route.js';
 import { cleanNet } from './clean.js';
 import { issues, parallelGap, LAB } from './checks/plan.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { best, once, note } from './perf.mjs';
 
 const site = (extra = {}) => ({ buildings: [{ id: 'B1', floors: [
   { id: 'F0', level: 0, height: 3.5, rooms: [{ id: 'lt', usage: 'tr', poly: [[0, 0], [3, 0], [3, 3], [0, 3]] }, { id: 'of', usage: 'open', poly: [[3, 0], [40, 0], [40, 20], [3, 20]] }] },
@@ -171,12 +171,11 @@ test('performance : 3 bâtiments × 4 étages, 1 500 câbles au tracé automatiq
   const d = cleanNet({ site: { buildings }, paths, devices, cables });
   assert.equal(d.cables.length, 1500); assert.ok(d.cables.every(c => c.route.calc && !c.route.calc.fallback), 'tous portés par les cheminements');
   // Graphe à refaire à chaque passe (cheminement modifié) ; meilleur de trois passes (machine partagée).
-  let cold = Infinity, t;
-  for (let k = 0; k < 3; k++) { d.paths[0].pts[1][0] = 101 + k; t = performance.now(); applyRoutes(d); cold = Math.min(cold, performance.now() - t); }
-  t = performance.now(); applyRoutes(d); const warm = performance.now() - t;
-  t = performance.now(); issues(d, null, { name: id => id }); const chk = performance.now() - t;
+  let k = 0;
+  const cold = best(() => applyRoutes(d), 3, 0, () => { d.paths[0].pts[1][0] = 101 + k++; });
+  const warm = once(() => applyRoutes(d)).ms, chk = once(() => issues(d, null, { name: id => id })).ms;
   console.log(`  applyRoutes ${cold.toFixed(1)} ms (graphe neuf), ${warm.toFixed(1)} ms (en cache) ; vérifications ${chk.toFixed(1)} ms`);
-  assert.ok(cold < 50 * PERF, `applyRoutes ${cold} ms`); assert.ok(warm < 50 * PERF); assert.ok(chk < 100 * PERF, `issues ${chk} ms`);
+  assert.ok(cold < 50, note('applyRoutes, graphe neuf', cold, 50)); assert.ok(warm < 50, note('applyRoutes, en cache', warm, 50)); assert.ok(chk < 100, note('vérifications (cheminements)', chk, 100));
 });
 
 test('colonnes montantes de données et d’énergie côte à côte (J1253), séparées assez loin : rien', () => {
@@ -199,4 +198,23 @@ test('retirer une baie depuis les plans : ses équipements restent, hors baie', 
   // Avec removeRack de la partie baies (équipements gardés, hors baie).
   const RK = await import('./rack.js'), e = cleanNet({ racks: [{ id: 'R1', floor: 'F0', x: 1, y: 1 }], devices: [{ id: 'sw', type: 'switch24', rack: { id: 'R1', u: 3, face: 'front' } }] });
   assert.equal(removeRackFrom(e, 'R1', RK), 1); assert.equal(e.racks.length, 0); assert.equal(e.devices.length, 1); assert.equal(e.devices[0].rack, undefined);
+});
+
+test('séparation entre étages voisins : seulement à travers une gaine ou une colonne montante (3D)', () => {
+  const site2 = (shaft, seg = 'a') => ({ seg, buildings: [{ id: 'B1', floors: [
+    { id: 'F0', level: 0, height: 3.5, rooms: shaft ? [{ id: 'sh', name: 'Gaine', usage: 'shaft', poly: [[5, 3], [7, 3], [7, 5], [5, 5]] }] : [] },
+    { id: 'F1', level: 1, height: 3.5 }] }] });
+  const paths = [{ id: 'D', floor: 'F0', kind: 'tray', pts: [[0, 4], [20, 4]], z: 2.7, w: 300 }, { id: 'E', floor: 'F1', kind: 'trunking', power: true, circuits: 80, pts: [[0, 4.2], [20, 4.2]], z: 0.2, w: 100 }];
+  const j = d => issues(d, null, {}).filter(i => i.code === 'J1253');
+  // Dalle seule : rien ; gaine : 1 m de dénivelé, 1 000 mm − 200 mm < 300 × 6 mm (classe a, 80 circuits).
+  assert.equal(j(cleanNet({ site: site2(false), paths })).length, 0, 'la dalle sépare');
+  const got = j(cleanNet({ site: site2(true), paths }));
+  assert.equal(got.length, 1); assert.equal(got[0].id, 'D'); assert.match(got[0].text, /Gaine/);
+  assert.equal(j(cleanNet({ site: site2(true, 'b'), paths })).length, 0, 'classe b : 600 mm suffisent');
+  // Colonne montante qui relie les deux étages au même endroit (sans gaine dessinée).
+  const viaRiser = cleanNet({ site: site2(false), paths: [...paths, { id: 'R', floor: 'F0', top: 'F1', kind: 'riser', pts: [[10, 4]] }] });
+  assert.equal(j(viaRiser).length, 1);
+  // Loin de l'ouverture : rien.
+  const far = cleanNet({ site: site2(true), paths: [paths[0], { ...paths[1], pts: [[30, 4.2], [40, 4.2]] }] });
+  assert.equal(j(far).length, 0);
 });

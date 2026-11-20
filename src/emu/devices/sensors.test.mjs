@@ -84,7 +84,8 @@ void loop() {
   if (balance.is_ready()) { Serial.print(F("g=")); Serial.println(balance.get_units(3), 0); delay(500); }
 }`), hw);
   let out = '';
-  const until = (re, ms) => { for (let t = 0; t < ms && !re.test(out); t += 16) { rt.run(16); out += rt.takeSerial(); } };
+  // Temps virtuel de la carte (rt.clock()), pas le nombre d'appels : sous charge, une tranche peut avancer moins de 16 ms.
+  const until = (re, ms) => { const end = rt.clock() + ms; while (rt.clock() < end && !re.test(out)) { rt.run(16); out += rt.takeSerial(); } };
   until(/g=-?\d+\r\n/, 4000);
   assert.match(out, /offset=5(19|20|21)\d\d\r\n/);
   assert.match(out, /g=-?[01]\r\n/);

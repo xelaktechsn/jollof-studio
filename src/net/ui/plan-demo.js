@@ -93,10 +93,11 @@ export function addDemoFloor(data, o = {}) {
 export function addDetectedRooms(data, floor, usage = 'office', o = {}) {
   const polys = detectRooms(floor, o), used = siteIds(data.site), names = new Set(floor.rooms.map(r => r.name));
   let n = 1; const out = [];
-  for (const poly of polys) {
+  for (const { poly, holes } of polys) {
     while (names.has(tl('Pièce {0}', n))) n++;
     const name = tl('Pièce {0}', n); names.add(name);
     const r = { id: uid('', 'rm', used), name, usage: USAGES[usage] ? usage : 'office', poly };
+    if (holes) r.holes = holes;
     floor.rooms.push(r); out.push(r);
   }
   return out;

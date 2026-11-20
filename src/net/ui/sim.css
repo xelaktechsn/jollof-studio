@@ -78,3 +78,4 @@
 .ntSmVl .ntSmIn.tiny { width: 50px; flex: none; }
 .ntPortS { fill: var(--nt-down); stroke: none; }
 .ntPortS.g { fill: var(--nt-g); } .ntPortS.f { fill: var(--nt-f); } .ntPortS.e { fill: var(--nt-e); } .ntPortS.err, .ntPortS.down { fill: var(--nt-err); } .ntPortS.pass { fill: var(--line-3); }
+.ntSmRt .ntSmIn.tiny { width: 44px; }

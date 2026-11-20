@@ -253,3 +253,64 @@ test('listes d’accès sans état : la réponse TCP doit être permise (« esta
   const c = campus(); c.devices[0].p.svis[0].o82 = true; const l2 = lanOf(cleanNet(c));
   assert.equal(l2.ipOf('pc1').o82.circuit, 'vlan10');
 });
+
+/**
+ * OSPF à plusieurs aires : A, B, C, D sur un même segment de l'aire 0 (10.0.0.0/29, un switch) ; B est ABR vers l'aire 1
+ * (lien 10.1.12.0/30 vers C1, réseau des postes 10.1.5.0/24) ; C est ABR vers l'aire 2 (10.2.0.0/24).
+ */
+function multiArea(o = {}) {
+  const os = (rid, nets, extra = {}) => ({ on: true, rid, nets: nets.map(([net, area]) => ({ net, area })), ...extra });
+  return plan([
+    ['sw', 'switch'],
+    ['ra', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.0.0.1', prefix: 29 }], dhcp: [], ospf: os('3.3.3.3', [['10.0.0.0/29', 0]], o.ra) }],
+    ['rb', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.0.0.2', prefix: 29 }, { port: 'ge1', ip: '10.1.12.1', prefix: 30 }], dhcp: [], ospf: os('2.2.2.2', [['10.0.0.0/29', 0], ['10.1.0.0/16', 1]], o.rb) }],
+    ['rc', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.0.0.3', prefix: 29 }, { port: 'ge1', ip: '10.2.0.1', prefix: 24 }], dhcp: [], ospf: os('1.1.1.1', [['10.0.0.0/29', 0], ['10.2.0.0/16', o.cArea ?? 2]], o.rc) }],
+    ['rd', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.0.0.4', prefix: 29 }], dhcp: [], ospf: os('0.0.0.4', [['10.0.0.0/29', 0]], o.rd) }],
+    ['c1', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.1.12.2', prefix: 30 }, { port: 'ge1', ip: '10.1.5.1', prefix: 24 }], dhcp: [], ospf: os('5.5.5.5', [['10.1.0.0/16', 1]]) }],
+    ['h1', 'pc', { ip: { mode: 'static', ip: '10.1.5.10', prefix: 24, gw: '10.1.5.1' } }], ['h2', 'pc', { ip: { mode: 'static', ip: '10.2.0.10', prefix: 24, gw: '10.2.0.1' } }]
+  ], [[['ra', 'ge0'], ['sw', 'p1']], [['rb', 'ge0'], ['sw', 'p2']], [['rc', 'ge0'], ['sw', 'p3']], [['rd', 'ge0'], ['sw', 'p4']],
+    [['rb', 'ge1'], ['c1', 'ge0']], [['h1', 'eth0'], ['c1', 'ge1']], [['h2', 'eth0'], ['rc', 'ge1']]]);
+}
+
+test('OSPF multi-aires : ABR, routes inter-aires, DR et BDR (priorité 0), 2-Way entre DROTHER', () => {
+  let data = multiArea(), lan = lanOf(data), O = lan.ospf();
+  assert.deepEqual([...O.abr].sort(), ['rb', 'rc']);
+  const seg = O.segs.find(s => s.net === '10.0.0.0/29');
+  assert.equal(seg.dr.r, 'ra'); assert.equal(seg.bdr.r, 'rb'); // plus hauts identifiants
+  const st = (a, b) => O.adj.find(e => (e.a === a && e.b === b) || (e.a === b && e.b === a)).state;
+  assert.equal(st('rc', 'rd'), '2WAY'); assert.equal(st('ra', 'rd'), 'FULL'); assert.equal(st('rb', 'rc'), 'FULL');
+  // C1 (aire 1 seulement) apprend l'aire 2 par l'ABR B : route inter-aire.
+  const r = lan.lookup('c1', '10.2.0.10'); assert.equal(r.kind, 'ospf'); assert.equal(r.type, 'inter'); assert.equal(r.via, '10.1.12.1');
+  assert.ok(lan.ping('h1', '10.2.0.10').ok);
+  assert.deepEqual(lan.trace('h1', '10.2.0.10').hops.map(h => h.ip), ['10.1.5.1', '10.1.12.1', '10.0.0.3', '10.2.0.10']);
+  // Priorité 0 sur A : B devient DR, C BDR.
+  data = multiArea({ ra: { ifs: { ge0: { prio: 0 } } } }); O = lanOf(data).ospf();
+  const s2 = O.segs.find(s => s.net === '10.0.0.0/29'); assert.equal(s2.dr.r, 'rb'); assert.equal(s2.bdr.r, 'rc');
+  // Toutes les priorités à 0 : pas de DR, J1299.
+  const z = { ifs: { ge0: { prio: 0 } } };
+  data = multiArea({ ra: z, rb: z, rc: z, rd: z }); lan = lanOf(data);
+  assert.ok(codes(lan, data).includes('J1299')); assert.equal(lan.lookup('ra', '10.2.0.10'), null);
+});
+
+test('OSPF : aire sans lien avec l’aire 0 (J1297), ABR sans aire 0 (J1298)', () => {
+  // C met son interface du segment commun en aire 3 : l'aire 2 n'a plus d'ABR relié à l'aire 0, C n'a pas l'aire 0.
+  const data = multiArea({ rc: { nets: [{ net: '10.0.0.0/29', area: 3 }, { net: '10.2.0.0/16', area: 2 }] } }), lan = lanOf(data);
+  const c = codes(lan, data);
+  assert.ok(c.includes('J1297') && c.includes('J1298') && c.includes('J1238'), c.join(' '));
+  assert.equal(lan.lookup('c1', '10.2.0.10'), null);
+});
+
+test('OSPF : chemins de même coût (ECMP), tous dans la route, le premier pour le ping', () => {
+  const os = nets => ({ on: true, nets: nets.map(net => ({ net, area: 0 })) });
+  const data = plan([
+    ['x', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.9.1.1', prefix: 30 }, { port: 'ge1', ip: '10.9.2.1', prefix: 30 }], dhcp: [], ospf: os(['10.9.0.0/16']) }],
+    ['y', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.9.1.2', prefix: 30 }, { port: 'ge1', ip: '10.9.3.1', prefix: 30 }], dhcp: [], ospf: os(['10.9.0.0/16']) }],
+    ['z', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.9.2.2', prefix: 30 }, { port: 'ge1', ip: '10.9.4.1', prefix: 30 }], dhcp: [], ospf: os(['10.9.0.0/16']) }],
+    ['w', 'routerpro', { ifs: [{ port: 'ge0', ip: '10.9.3.2', prefix: 30 }, { port: 'ge1', ip: '10.9.4.2', prefix: 30 }, { port: 'ge2', ip: '10.9.9.1', prefix: 24 }], dhcp: [], ospf: os(['10.9.0.0/16']) }],
+    ['hw', 'pc', { ip: { mode: 'static', ip: '10.9.9.10', prefix: 24, gw: '10.9.9.1' } }]
+  ], [[['x', 'ge0'], ['y', 'ge0']], [['x', 'ge1'], ['z', 'ge0']], [['y', 'ge1'], ['w', 'ge0']], [['z', 'ge1'], ['w', 'ge1']], [['hw', 'eth0'], ['w', 'ge2']]]);
+  const lan = lanOf(data), r = lan.lookup('x', '10.9.9.10');
+  assert.equal(r.paths.length, 2); assert.deepEqual(r.paths.map(p => p.via), ['10.9.1.2', '10.9.2.2']); assert.equal(r.via, '10.9.1.2');
+  assert.equal(r.metric, 3);
+  assert.ok(lan.ping('x', '10.9.9.10').ok);
+});

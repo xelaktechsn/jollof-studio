@@ -393,8 +393,18 @@ export const modelNote = () => tl('Valeurs « mesurées » simulées par un mod�
 export const fmtNum = (v, d = 1) => { const t = (+v).toFixed(d); return isEn ? t : t.replace('.', ','); };
 export const verdictText = v => ({ pass: 'PASS', 'pass*': 'PASS*', 'fail*': 'FAIL*', fail: 'FAIL' }[v] || '—');
 const csvCell = v => { const s = String(v ?? ''); return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
-/** Tableau CSV des résultats (une ligne par lien). rows : [{ label, kind, limit, verdict, margin, param, pair, f, len, at, stale? }]. */
-export function testsCsv(rows) {
+/**
+ * Mode examen (src/net/exam.js) : ce que montre le testeur. Restent les mesures (valeurs, courbes), les limites choisies et
+ * la carte de câblage brute (broche → broche d'arrivée) ; partent les jugements : PASS/FAIL, marges, paramètre le plus
+ * faible, défauts nommés. Carte brute : « 1→1 2→2 3→× … » (× : aucune broche seule en face, ouvert ou court-circuit).
+ */
+export const rawWireMap = res => [1, 2, 3, 4, 5, 6, 7, 8].map(p => `${p}→${(res.wiremap.map || [])[p] ?? '×'}`).join(' ');
+/** Tableau CSV des résultats (une ligne par lien). rows : [{ label, kind, limit, verdict, margin, param, pair, f, len, at, stale? }]. o.exam : sans jugement. */
+export function testsCsv(rows, o = {}) {
+  if (o.exam) {
+    const head = [tl('Lien'), tl('Type'), tl('Limite'), tl('Longueur (m)'), tl('Date'), tl('À jour')];
+    return [head, ...rows.map(r => [r.label, r.kind === 'pl' ? tl('lien permanent') : tl('canal'), limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit, r.len, r.at || '', r.stale ? tl('non') : tl('oui')])].map(l => l.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  }
   const head = [tl('Lien'), tl('Type'), tl('Limite'), tl('Résultat'), tl('Marge (dB)'), tl('Paramètre le plus faible'), tl('Paire'), tl('Fréquence (MHz)'), tl('Longueur (m)'), tl('Date'), tl('À jour')];
   const lines = rows.map(r => [r.label, r.kind === 'pl' ? tl('lien permanent') : tl('canal'), limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit, verdictText(r.verdict), r.margin, paramName(r.param), r.pair || '', r.f ?? '', r.len, r.at || '', r.stale ? tl('non') : tl('oui')]);
   return [head, ...lines].map(l => l.map(csvCell).join(',')).join('\r\n') + '\r\n';
@@ -437,6 +447,12 @@ const stText = s => verdictText(s);
 /** Tableau des paramètres d'un résultat (HTML). */
 export function paramsTable(res, o = {}) {
   const P = res.params, rows = [];
+  if (o.exam) {
+    // Mode examen : valeur mesurée et limite seulement.
+    const ex = [[paramName('wiremap'), rawWireMap(res), ''], [paramName('length'), `${fmt(P.length.v)} m`, `${P.length.lim} m`],
+      [paramName('delay'), `${fmt(Math.max(...P.delay.v), 0)} ns`, `${P.delay.lim} ns`], [paramName('skew'), `${fmt(P.skew.v, 0)} ns`, `${P.skew.lim} ns`]];
+    return `<table class="${o.cls || 'ntCeTable'}"><thead><tr><th>${tl('Paramètre')}</th><th>${tl('Valeur')}</th><th>${tl('Limite')}</th></tr></thead><tbody>${ex.map(r => `<tr><td>${esc(r[0])}</td><td>${esc(r[1])}</td><td>${esc(r[2])}</td></tr>`).join('')}</tbody></table><p class="${o.cls != null ? '' : 'ntCeNote'}">${tl('Mode examen : les courbes donnent les paramètres en dB face à leur limite ; à vous de conclure.')}</p>`;
+  }
   const faults = res.wiremap.faults.length ? res.wiremap.faults.map(f => `${f.type} (${f.pins.join(', ')})`).join(' ; ') : tl('droit, sans défaut');
   rows.push([paramName('wiremap'), stText(P.wiremap.st), esc(faults), '', '', '']);
   rows.push([paramName('length'), stText(P.length.st), `${fmt(P.length.v)} m`, `${P.length.lim} m`, `${fmt(P.length.margin)} m`, '']);
@@ -454,6 +470,7 @@ export function paramsTable(res, o = {}) {
  * avec ses paramètres et ses courbes. o : { title, project, at, rows (testsCsv), details: [{ label, res (avec courbes) }] }.
  */
 export function reportHtml(o) {
+  if (o.exam) return reportExam(o);
   const rows = o.rows || [], count = v => rows.filter(r => r.verdict === v).length;
   const cls = v => ({ pass: 'ok', 'pass*': 'mg', 'fail*': 'bad', fail: 'bad' }[v] || '');
   const css = `body{font:12px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 6px}
@@ -474,4 +491,19 @@ table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #d
 <p class="warn">${esc(modelNote())} ${esc(limitsNote())}</p>
 <p><b>${tl('{0} lien(s)', rows.length)}</b> · <span class="ok">PASS ${count('pass')}</span> · <span class="mg">PASS* ${count('pass*')}</span> · <span class="bad">FAIL* ${count('fail*')}</span> · <span class="bad">FAIL ${count('fail')}</span></p>
 ${summary}${pages}</body></html>`;
+}
+/** Rapport du mode examen : liens, limites, mesures et courbes, sans verdict ni marge. */
+function reportExam(o) {
+  const rows = o.rows || [];
+  const css = `body{font:12px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif;color:#111;margin:24px}h1{font-size:20px;margin:0 0 4px}h2{font-size:15px;margin:0 0 6px}.sub{color:#555;margin:0 0 14px}
+.warn{border:1px solid #f59e0b;background:#fffbeb;padding:8px 10px;border-radius:6px;margin:10px 0}table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #d1d5db;padding:4px 6px;text-align:left;vertical-align:top}th{background:#f3f4f6}
+.page{page-break-before:always;break-before:page;padding-top:4px}.charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.charts figure{margin:0}.charts figcaption{font-weight:600;margin-bottom:2px}svg{width:100%;height:auto}text{font-size:10px}@media print{body{margin:10mm}}`;
+  const summary = `<table><thead><tr><th>${tl('Lien')}</th><th>${tl('Limite')}</th><th>${tl('Longueur (m)')}</th><th>${tl('Date')}</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit)}</td><td>${fmt(r.len)}</td><td>${esc(String(r.at || '').slice(0, 10))}</td></tr>`).join('')}</tbody></table>`;
+  const pages = (o.details || []).map(d => {
+    const r = d.res, li = limitInfo(r.limit);
+    return `<section class="page"><h2>${esc(d.label)}</h2><p class="sub">${esc(li ? li.name : r.limit)} · ${tl('longueur {0} m', fmt(r.len))}</p>${paramsTable(r, { cls: '', exam: true })}<div class="charts">${['il', 'next', 'psnext', 'rl'].map(p => `<figure><figcaption>${esc(paramName(p))}</figcaption>${chartSvg(r, p, { print: true, w: 520, h: 250 })}</figure>`).join('')}</div></section>`;
+  }).join('');
+  return `<!doctype html><html lang="${isEn ? 'en' : 'fr'}"><head><meta charset="utf-8"><title>${esc(o.title || tl('Rapport de certification'))}</title><style>${css}</style></head><body>
+<h1>${esc(o.title || tl('Rapport de certification'))}</h1><p class="sub">${esc(o.project || '')}${o.project ? ' · ' : ''}${esc(String(o.at || '').slice(0, 16).replace('T', ' '))}</p>
+<p class="warn">${esc(tl('Mode examen : mesures et limites, sans verdict.'))} ${esc(modelNote())} ${esc(limitsNote())}</p><p><b>${tl('{0} lien(s)', rows.length)}</b></p>${summary}${pages}</body></html>`;
 }

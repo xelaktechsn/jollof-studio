@@ -18,8 +18,8 @@ import '../check/sources-net.js';
 import { EXPLAIN } from '../check/explain.js';
 import '../check/explain-net.js';
 import { CODES as ALL_CODES } from '../check/codes.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { best, note } from './perf.mjs';
 
 const rk = (o = {}) => cleanRacks([{ id: 'r1', name: 'BAIE1', ...o }])[0];
 const dev = (id, type, u, face = 'front', extra = {}) => ({ id, type, name: id.toUpperCase(), x: 0, y: 0, p: DEVICES[type] ? DEVICES[type].props() : {}, rack: { id: 'r1', u, face }, ...extra });
@@ -251,11 +251,11 @@ test('taille réelle : 30 baies, 3000 équipements, vérification en moins de 50
   for (let i = 0; i < 1800; i++) { const r = i % 30, k = 2 * (Math.floor(i / 30) % 20) + 1; cables.push({ id: 'c' + i, a: ['o' + i, 'back'], b: [`d${r}_${k}`, 'b' + (1 + Math.floor(i / 600))], cat: 'cat6', len: 40, wire: makeCable('straight') }); }
   const d = { devices, cables, racks: cleanRacks(racks) };
   issues(d, null, names); patchingSchedule(d, null);
-  // Meilleur de 3 passes (machine partagée : une passe peut être ralentie par un autre processus).
-  let dt = Infinity, list = [], rows = [];
-  for (let k = 0; k < 3; k++) { const t0 = performance.now(); list = issues(d, null, names); rows = patchingSchedule(d, null); racksSummary(d, null); dt = Math.min(dt, performance.now() - t0); }
+  // Meilleur de 3 passes en temps CPU (src/net/perf.mjs).
+  let list = [], rows = [];
+  const dt = best(() => { list = issues(d, null, names); rows = patchingSchedule(d, null); racksSummary(d, null); }, 3, 0);
   assert.ok(list.length > 0 && rows.length > 0);
-  assert.ok(dt < 50 * PERF, `${dt.toFixed(1)} ms`);
+  assert.ok(dt < 50, note('baies, 30 baies', dt, 50));
 });
 
 test('removeRack : équipements hors baie, ou supprimés avec leurs câbles', () => {

@@ -159,12 +159,12 @@ export function createWifiLayer(ctx) {
       const at = ctx && ctx.data ? WF.findFloor(ctx.data(), res.floor) : null;
       h += mode === 'sinr' && res.sinr ? `<p><b>${Math.round(WF.floorPct(res, at && at.floor, set.sinr, 'sinr'))} %</b> ${esc(tl('de l’étage à un SINR de {0} dB ou plus', set.sinr))}</p>`
         : `<p><b>${Math.round(WF.floorPct(res, at && at.floor, set.target))} %</b> ${esc(tl('de l’étage à {0} dBm ou plus', set.target))}</p>`;
-      const rows = at ? (at.floor.rooms || []).filter(WF.needsWifi).map(r => { const cells = WF.cellsIn(res, r.poly); return { r, pct: cells.length ? WF.pctAbove(res, set.target, cells) : 0 }; }).sort((a, b) => a.pct - b.pct).slice(0, 8) : [];
+      const rows = at ? (at.floor.rooms || []).filter(WF.needsWifi).map(r => { const cells = WF.cellsIn(res, r.poly, r.holes); return { r, pct: cells.length ? WF.pctAbove(res, set.target, cells) : 0 }; }).sort((a, b) => a.pct - b.pct).slice(0, 8) : [];
       // Pièces les moins bien couvertes : repliées (la carte ne doit pas cacher l'étage), dépliées d'office s'il y a un trou.
       if (rows.length) h += `<details class="ntWfMore"${rows.some(x => x.pct < set.cover) ? ' open' : ''}><summary>${esc(tl('Couverture par pièce ({0})', rows.length))}</summary><table class="ntWfRooms">${rows.map(x => `<tr class="${x.pct < set.cover ? 'ntWfBad' : ''}"><td>${esc(x.r.name || x.r.id)}</td><td>${Math.round(x.pct)} %</td></tr>`).join('')}</table></details>`;
     } else h += `<p class="ntWfMut">${esc(tl('Calcul de la couverture…'))}</p>`;
     h += `<p class="ntWfMut">${esc(tl('Modèle simplifié : affaiblissement UIT-R P.1238, murs UIT-R P.2040 (incidence normale), bruit supposé {0} dBm. Une mesure sur place reste nécessaire.', set.noise))}</p>`;
-    if (band === 'b6' || (band === 'any' && res && res.parts && res.parts.b6)) h += `<p class="ntWfMut">${esc(tl('6 GHz : coefficients de l’UIT-R P.1238 extrapolés de 5,8 GHz (aucune valeur à 6 GHz).'))}</p>`;
+    if (band === 'b6' || (band === 'any' && res && res.parts && res.parts.b6)) h += `<p class="ntWfMut">${esc(tl('6 GHz : N du modèle général de l’UIT-R P.1238-13 (bureaux, 0,3 à 255 GHz) ; perte d’un plancher extrapolée de 5,8 GHz (aucune valeur à 6 GHz).'))}</p>`;
     h += '</div>';
     return h;
   }
@@ -181,7 +181,8 @@ export function createWifiLayer(ctx) {
     const d = ctx.data(), s = WF.wifiSettings(d), field = (label, html) => `<label class="ntWfF"><span>${esc(label)}</span>${html}</label>`;
     const numIn = (k, v, lo, hi, st = 1) => `<input type="number" data-ntwf-set="${k}" value="${v}" min="${lo}" max="${hi}" step="${st}">`;
     return `<section class="ntWfSet"><h4>${esc(tl('Réglages Wi-Fi du projet'))}</h4>`
-      + field(tl('Domaine réglementaire'), `<select data-ntwf-set="reg"><option value="eu"${s.reg === 'eu' ? ' selected' : ''}>${esc(tl('Europe (CE)'))}</option><option value="us"${s.reg === 'us' ? ' selected' : ''}>${esc(tl('États-Unis (FCC)'))}</option></select>`)
+      + field(tl('Domaine réglementaire'), `<select data-ntwf-set="reg"><option value="eu"${s.reg === 'eu' ? ' selected' : ''}>${esc(tl('Europe (CE)'))}</option><option value="us"${s.reg === 'us' ? ' selected' : ''}>${esc(tl('États-Unis (FCC)'))}</option><option value="us-sp"${s.reg === 'us-sp' ? ' selected' : ''}>${esc(tl('États-Unis, puissance standard (AFC)'))}</option></select>`)
+      + (s.reg === 'us-sp' ? `<p class="ntWfMut">${esc(tl('6 GHz de puissance standard : l’AFC, qui accorde canaux et puissance, n’est pas simulée ; elle est supposée accorder tout ce que la règle permet (36 dBm, 23 dBm/MHz, 5925–6425 et 6525–6875 MHz).'))}</p>` : '')
       + field(tl('Modèle de propagation'), `<select data-ntwf-set="env">${WF.ENVS.map(k => `<option value="${k}"${k === s.env ? ' selected' : ''}>${esc(ENV_NAME[k]())}</option>`).join('')}</select>`)
       + `<p class="ntWfMut">${esc(ENV_NOTE[s.env]())}</p>`
       + field(tl('Signal visé (dBm)'), numIn('target', s.target, -90, -40)) + field(tl('Bruit supposé (dBm)'), numIn('noise', s.noise, -110, -70))
@@ -196,16 +197,16 @@ export function createWifiLayer(ctx) {
     let h = `<section class="ntWfSet"><h4>${esc(tl('Radios Wi-Fi'))}</h4>`;
     for (const b of WF.bandsOf(dev.type)) {
       // 6 GHz : tous les canaux autorisés du domaine (PSC marqués) ; ailleurs, les canaux primaires de la largeur.
-      const x = r[b], chs = b === 'b6' ? WF.allowed(b, s.reg).filter(c => WF.block6(c, x.w) && WF.allowed(b, s.reg).includes(WF.block6(c, x.w)[1])) : WF.channels(b, s.reg, x.w), all = chs.includes(x.ch) ? chs : [x.ch, ...chs];
+      const x = r[b], chs = b === 'b6' ? WF.allowed(b, s.reg).filter(c => WF.ok6(c, x.w, s.reg)) : WF.channels(b, s.reg, x.w), all = chs.includes(x.ch) ? chs : [x.ch, ...chs];
       const pf = WF.powerFault(dev.type, b, x, s.reg), rf = WF.radioFault(dev.type, b, x, s.reg);
       h += `<fieldset class="ntWfRadio"><legend><label><input type="checkbox" data-ntwf-ap="${b}.on"${x.on ? ' checked' : ''}> ${BN[b]()}</label></legend>`
         + `<label class="ntWfF"><span>${esc(tl('Canal'))}</span><select data-ntwf-ap="${b}.ch">${all.map(c => `<option value="${c}"${c === x.ch ? ' selected' : ''}>${c}${b === 'b6' && WF.isPsc(c) ? ' (PSC)' : ''}</option>`).join('')}</select></label>`
         + `<label class="ntWfF"><span>${esc(tl('Largeur'))}</span><select data-ntwf-ap="${b}.w">${spec[b].widths.map(w => `<option value="${w}"${w === x.w ? ' selected' : ''}>${w} MHz</option>`).join('')}</select></label>`
         + `<label class="ntWfF"><span>${esc(tl('Puissance (dBm)'))}</span><input type="number" data-ntwf-ap="${b}.tx" value="${x.tx}" min="0" max="36" step="1"></label>`
         + `<label class="ntWfF"><span>${esc(tl('Gain d’antenne (dBi)'))}</span><input type="number" data-ntwf-ap="${b}.gain" value="${x.gain}" min="0" max="20" step="0.5"></label>`
-        + `<p class="ntWfMut">${esc(b === 'b6' ? tl('Fiche : {0} dBm au plus (conduite) ; point d’accès d’intérieur (LPI) : PIRE {1} dBm au plus sur {2} MHz.', spec[b].tx, WF.lpiMax(s.reg, x.w), x.w)
+        + `<p class="ntWfMut">${esc(b === 'b6' ? (s.reg === 'us-sp' ? tl('Fiche : {0} dBm au plus (conduite) ; puissance standard : PIRE {1} dBm au plus sur {2} MHz.', spec[b].tx, WF.lpiMax(s.reg, x.w), x.w) : tl('Fiche : {0} dBm au plus (conduite) ; point d’accès d’intérieur (LPI) : PIRE {1} dBm au plus sur {2} MHz.', spec[b].tx, WF.lpiMax(s.reg, x.w), x.w))
           : tl('Fiche : {0} dBm au plus (conduite), PIRE {1} dBm en Europe.', spec[b].tx, (b === 'b24' ? spec[b].eirp : spec[b].eirp && spec[b].eirp[WF.subband(x.ch)]) || '—'))}</p>`
-        + (pf || rf ? `<p class="ntWfWarn">${esc(rf ? tl('Canal ou largeur non utilisable ici.') : pf.kind === 'lpi' ? tl('PIRE au-delà de la limite LPI ({0} dBm au plus).', pf.max) : tl('Puissance au-delà de la fiche ({0} dBm au plus).', pf.max))}</p>` : '')
+        + (pf || rf ? `<p class="ntWfWarn">${esc(rf ? tl('Canal ou largeur non utilisable ici.') : pf.kind === 'lpi' ? tl('PIRE au-delà de la limite réglementaire à 6 GHz ({0} dBm au plus).', pf.max) : tl('Puissance au-delà de la fiche ({0} dBm au plus).', pf.max))}</p>` : '')
         + '</fieldset>';
     }
     return h + `<p class="ntWfMut">${esc(tl('Hauteur de pose : {0} m (plafond par défaut).', dev.loc && dev.loc.h > 0 ? fmt(dev.loc.h) : '—'))}</p></section>`;

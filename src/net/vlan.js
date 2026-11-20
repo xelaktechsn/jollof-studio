@@ -22,7 +22,8 @@
 //     l3switch en plus : routing: bool, svis: [{ vlan, ip, prefix, helper, o82, aclIn, aclOut }], routes, dhcp, acls, ospf.
 //   OSPF (l3switch, routerpro), aire unique : ospf: { on, rid: '' (sinon la plus haute adresse), ref: 100 (bande de
 //     référence, Mb/s), originate: bool (annonce la route par défaut), nets: [{ net: 'a.b.c.d/nn', area }] (« network … area »),
-//     ifs: { [nom d'interface : 'ge1', 'ge1.10', 'vlan10']: { cost: 0, hello: 10, dead: 40, passive: bool } } }.
+//     ifs: { [nom d'interface : 'ge1', 'ge1.10', 'vlan10']: { cost: 0, hello: 10, dead: 40, passive: bool, prio: 0–255 (1 :
+//     élection du routeur désigné ; 0 : jamais DR) } }. Aires : 0 (dorsale) et autres, routeurs de bordure (ospf.js).
 //   Routeur professionnel (routerpro), dans d.p :
 //     ifs: [{ port: 'ge0'…'sfp0', vlan: 0 (interface) | 1–4094 (sous-interface 802.1Q), mode: 'static'|'dhcp', ip, prefix,
 //            helper (relais DHCP vers ce serveur), o82 (option 82 du relais), nat: ''|'inside'|'outside', aclIn, aclOut }] ;
@@ -188,13 +189,13 @@ export function cleanOspf(raw) {
   for (const n of arr(o.nets, 64)) { const x = obj(n), t = netOk(x.net); if (t) nets.push({ net: t, area: num(x.area, 0, 4294967295, 0) | 0 }); }
   for (const [k, v] of Object.entries(obj(o.ifs)).slice(0, 256)) {
     const name = String(k).replace(/[^\w.]/g, '').slice(0, 24), x = obj(v); if (!name) continue;
-    const T = L('OSPF_TIMERS'), c = { cost: num(x.cost, 0, L('OSPF_COST')[1], 0) | 0, hello: num(x.hello, 1, 65535, T.hello) | 0, dead: num(x.dead, 1, 65535, T.dead) | 0, passive: !!x.passive };
-    if (c.cost || c.hello !== T.hello || c.dead !== T.dead || c.passive) ifs[name] = c;
+    const T = L('OSPF_TIMERS'), P0 = NET.OSPF_PRIO, c = { cost: num(x.cost, 0, L('OSPF_COST')[1], 0) | 0, hello: num(x.hello, 1, 65535, T.hello) | 0, dead: num(x.dead, 1, 65535, T.dead) | 0, passive: !!x.passive, prio: num(x.prio, 0, P0.max, P0.v) | 0 };
+    if (c.cost || c.hello !== T.hello || c.dead !== T.dead || c.passive || c.prio !== P0.v) ifs[name] = c;
   }
   return { on: !!o.on, rid: ipOr(o.rid), ref: num(o.ref, 1, 4294967, L('OSPF_REF_MBPS')) | 0, originate: !!o.originate, nets, ifs };
 }
 /** Réglages OSPF d'une interface (défauts : minuterie 10 s / 40 s, coût selon la bande de référence). */
-export const ospfIf = (P, name) => ({ cost: 0, hello: L('OSPF_TIMERS').hello, dead: L('OSPF_TIMERS').dead, passive: false, ...(((P && P.ospf && P.ospf.ifs) || {})[name] || {}) });
+export const ospfIf = (P, name) => ({ cost: 0, hello: L('OSPF_TIMERS').hello, dead: L('OSPF_TIMERS').dead, passive: false, prio: L('OSPF_PRIO'), ...(((P && P.ospf && P.ospf.ifs) || {})[name] || {}) });
 const cleanSfp = (raw, cages) => { const o = obj(raw), out = {}; for (const c of cages) if (typeof o[c] === 'string' && o[c].trim()) out[c] = txt(o[c], 24); return out; };
 
 /**

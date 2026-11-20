@@ -408,7 +408,17 @@ test('Électrolytique à l’envers : elecFaults signale capreversed', () => {
 });
 
 /** Moyenne en ms de n résolutions. */
-function time(n, fn) { fn(); const t = performance.now(); for (let i = 0; i < n; i++) fn(i); return (performance.now() - t) / n; }
+/**
+ * Coût d'une résolution (ms) : n appels en 10 lots, moyenne du lot le plus rapide. Même travail, même seuil ; mais un lot
+ * interrompu par l'ordonnanceur (suite complète de tests en parallèle sur tous les cœurs) ne compte plus : on mesure le
+ * code, pas la charge de la machine.
+ */
+function time(n, fn) {
+  fn();
+  const per = Math.max(1, Math.ceil(n / 10)); let best = Infinity;
+  for (let done = 0; done < n; done += per) { const k = Math.min(per, n - done), t = performance.now(); for (let i = 0; i < k; i++) fn(done + i); best = Math.min(best, (performance.now() - t) / k); }
+  return best;
+}
 
 test('Performance : exemple 01 résolu 1000 fois, < 2 ms par résolution', t => {
   const { comps, wires } = load('01-station-meteo.jollof'), A = analyze(comps, wires);

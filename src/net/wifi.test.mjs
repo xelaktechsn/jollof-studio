@@ -7,8 +7,8 @@ import * as WF from './wifi.js';
 import { issues, LAB, CODES, SRC } from './checks/wifi.js';
 import { cleanNet } from './clean.js';
 import { NET } from './limits.js';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { once, note } from './perf.mjs';
 
 const near = (a, b, eps = 0.05) => assert.ok(Math.abs(a - b) <= eps, `${a} ≈ ${b}`);
 /** Un étage rectangulaire w × h, murs extérieurs en béton, plus les murs/pièces donnés. */
@@ -225,13 +225,13 @@ test('performance : étage de 100 × 60 m, 300 murs, 20 points d’accès', () =
   const data = { devices, site: { buildings: [{ id: 'B', floors: [{ id: 'P', level: 0, elev: 0, height: 3.5, ceil: 2.7, walls, doors: [], rooms }] }] } };
   WF.coverage(data, 'P', 'b5', { step: 1 }); // échauffement du moteur JS
   devices[0].loc.x += 0.5;
-  let t = performance.now(); const res = WF.coverage(data, 'P', 'b5'); const map = performance.now() - t;
+  const m1 = once(() => WF.coverage(data, 'P', 'b5')), res = m1.value, map = m1.ms;
   assert.ok(res.nx * res.ny > 15000);
   devices[0].loc.x += 0.5;
-  t = performance.now(); const list = issues(data, null, { name: id => id }); const chk = performance.now() - t;
+  const c1 = once(() => issues(data, null, { name: id => id })), list = c1.value, chk = c1.ms;
   console.log(`    carte ${res.nx}×${res.ny} (pas ${res.step} m) : ${map.toFixed(0)} ms ; vérifications (2 bandes, pas 1 m) : ${chk.toFixed(0)} ms, ${list.length} remarque(s)`);
-  assert.ok(map < 1000 * PERF, `carte en ${map} ms`);
-  assert.ok(chk < 1500 * PERF, `vérifications en ${chk} ms`);
+  assert.ok(map < 1000, note('Wi-Fi, carte', map, 1000));
+  assert.ok(chk < 1500, note('Wi-Fi, vérifications', chk, 1500));
 });
 
 test('point d’accès sans courant : il n’émet rien', async () => {
@@ -285,11 +285,11 @@ test('taille réelle : 3 bâtiments × 4 étages, 80 points d’accès', () => {
   }
   const data = { devices, site: { buildings } };
   assert.equal(devices.length, 80);
-  let t = performance.now(); const first = issues(data, null, { name: id => id }); const t1 = performance.now() - t;
+  const w1 = once(() => issues(data, null, { name: id => id })), first = w1.value, t1 = w1.ms;
   devices[0].loc.x += 1; // un point d'accès déplacé : seuls son étage et ses voisins se recalculent
-  t = performance.now(); issues(data, null, { name: id => id }); const t2 = performance.now() - t;
+  const t2 = once(() => issues(data, null, { name: id => id })).ms;
   console.log(`    12 étages, 80 points d’accès : premières vérifications ${t1.toFixed(0)} ms, après un déplacement ${t2.toFixed(0)} ms (${first.length} remarque(s))`);
-  assert.ok(t1 < 1500 * PERF && t2 < 500 * PERF);
+  assert.ok(t1 < 1500, note('Wi-Fi 80 AP, premières vérifications', t1, 1500)); assert.ok(t2 < 500, note('Wi-Fi 80 AP, après un déplacement', t2, 500));
 });
 
 test('6 GHz : canaux, blocs, PSC, domaines, limite LPI', () => {
@@ -322,7 +322,7 @@ test('6 GHz : canaux, blocs, PSC, domaines, limite LPI', () => {
   assert.equal(WF.cleanRadios({ b6: { ch: 37 } }, 'ap').b6, undefined);
   // Pertes : P.2040 à 6185 MHz, plus forte qu'à 5,2 GHz pour le béton ; P.1238 extrapolé (N 24, plancher 22 dB).
   assert.ok(WF.wallLoss({ mat: 'concrete', t: 0.2 }, 'b6') > WF.wallLoss({ mat: 'concrete', t: 0.2 }, 'b5'));
-  near(WF.pathLoss(10, 'b6', 'office') - WF.pathLoss(1, 'b6', 'office'), 24, 1e-9); assert.equal(WF.floorLoss('b6', 'walls'), 22);
+  near(WF.pathLoss(10, 'b6', 'office') - WF.pathLoss(1, 'b6', 'office'), 23.9, 1e-9); assert.equal(WF.floorLoss('b6', 'walls'), 22); // N = 10α (P.1238-13, tableau 2)
 });
 
 test('carte 6 GHz et SINR : brouilleurs au prorata du spectre commun', () => {
@@ -362,4 +362,26 @@ test('vérifications 6 GHz : LPI, domaine, ap6e sans plan', () => {
   d.devices[0].p.radios.b6.tx = 14; d.devices[0].p.radios.b6.ch = 117; assert.ok(codes().includes('J1271'));
   d.wifi = { reg: 'us' }; assert.ok(!codes().includes('J1271'));
   for (const b of WF.BANDS) d.devices[0].p.radios[b].on = false; assert.ok(codes().includes('J1272'));
+});
+
+test('6 GHz puissance standard (États-Unis, AFC supposée accordée)', () => {
+  assert.equal(WF.cleanWifi({ reg: 'us-sp' }).reg, 'us-sp'); assert.equal(WF.cleanWifi({ reg: 'xx' }).reg, 'eu');
+  const sp = WF.allowed('b6', 'us-sp');
+  assert.equal(sp[0], 1); assert.equal(sp.includes(93), true); assert.equal(sp.includes(97), false); assert.equal(sp.includes(113), false);
+  assert.equal(sp.includes(117), true); assert.equal(sp.includes(181), true); assert.equal(sp.includes(185), false);
+  assert.equal(sp.length, 24 + 17);
+  // Bloc de 80 MHz à cheval sur le trou 6425–6525 MHz : refusé ; dans U-NII-7 : accepté.
+  assert.equal(WF.ok6(101, 80, 'us-sp'), false); assert.equal(WF.ok6(117, 80, 'us-sp'), false, 'bloc 113–125 à cheval'); assert.equal(WF.ok6(129, 80, 'us-sp'), true); assert.equal(WF.ok6(101, 80, 'us'), true);
+  assert.equal(WF.radioFault('ap6e', 'b6', { on: true, ch: 101, w: 80, tx: 14, gain: 6 }, 'us-sp').why, 'reg');
+  assert.ok(WF.channels('b6', 'us-sp', 80).every(c => WF.ok6(c, 80, 'us-sp')));
+  // 36 dBm et 23 dBm/MHz : 20 MHz → 36 dBm ; la fiche (26 + 6 dBi) reste la limite.
+  assert.equal(WF.lpiMax('us-sp', 20), 36); assert.equal(WF.powerFault('ap6e', 'b6', { on: true, ch: 5, w: 20, tx: 26, gain: 6 }, 'us-sp'), null);
+  assert.equal(WF.powerFault('ap6e', 'b6', { on: true, ch: 5, w: 20, tx: 26, gain: 6 }, 'us').kind, 'lpi');
+  // 2,4 et 5 GHz : mêmes canaux qu'aux États-Unis.
+  assert.deepEqual(WF.allowed('b5', 'us-sp'), WF.allowed('b5', 'us')); assert.equal(WF.allowed('b24', 'us-sp').length, 11);
+  const f = floorOf('F1', { rooms: [{ id: 'r1', name: 'Salle 1', usage: 'classroom', poly: rect(0, 0, 20, 10) }] });
+  const d = { devices: [ap('a1', 'F1', 10, 5, {}, 'ap6e')], site: site(f), wifi: { reg: 'us-sp' } };
+  d.devices[0].p.radios.b6 = { on: true, ch: 5, w: 20, tx: 26, gain: 6 };
+  assert.ok(!issues(d, null, { name: id => id }).some(i => i.code === 'J1268'));
+  d.devices[0].p.radios.b6.ch = 101; assert.match(issues(d, null, { name: id => id }).find(i => i.code === 'J1271').text, /AFC/);
 });

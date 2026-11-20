@@ -15,6 +15,7 @@ import {
   paramsTable, testState, storeResults, resultRow, testsCsv, reportHtml, BAND_DEFAULT, fmtNum, limitsNote, modelNote
 } from '../certify.js';
 import { faultText } from '../issues.js';
+import { isExam } from '../exam.js';
 import './cert.css';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -99,15 +100,15 @@ async function save(text, name, type, label, ext) {
 }
 const baseName = ctx => String((ctx.app && ctx.app.projectTitle && ctx.app.projectTitle()) || tl('reseau')).replace(/[\\/:*?"<>|]+/g, '-');
 async function exportCsv(ctx, scope) {
-  const p = await save('﻿' + testsCsv(tableRows(ctx, scope)), `${baseName(ctx)}-${tl('certification')}.csv`, 'text/csv', tl('Tableau CSV'), 'csv');
+  const p = await save('﻿' + testsCsv(tableRows(ctx, scope), { exam: isExam(ctx.data()) }), `${baseName(ctx)}-${tl('certification')}.csv`, 'text/csv', tl('Tableau CSV'), 'csv');
   if (p) ctx.status(tl('Résultats exportés : {0}', p), 'ok');
 }
 async function exportReport(ctx, scope) {
   const data = ctx.data(), st = testState(data), band = (data.tests && data.tests.band) ?? BAND_DEFAULT;
-  const rows = tableRows(ctx, scope).filter(r => r.verdict);
+  const rows = tableRows(ctx, scope).filter(r => r.verdict); // testé (verdict enregistré), même en mode examen où il n'est pas montré
   if (!rows.length) { ctx.status(tl('Aucun résultat à mettre dans le rapport : lancez d’abord « Tester tout ».'), 'warn'); return; }
   const details = rows.map(r => { const l = st.rows.find(x => x.link.id === r.link).link; return { label: r.label, res: certify(l, r.limit, { band, curves: true }) }; });
-  const html = reportHtml({ title: tl('Rapport de certification'), project: baseName(ctx), at: (data.tests && data.tests.at) || new Date().toISOString(), rows, details });
+  const html = reportHtml({ title: tl('Rapport de certification'), project: baseName(ctx), at: (data.tests && data.tests.at) || new Date().toISOString(), rows, details, exam: isExam(data) });
   const p = await save(html, `${baseName(ctx)}-${tl('rapport-certification')}.html`, 'text/html', tl('Rapport HTML'), 'html');
   if (p) ctx.status(tl('Rapport enregistré : {0} (ouvrez-le dans un navigateur pour l’imprimer)', p), 'ok');
 }
@@ -157,7 +158,8 @@ export function openCert(ctx, opts = {}) {
   const $ = s => dlg.querySelector(s), main = $('.ntCeMain');
   const fillLinks = () => {
     const st = testState(data()), by = new Map(st.rows.map(r => [r.link.id, r]));
-    const opt = l => { const r = by.get(l.id), s = r && r.stored; return `<option value="${esc(l.id)}"${S.link && S.link.id === l.id ? ' selected' : ''}>${esc(labelOf(ctx, l))}${s ? ' — ' + verdictText(s.verdict) + (r.stale ? ' ' + tl('(périmé)') : '') : ''}</option>`; };
+    const ex = isExam(data()); // mode examen : « testé » au lieu du verdict
+    const opt = l => { const r = by.get(l.id), s = r && r.stored; return `<option value="${esc(l.id)}"${S.link && S.link.id === l.id ? ' selected' : ''}>${esc(labelOf(ctx, l))}${s ? ' — ' + (ex ? tl('testé') : verdictText(s.verdict)) + (r.stale ? ' ' + tl('(périmé)') : '') : ''}</option>`; };
     const pl = links.filter(l => l.kind === 'pl'), ch = links.filter(l => l.kind === 'ch');
     $('[data-k="link"]').innerHTML = links.length ? `${pl.length ? `<optgroup label="${tl('Liens permanents')}">${pl.map(opt).join('')}</optgroup>` : ''}${ch.length ? `<optgroup label="${tl('Canaux')}">${ch.map(opt).join('')}</optgroup>` : ''}` : `<option value="">${tl('Aucun lien en cuivre dans le plan')}</option>`;
   };
@@ -174,6 +176,7 @@ export function openCert(ctx, opts = {}) {
     if (!S.link) { main.innerHTML = `<div class="ntCeEmpty">${icon('certifier')}<b>${tl('Aucun lien à certifier')}</b><span>${tl('Un lien permanent relie le dos d’un panneau de brassage au dos d’une prise murale ; un canal va d’un appareil actif à un autre.')}</span></div>`; return; }
     if (!S.res) { main.innerHTML = `<div class="ntCeEmpty">${icon('certifier')}<b>${esc(labelOf(ctx, S.link))}</b><span>${tl('{0} · {1} m · {2}', kindText(S.link.kind), num(S.link.len), esc(limitInfo(limitNow()).name))}</span><span>${tl('Lancez l’autotest (Entrée).')}</span></div>`; return; }
     const r = S.res, li = limitInfo(r.limit), P = r.params;
+    if (isExam(data())) { main.innerHTML = examScreen(r, li); return; }
     const weak = r.param === 'wiremap' ? r.wiremap.faults.map(f => `${faultText(f.type)} (${pairsText(f.pins)})`).join(', ') : r.param === 'length' ? tl('longueur {0} m pour {1} m', num(P.length.v), P.length.lim) : tl('{0} {1} à {2} MHz', paramName(r.param), r.pair || '', num(r.f, r.f < 10 ? 2 : 0));
     const tabs = PARAM_TABS.map(p => `<button type="button" role="tab" class="ntCeTb${S.tab === p ? ' on' : ''}" aria-selected="${S.tab === p}" data-tab="${p}"><i class="ntCeDot ${VCLS[P[p].st]}"></i>${esc(paramName(p))}<small>${num(P[p].margin)}</small></button>`).join('');
     const ser = seriesOf(r, S.tab);
@@ -188,7 +191,24 @@ export function openCert(ctx, opts = {}) {
       <div class="ntCeChartBox">${chartSvg(r, S.tab, { only: S.only, w: 720, h: 260 })}<div class="ntCeLegend">${legend}</div><p class="ntCeNote">${esc(limitsNote())}</p></div>
       <div class="ntCeTblBox">${paramsTable(r)}</div>`;
   }
+  /** Mode examen : mesures, limites, courbes et carte de câblage brute ; ni PASS/FAIL, ni marge, ni défaut nommé. */
+  function examScreen(r, li) {
+    const P = r.params, tabs = PARAM_TABS.map(p => `<button type="button" role="tab" class="ntCeTb${S.tab === p ? ' on' : ''}" aria-selected="${S.tab === p}" data-tab="${p}">${esc(paramName(p))}</button>`).join('');
+    const ser = seriesOf(r, S.tab);
+    const legend = ser.map((s, i) => `<button type="button" class="ntCeLg${S.only === i ? ' on' : ''}" data-only="${i}"><i class="ntCeSw ntCeS${i}"></i>${esc(s.name)}</button>`).join('') + `<span class="ntCeLg lim"><i class="ntCeSw lim"></i>${tl('limite')}</span>`;
+    const wm = r.wiremap.map && r.wiremap.map.length ? `<div class="ntCeWm" aria-label="${tl('Carte de câblage')}">${[1, 2, 3, 4, 5, 6, 7, 8].map(p => `<span class="raw"><b>${p}</b><i>${r.wiremap.map[p] ?? '×'}</i></span>`).join('')}</div>` : '';
+    return `<div class="ntCeScreen none">
+        <div class="ntCeVerdict ntCeExam"><b>${icon('lock')}${tl('Mode examen')}</b><span>${tl('mesures sans verdict : comparez-les aux limites')}</span></div>
+        <div class="ntCeFacts"><div><small>${tl('Lien')}</small><b>${esc(labelOf(ctx, S.link))}</b></div><div><small>${tl('Limite')}</small><b>${esc(li.name)}</b></div>
+          <div><small>${tl('Longueur')}</small><b>${num(P.length.v)} m</b><span>${tl('limite {0} m', P.length.lim)}</span></div></div>
+        ${wm}<span class="ntCeSim">${tl('valeurs simulées')}</span></div>
+      <div class="ntCeTabs" role="tablist" aria-label="${tl('Paramètres')}">${tabs}</div>
+      <div class="ntCeChartBox">${chartSvg(r, S.tab, { only: S.only, w: 720, h: 260 })}<div class="ntCeLegend">${legend}</div><p class="ntCeNote">${esc(limitsNote())}</p></div>
+      <div class="ntCeTblBox">${paramsTable(r, { exam: true })}</div>`;
+  }
   function summaryHtml(sm) {
+    if (isExam(data())) return `<div class="ntCeScreen none"><div class="ntCeVerdict ntCeExam"><b>${icon('lock')}${tl('Mode examen')}</b><span>${tl('{0} lien(s) testé(s)', sm.rows.length)}</span></div><span class="ntCeSim">${tl('valeurs simulées')}</span></div>
+      <p class="ntCeNote">${tl('Résultats enregistrés sans verdict affiché : ouvrez chaque lien pour lire ses mesures.')}</p>`;
     const c = v => sm.rows.filter(r => r.verdict === v).length, bad = sm.rows.filter(r => r.verdict === 'fail' || r.verdict === 'fail*');
     return `<div class="ntCeScreen ${bad.length ? 'bad' : 'ok'}"><div class="ntCeVerdict"><b>${bad.length ? 'FAIL' : 'PASS'}</b><span>${tl('{0} lien(s) testé(s)', sm.rows.length)}</span></div>
       <div class="ntCeFacts"><div><small>PASS</small><b>${c('pass')}</b></div><div><small>PASS*</small><b>${c('pass*')}</b></div><div><small>FAIL*</small><b>${c('fail*')}</b></div><div><small>FAIL</small><b>${c('fail')}</b></div></div><span class="ntCeSim">${tl('valeurs simulées')}</span></div>
@@ -202,8 +222,11 @@ export function openCert(ctx, opts = {}) {
       S.busy = false;
       if (!O.isOpen()) return;
       S.res = certify(S.link, limitNow(), { band: S.band, curves: true });
-      if (!S.res.params[S.tab] || S.tab === 'next') S.tab = S.res.param && PARAM_TABS.includes(S.res.param) ? S.res.param : 'next';
+      // Onglet du paramètre le plus faible ; en mode examen, pas d'indice : on reste sur NEXT.
+      if (isExam(data())) S.tab = PARAM_TABS.includes(S.tab) ? S.tab : 'next';
+      else if (!S.res.params[S.tab] || S.tab === 'next') S.tab = S.res.param && PARAM_TABS.includes(S.res.param) ? S.res.param : 'next';
       S.only = null; paint();
+      if (isExam(data())) { msg(tl('Autotest terminé. Enregistrez le résultat pour le rapport.'), ''); if (ctx.app && ctx.app.log) ctx.app.log(tl('Certification · {0} ({1}) : autotest terminé', labelOf(ctx, S.link), limitInfo(S.res.limit).name), 'info'); return; }
       msg(tl('Autotest terminé : {0}. Enregistrez le résultat pour le rapport.', verdictText(S.res.verdict)), S.res.ok ? 'ok' : 'err');
       if (ctx.app && ctx.app.log) ctx.app.log(tl('Certification · {0} ({1}) : {2}, marge {3} dB', labelOf(ctx, S.link), limitInfo(S.res.limit).name, verdictText(S.res.verdict), num(S.res.margin)), S.res.ok ? 'ok' : 'err');
     }, 650);
@@ -272,24 +295,27 @@ export function renderCertTab(ctx, el) {
   const S = { scope: 'all', job: null, filter: 'all' };
   el.classList.add('ntCeTab');
   const draw = () => {
-    const data = ctx.data(), st = testState(data);
+    const data = ctx.data(), st = testState(data), ex = isExam(data); // mode examen : testé ou non, sans verdict
+    if (ex && S.filter === 'bad') S.filter = 'all';
     const rows = st.rows.filter(r => S.scope === 'all' || r.link.kind === S.scope);
     const n = v => rows.filter(r => r.stored && r.stored.verdict === v).length;
     const untested = rows.filter(r => !r.stored).length, stale = rows.filter(r => r.stale).length;
     const shown = rows.filter(r => S.filter === 'all' || (S.filter === 'bad' ? r.stored && /fail/.test(r.stored.verdict) : S.filter === 'todo' ? !r.stored || r.stale : true));
+    const counts = ex ? `<span class="ntCeStat"><b>${rows.length - untested}</b>${tl('testés')}</span><span class="ntCeStat warn">${icon('lock')}${tl('Mode examen')}</span>` : `<span class="ntCeStat ok"><b>${n('pass')}</b>PASS</span><span class="ntCeStat mg"><b>${n('pass*')}</b>PASS*</span>
+        <span class="ntCeStat mgbad"><b>${n('fail*')}</b>FAIL*</span><span class="ntCeStat bad"><b>${n('fail')}</b>FAIL</span>`;
     const head = `<div class="ntCeTabHead"><div class="ntCeStats">
-        <span class="ntCeStat"><b>${rows.length}</b>${tl('liens')}</span><span class="ntCeStat ok"><b>${n('pass')}</b>PASS</span><span class="ntCeStat mg"><b>${n('pass*')}</b>PASS*</span>
-        <span class="ntCeStat mgbad"><b>${n('fail*')}</b>FAIL*</span><span class="ntCeStat bad"><b>${n('fail')}</b>FAIL</span><span class="ntCeStat"><b>${untested}</b>${tl('non testés')}</span>${stale ? `<span class="ntCeStat warn"><b>${stale}</b>${tl('périmés')}</span>` : ''}</div>
+        <span class="ntCeStat"><b>${rows.length}</b>${tl('liens')}</span>${counts}<span class="ntCeStat"><b>${untested}</b>${tl('non testés')}</span>${stale ? `<span class="ntCeStat warn"><b>${stale}</b>${tl('périmés')}</span>` : ''}</div>
       <div class="ntCeTools"><select class="sel" data-k="scope" aria-label="${tl('Liens affichés')}"><option value="all">${tl('Tous les liens')}</option><option value="pl">${tl('Liens permanents')}</option><option value="ch">${tl('Canaux')}</option></select>
-        <select class="sel" data-k="filter" aria-label="${tl('Filtre')}"><option value="all">${tl('Tous les résultats')}</option><option value="bad">${tl('Échecs seulement')}</option><option value="todo">${tl('À tester (jamais ou périmé)')}</option></select>
+        <select class="sel" data-k="filter" aria-label="${tl('Filtre')}"><option value="all">${tl('Tous les résultats')}</option>${ex ? '' : `<option value="bad">${tl('Échecs seulement')}</option>`}<option value="todo">${tl('À tester (jamais ou périmé)')}</option></select>
         <button type="button" class="btn primary" data-a="all">${icon('certifier')}<span>${tl('Tester tout')}</span></button><button type="button" class="btn" data-a="open">${icon('cableTester')}<span>${tl('Testeur')}</span></button>
         <button type="button" class="btn" data-a="csv">${icon('download')}<span>CSV</span></button><button type="button" class="btn" data-a="report">${icon('clipboard')}<span>${tl('Rapport imprimable')}</span></button></div></div>
       <div class="ntCeProg" hidden><div class="ntCeBar"><i></i></div><span></span><button type="button" class="btn small subtle" data-a="stop">${tl('Arrêter')}</button></div>
       <p class="ntCeNote">${tl('Certification simulée : les résultats viennent du modèle (catégorie, longueur, sertissage, connexions du plan), pas d’un appareil de mesure.')} ${esc(limitsNote())}${data.tests && data.tests.at ? ' ' + tl('Dernier lot : {0}.', esc(dateText(data.tests.at))) : ''}</p>`;
     const body = !rows.length
       ? `<div class="ntCeEmpty">${icon('certifier')}<b>${tl('Aucun lien en cuivre à certifier')}</b><span>${tl('Posez un panneau de brassage et des prises murales, reliez le dos de chaque prise au dos du panneau : chaque câble est un lien permanent.')}</span></div>`
-      : `<div class="ntCeListBox"><table class="ntCeList"><thead><tr><th>${tl('Lien')}</th><th>${tl('Type')}</th><th>${tl('Limite')}</th><th>${tl('Résultat')}</th><th class="n">${tl('Marge')}</th><th>${tl('Paramètre le plus faible')}</th><th class="n">${tl('Longueur')}</th><th>${tl('Date')}</th></tr></thead><tbody>${shown.slice(0, 2500).map(r => {
+      : `<div class="ntCeListBox"><table class="ntCeList"><thead><tr><th>${tl('Lien')}</th><th>${tl('Type')}</th><th>${tl('Limite')}</th><th>${tl('Résultat')}</th>${ex ? '' : `<th class="n">${tl('Marge')}</th><th>${tl('Paramètre le plus faible')}</th>`}<th class="n">${tl('Longueur')}</th><th>${tl('Date')}</th></tr></thead><tbody>${shown.slice(0, 2500).map(r => {
         const s = r.stored, l = r.link;
+        if (ex) return `<tr data-link="${esc(l.id)}" tabindex="0"><td>${esc(labelOf(ctx, l))}</td><td>${kindText(l.kind)}</td><td>${esc(limitInfo(s ? s.limit : defaultLimit(l)).name)}</td><td>${s ? `<span class="ntCeV none">${tl('testé')}</span>` : chip(null)}${r.stale ? `<span class="ntCeV warn">${tl('périmé')}</span>` : ''}</td><td class="n">${num(l.len)} m</td><td>${s ? esc(dateText(s.at)) : ''}</td></tr>`;
         return `<tr data-link="${esc(l.id)}" tabindex="0"><td>${esc(labelOf(ctx, l))}</td><td>${kindText(l.kind)}</td><td>${esc(limitInfo(s ? s.limit : defaultLimit(l)).name)}</td><td>${chip(s && s.verdict)}${r.stale ? `<span class="ntCeV warn">${tl('périmé')}</span>` : ''}</td><td class="n">${s && s.param !== 'wiremap' ? num(s.margin) : s ? '—' : ''}</td><td>${s ? esc(paramName(s.param)) + (s.pair ? ' ' + esc(s.pair) : '') : ''}</td><td class="n">${num(l.len)} m</td><td>${s ? esc(dateText(s.at)) : ''}</td></tr>`;
       }).join('')}</tbody></table>${shown.length > 2500 ? `<p class="ntCeNote">${tl('{0} lignes de plus : exportez le CSV pour tout voir.', shown.length - 2500)}</p>` : ''}</div>`;
     el.innerHTML = head + body;

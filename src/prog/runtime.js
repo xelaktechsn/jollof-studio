@@ -26,7 +26,10 @@ import { tl, quote } from '../i18n/index.js';
 
 export class RunError extends Error {}
 const err = msg => { throw new RunError(msg); };
-const SLICE = 6; // ms de calcul par image au plus
+// ms de calcul par image au plus, pour que l'interface reste fluide ; au-delà, le temps virtuel cède. Sous Node (tests,
+// validation des TP, pas d'interface à garder fluide) : pas de limite, la tranche va toujours jusqu'au bout de son temps
+// virtuel, et un même programme donne le même résultat quelle que soit la charge de la machine.
+const SLICE = globalThis.process && globalThis.process.versions && globalThis.process.versions.node ? Infinity : 6;
 // Un programme qui calcule sans s'endormir (boucle active, loop() sans delay()) avance le temps virtuel d'une milliseconde
 // tous les CHUNK tours de boucle (environ 5 µs par tour, l'ordre de grandeur d'un tour de loop() sur un Uno) : millis()
 // progresse milliseconde par milliseconde, comme sur la carte, sans occuper le processeur de l'ordinateur pour rien.

@@ -27,7 +27,7 @@ export const SRC = {
   J1272: ['tplinkEap225Radio']
 };
 const BN = { b24: dec('2,4') + ' GHz', b5: '5 GHz', b6: '6 GHz' };
-const regName = reg => (reg === 'us' ? tl('États-Unis (FCC)') : tl('Europe (CE)'));
+const regName = reg => (reg === 'us' ? tl('États-Unis (FCC)') : reg === 'us-sp' ? tl('États-Unis, puissance standard (AFC supposée accordée)') : tl('Europe (CE)'));
 const pct = v => Math.round(v);
 
 /** Défauts de réglage d'un point d'accès (sans calcul de couverture) : [{ code, id, text }]. */
@@ -42,6 +42,7 @@ export function radioIssues(ap, set, name) {
     else if (f && f.why === 'block') out.push({ code: 'J1271', id: d.id, text: tl('{0} : le canal {1} ne forme pas de canal de {2} MHz à {3}.', n, x.ch, x.w, BN[b]) });
     const p = WF.powerFault(d.type, b, x, set.reg);
     if (p && p.kind === 'tx') out.push({ code: 'J1268', id: d.id, text: tl('{0} : {1} dBm à {2}, au-delà des {3} dBm de sa fiche.', n, p.have, BN[b], p.max) });
+    else if (p && p.kind === 'lpi' && set.reg === 'us-sp') out.push({ code: 'J1268', id: d.id, text: tl('{0} : PIRE de {1} dBm à 6 GHz (puissance + gain d’antenne), au-delà des {2} dBm permis à un point d’accès de puissance standard sur {3} MHz.', n, p.have, p.max, x.w) });
     else if (p && p.kind === 'lpi') out.push({ code: 'J1268', id: d.id, text: tl('{0} : PIRE de {1} dBm à 6 GHz (puissance + gain d’antenne), au-delà des {2} dBm permis à un point d’accès d’intérieur (LPI) en {3} sur {4} MHz.', n, p.have, p.max, regName(set.reg), x.w) });
     else if (p) out.push({ code: 'J1268', id: d.id, text: tl('{0} : PIRE de {1} dBm à {2} (puissance + gain d’antenne), au-delà des {3} dBm que sa fiche permet en Europe.', n, p.have, BN[b], p.max) });
     if (b === 'b24' && x.w === 40) out.push({ code: 'J1270', id: d.id, text: tl('{0} : canal de 40 MHz à 2,4 GHz, qui occupe presque toute la bande (un seul canal sans chevauchement).', n) });

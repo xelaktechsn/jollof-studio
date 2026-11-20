@@ -172,3 +172,7 @@
   .nt-ov { padding: 4px; }
   .nt-steps { display: none; }
 }
+/* Testeur de certification en mode examen (certui.js) : titre sobre, carte de câblage brute (ni vert ni rouge). */
+.ntCeVerdict.ntCeExam b { display: flex; align-items: center; gap: 8px; font: 650 19px/1.2 var(--sans); letter-spacing: 0; color: var(--fg); }
+.ntCeVerdict.ntCeExam b .ic { width: 18px; height: 18px; }
+.ntCeWm span.raw i { color: var(--fg); }

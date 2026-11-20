@@ -219,7 +219,7 @@ export const NET_SOURCES = {
     title: 'Cisco IOS IP Routing: OSPF Command Reference, OSPF Commands: ip ospf fast-reroute per-prefix through R',
     publisher: 'Cisco',
     url: 'https://www.cisco.com/c/en/us/td/docs/ios-xml/ios/iproute_ospf/command/iro-cr-book/ospf-i1.html',
-    section: '« ip ospf hello-interval » : 10 secondes par défaut sur Ethernet, « must be the same for all routers … on a specific network » ; « By default, the dead interval is 4 times the hello interval » (40 s) ; « network area » : OSPF fonctionne sur une interface dont l’adresse primaire est couverte par la déclaration, une interface n’appartient qu’à une aire, la première déclaration qui correspond l’emporte ; « router-id » : chaque identifiant doit être unique'
+    section: '« ip ospf hello-interval » : 10 secondes par défaut sur Ethernet, « must be the same for all routers … on a specific network » ; « By default, the dead interval is 4 times the hello interval » (40 s) ; « network area » : OSPF fonctionne sur une interface dont l’adresse primaire est couverte par la déclaration, une interface n’appartient qu’à une aire, la première déclaration qui correspond l’emporte ; « router-id » : chaque identifiant doit être unique ; « ip ospf priority » : 1 par défaut, de 0 à 255, la plus haute priorité devient DR (l’identifiant départage), priorité 0 : ni DR ni BDR'
   },
   ciscoOspfCmdA: {
     title: 'Cisco IOS IP Routing: OSPF Command Reference, OSPF Commands: A through ip ospf demand-circuit',
@@ -255,7 +255,7 @@ export const NET_SOURCES = {
     title: 'RFC 2328 OSPF Version 2',
     publisher: 'IETF',
     url: 'https://www.rfc-editor.org/rfc/rfc2328',
-    section: '§ 10.5 : le masque de réseau, HelloInterval et RouterDeadInterval d’un hello reçu doivent correspondre à ceux de l’interface, sinon le paquet est jeté ; § 16.1 : arbre des plus courts chemins par l’algorithme de Dijkstra, puis les réseaux terminaux ; annexe C.3 : HelloInterval 10 s sur un réseau local, RouterDeadInterval multiple (4) du HelloInterval, coût d’interface toujours supérieur à 0'
+    section: '§ 3.2 : entre deux aires, le chemin passe par la dorsale (aire 0), en étoile ; § 3.3 : routeur de bordure (ABR) attaché à plusieurs aires, un calcul par aire ; § 3.1 : la dorsale (aire 0) relie les aires et contient tous les ABR, « The backbone must be contiguous » (sinon liens virtuels, § 15) ; § 9.4 : élection du routeur désigné et du secours, plus haute priorité puis plus haut identifiant, priorité 0 inéligible ; § 10.1 : états 2-Way et Full ; § 10.4 : sur un réseau de diffusion, adjacence seulement avec le DR et le BDR (sinon on reste en 2-Way) ; § 10.5 : le masque de réseau, HelloInterval et RouterDeadInterval d’un hello reçu doivent correspondre à ceux de l’interface, sinon le paquet est jeté ; § 11 : chemins de même coût gardés dans une même entrée de la table ; § 16.1 : arbre des plus courts chemins par l’algorithme de Dijkstra, puis les réseaux terminaux ; § 16.2 : routes inter-aires par les résumés des ABR, un routeur attaché à plusieurs aires n’examine que ceux de la dorsale ; annexe C.3 : HelloInterval 10 s sur un réseau local, RouterDeadInterval multiple (4) du HelloInterval, coût d’interface toujours supérieur à 0, Router Priority 0 : jamais DR'
   },
   ciscoReflexiveAcl: {
     title: 'Configuring IP Session Filtering (Reflexive Access Lists)',
@@ -575,6 +575,12 @@ export const NET_SOURCES = {
   },
   /* ---------- Réseau, conception professionnelle : Wi-Fi (src/net/lim/wifi.js, src/net/checks/wifi.js) ---------- */
   // @wifi
+  nyu675: {
+    title: 'Comprehensive FR3 and FR1(C) Upper Mid-Band Propagation and Material Penetration Loss Measurements and Channel Models in Indoor Environment for 5G and 6G (Shakya, Rappaport et al., TechRxiv 2024, CC-BY 4.0)',
+    publisher: 'NYU WIRELESS',
+    url: 'https://wireless.engineering.nyu.edu/wp-content/uploads/2024/06/Comprehensive-FR3-and-FR1C-upper-mid-band-propagation-and-material-penetration-loss-measurements-and-channel-models-in-Indoor-environment-for-5G-and-6G.pdf',
+    section: 'Prépublication non relue par les pairs. § V, éq. (3) : modèle CI, PL = FSPL(f, 1 m) + 10 n log10 d ; tableau V, bureaux à 6,75 GHz (11 à 97 m) : exposant omnidirectionnel n = 1,40 en vue directe et 2,42 sans visibilité (σ 7,87 dB). Sert ici à recouper le N = 23,9 de l’UIT-R P.1238-13 à 6 GHz.'
+  },
   ecc2001: {
     title: 'ECC Decision (20)01 on the harmonised use of the frequency band 5945-6425 MHz for WAS/RLAN (amended 8 November 2024)',
     publisher: 'CEPT ECC',
@@ -603,7 +609,7 @@ export const NET_SOURCES = {
     title: 'Recommendation ITU-R P.1238-13 (09/2025) Propagation data and prediction methods for the planning of indoor radiocommunication systems',
     publisher: 'UIT-R',
     url: 'https://www.itu.int/dms_pubrec/itu-r/rec/p/R-REC-P.1238-13-202509-I!!PDF-E.pdf',
-    section: '§ 3.2, éq. (2) : Ltotal = L(do) + N log10(d/do) + Lf(n), L(do) = 20 log10 f − 28 (f en MHz, do = 1 m, d > 1 m) ; « les coefficients de perte en fonction de la distance comprennent une part implicite pour la traversée des murs » ; les modèles propres au site peuvent compter chaque mur à la place. Tableau 5 (facteur de plancher Lf, n = 1) : 2,4 GHz bureaux 14 dB, logement 10 dB (appartement) ; 5,2 GHz bureaux 16 dB, logement 13 dB (appartement) ; 5,8 GHz bureaux 22 dB (1 étage), 28 dB (2 étages) ; aucune valeur à 6 GHz. Conclusions générales : trajets en vue directe et grandes salles ouvertes N ≈ 20, trajets à travers des murs jusqu’à N ≈ 40.'
+    section: '§ 3.1, éq. (1) et tableau 2 (modèle général, Lb = 10α log10 d + β + 10γ log10 f) : bureaux sans visibilité directe α = 2,39 (β 30,13, γ 2,40, σ 5,01 dB) de 0,3 à 255 GHz et de 4 à 30 m, d’où N = 10α = 23,9 à 6 GHz. § 3.2, éq. (2) : Ltotal = L(do) + N log10(d/do) + Lf(n), L(do) = 20 log10 f − 28 (f en MHz, do = 1 m, d > 1 m) ; « les coefficients de perte en fonction de la distance comprennent une part implicite pour la traversée des murs » ; les modèles propres au site peuvent compter chaque mur à la place. Tableau 5 (facteur de plancher Lf, n = 1) : 2,4 GHz bureaux 14 dB, logement 10 dB (appartement) ; 5,2 GHz bureaux 16 dB, logement 13 dB (appartement) ; 5,8 GHz bureaux 22 dB (1 étage), 28 dB (2 étages) ; aucune valeur à 6 GHz. « For the various frequency bands where the power loss coefficient is not stated for residential buildings, the value given for office buildings could be used. » Conclusions générales : trajets en vue directe et grandes salles ouvertes N ≈ 20, trajets à travers des murs jusqu’à N ≈ 40.'
   },
   itu1238_10: {
     title: 'Recommendation ITU-R P.1238-10 (08/2019) Propagation data and prediction methods for the planning of indoor radiocommunication systems',

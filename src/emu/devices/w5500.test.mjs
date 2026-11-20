@@ -302,7 +302,7 @@ for (const [name, board] of [['Uno', UNO], ['Pico', PICO]]) {
   test(`W5500 sur ${name} : Ethernet.begin(mac) obtient un bail DHCP de la box, le DNS de la box résout un nom`, { skip: sk }, () => {
     const id = 'dh-' + board.kind, b = fw(DHCP_SKETCH, board, id);
     const seen = []; b.lan.on(e => { if (e.t === 'dhcp') seen.push(e.kind); });
-    assert.ok(until(b, /nom=\d/, 15000), b.out);
+    assert.ok(until(b, /nom=\d\r\n/, 15000), b.out); // ligne entière : la fin de ligne peut arriver dans la tranche suivante
     const ip = /ip=(\S+)/.exec(b.out)[1];
     assert.match(ip, /^192\.168\.1\.1\d\d$/);
     assert.match(b.out, /masque=255\.255\.255\.0\r\npasserelle=192\.168\.1\.1\r\ndns=192\.168\.1\.1\r\n/);

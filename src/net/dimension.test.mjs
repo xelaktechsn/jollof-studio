@@ -7,11 +7,9 @@ import { applyL3, cleanDesign, dimension, applyDesign, previewDesign, polyArea, 
 import { DEVICES, specOf } from './devices.js';
 import { NET } from './limits.js';
 import { fixture, bigFixture } from './dimension.fixture.mjs';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { best, once, note } from './perf.mjs';
 
-/** Meilleur temps de n essais (ms) : la machine peut être chargée par d'autres tâches. */
-const best = (f, n = 3) => { let m = Infinity; for (let i = 0; i < n; i++) { const t = performance.now(); f(); m = Math.min(m, performance.now() - t); } return m; };
 const withDesign = (o = {}) => { const d = fixture(); d.design = cleanDesign(o); return d; };
 
 test('paramètres : valeurs par défaut, bornes, déchets, idempotence', () => {
@@ -151,9 +149,9 @@ test('générateur : seulement certaines pièces, puis les autres dans la même 
 test('taille réelle : 3 bâtiments × 4 étages, dimensionnement en moins de 50 ms', () => {
   const d = bigFixture(); d.design = cleanDesign({});
   const r = dimension(d), dt = best(() => dimension(d));
-  assert.ok(r.totals.outlets > 500, String(r.totals.outlets)); assert.ok(dt < 50 * PERF, `${dt} ms`);
-  let t = performance.now(); const res = applyDesign(d); const dg = performance.now() - t;
-  assert.ok(res.created.cables > 1000); assert.ok(dg < 1500 * PERF, `générateur ${dg} ms`);
+  assert.ok(r.totals.outlets > 500, String(r.totals.outlets)); assert.ok(dt < 50, note('dimensionnement', dt, 50));
+  const g = once(() => applyDesign(d)), res = g.value, dg = g.ms;
+  assert.ok(res.created.cables > 1000); assert.ok(dg < 1500, note('générateur', dg, 1500));
   const r2 = dimension(d), d2 = best(() => dimension(d));
-  assert.equal(r2.trs.every(x => !x.cable.est || !x.outlets), true); assert.ok(d2 < 50 * PERF, `après génération ${d2} ms`);
+  assert.equal(r2.trs.every(x => !x.cable.est || !x.outlets), true); assert.ok(d2 < 50, note('dimensionnement après génération', d2, 50));
 });

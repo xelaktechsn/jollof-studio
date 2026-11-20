@@ -335,7 +335,7 @@ export function createPlanView(ctx) {
       if (m.kind === 'dev') { const x = d.devices.find(z => z.id === m.id); if (x && x.loc) out.push({ o: x.loc, keys: ['x', 'y'], v: [x.loc.x, x.loc.y] }); }
       else if (m.kind === 'rack') { const r = (d.racks || []).find(z => z.id === m.id); if (r) out.push({ o: r, keys: ['x', 'y'], v: [r.x, r.y] }); }
       else if (m.kind === 'path') { const p = (d.paths || []).find(z => z.id === m.id); if (p && p.floor === f.id) out.push({ pts: p.kind === 'outdoor' ? [p.pts[0]] : p.pts, v: (p.kind === 'outdoor' ? [p.pts[0]] : p.pts).map(q => [...q]) }); }
-      else if (m.kind === 'room') { const r = f.rooms.find(z => z.id === m.id); if (r) out.push({ pts: r.poly, v: r.poly.map(q => [...q]) }); }
+      else if (m.kind === 'room') { const r = f.rooms.find(z => z.id === m.id); if (r) for (const P of [r.poly, ...(r.holes || [])]) out.push({ pts: P, v: P.map(q => [...q]) }); }
       else if (m.kind === 'wall') { const w = f.walls.find(z => z.id === m.id); if (w) out.push({ pts: [w.a, w.b], v: [[...w.a], [...w.b]] }); }
     }
     return out;
@@ -512,7 +512,7 @@ export function createPlanView(ctx) {
     const g = addFloor(b), u = used(), wmap = new Map(), d = data();
     for (const w of f.walls) { const id = uid('', 'w', u); wmap.set(w.id, id); g.walls.push({ ...w, id, a: [...w.a], b: [...w.b] }); }
     for (const x of f.doors) if (wmap.has(x.wall)) g.doors.push({ ...x, id: uid('', 'dr', u), wall: wmap.get(x.wall) });
-    for (const r of f.rooms) g.rooms.push({ ...r, id: uid('', 'rm', u), poly: r.poly.map(q => [...q]) });
+    for (const r of f.rooms) g.rooms.push({ ...r, id: uid('', 'rm', u), poly: r.poly.map(q => [...q]), ...(r.holes ? { holes: r.holes.map(hh => hh.map(q => [...q])) } : {}) });
     for (const p of (d.paths || []).filter(x => x.floor === f.id && x.kind !== 'riser' && x.kind !== 'outdoor')) d.paths.push({ ...p, id: newPathId(), floor: g.id, pts: p.pts.map(q => [...q]) });
     if (f.image) g.image = { ...f.image };
     ctx.commit(); paint(); ctx.status(tl('Étage dupliqué : murs, portes, pièces et cheminements copiés sur {0}.', g.name), 'ok');
@@ -590,7 +590,7 @@ export function createPlanView(ctx) {
     else if (a === 'door' && so && so.kind === 'wall') { const L = dist(so.o.a, so.o.b), dw = Math.min(0.9, L); f.doors.push({ id: uid('', 'dr', used()), wall: so.o.id, at: r3(L / 2), w: dw }); ctx.commit(); }
     else if ((a === 'rack' || a === 'wrack') && so && so.kind === 'room') {
       try {
-        const m = await import('../rack.js'), [x, y] = (await import('../site.js')).centroid(so.o.poly);
+        const m = await import('../rack.js'), [x, y] = (await import('../site.js')).roomPoint(so.o);
         const r = m.newRack(d, a === 'wrack' ? 'wall' : 'floor', { floor: so.f.id, room: so.o.id, x: r3(x), y: r3(y), rot: 0 });
         d.racks = d.racks || []; d.racks.push(r); ctx.commit(); ctx.select({ kind: 'rack', id: r.id }); S.multi = [{ kind: 'rack', id: r.id }]; paint();
         ctx.status(tl('Baie {0} posée : équipez-la dans la vue Baies.', r.name), 'ok');

@@ -41,6 +41,8 @@ export const SIM_LIM = {
   OSPF_TIMERS: { v: { hello: 10, dead: 40 }, src: ['ciscoOspfCmdI', 'rfc2328'] },
   OSPF_REF_MBPS: { v: 100, src: ['ciscoOspfCmdA', 'ciscoOspfCfg'] },
   OSPF_COST: { v: [1, 65535], src: ['ciscoOspfCmdA', 'rfc2328'] },
+  /** OSPF : priorité d'interface pour l'élection du routeur désigné, 1 par défaut, 0 à 255 (0 : jamais DR ni BDR). */
+  OSPF_PRIO: { v: 1, max: 255, src: ['ciscoOspfCmdI', 'rfc2328'] },
   /** Distances administratives par défaut : connectée 0, statique 1, OSPF 110, route par défaut apprise par DHCP 254. */
   ADMIN_DIST: { v: { connected: 0, static: 1, ospf: 110, dhcp: 254 }, src: ['ciscoAdminDistance', 'ciscoDhcpAd'] },
   /** Liste d'accès « established » : segments TCP avec ACK ou RST (retours) ; filtrage paquet par paquet. */

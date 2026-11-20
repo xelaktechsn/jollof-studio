@@ -19,6 +19,7 @@ import { libBuildArgs } from './boards.js';
 
 export const hasCli = spawnSync('arduino-cli', ['version']).status === 0;
 const CACHE = path.join(os.tmpdir(), 'jollof-fw-cache');
+fs.mkdirSync(CACHE, { recursive: true });
 
 /**
  * Compile un programme pour l'Uno (ou fqbn : arduino:avr:mega pour le Mega 2560…) ; rend le texte du .hex, ou lève une
@@ -31,13 +32,21 @@ export function compileSketch(src, fqbn = 'arduino:avr:uno') {
   const extra = libBuildArgs(fqbn, src);
   const h = crypto.createHash('sha1').update(fqbn + '\n' + src + shim + (esp ? ESP32_LINK_PROPERTY : '') + extra.join(' ')).digest('hex').slice(0, 16), name = 's' + h;
   const bin = fqbn.startsWith('rp2040:') || esp, read = f => (bin ? new Uint8Array(fs.readFileSync(f)) : fs.readFileSync(f, 'utf8'));
-  const dir = path.join(CACHE, name), out = path.join(CACHE, name + '-build'), hex = path.join(out, name + (esp ? '.ino.merged.bin' : bin ? '.ino.bin' : '.ino.hex'));
+  const out = path.join(CACHE, name + '-build'), file = name + (esp ? '.ino.merged.bin' : bin ? '.ino.bin' : '.ino.hex'), hex = path.join(out, file);
   if (fs.existsSync(hex)) return read(hex);
-  fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name + '.ino'), src);
-  if (esp) fs.writeFileSync(path.join(dir, 'jollof_qemu_shim.cpp'), shim);
-  const c = spawnSync('arduino-cli', ['compile', '--fqbn', fqbn, ...(esp ? ['--build-property', ESP32_LINK_PROPERTY] : []), ...extra, '--output-dir', out, dir], { encoding: 'utf8' });
-  if (c.status !== 0) throw new Error((c.stdout + c.stderr).split('\n').filter(l => /error/i.test(l)).slice(0, 5).join('\n') || 'compilation impossible');
-  return read(hex);
+  // Plusieurs fichiers de test (processus de node --test) peuvent compiler le même programme en même temps : chacun
+  // compile dans son dossier à lui (croquis et dossier de compilation d'arduino-cli distincts), puis le résultat entre
+  // dans le cache par un renommage atomique. Un lecteur ne voit donc jamais un fichier à moitié écrit.
+  const tmp = fs.mkdtempSync(path.join(CACHE, `.${name}-${process.pid}-`)), dir = path.join(tmp, name), tout = path.join(tmp, 'out');
+  try {
+    fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name + '.ino'), src);
+    if (esp) fs.writeFileSync(path.join(dir, 'jollof_qemu_shim.cpp'), shim);
+    const c = spawnSync('arduino-cli', ['compile', '--fqbn', fqbn, ...(esp ? ['--build-property', ESP32_LINK_PROPERTY] : []), ...extra, '--build-path', path.join(tmp, 'build'), '--output-dir', tout, dir], { encoding: 'utf8' });
+    if (c.status !== 0) throw new Error((c.stdout + c.stderr).split('\n').filter(l => /error/i.test(l)).slice(0, 5).join('\n') || 'compilation impossible');
+    fs.mkdirSync(out, { recursive: true });
+    fs.renameSync(path.join(tout, file), hex); // atomique (même disque) ; un autre processus a pu le faire juste avant : même contenu
+    return read(hex);
+  } finally { fs.rmSync(tmp, { recursive: true, force: true }); }
 }
 /** Le cœur arduino-pico (rp2040:rp2040) est-il installé ? (demandé à arduino-cli une seule fois) */
 let picoCore = null;

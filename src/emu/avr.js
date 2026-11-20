@@ -16,7 +16,9 @@ import { AVR_CHIPS, chipOfKind } from './avr-chips.js';
 
 export const MHZ = 16e6;
 const PER_MS = MHZ / 1000;
-const SLICE = 8;          // ms de calcul par image au plus (comme l'interpréteur)
+// ms de calcul par image au plus (comme l'interpréteur) ; sous Node (tests, pas d'interface) : sans limite, chaque tranche
+// exécute tout son temps virtuel, quel que soit la charge de la machine (résultats reproductibles).
+const SLICE = globalThis.process && globalThis.process.versions && globalThis.process.versions.node ? Infinity : 8;
 const LAG = 250;          // au-delà, le temps virtuel cède : un vieux PC ralentit la carte au lieu de rattraper
 const WINDOW = 60;        // ms : fenêtre d'analyse des fronts (PWM, tone(), servo)
 const RING = 256;         // fronts gardés par broche

@@ -125,7 +125,7 @@ export const CODES = {
   J1217: { level: 'error' }, J1218: { level: 'error' }, J1219: { level: 'error' }, J1220: { level: 'warning' }, J1221: { level: 'error' }, J1222: { level: 'error' },
   J1223: { level: 'warning' }, J1224: { level: 'error' }, J1225: { level: 'error' }, J1226: { level: 'error' }, J1227: { level: 'warning' }, J1228: { level: 'error' },
   J1229: { level: 'warning' }, J1230: { level: 'error' }, J1231: { level: 'warning' }, J1232: { level: 'warning' }, J1233: { level: 'warning' }, J1234: { level: 'warning' },
-  J1235: { level: 'warning' }, J1236: { level: 'error' }, J1237: { level: 'warning' }, J1238: { level: 'error' }, J1239: { level: 'error' }, J1296: { level: 'warning' },
+  J1235: { level: 'warning' }, J1236: { level: 'error' }, J1237: { level: 'warning' }, J1238: { level: 'error' }, J1239: { level: 'error' }, J1296: { level: 'warning' }, J1297: { level: 'error' }, J1298: { level: 'error' }, J1299: { level: 'error' },
   // @fibre
   J1240: { level: 'error' }, J1241: { level: 'error' }, J1242: { level: 'error' }, J1243: { level: 'error' }, J1244: { level: 'error' },
   J1245: { level: 'error' }, J1246: { level: 'warning' }, J1247: { level: 'warning' }, J1248: { level: 'error' }, J1249: { level: 'error' },

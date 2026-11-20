@@ -33,7 +33,8 @@
 //       PVST+) est cet équipement ; n ports bloqués au moins
 //   { type: 'net-lag', of: sel, id?: 'Po1', min?: 2 }      agrégat formé (LACP ou statique) avec min ports actifs
 //   { type: 'net-route', on: sel, to: ip, via?: ip, kind?: 'ospf'|'static'|'connected' }   le routeur a une route vers ip
-//       (par cette passerelle, de ce genre : apprise par OSPF par exemple)
+//       (par cette passerelle, de ce genre : apprise par OSPF par exemple) ; inter: true (route OSPF inter-aires),
+//       ecmp: 2 (au moins deux chemins de même coût)
 // Contrôles « en direct » (le programme de la carte doit tourner : simulation lancée) :
 //   { type: 'net-http', from: sel, to: sel | ip, path?: '/', expect?: 'regex' }   page web lue par le navigateur
 //   { type: 'net-mqtt', broker?: sel, topic: 'atelier/#', expect?: 'regex', subscribed?: 'atelier/led' }
@@ -399,6 +400,8 @@ function simLab() {
           if (!r) return { ok: false, why: 'noroute', name: nameOf(n) };
           if (c.via && r.via !== c.via) return { ok: false, why: 'via', name: nameOf(n), via: r.via || tl('réseau connecté') };
           if (c.kind && r.kind !== c.kind) return { ok: false, why: 'kind', name: nameOf(n), kind: r.kind };
+          if (c.inter != null && (r.type === 'inter') !== !!c.inter) return { ok: false, why: 'inter', name: nameOf(n) };
+          if (c.ecmp && !(r.paths && r.paths.length >= +c.ecmp)) return { ok: false, why: 'ecmp', name: nameOf(n), n: r.paths ? r.paths.length : 1 };
         }
         return { ok: true };
       },
@@ -406,6 +409,8 @@ function simLab() {
         if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', c.on);
         if (r.why === 'via') return tl('{0} joint {1} par {2}, pas par {3}.', r.name, c.to, r.via, c.via);
         if (r.why === 'kind') return tl('{0} joint {1} par une route {2}, pas {3}.', r.name, c.to, r.kind, c.kind);
+        if (r.why === 'inter') return c.inter ? tl('{0} : la route vers {1} devrait venir d’une autre aire OSPF (par un routeur de bordure).', r.name, c.to) : tl('{0} : la route vers {1} devrait rester dans l’aire.', r.name, c.to);
+        if (r.why === 'ecmp') return tl('{0} : {1} chemin(s) vers {2}, il en faut {3} de même coût.', r.name, r.n, c.to, c.ecmp);
         return tl('{0} n’a aucune route vers {1}.', r.name, c.to);
       }
     }

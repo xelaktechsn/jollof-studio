@@ -42,9 +42,10 @@ export const WIFI_LIM = {
    * grandes salles ouvertes) avec les murs comptés un par un ; « office » et « residential » = tableau 2 de P.1238-10
    * (2,4 GHz : 30 et 28 ; 5,2 GHz : 31 et 30), qui comprend déjà les murs.
    */
-  // 6 GHz : P.1238 ne donne rien à 6 GHz ; on extrapole la ligne la plus proche, 5,8 GHz (bureaux 24 ; pas de valeur pour
-  // le logement : P.1238 dit d'utiliser alors celle des bureaux). Extrapolation signalée comme telle dans l'interface.
-  WIFI_N: { v: { walls: { b24: 20, b5: 20, b6: 20 }, office: { b24: 30, b5: 31, b6: 24 }, residential: { b24: 28, b5: 30, b6: 24 } }, src: ['itu1238_10', 'itu1238_13'] },
+  // 6 GHz : modèle général du tableau 2 de P.1238-13 (bureaux sans visibilité directe, 0,3–255 GHz, 4–30 m) : α = 2,39,
+  // soit N = 10 α = 23,9 ; confirmé par des mesures à 6,75 GHz en bureaux (exposant omnidirectionnel NLOS 2,42, modèle CI à
+  // 1 m). Pas de valeur pour le logement : P.1238 dit d'utiliser alors celle des bureaux.
+  WIFI_N: { v: { walls: { b24: 20, b5: 20, b6: 20 }, office: { b24: 30, b5: 31, b6: 23.9 }, residential: { b24: 28, b5: 30, b6: 23.9 } }, src: ['itu1238_10', 'itu1238_13', 'nyu675'] },
   /** Perte d'un plancher entre deux étages voisins (dB, Lf de P.1238 pour n = 1) : bureaux 14 et 16, logement 10 et 13. */
   // 6 GHz : ligne 5,8 GHz du tableau 5 (bureaux, 1 étage : 22 dB), aussi pour le logement (extrapolation).
   WIFI_LF: { v: { office: { b24: 14, b5: 16, b6: 22 }, residential: { b24: 10, b5: 13, b6: 22 } }, src: 'itu1238_13' },
@@ -62,6 +63,12 @@ export const WIFI_LIM = {
    * Europe (ECC/DEC/(20)01) 23 dBm et 10 dBm/MHz ; États-Unis (47 CFR 15.407(a)(5)) 30 dBm et 5 dBm/MHz.
    */
   WIFI_LPI: { v: { eu: { eirp: 23, psd: 10 }, us: { eirp: 30, psd: 5 } }, src: ['ecc2001', 'fcc15407'] },
+  /**
+   * 6 GHz, point d'accès de puissance standard (États-Unis, 47 CFR 15.407(a)(4)) : 36 dBm de PIRE et 23 dBm/MHz, dans
+   * 5925–6425 et 6525–6875 MHz seulement, et sur les seuls canaux et puissances qu'accorde un système AFC (15.407(k)) :
+   * l'AFC n'est pas simulée, elle est supposée accorder tout ce que la règle permet.
+   */
+  WIFI_SP6: { v: { eirp: 36, psd: 23, bands: [[5925, 6425], [6525, 6875]] }, src: 'fcc15407' },
   /**
    * Matériaux (UIT-R P.2040, tableau 3) : permittivité ε' = a, conductivité σ = c·f^d (S/m, f en GHz). La perte d'une
    * paroi se calcule comme celle d'une dalle à incidence normale (équations 37a, 43b, 44, 59).

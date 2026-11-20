@@ -195,17 +195,23 @@ export function tools(h) {
     },
     {
       name: 'route_ospf',
-      description: 'OSPF (single area) of a routerpro or l3switch: on, router_id (else the highest interface address), reference_mbps (default 100: cost = reference / link speed, at least 1), originate_default (advertise its default route), networks [{ net "10.0.0.0/8", area 0 }] ("network … area": an interface joins OSPF when the first matching statement covers its address), interfaces { "ge1" | "ge1.10" | "vlan10": { cost, hello (10), dead (40), passive } }. Neighbours need the same subnet/mask, area and hello/dead timers, and different router IDs. Returns neighbours (up or why not) and OSPF routes (administrative distance 110). Undoable.',
+      description: 'OSPF of a routerpro or l3switch, multi-area: on, router_id (else the highest interface address), reference_mbps (default 100: cost = reference / link speed, at least 1), originate_default (advertise its default route), networks [{ net "10.0.0.0/8", area 0 }] ("network … area": an interface joins OSPF in the area of the first matching statement), interfaces { "ge1" | "ge1.10" | "vlan10": { cost, hello (10), dead (40), passive, priority (1; 0 = never DR) } }. Neighbours need the same subnet/mask, area and hello/dead timers, and different router IDs; on a shared segment the highest priority then router ID becomes DR, the next BDR, other routers stay 2-WAY with each other (FULL only with DR/BDR). Area border routers (interfaces in area 0 and another area) carry routes between areas; an area without one is isolated (virtual links not simulated). Equal-cost paths are all listed. Returns role (ABR…), neighbours with DR/BDR and FULL/2-WAY state or why not, and OSPF routes (O intra-area / IA inter-area, administrative distance 110). Undoable.',
       inputSchema: { type: 'object', properties: { device: { type: 'string' }, on: { type: 'boolean' }, router_id: { type: 'string' }, reference_mbps: { type: 'number' }, originate_default: { type: 'boolean' }, networks: { type: 'array', items: { type: 'object' } }, interfaces: { type: 'object' } }, required: ['device'] },
       async run(a) {
         const W = await netWs(), d = netDev(W, a.device); need(d, ['l3switch', 'routerpro'], 'OSPF');
         const O = { ...(d.p.ospf || {}) };
         if (a.on !== undefined) O.on = a.on; if (a.router_id !== undefined) O.rid = a.router_id; if (a.reference_mbps) O.ref = a.reference_mbps;
         if (a.originate_default !== undefined) O.originate = a.originate_default; if (a.networks) O.nets = a.networks;
-        if (a.interfaces) O.ifs = { ...(O.ifs || {}), ...a.interfaces };
+        if (a.interfaces) { O.ifs = { ...(O.ifs || {}) }; for (const [k, v] of Object.entries(a.interfaces)) O.ifs[k] = { ...(O.ifs[k] || {}), ...v, ...(v && v.priority != null ? { prio: v.priority } : {}) }; }
         d.p.ospf = O; await reclean(d); W.commit();
         const o = W.lan().ospf(), mine = o.adj.filter(e => e.a === d.id || e.b === d.id);
-        return { ospf: d.p.ospf, router_id: o.rid.get(d.id) || null, neighbours: mine.map(e => { const me = e.a === d.id; return { interface: (me ? e.fa : e.fb).name, neighbour: netName(W, me ? e.b : e.a), up: e.up, reason: e.why }; }), routes: (o.routes.get(d.id) || []).map(r => ({ net: `${[r.net >>> 24, (r.net >>> 16) & 255, (r.net >>> 8) & 255, r.net & 255].join('.')}/${r.prefix}`, via: r.via, metric: r.metric })) };
+        return {
+          ospf: d.p.ospf, router_id: o.rid.get(d.id) || null, areas: [...(o.areas.get(d.id) || [])], area_border_router: o.abr.has(d.id),
+          interfaces: (o.ifs.get(d.id) || []).map(x => ({ name: x.name, area: x.area, cost: x.cost, priority: x.prio, role: x.state || null, passive: x.passive })),
+          neighbours: mine.map(e => { const me = e.a === d.id, ox = me ? e.fb : e.fa; return { interface: (me ? e.fa : e.fb).name, neighbour: netName(W, me ? e.b : e.a), router_id: o.rid.get(me ? e.b : e.a), neighbour_role: ox.state || null, state: e.up ? (e.full ? 'FULL' : '2-WAY') : 'down', reason: e.why }; }),
+          routes: (o.routes.get(d.id) || []).map(r => ({ net: `${[r.net >>> 24, (r.net >>> 16) & 255, (r.net >>> 8) & 255, r.net & 255].join('.')}/${r.prefix}`, type: r.type === 'inter' ? 'IA' : 'O', area: r.area, metric: r.metric, next_hops: r.paths.map(x => x.via) })),
+          isolated_areas: o.orphan
+        };
       }
     },
     {

@@ -12,6 +12,7 @@
 // Formes reprises des guides publics (normes payantes) : fs et fs-an (TIA-606-A, article de Cabling Installation &
 // Maintenance), baie-unité:port et extrémité/extrémité (TIA-606-B, guide Panduit) : clés tia606aCim, panduitIdan02.
 import { tl } from '../i18n/index.js';
+import { roomPath, roomPoint } from './site.js';
 import { DEVICES, specOf } from './devices.js';
 import { CATS } from './cable.js';
 import * as RACK from './rack.js';
@@ -282,8 +283,8 @@ export function floorSvg(data, floorId, o = {}) {
   const out = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="${x0} ${y0} ${W} ${H}" width="${o.width || 1000}" height="${Math.round((o.width || 1000) * H / W)}" font-family="Helvetica, Arial, sans-serif">`, `<rect x="${x0}" y="${y0}" width="${W}" height="${H}" fill="#fff"/>`];
   for (const r of f.rooms || []) {
     if (!(r.poly || []).length) continue;
-    const c = centroid(r.poly);
-    out.push(`<polygon points="${r.poly.map(p => p.join(',')).join(' ')}" fill="#f1f5f9" stroke="#94a3b8" stroke-width="${fs / 6}"/>`);
+    const c = roomPoint(r);
+    out.push(`<path d="${roomPath(r)}" fill-rule="evenodd" fill="#f1f5f9" stroke="#94a3b8" stroke-width="${fs / 6}"/>`);
     out.push(`<text x="${c[0]}" y="${c[1]}" font-size="${fs * 1.1}" fill="#475569" text-anchor="middle">${esc(r.name || r.id)}</text>`);
   }
   for (const w of f.walls || []) out.push(`<line x1="${w.a[0]}" y1="${w.a[1]}" x2="${w.b[0]}" y2="${w.b[1]}" stroke="#334155" stroke-width="${Math.max(0.08, (+w.t || 100) / 1000)}" stroke-linecap="square"/>`);
@@ -299,7 +300,6 @@ export function floorSvg(data, floorId, o = {}) {
   out.push('</svg>');
   return out.join('');
 }
-const centroid = poly => { let a = 0, x = 0, y = 0; for (let i = 0; i < poly.length; i++) { const p = poly[i], q = poly[(i + 1) % poly.length], k = p[0] * q[1] - q[0] * p[1]; a += k; x += (p[0] + q[0]) * k; y += (p[1] + q[1]) * k; } return Math.abs(a) < 1e-9 ? poly[0] : [x / (3 * a), y / (3 * a)]; };
 /** Élévation d'une baie en SVG (face avant) : chaque unité numérotée, les équipements montés avec leur étiquette. */
 export function rackSvg(data, rackId, o = {}) {
   const r = (data.racks || []).find(x => x.id === rackId); if (!r) return '';

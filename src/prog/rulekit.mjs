@@ -134,7 +134,7 @@ export function compile(src, fqbn) {
     errors: lines.filter(l => /jx\.ino:\d+:\d+: (fatal )?error|error:/.test(l)).slice(0, 10).map(l => l.replace(/^.*jx\.ino/, 'jx.ino')),
     flash: +((/(?:utilise|uses) (\d+) (?:octets|bytes)/.exec(out) || [])[1] || 0), ram: +((/(?:globales utilisent|variables use) (\d+) (?:octets|bytes)/.exec(out) || [])[1] || 0)
   };
-  if (res.ok) { fs.mkdirSync(path.dirname(memo), { recursive: true }); fs.writeFileSync(memo, JSON.stringify(res)); } // un échec n'est pas gardé (disque plein…)
+  if (res.ok) { fs.mkdirSync(path.dirname(memo), { recursive: true }); const tmp = `${memo}.${process.pid}.tmp`; fs.writeFileSync(tmp, JSON.stringify(res)); fs.renameSync(tmp, memo); } // renommage atomique : un autre processus ne lit jamais un résultat à moitié écrit // un échec n'est pas gardé (disque plein…)
   else res.errors.push(...lines.filter(l => /too big|trop gros|No space|ENOSPC|exceed/i.test(l)).slice(0, 3));
   return res;
 }

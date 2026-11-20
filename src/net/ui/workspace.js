@@ -5,11 +5,11 @@
 // a besoin (install.js). La simulation est celle de src/net/lan.js, partagée avec les programmes des cartes (projet
 // Objets connectés : les modules Ethernet et les cartes Wi-Fi du montage y sont des nœuds).
 import './net.css';
-import { tl, isEn } from '../../i18n/index.js';
+import { tl, isEn, CANCEL } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { createNavDock } from '../../ui/navdock.js';
 import { spacesOf } from '../../ui/kind.js';
-import { menu as popMenu, confirm as confirmDlg, toast } from '../../school/ui.js';
+import { menu as popMenu, confirm as confirmDlg, dialog as dialogDlg, toast } from '../../school/ui.js';
 import { cleanText } from '../../sanitize.js';
 import { createLan } from '../lan.js';
 import { DEVICES, LIB_GROUPS, specOf, portsOf, newDevice } from '../devices.js';
@@ -21,7 +21,7 @@ import { prefixOf, isIp, maskStr } from '../ip.js';
 import { extNodes, whyText } from '../labcheck.js';
 import { openCrimp, cableSvg, crimpVerdict } from './crimp.js';
 import { openTester, testerSummary } from './tester.js';
-import { isExam, examLocked } from '../exam.js';
+import { isExam, examLocked, makeLock, checkLock, attempts, CODE_MIN } from '../exam.js';
 import { explain } from '../../check/explain.js';
 import { SOURCES } from '../../check/sources.js';
 import '../../check/sources-net.js';
@@ -784,24 +784,66 @@ export function createNetWorkspace(app, ui, raw) {
       return `<tr><td><i class="led ${ledCls(l)}"></i>${esc(p.label)}</td><td>${esc(peer)}</td><td>${st}</td></tr>`;
     }).join('');
   }
-  /** Fautes du plan ; en examen, sans J1201 ni J1202 (câblage des fiches : c'est à l'élève de le trouver au testeur). */
+  /**
+   * Fautes du plan ; en examen, sans celles qui donnent la réponse : J1201, J1202 (câblage des fiches, à trouver au
+   * testeur), J1286, J1287 (verdict de la certification, à conclure des mesures).
+   */
+  const EXAM_HIDDEN = new Set(['J1201', 'J1202', 'J1286', 'J1287']);
   // Fautes du plan, gardées tant que ni le réseau simulé (version) ni le modèle enregistré (instantané) n'ont changé :
   // l'inspecteur, le panneau Problèmes et les vues les demandent plusieurs fois par modification.
   let issMemo = null;
   function shownIssues() {
     if (issMemo && issMemo.ver === lan.version && issMemo.snap === snapshot && issMemo.exam === isExam(data)) return issMemo.iss;
-    const all = netIssues(lan, data), iss = isExam(data) ? all.filter(i => i.code !== 'J1201' && i.code !== 'J1202') : all;
+    const all = netIssues(lan, data), iss = isExam(data) ? all.filter(i => !EXAM_HIDDEN.has(i.code)) : all;
     issMemo = { ver: lan.version, snap: snapshot, exam: isExam(data), iss };
     return iss;
   }
   /** Mode examen : pastille dans la barre des vues (l'enlever : hors séance, après confirmation). */
   function paintExam() { const b = host.querySelector('[data-exam]'), on = isExam(data); b.hidden = !on; b.dataset.tip = examLocked(app.sessions) ? tl('Mode examen : verrouillé pendant la séance') : tl('Mode examen : sertissage, testeur et inspecteur ne donnent pas la réponse. Cliquer pour le retirer.'); }
+  /**
+   * Met (on) ou retire le mode examen. Mettre : code enseignant facultatif (deux fois, 6 caractères au moins), gardé
+   * haché (exam.js). Retirer : impossible pendant une séance ; avec un code, il le faut (3 erreurs : attente croissante).
+   */
+  const tries = attempts();
+  const codeField = (name, label) => `<label class="sField"><span>${label}</span><input class="sInput" type="password" name="${name}" autocomplete="off" spellcheck="false"></label>`;
   async function setExam(on) {
     if (isExam(data) === on) return;
     if (examLocked(app.sessions)) { app.status(tl('Mode examen : verrouillé pendant la séance'), 'warn'); return; }
-    if (!on && !(await confirmDlg(tl('Retirer le mode examen ?'), tl('Le sertissage, le testeur et l’inspecteur montreront de nouveau les verdicts.'), tl('Retirer')))) return;
-    if (on) data.exam = true; else delete data.exam;
-    commit(); app.status(on ? tl('Mode examen : les verdicts sont cachés') : tl('Mode examen retiré'), 'ok');
+    if (on) {
+      const r = await dialogDlg({
+        title: tl('Mettre le mode examen'),
+        body: `<p class="dlgText">${tl('Le sertissage, le testeur, la certification et l’inspecteur ne donneront plus la réponse.')}</p>${codeField('c1', tl('Code enseignant (facultatif, {0} caractères au moins)', CODE_MIN))}${codeField('c2', tl('Le même code, une deuxième fois'))}<p class="dlgText mut">${tl('Sans code, n’importe qui peut retirer le mode examen. Avec un code, il le faut, sauf à modifier le fichier du projet à la main : gardez votre propre copie pour corriger.')}</p><p class="dlgText ntExamErr" role="alert"></p>`,
+        actions: [{ label: CANCEL, value: null }, { label: tl('Mettre le mode examen'), value: 'ok', kind: 'primary' }],
+        onAction: async (v, root) => {
+          if (v !== 'ok') return undefined;
+          const c1 = root.querySelector('[name="c1"]').value, c2 = root.querySelector('[name="c2"]').value, err = root.querySelector('.ntExamErr');
+          if (c1 !== c2) { err.textContent = tl('Les deux codes diffèrent.'); return false; }
+          if (c1 && c1.length < CODE_MIN) { err.textContent = tl('Code trop court : {0} caractères au moins.', CODE_MIN); return false; }
+          return { lock: c1 ? await makeLock(c1) : null };
+        }
+      });
+      if (!r || typeof r !== 'object') return;
+      data.exam = true; if (r.lock) data.examLock = r.lock; else delete data.examLock;
+      commit(); app.status(r.lock ? tl('Mode examen : les verdicts sont cachés (code enseignant pour le retirer)') : tl('Mode examen : les verdicts sont cachés'), 'ok');
+      return;
+    }
+    if (data.examLock) {
+      const r = await dialogDlg({
+        title: tl('Retirer le mode examen ?'),
+        body: `${codeField('c', tl('Code enseignant'))}<p class="dlgText ntExamErr" role="alert"></p>`,
+        actions: [{ label: CANCEL, value: null }, { label: tl('Retirer'), value: 'ok', kind: 'primary' }],
+        onAction: async (v, root) => {
+          if (v !== 'ok') return undefined;
+          const err = root.querySelector('.ntExamErr'), w = tries.wait();
+          if (w) { err.textContent = tl('Trop d’essais : réessayez dans {0} s.', Math.ceil(w / 1000)); return false; }
+          if (await checkLock(data.examLock, root.querySelector('[name="c"]').value)) { tries.ok(); return 'ok'; }
+          tries.fail(); err.textContent = tl('Code incorrect.'); return false;
+        }
+      });
+      if (r !== 'ok') return;
+    } else if (!(await confirmDlg(tl('Retirer le mode examen ?'), tl('Le sertissage, le testeur et l’inspecteur montreront de nouveau les verdicts.'), tl('Retirer')))) return;
+    delete data.exam; delete data.examLock;
+    commit(); app.status(tl('Mode examen retiré'), 'ok');
   }
   function renderPane() {
     paintExam();

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright (C) 2026 Mamadou Sarr
 // Plan réseau lu dans un fichier (.jollof, TP, outil de l'IA) : chaque champ vérifié, rien d'inattendu ne passe.
+import { cleanLock } from './exam.js';
 import { DEVICES, specOf } from './devices.js';
 import { cleanCableEnds, CATS } from './cable.js';
 import { prefixOf, isIp } from './ip.js';
@@ -85,6 +86,6 @@ export function cleanNet(raw) {
     design: cleanDesign(r.design), tests: cleanTests(r.tests), images: cleanImages(r.images), wifi: cleanWifi(r.wifi)
   };
   // Mode examen (réglé par l'enseignant, ou par le TP « exam ») : verdicts cachés (sertissage, testeur, inspecteur).
-  if (r.exam === true) out.exam = true;
+  if (r.exam === true) { out.exam = true; const lk = cleanLock(r.examLock); if (lk) out.examLock = lk; }
   return applyRoutes(out);
 }

@@ -8,11 +8,9 @@ import { cleanDesign, applyDesign, horizontalLinks } from './dimension.js';
 import { labelOf, cableLabel, labelTable, labelIssues, cableSchedule, patchRows, bom, toCsv, floorSvg, rackSvg, reportHtml, fill, labeler, money } from './docs.js';
 import { issues, LAB, CODES } from './checks/design.js';
 import { fixture, bigFixture } from './dimension.fixture.mjs';
-/** Seuils de temps : stricts avec JOLLOF_PERF_STRICT=1 (mesure seule) ; × 8 sinon (suite complète en parallèle, machine chargée). */
-const PERF = process.env.JOLLOF_PERF_STRICT ? 1 : 8;
+// Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
+import { best, note } from './perf.mjs';
 
-/** Meilleur temps de n essais (ms) : la machine peut être chargée par d'autres tâches. */
-const best = (f, n = 3) => { let m = Infinity; for (let i = 0; i < n; i++) { const t = performance.now(); f(); m = Math.min(m, performance.now() - t); } return m; };
 const built = (o = {}) => { const d = fixture(); d.design = cleanDesign(o); applyDesign(d); return d; };
 
 test('jetons des formats', () => {
@@ -134,10 +132,10 @@ test('contrôles de TP : net-dim, net-labels, net-bom, net-subnet', () => {
 test('taille réelle : étiquettes, vérifications et nomenclature d’un campus de 600 prises en moins de 50 ms', () => {
   const d = bigFixture(); d.design = cleanDesign({}); applyDesign(d);
   const rows = labelTable(d), dl = best(() => labeler(d, { fresh: true }) && labelTable(d));
-  assert.ok(rows.filter(r => r.kind === 'outlet').length > 500); assert.ok(dl < 100 * PERF, `étiquettes ${dl} ms`);
-  const dc = best(() => { for (const o of d.devices) labelOf(d, o.id); }); assert.ok(dc < 50 * PERF, `étiquettes en cache ${dc} ms`);
-  const di = best(() => issues(d, null, { name: x => x })); assert.ok(di < 100 * PERF, `vérifications ${di} ms`);
-  const db = best(() => { bom(d); cableSchedule(d); }); assert.ok(db < 100 * PERF, `nomenclature ${db} ms`);
+  assert.ok(rows.filter(r => r.kind === 'outlet').length > 500); assert.ok(dl < 100, note('étiquettes', dl, 100));
+  const dc = best(() => { for (const o of d.devices) labelOf(d, o.id); }); assert.ok(dc < 50, note('étiquettes en cache', dc, 50));
+  const di = best(() => issues(d, null, { name: x => x })); assert.ok(di < 100, note('vérifications (conception)', di, 100));
+  const db = best(() => { bom(d); cableSchedule(d); }); assert.ok(db < 100, note('nomenclature', db, 100));
   assert.equal(labelIssues(d).dups.length, 0, 'auto : campus (bâtiment devant chaque identifiant)');
   d.design.labels.preset = 'tia'; assert.ok(labelIssues(d).dups.length > 0, 'TIA-606 d’un seul bâtiment sur un campus : doublons');
 });

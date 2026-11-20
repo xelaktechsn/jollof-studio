@@ -14,7 +14,8 @@
 //     image?: { id (clé de data.images), x, y, scale (m par pixel), iw, ih (pixels), rot, opacity, lock },
 //     walls: [{ id, a: [x, y], b: [x, y], t (épaisseur, m), mat (MATERIALS) }],
 //     doors: [{ id, wall, at (m depuis l'extrémité a du mur), w (largeur, m) }],
-//     rooms: [{ id, name, usage (USAGES), poly: [[x, y]…] }] }
+//     rooms: [{ id, name, usage (USAGES), poly: [[x, y]…], holes?: [[[x, y]…]…] (cour, patio, pièce enclavée : la pièce
+//       est le contour moins ses trous ; roomArea, inRoom, roomPoint, roomPath en tiennent compte) }] }
 //   Place d'un équipement sur un étage (devices[i].loc) : { floor, x, y, h (hauteur de pose au-dessus du sol, m) }.
 // Tolérant : tout champ absent ou faux reçoit une valeur sûre (fichier ancien, IA, générateur de la conception) ; les
 // identifiants sont uniques dans tout le site (un mur et une pièce ne partagent pas un id) ; cleanSite(cleanSite(x))
@@ -23,7 +24,7 @@ import { tl } from '../i18n/index.js';
 import { cleanText } from '../sanitize.js';
 
 /** Plafonds : un grand site (plusieurs bâtiments de plusieurs étages, des centaines de pièces). */
-export const SITE_MAX = { buildings: 30, floors: 80, walls: 4000, doors: 2000, rooms: 1500, poly: 200, images: 60, imageChars: 12e6 };
+export const SITE_MAX = { buildings: 30, floors: 80, walls: 4000, doors: 2000, rooms: 1500, poly: 200, holes: 20, images: 60, imageChars: 12e6 };
 /**
  * Matériaux des murs (id stables : le calque Wi-Fi leur associe un affaiblissement dans son propre module) ; t :
  * épaisseur proposée au dessin (m), réglage modifiable, pas une norme.
@@ -54,6 +55,8 @@ export const USAGES = {
   ef: { name: () => tl('Local d’arrivée des opérateurs'), tech: true },
   storage: { name: () => tl('Rangement') },
   sanitary: { name: () => tl('Sanitaires') },
+  // Gaine technique ou trémie : ouverture verticale à travers les dalles (les cheminements de deux étages s'y côtoient).
+  shaft: { name: () => tl('Gaine technique, trémie'), void: true },
   other: { name: () => tl('Autre') }
 };
 /**
@@ -66,6 +69,8 @@ export const ACCESS_M = 6;
 export const SEG_CLASSES = ['a', 'b', 'c', 'd'];
 /** Pièces qui accueillent une baie de distribution (point de départ du câblage horizontal). */
 export const isTechRoom = r => !!(r && USAGES[r.usage] && USAGES[r.usage].tech);
+/** Ouverture dans la dalle (gaine technique, trémie) : ni surface desservie, ni barrière entre deux étages. */
+export const isShaft = r => !!(r && USAGES[r.usage] && USAGES[r.usage].void);
 
 const num = (v, lo, hi, d) => (Number.isFinite(+v) ? Math.max(lo, Math.min(hi, +v)) : d);
 const r3 = v => Math.round(v * 1000) / 1000;
@@ -106,7 +111,12 @@ function cleanFloor(raw, i, used, prevTop) {
   for (const r of (Array.isArray(f.rooms) ? f.rooms : []).slice(0, SITE_MAX.rooms)) {
     const poly = (Array.isArray(r && r.poly) ? r.poly : []).slice(0, SITE_MAX.poly).map(pt).filter(Boolean);
     if (poly.length < 3 || polyArea(poly) < 0.05) continue;
-    o.rooms.push({ id: uid(r.id, 'rm', used), name: txt(r.name, 40), usage: USAGES[r.usage] ? r.usage : 'office', poly });
+    // Trous (cour, patio, pièce enclavée) : polygones intérieurs au contour, gardés seulement s'il y en a.
+    const holes = (Array.isArray(r.holes) ? r.holes : []).slice(0, SITE_MAX.holes).map(hh => (Array.isArray(hh) ? hh : []).slice(0, SITE_MAX.poly).map(pt).filter(Boolean)).filter(hh => hh.length >= 3 && polyArea(hh) >= 0.05 && inPoly(innerPoint(hh), poly));
+    const room = { id: uid(r.id, 'rm', used), name: txt(r.name, 40), usage: USAGES[r.usage] ? r.usage : 'office', poly };
+    if (holes.length) room.holes = holes;
+    if (roomArea(room) < 0.05) { used.delete(room.id); continue; }
+    o.rooms.push(room);
   }
   return o;
 }
@@ -198,9 +208,26 @@ export function floorOf(site, id) {
 /** Pièce qui contient le point (x, y) d'un étage, ou null (la plus petite si elles s'emboîtent). */
 export function roomAt(floor, x, y) {
   let best = null, ba = Infinity;
-  for (const r of (floor && floor.rooms) || []) if (inPoly([x, y], r.poly)) { const a = polyArea(r.poly); if (a < ba) { best = r; ba = a; } }
+  for (const r of (floor && floor.rooms) || []) if (inRoom([x, y], r)) { const a = roomArea(r); if (a < ba) { best = r; ba = a; } }
   return best;
 }
+/* ---------- Pièces à trous (cour, patio) : à utiliser plutôt que polyArea / inPoly sur r.poly ---------- */
+/** Surface d'une pièce : contour moins ses trous (m²). */
+export const roomArea = r => Math.max(0, polyArea(r.poly) - ((r.holes || []).reduce((s, hh) => s + polyArea(hh), 0)));
+/** Point dans une pièce : dans son contour et hors de ses trous. */
+export const inRoom = (q, r) => inPoly(q, r.poly) && !(r.holes || []).some(hh => inPoly(q, hh));
+/** Point sûrement dans la pièce (étiquette, baie posée au milieu) : le centre s'il convient, sinon un point du contour. */
+export function roomPoint(r) {
+  if (!r.holes || !r.holes.length) return innerPoint(r.poly);
+  const c = centroid(r.poly); if (inRoom(c, r)) return c;
+  // Entre le contour et le premier trou : milieu du segment le plus long entre un sommet du contour et le trou.
+  for (const p of [...r.poly].sort((a, b) => dist(b, c) - dist(a, c))) {
+    for (const t of [0.5, 0.25, 0.75, 0.1]) { const q = [p[0] + (c[0] - p[0]) * t, p[1] + (c[1] - p[1]) * t]; if (inRoom(q, r)) return q; }
+  }
+  return innerPoint(r.poly);
+}
+/** Tracé SVG d'une pièce (contour et trous ; à remplir en evenodd). */
+export const roomPath = r => [r.poly, ...(r.holes || [])].map(p => 'M' + p.map(q => `${Math.round(q[0] * 1000) / 1000} ${Math.round(q[1] * 1000) / 1000}`).join('L') + 'Z').join('');
 /** Objet du site par id : { kind: 'building'|'floor'|'room'|'wall'|'door', o, b, f } ou null. */
 export function findSiteObj(site, id) {
   for (const b of (site && site.buildings) || []) {
@@ -229,8 +256,9 @@ export function innerPoint(p) {
 /**
  * Pièces fermées par les murs d'un étage : graphe plan des axes des murs (bouts rapprochés à moins de tol mètres,
  * murs coupés aux croisements et aux jonctions en T), murs pendants retirés, puis faces minimales (en suivant toujours le
- * mur le plus à droite). Rend les polygones (sommets alignés retirés) des faces d'au moins minArea m² qu'aucune pièce
- * existante ne couvre. Modèle simplifié : la pièce suit l'axe des murs (sa surface compte la moitié de leur épaisseur).
+ * mur le plus à droite). Rend [{ poly, holes? }] (sommets alignés retirés) : les faces d'au moins minArea m² qu'aucune
+ * pièce existante ne couvre ; un groupe de murs fermé posé dans une face (cour, patio, pièce enclavée) y fait un trou, et
+ * devient lui-même une pièce (à retirer si c'est une cour). Modèle simplifié : la pièce suit l'axe des murs (sa surface compte la moitié de leur épaisseur).
  */
 export function detectRooms(floor, o = {}) {
   const tol = o.tol ?? 0.15, minArea = o.minArea ?? 0.5, walls = (floor && floor.walls) || [];
@@ -260,6 +288,9 @@ export function detectRooms(floor, o = {}) {
   // Voisins de chaque nœud rangés par angle.
   const ang = (i, j) => Math.atan2(P[j][1] - P[i][1], P[j][0] - P[i][0]);
   const order = new Map([...adj].map(([i, n]) => [i, [...n].sort((x, y) => ang(i, x) - ang(i, y))]));
+  // Groupes de murs reliés entre eux (une cour fermée au milieu du bâtiment en est un autre).
+  const comp = new Map(); let nc = 0;
+  for (const i of order.keys()) { if (comp.has(i)) continue; const st = [i]; comp.set(i, nc); while (st.length) { const x = st.pop(); for (const y of order.get(x)) if (!comp.has(y)) { comp.set(y, nc); st.push(y); } } nc++; }
   const used = new Set(), faces = [];
   for (const [i, n] of order) for (const j of n) {
     if (used.has(i + '>' + j)) continue;
@@ -270,19 +301,27 @@ export function detectRooms(floor, o = {}) {
       const L = order.get(v), k = L.indexOf(u), w = L[(k - 1 + L.length) % L.length];
       u = v; v = w;
     }
-    if (face.length >= 3) faces.push(face.map(x => P[x]));
+    if (face.length >= 3) faces.push({ pts: face.map(x => P[x]), c: comp.get(i) });
   }
   const signed = p => { let s = 0; for (let k = 0; k < p.length; k++) { const a = p[k], b = p[(k + 1) % p.length]; s += a[0] * b[1] - b[0] * a[1]; } return s / 2; };
+  const tidy = f => f.filter((q, k) => { const a = f[(k - 1 + f.length) % f.length], b = f[(k + 1) % f.length]; return Math.abs((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) > 1e-6 * Math.max(1, dist(a, b)); }).map(q => [r3(q[0]), r3(q[1])]);
   // Faces bornées : signe positif (repère y vers le bas) ; la face extérieure de chaque groupe de murs a l'autre signe.
-  const out = [];
+  const inner = faces.filter(f => signed(f.pts) > 0).map(f => ({ ...f, poly: tidy(f.pts), holes: [] })).filter(f => f.poly.length >= 3);
+  // Le contour extérieur d'un groupe posé dans une face d'un autre groupe (cour, patio, pièce enclavée) en est un trou :
+  // la plus petite face qui le contient.
   for (const f of faces) {
-    if (signed(f) <= 0) continue;
-    let poly = f.filter((q, k) => { const a = f[(k - 1 + f.length) % f.length], b = f[(k + 1) % f.length]; return Math.abs((q[0] - a[0]) * (b[1] - a[1]) - (q[1] - a[1]) * (b[0] - a[0])) > 1e-6 * Math.max(1, dist(a, b)); });
-    poly = poly.map(q => [r3(q[0]), r3(q[1])]);
-    if (poly.length < 3 || polyArea(poly) < minArea) continue;
-    const ip = innerPoint(poly);
-    if ((floor.rooms || []).some(r => inPoly(ip, r.poly))) continue;
-    out.push(poly);
+    if (signed(f.pts) >= 0) continue;
+    let host = null;
+    for (const g of inner) if (g.c !== f.c && inPoly(f.pts[0], g.poly) && (!host || polyArea(g.poly) < polyArea(host.poly))) host = g;
+    if (host) { const hh = tidy(f.pts); if (hh.length >= 3) host.holes.push(hh); }
+  }
+  const out = [];
+  for (const f of inner) {
+    const r = { poly: f.poly, ...(f.holes.length ? { holes: f.holes } : {}) };
+    if (roomArea(r) < minArea) continue;
+    const ip = roomPoint(r);
+    if ((floor.rooms || []).some(x => inRoom(ip, x))) continue;
+    out.push(r);
   }
   return out;
 }

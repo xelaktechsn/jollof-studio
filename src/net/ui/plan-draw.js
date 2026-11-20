@@ -7,7 +7,7 @@
 import { tl } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { DEVICES } from '../devices.js';
-import { USAGES, polyArea, centroid, dist } from '../site.js';
+import { USAGES, dist, roomArea, roomPoint, roomPath } from '../site.js';
 import { PATH_KINDS, isConduitKind } from '../route.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -37,7 +37,7 @@ export function worldSvg(data, f, st) {
     const im = f.image;
     h += `<image class="ntPlImg" href="${st.img}" x="${f3(im.x)}" y="${f3(im.y)}" width="${f3(im.iw * im.scale)}" height="${f3(im.ih * im.scale)}" opacity="${im.opacity}" preserveAspectRatio="none"${im.rot ? ` transform="rotate(${im.rot} ${f3(im.x)} ${f3(im.y)})"` : ''}/>`;
   }
-  for (const r of f.rooms) h += `<polygon class="ntPlRoom u-${r.usage}${on('room', r.id) ? ' sel' : ''}${st.bad.has(r.id) ? ' bad' : ''}" data-k="room" data-id="${esc(r.id)}" points="${pts(r.poly)}"/>`;
+  for (const r of f.rooms) h += r.holes ? `<path class="ntPlRoom u-${r.usage}${on('room', r.id) ? ' sel' : ''}${st.bad.has(r.id) ? ' bad' : ''}" data-k="room" data-id="${esc(r.id)}" fill-rule="evenodd" d="${roomPath(r)}"/>` : `<polygon class="ntPlRoom u-${r.usage}${on('room', r.id) ? ' sel' : ''}${st.bad.has(r.id) ? ' bad' : ''}" data-k="room" data-id="${esc(r.id)}" points="${pts(r.poly)}"/>`;
   // Murs, puis les portes par-dessus (ouverture dans le mur, battant).
   for (const w of f.walls) h += `<polygon class="ntPlWall m-${w.mat}${on('wall', w.id) ? ' sel' : ''}" data-k="wall" data-id="${esc(w.id)}" points="${pts(wallQuad(w))}"/>`;
   const wl = new Map(f.walls.map(w => [w.id, w]));
@@ -88,8 +88,8 @@ export function overSvg(data, f, st) {
   const vis = (sx, sy, m = 60) => sx > -m && sy > -m && sx < st.W + m && sy < st.H + m;
   // Pièces : nom et surface au centre, si la pièce est assez grande à l'écran.
   for (const r of f.rooms) {
-    const c = centroid(r.poly), [sx, sy] = st.toS(c[0], c[1]); if (!vis(sx, sy, 120)) continue;
-    const A = polyArea(r.poly); if (Math.sqrt(A) * st.k < 46) continue;
+    const c = roomPoint(r), [sx, sy] = st.toS(c[0], c[1]); if (!vis(sx, sy, 120)) continue;
+    const A = roomArea(r); if (Math.sqrt(A) * st.k < 46) continue;
     const nm = r.name || (USAGES[r.usage] ? USAGES[r.usage].name() : '');
     if (!fits(sx, sy + 4, Math.max(tw(nm), 50), 28)) continue;
     h += `<g class="ntPlRL${USAGES[r.usage] && USAGES[r.usage].tech ? ' tech' : ''}" transform="translate(${sx | 0} ${sy | 0})"><text y="-2">${esc(nm)}</text><text class="a" y="11">${fmtNum(A, 1, st.en)} m²</text></g>`;

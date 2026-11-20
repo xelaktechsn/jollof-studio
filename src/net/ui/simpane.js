@@ -83,21 +83,25 @@ function stpSec(ctx, n) {
     + `<label class="ntF"><span>${tl('Priorité du pont')}</span>${sel('data-sset="stp.prio"', prios, P.stp.prio)}</label>` + info,
   tl('La plus basse priorité, puis la plus basse adresse MAC, devient la racine.'));
 }
-/** OSPF d'un routeur : activation, déclarations « network … area », interfaces, voisins. */
+/** OSPF d'un routeur : activation, déclarations « network … area », interfaces (aire, coût, minuteries, priorité), voisins. */
 function ospfSec(ctx, n) {
   const P = n.p, O = P.ospf || { on: false, nets: [], ifs: {} }, lan = ctx.lan();
-  let body = chk('data-sset="ospf.on"', O.on, tl('OSPF actif (aire unique)'));
+  let body = chk('data-sset="ospf.on"', O.on, tl('OSPF actif'));
   if (O.on) {
     const os = lan.ospf(), mine = os.ifs.get(n.id) || [], adj = os.adj.filter(e => e.a === n.id || e.b === n.id);
     const WHY = { passive: tl('interface passive'), subnet: tl('sous-réseau ou masque différent'), area: tl('aires différentes'), timers: tl('minuteries hello et dead différentes'), rid: tl('même identifiant') };
+    const areas = [...(os.areas.get(n.id) || [])].sort((x, y) => x - y);
+    const role = os.abr.has(n.id) ? tl('routeur de bordure (ABR) : aires {0}', areas.join(', ')) : areas.length > 1 ? tl('plusieurs aires sans l’aire 0 : {0}', areas.join(', ')) : areas.length ? tl('routeur interne de l’aire {0}', areas[0]) : '';
+    const ROLE = { DR: 'DR', BDR: 'BDR', DROTHER: 'DROTHER' };
     body += `<div class="ntSmGrid">${L2(tl('Identifiant du routeur'), inp('data-sset="ospf.rid" placeholder="' + esc(os.rid.get(n.id) || '') + '"', O.rid))}${L2(tl('Bande de référence (Mb/s)'), inp('type="number" min="1" data-sset="ospf.ref"', O.ref))}</div>`
+      + (role ? `<p class="${os.noBackbone.includes(n.id) ? 'ntWarn' : 'mut'}">${esc(role)}</p>` : '')
       + chk('data-sset="ospf.originate"', O.originate, tl('Annoncer la route par défaut'))
       + `<label class="ntSmL"><small>${tl('Réseaux (« network … area ») : un par ligne, préfixe puis aire')}</small><textarea class="inp ntSmTa" rows="${Math.max(2, O.nets.length + 1)}" data-stext="onets" spellcheck="false" placeholder="10.0.0.0/8 0">${esc(O.nets.map(x => `${x.net} ${x.area}`).join('\n'))}</textarea></label>`
-      + (mine.length ? `<table class="ntTable ntSmRt"><tr><th>${tl('Interface')}</th><th>${tl('Aire')}</th><th>${tl('Coût')}</th><th>Hello / dead</th><th>${tl('Passive')}</th></tr>${mine.map(x => `<tr><td>${esc(x.name)}</td><td>${x.area}</td><td>${inp(`type="number" min="0" max="65535" data-sospf="${esc(x.name)}" data-f="cost" placeholder="${x.cost}"`, ospfOwn(P, x.name).cost || '', 'class="inp ntSmIn tiny"')}</td><td>${inp(`type="number" min="1" data-sospf="${esc(x.name)}" data-f="hello"`, x.hello, 'class="inp ntSmIn tiny"')}${inp(`type="number" min="1" data-sospf="${esc(x.name)}" data-f="dead"`, x.dead, 'class="inp ntSmIn tiny"')}</td><td>${chk(`data-sospf="${esc(x.name)}" data-f="passive"`, x.passive, '')}</td></tr>`).join('')}</table>` : `<p class="mut">${tl('Aucune interface n’est couverte par les réseaux déclarés.')}</p>`)
-      + (adj.length ? `<h4>${tl('Voisins')}</h4><ul class="ntSmNb">${adj.map(e => { const me = e.a === n.id; return `<li class="${e.up ? 'ok' : 'bad'}">${esc((me ? e.fa : e.fb).name)} → ${esc(ctx.nameOf(me ? e.b : e.a))} : ${e.up ? tl('voisin (FULL)') : esc(WHY[e.why] || e.why)}</li>`; }).join('')}</ul>` : '')
-      + `<p class="mut ntSmNote">${tl('Modèle simplifié : une seule aire de fait, ni élection DR/BDR, ni authentification, ni partage de charge.')}</p>`;
+      + (mine.length ? `<div class="ntSmScroll"><table class="ntTable ntSmRt"><tr><th>${tl('Interface')}</th><th>${tl('Aire')}</th><th>${tl('Coût')}</th><th>Hello / dead</th><th data-tip="${tl('Priorité pour l’élection du routeur désigné (0 : jamais DR)')}">${tl('Priorité')}</th><th>${tl('Rôle')}</th><th>${tl('Passive')}</th></tr>${mine.map(x => `<tr><td>${esc(x.name)}</td><td>${x.area}</td><td>${inp(`type="number" min="0" max="65535" data-sospf="${esc(x.name)}" data-f="cost" placeholder="${x.cost}"`, ospfOwn(P, x.name).cost || '', 'class="inp ntSmIn tiny"')}</td><td>${inp(`type="number" min="1" data-sospf="${esc(x.name)}" data-f="hello"`, x.hello, 'class="inp ntSmIn tiny"')}${inp(`type="number" min="1" data-sospf="${esc(x.name)}" data-f="dead"`, x.dead, 'class="inp ntSmIn tiny"')}</td><td>${inp(`type="number" min="0" max="255" data-sospf="${esc(x.name)}" data-f="prio"`, x.prio, 'class="inp ntSmIn tiny"')}</td><td>${esc(ROLE[x.state] || '—')}</td><td>${chk(`data-sospf="${esc(x.name)}" data-f="passive"`, x.passive, '')}</td></tr>`).join('')}</table></div>` : `<p class="mut">${tl('Aucune interface n’est couverte par les réseaux déclarés.')}</p>`)
+      + (adj.length ? `<h4>${tl('Voisins')}</h4><table class="ntTable ntSmRt"><tr><th>${tl('Interface')}</th><th>${tl('Voisin')}</th><th>${tl('Identifiant')}</th><th>${tl('Rôle')}</th><th>${tl('État')}</th></tr>${adj.map(e => { const me = e.a === n.id, other = me ? e.b : e.a, ox = me ? e.fb : e.fa; return `<tr class="${e.up ? '' : 'bad'}"><td>${esc((me ? e.fa : e.fb).name)}</td><td>${esc(ctx.nameOf(other))}</td><td>${esc(os.rid.get(other) || '')}</td><td>${esc(ROLE[ox.state] || '—')}</td><td>${e.up ? (e.full ? '<b class="ok">FULL</b>' : '2-WAY') : `<span class="bad">${esc(WHY[e.why] || e.why)}</span>`}</td></tr>`; }).join('')}</table>` : '')
+      + `<p class="mut ntSmNote">${tl('Modèle simplifié : élection du routeur désigné au démarrage simultané (sans garder un DR déjà en place), résumés sans agrégation, ni liens virtuels, ni aires terminales, ni authentification.')}</p>`;
   }
-  return sec('OSPF', body, tl('Voisins : même sous-réseau et masque, même aire, mêmes minuteries ; coût = bande de référence / débit ; distance administrative 110.'));
+  return sec('OSPF', body, tl('Voisins : même sous-réseau et masque, même aire, mêmes minuteries ; adjacence complète avec le DR et le BDR seulement ; entre deux aires, tout passe par l’aire 0 ; distance administrative 110.'));
 }
 const ospfOwn = (P, name) => ((P.ospf && P.ospf.ifs) || {})[name] || {};
 function lagSec(ctx, n) {
@@ -138,10 +142,10 @@ function ifSec(ctx, n) {
 function routeSec(ctx, n) {
   const P = n.p, tab = ctx.lan().routes(n.id);
   const txt = r => `${[r.net >>> 24, (r.net >>> 16) & 255, (r.net >>> 8) & 255, r.net & 255].join('.')}/${r.prefix}`;
-  const KIND = { connected: tl('connectée'), static: tl('statique'), default: tl('par défaut'), dhcp: 'DHCP' };
+  const KIND = { connected: tl('connectée'), static: tl('statique'), default: tl('par défaut'), dhcp: 'DHCP', ospf: 'OSPF' };
   const bad = r => (tab.bad || []).some(b => b.net === r.net && b.via === r.via);
   const rows = (P.routes || []).map((r, i) => `<div class="ntSmRoute">${inp(`data-slist="routes" data-i="${i}" data-f="net" aria-label="${tl('Réseau')}"`, r.net)}${inp(`data-slist="routes" data-i="${i}" data-f="via" aria-label="${tl('Passerelle')}"`, r.via)}${del('routes', i)}${bad(r) ? `<small class="bad">${tl('passerelle injoignable')}</small>` : ''}</div>`).join('');
-  return sec(tl('Routage'), `<div class="ntSmScroll"><table class="ntTable mono ntSmRt"><tr><th>${tl('Réseau')}</th><th>${tl('Passerelle')}</th><th>${tl('Interface de sortie')}</th><th>${tl('Type')}</th></tr>${tab.map(r => `<tr><td>${txt(r)}</td><td>${esc(r.via || '—')}</td><td>${esc(r.iface.port || r.iface.role)}</td><td>${esc(KIND[r.kind] || r.kind)}</td></tr>`).join('') || `<tr><td colspan="4" class="mut">${tl('Table vide : aucune interface active.')}</td></tr>`}</table></div>`
+  return sec(tl('Routage'), `<div class="ntSmScroll"><table class="ntTable mono ntSmRt"><tr><th>${tl('Réseau')}</th><th>${tl('Passerelle')}</th><th>${tl('Interface de sortie')}</th><th>${tl('Type')}</th></tr>${tab.map(r => `<tr><td>${txt(r)}</td><td>${esc((r.paths && r.paths.length > 1 ? r.paths.map(x => x.via) : [r.via || '—']).join(' / '))}</td><td>${esc((r.paths && r.paths.length > 1 ? r.paths.map(x => x.iface.port || x.iface.role) : [r.iface.port || r.iface.role]).join(' / '))}</td><td>${esc(KIND[r.kind] || r.kind)}${r.kind === 'ospf' ? ` ${r.type === 'inter' ? 'IA' : 'O'} ${r.metric}` : ''}</td></tr>`).join('') || `<tr><td colspan="4" class="mut">${tl('Table vide : aucune interface active.')}</td></tr>`}</table></div>`
     + `<h4>${tl('Routes statiques')}</h4>${rows}<div class="row">${add('routes', tl('Route'))}</div>`,
   tl('Plus long préfixe d’abord ; 0.0.0.0/0 : route par défaut.'));
 }

@@ -41,7 +41,7 @@ export function tools(h) {
         const devices = data.devices.filter(d => d.loc && d.loc.floor === f.id).map(d => { ids.add(d.id); const r = S.roomAt(f, d.loc.x, d.loc.y); return { device: d.name, id: d.id, type: d.type, x: d.loc.x, y: d.loc.y, h_m: d.loc.h, room: r ? r.name || r.usage : null }; });
         return {
           site, floor: { id: f.id, name: f.name, building: b.name },
-          rooms: f.rooms.map(r => ({ id: r.id, name: r.name, use: r.usage, area_m2: r3(S.polyArea(r.poly)), polygon: r.poly })),
+          rooms: f.rooms.map(r => ({ id: r.id, name: r.name, use: r.usage, area_m2: r3(S.roomArea(r)), polygon: r.poly, holes: r.holes })),
           walls: f.walls.length, doors: f.doors.length, pathways: paths, devices,
           racks: (data.racks || []).filter(r => r.floor === f.id).map(r => ({ id: r.id, name: r.name, x: r.x, y: r.y, rot: r.rot })),
           problems: await planIssues(W, ids)
@@ -82,7 +82,7 @@ export function tools(h) {
           const src = (await floorRef(W, a.copy_from)).f, wm = new Map();
           for (const w of src.walls) { const id = S.uid('', 'w', used); wm.set(w.id, id); f.walls.push({ ...w, id, a: [...w.a], b: [...w.b] }); }
           for (const d of src.doors) if (wm.has(d.wall)) f.doors.push({ ...d, id: S.uid('', 'dr', used), wall: wm.get(d.wall) });
-          for (const r of src.rooms) f.rooms.push({ ...r, id: S.uid('', 'rm', used), poly: r.poly.map(q => [...q]) });
+          for (const r of src.rooms) f.rooms.push({ ...r, id: S.uid('', 'rm', used), poly: r.poly.map(q => [...q]), ...(r.holes ? { holes: r.holes.map(hh => hh.map(q => [...q])) } : {}) });
           const pids = new Set((data.paths || []).map(p => p.id)); let i = 1;
           for (const p of (data.paths || []).filter(x => x.floor === src.id && x.kind !== 'riser' && x.kind !== 'outdoor')) { while (pids.has('pa' + i)) i++; pids.add('pa' + i); data.paths.push({ ...p, id: 'pa' + i, floor: f.id, pts: p.pts.map(q => [...q]) }); }
         }
@@ -92,8 +92,8 @@ export function tools(h) {
     },
     {
       name: 'plan_room',
-      description: 'Add, edit or remove a room on a floor. Give polygon [[x,y],…] (metres, ≥ 3 corners) or rect [x0, y0, x1, y1]. use: office, open (open-plan), classroom, lab, meeting, corridor, hall, tr (telecommunications room / floor distributor), er (equipment room), ef (entrance facility), storage, sanitary, other. To edit, give id (or the room name) plus the fields to change; remove:true deletes it. Rooms are not walls: draw walls with plan_wall.',
-      inputSchema: { type: 'object', properties: { floor: { type: 'string' }, id: { type: 'string' }, name: { type: 'string' }, use: { type: 'string' }, polygon: { type: 'array', items: { type: 'array', items: { type: 'number' } } }, rect: { type: 'array', items: { type: 'number' } }, remove: { type: 'boolean' } } },
+      description: 'Add, edit or remove a room on a floor (holes: inner polygons such as a courtyard, excluded from its area). Give polygon [[x,y],…] (metres, ≥ 3 corners) or rect [x0, y0, x1, y1]. use: office, open (open-plan), classroom, lab, meeting, corridor, hall, tr (telecommunications room / floor distributor), er (equipment room), ef (entrance facility), storage, sanitary, other. To edit, give id (or the room name) plus the fields to change; remove:true deletes it. Rooms are not walls: draw walls with plan_wall.',
+      inputSchema: { type: 'object', properties: { floor: { type: 'string' }, id: { type: 'string' }, name: { type: 'string' }, use: { type: 'string' }, polygon: { type: 'array', items: { type: 'array', items: { type: 'number' } } }, rect: { type: 'array', items: { type: 'number' } }, holes: { type: 'array', items: { type: 'array', items: { type: 'array', items: { type: 'number' } } }, description: 'inner polygons excluded from the room (courtyard, patio); [] removes them' }, remove: { type: 'boolean' } } },
       async run(a) {
         const W = await h.netWs(), S = await SITE(), { f } = await floorRef(W, a.floor);
         let r = a.id ? f.rooms.find(x => x.id === a.id || h.norm(x.name) === h.norm(a.id)) : null;
@@ -104,10 +104,11 @@ export function tools(h) {
         else if (a.polygon) { poly = a.polygon.map((p, i) => pt(p, 'polygon[' + i + ']')); if (poly.length < 3) h.fail('polygon: at least 3 corners'); }
         if (a.use && !S.USAGES[a.use]) h.fail(`use: one of ${Object.keys(S.USAGES).join(', ')}`);
         if (!r) { if (!poly) h.fail('give polygon or rect for a new room'); r = { id: S.uid('', 'rm', S.siteIds(W.data().site)), name: '', usage: 'office', poly }; f.rooms.push(r); }
-        if (poly) r.poly = poly; if (a.name != null) r.name = String(a.name).slice(0, 40); if (a.use) r.usage = a.use;
-        if (S.polyArea(r.poly) < 0.05) h.fail('the polygon has no area');
+        if (poly) r.poly = poly;
+        if (Array.isArray(a.holes)) { const hs = a.holes.map((hh, k) => (hh || []).map((p, i) => pt(p, `holes[${k}][${i}]`))).filter(hh => hh.length >= 3); if (hs.length) r.holes = hs; else delete r.holes; } if (a.name != null) r.name = String(a.name).slice(0, 40); if (a.use) r.usage = a.use;
+        if (S.roomArea(r) < 0.05) h.fail('the polygon has no area');
         commit(W);
-        return { room: r.id, name: r.name, use: r.usage, area_m2: r3(S.polyArea(r.poly)) };
+        return { room: r.id, name: r.name, use: r.usage, area_m2: r3(S.roomArea(r)), holes: r.holes ? r.holes.length : 0 };
       }
     },
     {
@@ -120,7 +121,7 @@ export function tools(h) {
         const { addDetectedRooms } = await import('../net/ui/plan-demo.js');
         const made = addDetectedRooms(W.data(), f, a.use || 'office', { tol: a.tolerance_m != null ? num(a.tolerance_m, 0.01, 2, 'tolerance_m') : undefined });
         if (made.length) commit(W);
-        return { created: made.map(r => ({ id: r.id, name: r.name, use: r.usage, area_m2: r3(S.polyArea(r.poly)), polygon: r.poly })), note: made.length ? undefined : 'no closed space without a room (close the walls, or draw rooms with plan_room)' };
+        return { created: made.map(r => ({ id: r.id, name: r.name, use: r.usage, area_m2: r3(S.roomArea(r)), polygon: r.poly, holes: r.holes })), note: made.length ? undefined : 'no closed space without a room (close the walls, or draw rooms with plan_room)' };
       }
     },
     {
