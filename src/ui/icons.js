@@ -175,7 +175,40 @@ const P = {
   rj45: 'M6 3h12v11l-3 3H9l-3-3z M9 3v5 M12 3v5 M15 3v5 M10 17v4h4v-4',
   cableTester: 'M3 5h7v14H3z M14 5h7v14h-7z M6.5 9h.01 M6.5 12h.01 M6.5 15h.01 M17.5 9h.01 M17.5 12h.01 M17.5 15h.01 M10 12h4',
   ping: 'M12 12h.01 M8.5 8.5a5 5 0 0 0 0 7 M15.5 8.5a5 5 0 0 1 0 7 M5.6 5.6a9 9 0 0 0 0 12.8 M18.4 5.6a9 9 0 0 1 0 12.8',
-  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18'
+  globe: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z M3 12h18 M12 3a14 14 0 0 1 0 18 M12 3a14 14 0 0 0 0 18',
+  floorPlan: 'M3 3h18v18H3z M12 3v7 M12 14v7 M3 12h5 M16 12h5',
+  rack: 'M6 2h12v20H6z M9 5.5h6 M9 9h6 M9 12.5h6 M9 16h6 M9 19.5h.01 M15 19.5h.01',
+  clipboard: 'M9 3h6v3H9z M7 4.5H5v16.5h14V4.5h-2 M8.5 11h7 M8.5 14.5h7 M8.5 18h4',
+  // Vue Plans : mur (appareil de briques), pièce (contour coté), porte (battant), chemin de câbles (tablette et câbles),
+  // mètre (règle graduée), étalonnage (deux repères et leur cote), bâtiment.
+  wall: 'M3 5h18v14H3z M3 9.7h18 M3 14.3h18 M9 5v4.7 M15 5v4.7 M6 9.7v4.6 M12 9.7v4.6 M18 9.7v4.6 M9 14.3V19 M15 14.3V19',
+  room: 'M4 7v13h16V7z M4 4h16 M4 2.5v3 M20 2.5v3 M8 11h2 M14 11h2 M8 16h2',
+  door: 'M4 21h16 M6 21V4h7v17 M13 4l5 2v15 M10.5 12.5h.01',
+  cableTray: 'M2 9v6h20V9 M2 15l2 3h16l2-3 M6 12c2-2.5 4 2.5 6 0s4 2.5 6 0',
+  ruler: 'M2.5 16.5 16.5 2.5l5 5-14 14z M6 13l2 2 M9 10l3 3 M12 7l2 2 M15 4l3 3',
+  calibrate: 'M5 3v6 M19 3v6 M5 6h14 M8 4.5 5 6l3 1.5 M16 4.5 19 6l-3 1.5 M4 14h16v7H4z M8 14v3 M12 14v4 M16 14v3',
+  building: 'M4 21V5l8-3v19 M12 8h8v13 M2 21h20 M7 7h2 M7 11h2 M7 15h2 M15 12h2 M15 16h2',
+  // Fibre optique (fibre.js, bilan optique) : un brin qui finit par une férule d'où sort la lumière.
+  fibre: 'M3 21c3.5 0 5.5-2.5 7-5s2.5-4 3.5-5 M12 9.5l2.5 2.5 4-4L16 5.5z M19 4l1.5-1.5 M20.5 7.5H22 M16.5 2.5V1',
+  // Équipements de baie (vue Baies) : passe-câbles à anneaux, tablette, obturateur, PDU, onduleur, ventilation.
+  cableMgr: 'M2 7h20v10H2z M6 7v4a2 2 0 0 0 4 0V7 M14 7v4a2 2 0 0 0 4 0V7',
+  rackShelf: 'M2 14h20v3H2z M4 17v3 M20 17v3 M6 14V8h7v6',
+  blankPanel: 'M2 8h20v8H2z M4.5 12h.01 M19.5 12h.01',
+  pdu: 'M9 2h6v20H9z M11 5.5h2 M11 9.5h2 M11 13.5h2 M11 17.5h2',
+  ups: 'M3 5h18v14H3z M6 8h6v4H6z M13 12l-2 3h3l-2 3 M16 8h2 M16 11h2',
+  rackFan: 'M2 6h20v12H2z M8 12a2.5 2.5 0 1 0 0-.01 M16 12a2.5 2.5 0 1 0 0-.01',
+  // Testeur de certification (cert) : boîtier à écran qui trace une courbe sous sa limite, fiche en tête.
+  certifier: 'M5 5h14v17H5z M10 2h4v3h-4z M8 8h8v6H8z M8.5 12.5l2-2 1.5 1.5 3.5-3.5 M9 17.5h.01 M12 17.5h.01 M15 17.5h.01',
+  // Réseau, partie simulation : switch de niveau 3 (flèche de routage), routeur pare-feu (mur), convertisseur de média,
+  // panneau fibre (traversées LC duplex), prise double, traceroute (sauts numérotés), disposition en couches, VLAN.
+  switchL3: 'M2 10h20v8H2z M5 14h1.5 M9 14h1.5 M13 14h1.5 M19 13v2 M12 7V2 M9.5 4.5 12 2l2.5 2.5',
+  firewall: 'M3 5h18v14H3z M3 9.7h18 M3 14.3h18 M9 5v4.7 M15 5v4.7 M6 9.7v4.6 M12 9.7v4.6 M18 9.7v4.6 M9 14.3V19 M15 14.3V19',
+  mediaConv: 'M2 8h7v8H2z M15 8h7v8h-7z M9 12h6 M12.5 9.5 15 12l-2.5 2.5 M4.5 12h2 M17.5 11v2 M19.5 11v2',
+  fibrePanel: 'M2 8h20v8H2z M5 11v2 M7 11v2 M11 11v2 M13 11v2 M17 11v2 M19 11v2',
+  outlet2: 'M5 2h14v20H5z M8 5h8v5h-2v1.5h-4V10H8z M8 13h8v5h-2v1.5h-4V18H8z',
+  traceroute: 'M3 19a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M18 5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M5.6 17.6l5.2-4.4 M13.3 10.6l5-4.2',
+  treeLayout: 'M10 3h4v3h-4z M5 10.5h4v3H5z M15 10.5h4v3h-4z M3 18h4v3H3z M10 18h4v3h-4z M17 18h4v3h-4z',
+  vlanTag: 'M3 4h18v4H3z M3 10h18v4H3z M3 16h18v4H3z M7 4v4 M12 10v4 M17 16v4'
 };
 
 export function icon(name, cls = '') {

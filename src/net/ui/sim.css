@@ -1,0 +1,80 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Plan réseau, partie simulation : inspecteur des équipements administrables (ports, VLAN, Spanning Tree, agrégats,
+   routage, DHCP, ACL), base des VLAN, marques du schéma (ports bloqués, VLAN, traceroute). Classes en ntSm… */
+:root { --nt-blk: #f97316; --nt-trace: #38bdf8; --nt-trunk: #e2e8f0;
+  --nt-v0: #60a5fa; --nt-v1: #fbbf24; --nt-v2: #34d399; --nt-v3: #f472b6; --nt-v4: #a78bfa; --nt-v5: #22d3ee; --nt-v6: #fb923c; --nt-v7: #a3e635; --nt-v8: #f87171; --nt-v9: #94a3b8; }
+:root[data-theme="light"] { --nt-blk: #c2410c; --nt-trace: #0284c7; --nt-trunk: #334155;
+  --nt-v0: #2563eb; --nt-v1: #b45309; --nt-v2: #047857; --nt-v3: #be185d; --nt-v4: #6d28d9; --nt-v5: #0e7490; --nt-v6: #c2410c; --nt-v7: #4d7c0f; --nt-v8: #b91c1c; --nt-v9: #475569; }
+
+/* ---------- Inspecteur ---------- */
+.ntSm h4 { display: flex; align-items: center; gap: 6px; }
+.ntSm h4 .ic { width: 14px; height: 14px; }
+.ntSmScroll { overflow-x: auto; margin: 0 -2px; }
+.ntSm .ntTable td { vertical-align: middle; }
+.ntSmIn.inp, .ntSmIn.sel { height: 24px; padding: 0 5px; font-size: 11.5px; min-width: 0; width: 100%; }
+.ntSmIn.tiny { width: 52px; }
+.ntSmIn.wide { min-width: 84px; }
+.ntSmVl { display: flex; gap: 4px; }
+.ntSmVl .inp[style*="--vc"] { box-shadow: inset 3px 0 0 var(--vc); }
+.ntSmPorts { display: flex; flex-direction: column; }
+.ntSmPort { display: grid; grid-template-columns: 52px 1fr auto; gap: 3px 6px; align-items: center; padding: 5px 2px; border-bottom: 1px solid var(--line); font-size: 11.5px; }
+.ntSmPort.blk { background: color-mix(in srgb, var(--nt-blk) 10%, transparent); }
+.ntSmPort > b small, .ntSmLink small, .ntSmPort .ntChk small { color: var(--muted); font-size: 10px; font-weight: 400; }
+.ntSmLink { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntSmPortCfg { grid-column: 1 / -1; display: grid; grid-template-columns: 78px 1fr 64px; gap: 6px; }
+.ntSmRole { font-size: 10.5px; white-space: nowrap; color: var(--fg-2); }
+.ntSmRole.blk { color: var(--nt-blk); font-weight: 600; }
+.ntSmDel.tb { width: 22px; height: 22px; }
+.ntSmDel .ic { width: 12px; height: 12px; }
+.ntSmMore summary { cursor: pointer; color: var(--fg-2); font-size: 11.5px; padding: 2px 0; }
+.ntSmNote { font-size: 10.5px; }
+.ntSmTa.inp { width: 100%; height: auto; min-height: 44px; font: 11.5px/1.45 var(--mono); padding: 5px 7px; resize: vertical; }
+.ntSmAcl { display: flex; flex-direction: column; gap: 4px; }
+.ntSmAcl .row { display: flex; gap: 6px; align-items: center; }
+.ntSmSw { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+.ntSmV { display: grid; grid-template-columns: 12px 58px 1fr 22px; gap: 4px 6px; align-items: center; padding: 5px 0; border-bottom: 1px solid var(--line); }
+.ntSmV .ntSmSw { width: 10px; height: 10px; margin: 0; }
+.ntSmV .ntSmNet { grid-column: 2 / 4; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ntTrace { white-space: pre; font: 11px/1.5 var(--mono); padding: 6px 8px; border-radius: 8px; background: var(--panel-2); overflow-x: auto; margin: 0; }
+.ntTrace.bad { color: var(--danger-ink, var(--nt-err)); }
+
+/* ---------- Schéma ---------- */
+.ntHost.toolTrace .ntDev { cursor: crosshair; }
+.ntDev.traceFrom > .ntBody { stroke: var(--nt-trace); stroke-width: 2.4px; }
+.ntBlk { stroke: var(--nt-blk); stroke-width: 2.2px; stroke-linecap: round; pointer-events: none; }
+.ntBlk.part { stroke-dasharray: 3 2; }
+.ntLagBar { fill: none; stroke: var(--fg-2); stroke-width: 1.2px; pointer-events: none; }
+.ntCab.vl .line { stroke: var(--vc); }
+.ntCab.vl.trunk .line, .ntChan.vl.trunk .line { stroke: var(--nt-trunk); stroke-width: 3.4px; stroke-dasharray: 9 3 2 3; }
+.ntCab.blocked .line { stroke-dasharray: 2 5; opacity: .75; }
+.ntChan .line { fill: none; stroke-width: 1.8px; stroke: var(--nt-c6); opacity: .8; }
+.ntChan.vl .line { stroke: var(--vc); }
+.ntChan .hit { fill: none; stroke: transparent; stroke-width: 10px; }
+.ntHop circle { fill: var(--nt-trace); stroke: var(--stage); stroke-width: 2px; }
+.ntHop text { fill: var(--stage); font-size: 10px; font-weight: 700; text-anchor: middle; dominant-baseline: central; }
+.ntHop.bad circle { fill: var(--nt-err); }
+.ntTracePath { fill: none; stroke: var(--nt-trace); stroke-width: 3px; stroke-dasharray: 6 4; opacity: .8; pointer-events: none; }
+.ntLegend .ntVlKey i { border-radius: 2px; background: var(--vc); }
+.ntLegend .ntVlKey i.trunk { background: var(--nt-trunk); }
+.ntLegend .ntVlKey i.blk { background: none; border-bottom: 2px solid var(--nt-blk); border-radius: 0; height: 2px; transform: rotate(-45deg); }
+.ntSimBar .segBtn[aria-pressed="true"] { color: var(--accent); }
+.ntSmCard { border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; display: flex; flex-direction: column; gap: 6px; background: var(--panel-2); }
+.ntSmCardH { display: flex; align-items: center; gap: 6px; font-size: 11.5px; }
+.ntSmCardH .grow { flex: 1; }
+.ntSmCardH .ntSmIn.sel { width: 76px; }
+.ntSmCardH .ntSmIn.inp:not(.tiny) { flex: 1; }
+.ntSmGrid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.ntSmL { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.ntSmL.wide { grid-column: 1 / -1; }
+.ntSmL > small { color: var(--muted); font-size: 10px; }
+.ntSmIp { display: grid; grid-template-columns: 1fr 52px; gap: 4px; }
+.ntSmRt { font-size: 10.5px; }
+.ntSmRt td, .ntSmRt th { padding: 3px 4px; white-space: nowrap; }
+.ntSmRoute { display: grid; grid-template-columns: 1fr 1fr 22px; gap: 4px 6px; align-items: center; }
+.ntSmRoute > small { grid-column: 1 / -1; font-size: 10.5px; }
+.ntSmNb { list-style: none; margin: 0; padding: 0; font-size: 11.5px; display: flex; flex-direction: column; gap: 2px; }
+.ntSmNb li.ok::before { content: '● '; color: var(--nt-g); } .ntSmNb li.bad::before { content: '● '; color: var(--nt-err); }
+.ntSmVl .ntSmIn.tiny { width: 50px; flex: none; }
+.ntPortS { fill: var(--nt-down); stroke: none; }
+.ntPortS.g { fill: var(--nt-g); } .ntPortS.f { fill: var(--nt-f); } .ntPortS.e { fill: var(--nt-e); } .ntPortS.err, .ntPortS.down { fill: var(--nt-err); } .ntPortS.pass { fill: var(--line-3); }

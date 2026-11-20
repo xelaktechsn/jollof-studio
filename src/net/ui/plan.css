@@ -1,0 +1,146 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Vue Plans du plan réseau : étage à l'échelle, outils, inspecteur, calques. Classes en ntPl… (feuille chargée avec la vue). */
+:root {
+  --nt-pl-wall: #c3ccd6; --nt-pl-wall2: #8796a6; --nt-pl-glass: #7dd3fc; --nt-pl-room: #93a4b81a; --nt-pl-roomline: #93a4b855;
+  --nt-pl-tech: #f59e0b24; --nt-pl-techline: #f59e0b88; --nt-pl-corr: #94a3b80f; --nt-pl-work: #60a5fa14; --nt-pl-wet: #22d3ee12;
+  --nt-pl-tray: #a78bfa; --nt-pl-conduit: #34d399; --nt-pl-ceiling: #f472b6; --nt-pl-floor: #fbbf24; --nt-pl-power: #f87171;
+  --nt-pl-rack: #f59e0b; --nt-pl-route: #38bdf8; --nt-pl-label: #dbe3ea; --nt-pl-label2: #8fa0b1; --nt-pl-halo: #0d1117;
+}
+:root[data-theme="light"] {
+  --nt-pl-wall: #4b5563; --nt-pl-wall2: #6b7280; --nt-pl-glass: #0284c7; --nt-pl-room: #64748b12; --nt-pl-roomline: #64748b55;
+  --nt-pl-tech: #f59e0b22; --nt-pl-techline: #d97706aa; --nt-pl-corr: #64748b0a; --nt-pl-work: #2563eb0d; --nt-pl-wet: #0891b20d;
+  --nt-pl-tray: #7c3aed; --nt-pl-conduit: #059669; --nt-pl-ceiling: #db2777; --nt-pl-floor: #b45309; --nt-pl-power: #dc2626;
+  --nt-pl-rack: #d97706; --nt-pl-route: #0284c7; --nt-pl-label: #1f2937; --nt-pl-label2: #64748b; --nt-pl-halo: #ffffff;
+}
+.ntPlStage { position: absolute; inset: 0; overflow: hidden; touch-action: none; background-color: var(--stage);
+  background-image: radial-gradient(circle, var(--nt-grid) 1.1px, transparent 1.3px); background-size: var(--gk, 20px) var(--gk, 20px); background-position: var(--gx, 0) var(--gy, 0); }
+.ntPlCv { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.ntPlSvg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; -webkit-user-select: none; user-select: none; }
+.ntPlSvg[data-tool="wall"], .ntPlSvg[data-tool="room"], .ntPlSvg[data-tool="path"], .ntPlSvg[data-tool="measure"], .ntPlSvg[data-tool="calib"], .ntPlSvg[data-tool="door"] { cursor: crosshair; }
+.ntPlSvg[data-tool="link"] .ntPlDev { cursor: copy; }
+.ntPlSvg text { font-family: var(--sans); }
+.ntPlImg { pointer-events: none; }
+/* Pièces : teinte selon l'usage. */
+.ntPlRoom { fill: var(--nt-pl-room); stroke: var(--nt-pl-roomline); stroke-width: 1px; vector-effect: non-scaling-stroke; }
+.ntPlRoom.u-tr, .ntPlRoom.u-er, .ntPlRoom.u-ef { fill: var(--nt-pl-tech); stroke: var(--nt-pl-techline); }
+.ntPlRoom.u-corridor, .ntPlRoom.u-hall { fill: var(--nt-pl-corr); }
+.ntPlRoom.u-open, .ntPlRoom.u-office, .ntPlRoom.u-classroom, .ntPlRoom.u-lab, .ntPlRoom.u-meeting { fill: var(--nt-pl-work); }
+.ntPlRoom.u-sanitary { fill: var(--nt-pl-wet); }
+.ntPlRoom:hover { stroke: var(--accent); }
+.ntPlRoom.sel { stroke: var(--accent); stroke-width: 2px; fill: color-mix(in srgb, var(--accent) 12%, transparent); }
+.ntPlRoom.bad { stroke: var(--warn); stroke-dasharray: 5 3; }
+/* Murs : épaisseur réelle ; vitrage et cloisons plus clairs. */
+.ntPlWall { fill: var(--nt-pl-wall); stroke: none; }
+.ntPlWall.m-drywall, .ntPlWall.m-plaster, .ntPlWall.m-wood { fill: var(--nt-pl-wall2); }
+.ntPlWall.m-glass { fill: var(--nt-pl-glass); opacity: .8; }
+.ntPlWall:hover { fill: var(--accent); }
+.ntPlWall.sel { fill: var(--accent); }
+.ntPlDoor .gap { fill: var(--stage); }
+.ntPlDoor .leaf { fill: none; stroke: var(--nt-pl-wall2); stroke-width: 1.2px; vector-effect: non-scaling-stroke; }
+.ntPlDoor.sel .leaf, .ntPlDoor:hover .leaf { stroke: var(--accent); stroke-width: 2px; }
+/* Cheminements : couleur par genre ; énergie en rouge ; axe fin. */
+.ntPlPath { --c: var(--nt-pl-tray); }
+.ntPlPath.p-conduit, .ntPlPath.p-outdoor { --c: var(--nt-pl-conduit); }
+.ntPlPath.p-ceiling { --c: var(--nt-pl-ceiling); }
+.ntPlPath.p-floor, .ntPlPath.p-trunking { --c: var(--nt-pl-floor); }
+.ntPlPath.power { --c: var(--nt-pl-power); }
+.ntPlPath .hit { fill: none; stroke: transparent; stroke-width: 14px; vector-effect: non-scaling-stroke; stroke-linecap: round; }
+.ntPlPath .body { fill: none; stroke: color-mix(in srgb, var(--c) 30%, transparent); stroke-linecap: butt; stroke-linejoin: round; }
+.ntPlPath rect.body, .ntPlPath circle.body { fill: color-mix(in srgb, var(--c) 25%, transparent); stroke: var(--c); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ntPlPath .axis { fill: none; stroke: var(--c); stroke-width: 1.6px; vector-effect: non-scaling-stroke; stroke-linejoin: round; }
+.ntPlPath.p-ceiling .axis { stroke-dasharray: 2 5; stroke-width: 2.2px; stroke-linecap: round; }
+.ntPlPath.p-conduit .axis { stroke-dasharray: 8 3; }
+.ntPlPath.p-outdoor .axis { stroke-dasharray: 3 3; }
+.ntPlPath.power .axis { stroke-dasharray: 10 3 2 3; }
+.ntPlPath:hover .axis { stroke-width: 2.6px; }
+.ntPlPath.sel .axis { stroke: var(--accent); stroke-width: 3px; }
+.ntPlPath.sel .body { stroke: color-mix(in srgb, var(--accent) 35%, transparent); }
+.ntPlPath.bad .axis { stroke: var(--danger); }
+/* Baies. */
+.ntPlRack polygon { fill: color-mix(in srgb, var(--nt-pl-rack) 30%, var(--stage)); stroke: var(--nt-pl-rack); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ntPlRack .front { stroke: var(--nt-pl-rack); stroke-width: 4px; vector-effect: non-scaling-stroke; }
+.ntPlRack.wall polygon { stroke-dasharray: 4 2; }
+.ntPlRack.sel polygon, .ntPlRack:hover polygon { stroke: var(--accent); }
+.ntPlRkL { font-size: 10.5px; font-weight: 600; text-anchor: middle; fill: var(--nt-pl-rack); pointer-events: none; paint-order: stroke; stroke: var(--nt-pl-halo); stroke-width: 3px; }
+/* Tracé du câble choisi. */
+.ntPlRoute { fill: none; stroke: var(--nt-pl-route); stroke-width: 3px; vector-effect: non-scaling-stroke; stroke-linejoin: round; stroke-linecap: round; opacity: .9; pointer-events: none; }
+.ntPlRoute.fb { stroke-dasharray: 6 5; stroke: var(--warn); }
+/* Étiquettes (couche écran). */
+.ntPlRL text { font-size: 11.5px; font-weight: 600; text-anchor: middle; fill: var(--nt-pl-label); pointer-events: none; paint-order: stroke; stroke: var(--nt-pl-halo); stroke-width: 3px; stroke-linejoin: round; }
+.ntPlRL text.a { font-size: 10px; font-weight: 400; fill: var(--nt-pl-label2); }
+.ntPlRL.tech text:first-child { fill: var(--nt-pl-rack); }
+.ntPlPL { font-size: 9.5px; text-anchor: middle; fill: var(--nt-pl-label2); pointer-events: none; paint-order: stroke; stroke: var(--nt-pl-halo); stroke-width: 3px; }
+.ntPlPL.power { fill: var(--nt-pl-power); }
+.ntPlDev { cursor: pointer; }
+.ntPlDev circle { fill: var(--nt-body); stroke: var(--line-3); stroke-width: 1.4px; }
+.ntPlDev .ntPlIc { color: var(--fg); stroke: currentColor; fill: none; stroke-width: 2px; overflow: visible; pointer-events: none; }
+.ntPlDev.t-ap circle, .ntPlDev.t-ap6 circle { stroke: var(--nt-c5e); }
+.ntPlDev.t-camera circle { stroke: var(--nt-pl-ceiling); }
+.ntPlDev[class*="t-outlet"] circle { stroke: var(--nt-g); }
+.ntPlDev text { font-size: 10px; font-weight: 600; text-anchor: middle; fill: var(--nt-pl-label); paint-order: stroke; stroke: var(--nt-pl-halo); stroke-width: 3px; pointer-events: none; }
+.ntPlDev:hover circle { stroke: var(--accent); }
+.ntPlDev text.hov { display: none; }
+.ntPlDev:hover text.hov { display: inline; }
+.ntPlDev.sel circle { stroke: var(--accent); stroke-width: 2.6px; fill: color-mix(in srgb, var(--accent) 22%, var(--nt-body)); }
+.ntPlDev.bad circle { stroke: var(--warn); stroke-dasharray: 3 2; }
+.ntPlH { fill: var(--panel); stroke: var(--accent); stroke-width: 1.6px; cursor: move; }
+.ntPlH:hover { fill: var(--accent); }
+.ntPlDraft { fill: none; stroke: var(--accent); stroke-width: 2px; stroke-dasharray: 6 4; pointer-events: none; }
+.ntPlDraft.room { fill: color-mix(in srgb, var(--accent) 10%, transparent); }
+.ntPlDraft.measure, .ntPlDraft.calib { stroke: var(--nt-f); }
+.ntPlDraftPt { fill: var(--accent); pointer-events: none; }
+.ntPlSnap { fill: none; stroke: var(--nt-g); stroke-width: 2px; pointer-events: none; }
+.ntPlTip { pointer-events: none; }
+.ntPlTip rect { fill: var(--tip, var(--panel)); stroke: var(--line-2); }
+.ntPlTip text { font-size: 11px; font-family: var(--mono); fill: var(--fg); }
+.ndRect.ntPlMarq { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+/* Barres : étages, outils, calques. */
+.ntPlTop { flex-wrap: wrap; row-gap: 6px; }
+.ntPlFloors { display: flex; align-items: center; gap: 2px; padding: 3px; border-radius: 10px; max-width: 46vw; overflow-x: auto; scrollbar-width: none; }
+.ntPlFTab, .ntPlBName { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 7px; font-size: 12px; color: var(--fg-2); cursor: pointer; white-space: nowrap; }
+.ntPlBName { font-weight: 600; color: var(--fg); }
+.ntPlBName .ic { width: 15px; height: 15px; }
+.ntPlFTab:hover, .ntPlBName:hover { background: var(--raise); color: var(--fg); }
+.ntPlFTab[aria-selected="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.ntPlFTab:focus-visible, .ntPlBName:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntPlFloors .tb { width: 26px; height: 26px; }
+.ntPlBld { height: 26px; font-size: 12px; width: auto; max-width: 160px; }
+.ntPlSub { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 10px; font-size: 12px; color: var(--fg-2); }
+.ntPlSub label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.ntPlSub .sel { height: 26px; font-size: 12px; width: auto; }
+.ntPlLayers .segBtn { height: 30px; padding: 0 9px; gap: 5px; }
+.ntPlLayers .segBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+@media (max-width: 1700px) { .ntPlTools .segBtn span, .ntPlLayers .segBtn span { display: none; } .ntPlTools .segBtn { padding: 0 8px; } }
+/* Bas : échelle, carte d'information. */
+.ntPlScale { display: flex; flex-direction: column; gap: 3px; padding: 5px 9px 6px; border-radius: 9px; font-size: 10.5px; color: var(--fg-2); font-family: var(--mono); }
+.ntPlScale i { display: block; height: 5px; border: 1.5px solid var(--fg-2); border-top: 0; }
+.ntPlInfo { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 6px 10px; border-radius: 10px; font-size: 12px; color: var(--fg-2); max-width: min(760px, 62vw); }
+.ntPlInfo[hidden] { display: none; }
+.ntPlInfo b { display: inline-flex; align-items: center; gap: 6px; color: var(--fg); }
+.ntPlInfo b .ic { width: 15px; height: 15px; }
+.ntPlInfo label:not(.ntChk) { display: flex; align-items: center; gap: 6px; }
+.ntPlInfo .inp { width: 70px; height: 26px; }
+.ntPlInfo .mut { color: var(--muted); }
+.ntPlInfo .bad { color: var(--warn-ink, var(--warn)); font-style: normal; }
+.ntPlHint { max-width: 52ch; }
+/* Cartes flottantes : Wi-Fi, étalonnage. */
+.ntPlWifi { position: absolute; z-index: 7; left: 12px; bottom: 72px; width: 250px; max-height: calc(100% - 170px); overflow: auto; padding: 10px 12px; border-radius: 12px; font-size: 12px; display: flex; flex-direction: column; gap: 8px; }
+.ntPlWifi[hidden] { display: none; }
+.ntPlCalib { position: absolute; z-index: 9; left: 50%; top: 96px; transform: translateX(-50%); width: 300px; padding: 12px 14px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; box-shadow: 0 12px 40px #0005; }
+.ntPlCalib[hidden] { display: none; }
+.ntPlCalib b { display: flex; align-items: center; gap: 6px; }
+.ntPlCalib b .ic { width: 16px; height: 16px; color: var(--accent); }
+.ntPlCalib label { display: flex; flex-direction: column; gap: 4px; color: var(--fg-2); }
+.ntPlCalib .row { display: flex; gap: 6px; justify-content: flex-end; }
+.ntPlEmpty { position: absolute; inset: 0; display: grid; place-items: center; pointer-events: none; z-index: 4; }
+.ntPlEmpty[hidden] { display: none; }
+/* Inspecteur : jauge de remplissage avec la limite. */
+.ntPlGauge { position: relative; height: 10px; overflow: visible; }
+.ntPlGauge i { background: var(--nt-g); border-radius: 5px; }
+.ntPlGauge.over i { background: var(--danger); }
+.ntPlGauge b { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--fg-2); }
+
+.ntWfMore > summary { cursor: pointer; color: var(--fg-2); font-size: 11.5px; padding: 2px 0; }
+.ntWfMore[open] > summary { margin-bottom: 4px; }
+.ntPlWifiPane .ntWfBar { flex-wrap: wrap; }

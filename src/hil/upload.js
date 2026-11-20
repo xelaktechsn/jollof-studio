@@ -8,6 +8,7 @@ import { tl, locale } from '../i18n/index.js';
 import { listPorts, claim, unclaim } from './serial.js';
 import { baudOf } from './monitor.js';
 import { buildPaths, espDetect, espFlash } from '../native.js';
+import { libBuildArgs } from '../emu/boards.js';
 
 const FQBN = { uno: 'arduino:avr:uno', nano: 'arduino:avr:nano', nanoOld: 'arduino:avr:nano:cpu=atmega328old', mega: 'arduino:avr:mega', esp32: 'esp32:esp32:esp32doit-devkit-v1', 'esp32-38': 'esp32:esp32:nodemcu-32s', esp32s3: 'esp32:esp32:esp32s3', esp32c3: 'esp32:esp32:nologo_esp32c3_super_mini', nodemcu: 'esp8266:esp8266:nodemcuv2', d1mini: 'esp8266:esp8266:d1_mini', pico: 'rp2040:rp2040:rpipico' };
 /** Modèle à proposer : celui de la carte elle-même (Wemos D1 mini), sinon celui de sa famille de code. */
@@ -45,7 +46,9 @@ const LIBS = {
   // Radio LoRa SX1278 (bibliothèque de Sandeep Mistry).
   'LoRa.h': ['LoRa'],
   // Modules Ethernet : W5500 (bibliothèque Ethernet d'Arduino), ENC28J60 (UIPEthernet, EtherCard) ; client MQTT.
-  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient']
+  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient'],
+  // ENC28J60 par EthernetENC ; Modbus TCP d'Arduino (ArduinoRS485 en dépendance).
+  'EthernetENC.h': ['EthernetENC'], 'ArduinoModbus.h': ['ArduinoModbus', 'ArduinoRS485'], 'ArduinoRS485.h': ['ArduinoRS485']
 };
 
 export function installUpload(app) {
@@ -137,7 +140,8 @@ export function installUpload(app) {
     if (!dir) return null;
     // ESP32 : l'image complète (merged.bin) va dans le dossier de compilation de l'application, pour espflash.
     const out = isEsp32(fqbn) ? await buildPaths().then(p => p[1]).catch(() => null) : null;
-    const r = await cli(out ? ['compile', '--fqbn', fqbn, '--output-dir', out, dir] : ['compile', '--fqbn', fqbn, dir], tl('Compilation'));
+    const extra = libBuildArgs(fqbn, cur.code); // ArduinoModbus sur le Pico : options de compilation
+    const r = await cli(out ? ['compile', '--fqbn', fqbn, ...extra, '--output-dir', out, dir] : ['compile', '--fqbn', fqbn, ...extra, dir], tl('Compilation'));
     if (!r && retry && /\.h: No such file|fatal error: .*\.h|platform not installed|Platform .* not found/i.test(lastOut)) {
       log(tl('Il manque quelque chose : installation, puis nouvelle compilation…'), 'ok');
       if (await prepare()) return compile(false);

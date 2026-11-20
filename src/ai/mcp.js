@@ -71,6 +71,9 @@ export function createMcp({ tools, info, instructions = INSTRUCTIONS, onCall, ap
     return asking.get(key);
   }
   const byName = new Map(tools.map(t => [t.name, t]));
+  // Outils chargés à la demande (tools.lazy, voir tools.js) : ajoutés une fois, avant la première liste ou le premier appel.
+  let more = null;
+  const ensure = () => more || (more = Promise.resolve(typeof tools.lazy === 'function' ? tools.lazy() : []).then(list => { for (const t of list || []) if (!byName.has(t.name)) { tools.push(t); byName.set(t.name, t); } }).catch(e => { console.error(e); more = null; }));
   async function call(name, args) {
     const t = byName.get(name);
     const bad = checkArgs(t.inputSchema || {}, args ?? {});
@@ -113,9 +116,11 @@ export function createMcp({ tools, info, instructions = INSTRUCTIONS, onCall, ap
       }
       case 'ping': return ok(id, {});
       case 'tools/list':
+        await ensure();
         return ok(id, { tools: tools.map(t => ({ name: t.name, title: t.title, description: t.description, inputSchema: t.inputSchema, ...(t.annotations ? { annotations: t.annotations } : {}) })) });
       case 'tools/call': {
         const name = params && params.name;
+        if (!byName.has(name)) await ensure();
         if (!byName.has(name)) return err(id, -32602, `Unknown tool: ${name}`);
         return ok(id, await queued(name, params.arguments));
       }
@@ -124,7 +129,7 @@ export function createMcp({ tools, info, instructions = INSTRUCTIONS, onCall, ap
   }
   const drop = test => { const out = []; for (const [sid, s] of sessions) if (test(s)) { sessions.delete(sid); out.push(sid); } return out; };
   return {
-    handle, tools, client: () => client,
+    handle, tools, ensure, client: () => client,
     /** Sessions acceptées : [{ sid, client, seen }]. */
     sessions: () => [...sessions].map(([sid, s]) => ({ sid, client: s.client, seen: s.seen })),
     /** Assistants connectés, un par assistant quel que soit son nombre de connexions : [{ key, client, count }]. */

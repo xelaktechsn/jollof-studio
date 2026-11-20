@@ -242,14 +242,20 @@ export function createTools(H) {
   }
   /** Résultat d'un test de câble, en anglais pour l'assistant. */
   const testerSummary = segs => { const r = analyzeChain(segs); return r.kind === 'none' ? 'not crimped' : `${r.kind}${r.faults.length ? ': ' + r.faults.map(f => `${f.type} (pins ${f.pins.join(', ')})`).join('; ') : ' — no fault'}`; };
-  function cableInfo(c) { const r = analyzeCable(c.wire); return { id: c.id, category: c.cat, length_m: c.len, kind: r.kind, faults: r.faults.map(f => `${f.type} ${f.pins.join('-')}`) }; }
+  // Mode examen du plan réseau (data.exam, réglé par l'enseignant) : l'assistant ne donne pas non plus le verdict d'un câble
+  // (genre, défauts, codes J1201/J1202) ; il garde les preuves brutes (voyants du testeur), comme l'élève.
+  const EXAM_HIDDEN = new Set(['J1201', 'J1202']);
+  const examOf = W => !!(W && W.data && W.data().exam === true);
+  const shownIssues = (W, list) => (examOf(W) ? list.filter(i => !EXAM_HIDDEN.has(i.code)) : list);
+  function cableInfo(c, exam = false) { const r = analyzeCable(c.wire); return exam ? { id: c.id, category: c.cat, length_m: c.len, crimped: [!!(c.wire.a && c.wire.a.crimped), !!(c.wire.b && c.wire.b.crimped)], exam: true } : { id: c.id, category: c.cat, length_m: c.len, kind: r.kind, faults: r.faults.map(f => `${f.type} ${f.pins.join('-')}`) }; }
   function netSummary(W) {
     const lan = W.lan(), st = lan.state(), data = W.data();
     return {
       devices: st.all.map(n => { const f = lan.ipOf(n.id), pw = lan.power(n.id); return { id: n.id, name: n.name, type: n.type, ...(f && f.ip ? { ip: `${f.ip}/${f.prefix}`, ip_source: f.src, gateway: f.gw || null } : {}), ...(pw && !pw.on ? { powered: false, why: whyText(pw.why) } : {}), ports: (n.ext ? [] : netPorts(n)).map(p => p.id) }; }),
-      cables: data.cables.map(c => ({ ...cableInfo(c), a: `${netName(W, c.a[0])}.${c.a[1]}`, b: `${netName(W, c.b[0])}.${c.b[1]}` })),
+      cables: data.cables.map(c => ({ ...cableInfo(c, examOf(W)), a: `${netName(W, c.a[0])}.${c.a[1]}`, b: `${netName(W, c.b[0])}.${c.b[1]}` })),
       links: [...st.links].filter(([k, l]) => l.up && l.peer && k < l.peer.n + '|' + l.peer.p).map(([k, l]) => ({ a: `${netName(W, k.split('|')[0])}.${k.split('|')[1]}`, b: `${netName(W, l.peer.n)}.${l.peer.p}`, speed_mbps: l.speed, auto_mdix: !!l.mdix, errors: !!l.errors })),
-      problems: netIssues(lan, data).map(i => `${i.code} ${i.text}`)
+      problems: shownIssues(W, netIssues(lan, data)).map(i => `${i.code} ${i.text}`),
+      ...(examOf(W) ? { exam: 'exam mode: cable verdicts are hidden (use the tester wire map)' } : {})
     };
   }
 
@@ -818,7 +824,7 @@ export function createTools(H) {
         const o = standard ? STD[standard.slice(-1)] : order; if (!Array.isArray(o) || o.length !== 8) fail('give standard "T568A"/"T568B" or order: 8 colours');
         c.wire[end === 'b' ? 'b' : 'a'] = cleanEnd({ order: o, crimped: true, shorts: [] });
         W.commit();
-        return { test: testerSummary([c.wire]), ...cableInfo(c) };
+        return examOf(W) ? cableInfo(c, true) : { test: testerSummary([c.wire]), ...cableInfo(c) };
       }
     },
     {
@@ -831,7 +837,7 @@ export function createTools(H) {
           const c = W.data().cables.find(x => x.id === cable); if (!c) fail(`no cable "${cable}"`);
           if (settings.category) { if (!['cat5e', 'cat6', 'cat6a'].includes(settings.category)) fail('category: cat5e, cat6 or cat6a'); c.cat = settings.category; }
           if (settings.length_m != null) c.len = Math.max(0.1, Math.min(500, +settings.length_m || c.len));
-          W.commit(); return cableInfo(c);
+          W.commit(); return cableInfo(c, examOf(W));
         }
         const d = netDev(W, device); applyNetSettings(W, d, settings); W.commit();
         return netSummary(W).devices.find(x => x.id === d.id);
@@ -866,6 +872,7 @@ export function createTools(H) {
         if (port) { const p = netPort(W, port), ch = W.lan().channel(p[0], p[1]); if (!ch || !ch.segs.length) fail(`no cable on ${port}`); segs = ch.segs; }
         else { const c = W.data().cables.find(x => x.id === cable); if (!c) fail(`no cable "${cable}"`); segs = [c.wire]; }
         const r = analyzeChain(segs);
+        if (examOf(W)) return { exam: true, wire_map: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map(p => [p, r.leds[p]])) };
         return { result: testerSummary(segs), kind: r.kind, faults: r.faults, wire_map: Object.fromEntries([1, 2, 3, 4, 5, 6, 7, 8].map(p => [p, r.leds[p]])) };
       }
     },
@@ -874,7 +881,7 @@ export function createTools(H) {
       description: 'The network checker problems (codes J1201–J1216, the same ones as the Problems panel): miswired cables, split pairs, channel over 100 m, category too low, PoE budget, switch loops, two DHCP servers, duplicate IP, wrong subnet or gateway, unconnected devices.',
       inputSchema: { type: 'object', properties: {} },
       annotations: { readOnlyHint: true },
-      async run() { const W = await netWs(); return { problems: netIssues(W.lan(), W.data()).map(i => ({ code: i.code, level: i.kind === 'err' ? 'error' : 'warning', text: i.text, where: i.id ? netName(W, i.id) : null })) }; }
+      async run() { const W = await netWs(); return { problems: shownIssues(W, netIssues(W.lan(), W.data())).map(i => ({ code: i.code, level: i.kind === 'err' ? 'error' : 'warning', text: i.text, where: i.id ? netName(W, i.id) : null })) }; }
     },
     {
       name: 'net_browse',
@@ -901,7 +908,14 @@ export function createTools(H) {
       async run() { await H.undo(); return { parts: comps().length, wires: H.wires().length }; }
     }
   ];
-  return tools.map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' ') }));
+  const out = tools.map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' ') }));
+  /**
+   * Outils de la conception réseau professionnelle (tools-net-*.js : plans, baies, VLAN, fibre, Wi-Fi, conception,
+   * certification) : chargés à la première demande de la liste ou d'un appel (mcp.js), pas au démarrage. Rend la liste
+   * à ajouter.
+   */
+  out.lazy = () => import('./tools-net.js').then(m => m.netProTools({ netWs, netNode, netDev, netPort, netName, fail, norm }).map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' ') })));
+  return out;
 }
 
 /** Manifeste complété : format, identifiant, préfixe, catégorie (noms anglais acceptés), broches rangées en ligne. */

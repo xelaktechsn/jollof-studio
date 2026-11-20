@@ -1,0 +1,2978 @@
+{
+ "id": "np01-longueurs-reelles",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Longueurs réelles du câblage horizontal",
+  "en": "Real lengths of horizontal cabling"
+ },
+ "summary": {
+  "fr": "Un atelier de 56 m de long, son local technique au bout ouest. Les liens permanents sont tracés par les cheminements : leur longueur vient du plan, pas d’une estimation. Mais le conduit qui sort du local est trop petit, la goulotte d’énergie colle au chemin de câbles et l’aile est n’a ni pièce dessinée ni cheminement. À corriger pour que chaque lien tienne en 90 m, sans erreur de remplissage ni de séparation.",
+  "en": "A 56 m long workshop with its telecommunications room at the west end. The permanent links are routed along the pathways: their length comes from the plan, not from a guess. But the conduit leaving the room is too small, the power trunking hugs the cable tray and the east wing has neither a drawn room nor a pathway. Fix it so every link fits in 90 m, without fill or separation errors."
+ },
+ "objectives": [
+  {
+   "fr": "Lire la longueur réelle d’un lien permanent : descentes, cheminements, mou de service",
+   "en": "Read the real length of a permanent link: drops, pathways, service slack"
+  },
+  {
+   "fr": "Dimensionner un cheminement selon le remplissage (40 % d’un conduit, 50 % d’un chemin de câbles)",
+   "en": "Size a pathway by its fill (40% of a conduit, 50% of a cable tray)"
+  },
+  {
+   "fr": "Séparer les câbles de données des câbles d’énergie (EN 50174-2)",
+   "en": "Separate data cables from power cables (EN 50174-2)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "La longueur d’un lien permanent se mesure le long des cheminements, descentes et mou compris (3 m au local technique, 0,3 m à la prise), pas à vol d’oiseau.",
+   "en": "A permanent link's length is measured along the pathways, drops and slack included (3 m in the telecommunications room, 0.3 m at the outlet), not as the crow flies."
+  },
+  {
+   "fr": "Un conduit à trois câbles ou plus se remplit à 40 % au plus, un chemin de câbles à 50 % (J1250).",
+   "en": "A conduit with three cables or more is filled to 40% at most, a cable tray to 50% (J1250)."
+  },
+  {
+   "fr": "Données et énergie : la distance dépend de la classe du câble, du cheminement et du nombre de circuits (J1253).",
+   "en": "Data and power: the distance depends on the cable class, the pathway and the number of circuits (J1253)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Atelier : longueurs réelles",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "pb1",
+       "type": "patch24",
+       "x": 0,
+       "y": 0,
+       "name": "PB1",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 2,
+        "y": 1,
+        "h": 1.6
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch24",
+       "x": 0,
+       "y": 120,
+       "name": "SW1",
+       "p": {
+        "budget": 370,
+        "pseType": "at",
+        "portW": 30,
+        "ports": {},
+        "stp": {
+         "on": true,
+         "prio": 32768
+        },
+        "lags": [],
+        "sfp": {}
+       },
+       "loc": {
+        "floor": "F0",
+        "x": 3.5,
+        "y": 1,
+        "h": 1.4
+       }
+      },
+      {
+       "id": "pr1",
+       "type": "outlet",
+       "x": -300,
+       "y": 300,
+       "name": "PR1",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 10,
+        "y": 2,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr2",
+       "type": "outlet",
+       "x": -210,
+       "y": 300,
+       "name": "PR2",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 16,
+        "y": 2,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr3",
+       "type": "outlet",
+       "x": -120,
+       "y": 300,
+       "name": "PR3",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 26,
+        "y": 2,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr4",
+       "type": "outlet",
+       "x": -30,
+       "y": 300,
+       "name": "PR4",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 36,
+        "y": 2,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr5",
+       "type": "outlet",
+       "x": 60,
+       "y": 300,
+       "name": "PR5",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 12,
+        "y": 15,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr6",
+       "type": "outlet",
+       "x": 150,
+       "y": 300,
+       "name": "PR6",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 30,
+        "y": 15,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr7",
+       "type": "outlet",
+       "x": 240,
+       "y": 300,
+       "name": "PR7",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 46,
+        "y": 3,
+        "h": 0.3
+       }
+      },
+      {
+       "id": "pr8",
+       "type": "outlet",
+       "x": 330,
+       "y": 300,
+       "name": "PR8",
+       "p": {},
+       "loc": {
+        "floor": "F0",
+        "x": 53,
+        "y": 12,
+        "h": 0.3
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "pl1",
+       "a": [
+        "pb1",
+        "b1"
+       ],
+       "b": [
+        "pr1",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 26.5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co1",
+       "a": [
+        "pb1",
+        "f1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl2",
+       "a": [
+        "pb1",
+        "b2"
+       ],
+       "b": [
+        "pr2",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 32.5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co2",
+       "a": [
+        "pb1",
+        "f2"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl3",
+       "a": [
+        "pb1",
+        "b3"
+       ],
+       "b": [
+        "pr3",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 42.5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co3",
+       "a": [
+        "pb1",
+        "f3"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl4",
+       "a": [
+        "pb1",
+        "b4"
+       ],
+       "b": [
+        "pr4",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 52.5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co4",
+       "a": [
+        "pb1",
+        "f4"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl5",
+       "a": [
+        "pb1",
+        "b5"
+       ],
+       "b": [
+        "pr5",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 30.9,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co5",
+       "a": [
+        "pb1",
+        "f5"
+       ],
+       "b": [
+        "sw1",
+        "p5"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl6",
+       "a": [
+        "pb1",
+        "b6"
+       ],
+       "b": [
+        "pr6",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 48.9,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co6",
+       "a": [
+        "pb1",
+        "f6"
+       ],
+       "b": [
+        "sw1",
+        "p6"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl7",
+       "a": [
+        "pb1",
+        "b7"
+       ],
+       "b": [
+        "pr7",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 58.5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co7",
+       "a": [
+        "pb1",
+        "f7"
+       ],
+       "b": [
+        "sw1",
+        "p7"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "pl8",
+       "a": [
+        "pb1",
+        "b8"
+       ],
+       "b": [
+        "pr8",
+        "back"
+       ],
+       "cat": "cat6a",
+       "len": 64.8,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       },
+       "route": {
+        "mode": "auto"
+       }
+      },
+      {
+       "id": "co8",
+       "a": [
+        "pb1",
+        "f8"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {},
+     "view": "net",
+     "site": {
+      "name": "Lycée technique",
+      "north": 0,
+      "access": 6,
+      "seg": "b",
+      "buildings": [
+       {
+        "id": "B1",
+        "name": "Atelier",
+        "x": 0,
+        "y": 0,
+        "floors": [
+         {
+          "id": "F0",
+          "name": "Rez-de-chaussée",
+          "level": 0,
+          "elev": 0,
+          "height": 4,
+          "ceil": 3,
+          "plenum": 0.6,
+          "raised": 0,
+          "walls": [
+           {
+            "id": "w1",
+            "a": [
+             0,
+             0
+            ],
+            "b": [
+             56,
+             0
+            ],
+            "t": 0.25,
+            "mat": "concrete"
+           },
+           {
+            "id": "w2",
+            "a": [
+             56,
+             0
+            ],
+            "b": [
+             56,
+             16
+            ],
+            "t": 0.25,
+            "mat": "concrete"
+           },
+           {
+            "id": "w3",
+            "a": [
+             56,
+             16
+            ],
+            "b": [
+             0,
+             16
+            ],
+            "t": 0.25,
+            "mat": "concrete"
+           },
+           {
+            "id": "w4",
+            "a": [
+             0,
+             16
+            ],
+            "b": [
+             0,
+             0
+            ],
+            "t": 0.25,
+            "mat": "concrete"
+           },
+           {
+            "id": "w5",
+            "a": [
+             0,
+             6
+            ],
+            "b": [
+             40,
+             6
+            ],
+            "t": 0.1,
+            "mat": "drywall"
+           },
+           {
+            "id": "w6",
+            "a": [
+             0,
+             9
+            ],
+            "b": [
+             40,
+             9
+            ],
+            "t": 0.1,
+            "mat": "drywall"
+           },
+           {
+            "id": "w7",
+            "a": [
+             5,
+             0
+            ],
+            "b": [
+             5,
+             6
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "w8",
+            "a": [
+             20,
+             0
+            ],
+            "b": [
+             20,
+             6
+            ],
+            "t": 0.1,
+            "mat": "drywall"
+           },
+           {
+            "id": "w9",
+            "a": [
+             40,
+             0
+            ],
+            "b": [
+             40,
+             6
+            ],
+            "t": 0.1,
+            "mat": "drywall"
+           },
+           {
+            "id": "w10",
+            "a": [
+             40,
+             9
+            ],
+            "b": [
+             40,
+             16
+            ],
+            "t": 0.1,
+            "mat": "drywall"
+           }
+          ],
+          "doors": [
+           {
+            "id": "d1",
+            "wall": "w5",
+            "at": 3,
+            "w": 0.9
+           },
+           {
+            "id": "d2",
+            "wall": "w5",
+            "at": 12,
+            "w": 0.9
+           },
+           {
+            "id": "d3",
+            "wall": "w5",
+            "at": 30,
+            "w": 0.9
+           },
+           {
+            "id": "d4",
+            "wall": "w6",
+            "at": 20,
+            "w": 1.4
+           }
+          ],
+          "rooms": [
+           {
+            "id": "lt",
+            "name": "LT 0",
+            "usage": "tr",
+            "poly": [
+             [
+              0,
+              0
+             ],
+             [
+              5,
+              0
+             ],
+             [
+              5,
+              6
+             ],
+             [
+              0,
+              6
+             ]
+            ]
+           },
+           {
+            "id": "b1",
+            "name": "Bureau 1",
+            "usage": "office",
+            "poly": [
+             [
+              5,
+              0
+             ],
+             [
+              20,
+              0
+             ],
+             [
+              20,
+              6
+             ],
+             [
+              5,
+              6
+             ]
+            ]
+           },
+           {
+            "id": "b2",
+            "name": "Bureau 2",
+            "usage": "office",
+            "poly": [
+             [
+              20,
+              0
+             ],
+             [
+              40,
+              0
+             ],
+             [
+              40,
+              6
+             ],
+             [
+              20,
+              6
+             ]
+            ]
+           },
+           {
+            "id": "co",
+            "name": "Couloir",
+            "usage": "corridor",
+            "poly": [
+             [
+              0,
+              6
+             ],
+             [
+              40,
+              6
+             ],
+             [
+              40,
+              9
+             ],
+             [
+              0,
+              9
+             ]
+            ]
+           },
+           {
+            "id": "pl",
+            "name": "Plateau",
+            "usage": "open",
+            "poly": [
+             [
+              0,
+              9
+             ],
+             [
+              40,
+              9
+             ],
+             [
+              40,
+              16
+             ],
+             [
+              0,
+              16
+             ]
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "paths": [
+      {
+       "id": "pa1",
+       "floor": "F0",
+       "kind": "conduit",
+       "name": "Conduit du LT",
+       "pts": [
+        [
+         2.5,
+         1.5
+        ],
+        [
+         2.5,
+         7.5
+        ],
+        [
+         10,
+         7.5
+        ]
+       ],
+       "z": 2.7,
+       "dia": 20,
+       "shield": "none",
+       "rad": 0
+      },
+      {
+       "id": "pa2",
+       "floor": "F0",
+       "kind": "tray",
+       "name": "CdC couloir",
+       "pts": [
+        [
+         10,
+         7.5
+        ],
+        [
+         40,
+         7.5
+        ]
+       ],
+       "z": 2.7,
+       "w": 200,
+       "h": 60,
+       "shield": "perforated"
+      },
+      {
+       "id": "pa4",
+       "floor": "F0",
+       "kind": "ceiling",
+       "name": "Crochets plateau",
+       "pts": [
+        [
+         12,
+         7.5
+        ],
+        [
+         12,
+         14
+        ]
+       ],
+       "z": 2.9,
+       "shield": "none"
+      },
+      {
+       "id": "pa5",
+       "floor": "F0",
+       "kind": "ceiling",
+       "name": "",
+       "pts": [
+        [
+         30,
+         7.5
+        ],
+        [
+         30,
+         14
+        ]
+       ],
+       "z": 2.9,
+       "shield": "none"
+      },
+      {
+       "id": "pa3",
+       "floor": "F0",
+       "kind": "trunking",
+       "name": "Goulotte énergie",
+       "pts": [
+        [
+         1,
+         7.7
+        ],
+        [
+         39,
+         7.7
+        ]
+       ],
+       "z": 2.7,
+       "w": 100,
+       "h": 50,
+       "power": true,
+       "circuits": 18,
+       "shield": "none"
+      }
+     ],
+     "racks": [],
+     "vlans": [],
+     "design": {
+      "std": "tia",
+      "area": 10,
+      "outlets": 2,
+      "usage": {
+       "office": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "open": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "meeting": {
+        "area": 20,
+        "outlets": 2,
+        "phones": 0.5,
+        "cams": 0,
+        "min": 1
+       },
+       "classroom": {
+        "area": 30,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 2
+       },
+       "lab": {
+        "area": 5,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 1
+       },
+       "corridor": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 1,
+        "min": 0
+       },
+       "storage": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "tech": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "other": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       }
+      },
+      "apArea": 0,
+      "spare": 20,
+      "oversub": 20,
+      "uplinks": 1,
+      "panel": 24,
+      "sw": "auto",
+      "poe": {
+       "phone": 1,
+       "ap": 4,
+       "camera": 3
+      },
+      "poeMargin": 20,
+      "cat": "cat6a",
+      "box": 305,
+      "waste": 10,
+      "cord": 1,
+      "slack": {
+       "tr": 3,
+       "wa": 0.3
+      },
+      "rackU": 42,
+      "upsMargin": 25,
+      "labels": {
+       "preset": "auto",
+       "space": "{f}{s}",
+       "link": "{fs}-{p}{n}",
+       "panel": "{fs}-{p}",
+       "rack": "{fs}.R{r}",
+       "pad": 2
+      },
+      "prices": {},
+      "currency": "EUR",
+      "labour": [],
+      "project": {
+       "client": "",
+       "site": "",
+       "author": "",
+       "date": "",
+       "rev": ""
+      },
+      "rooms": {},
+      "ip": {
+       "block": "10.10.0.0/16",
+       "gw": "first",
+       "growth": 20
+      }
+     },
+     "wifi": {
+      "reg": "eu",
+      "env": "walls",
+      "target": -67,
+      "noise": -92,
+      "snr": 25,
+      "cover": 90,
+      "cci": 10,
+      "rxH": 1,
+      "band": "any"
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "pb1",
+     "type": "patch24",
+     "x": 0,
+     "y": 0,
+     "name": "PB1",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 2,
+      "y": 1,
+      "h": 1.6
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch24",
+     "x": 0,
+     "y": 120,
+     "name": "SW1",
+     "p": {
+      "budget": 370,
+      "pseType": "at",
+      "portW": 30,
+      "ports": {},
+      "stp": {
+       "on": true,
+       "prio": 32768
+      },
+      "lags": [],
+      "sfp": {}
+     },
+     "loc": {
+      "floor": "F0",
+      "x": 3.5,
+      "y": 1,
+      "h": 1.4
+     }
+    },
+    {
+     "id": "pr1",
+     "type": "outlet",
+     "x": -300,
+     "y": 300,
+     "name": "PR1",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 10,
+      "y": 2,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr2",
+     "type": "outlet",
+     "x": -210,
+     "y": 300,
+     "name": "PR2",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 16,
+      "y": 2,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr3",
+     "type": "outlet",
+     "x": -120,
+     "y": 300,
+     "name": "PR3",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 26,
+      "y": 2,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr4",
+     "type": "outlet",
+     "x": -30,
+     "y": 300,
+     "name": "PR4",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 36,
+      "y": 2,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr5",
+     "type": "outlet",
+     "x": 60,
+     "y": 300,
+     "name": "PR5",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 12,
+      "y": 15,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr6",
+     "type": "outlet",
+     "x": 150,
+     "y": 300,
+     "name": "PR6",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 30,
+      "y": 15,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr7",
+     "type": "outlet",
+     "x": 240,
+     "y": 300,
+     "name": "PR7",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 46,
+      "y": 3,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr8",
+     "type": "outlet",
+     "x": 330,
+     "y": 300,
+     "name": "PR8",
+     "p": {},
+     "loc": {
+      "floor": "F0",
+      "x": 53,
+      "y": 12,
+      "h": 0.3
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "pl1",
+     "a": [
+      "pb1",
+      "b1"
+     ],
+     "b": [
+      "pr1",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 26.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co1",
+     "a": [
+      "pb1",
+      "f1"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl2",
+     "a": [
+      "pb1",
+      "b2"
+     ],
+     "b": [
+      "pr2",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 32.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co2",
+     "a": [
+      "pb1",
+      "f2"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl3",
+     "a": [
+      "pb1",
+      "b3"
+     ],
+     "b": [
+      "pr3",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 42.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co3",
+     "a": [
+      "pb1",
+      "f3"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl4",
+     "a": [
+      "pb1",
+      "b4"
+     ],
+     "b": [
+      "pr4",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 52.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co4",
+     "a": [
+      "pb1",
+      "f4"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl5",
+     "a": [
+      "pb1",
+      "b5"
+     ],
+     "b": [
+      "pr5",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 30.9,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co5",
+     "a": [
+      "pb1",
+      "f5"
+     ],
+     "b": [
+      "sw1",
+      "p5"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl6",
+     "a": [
+      "pb1",
+      "b6"
+     ],
+     "b": [
+      "pr6",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 48.9,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co6",
+     "a": [
+      "pb1",
+      "f6"
+     ],
+     "b": [
+      "sw1",
+      "p6"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl7",
+     "a": [
+      "pb1",
+      "b7"
+     ],
+     "b": [
+      "pr7",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 61.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co7",
+     "a": [
+      "pb1",
+      "f7"
+     ],
+     "b": [
+      "sw1",
+      "p7"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "pl8",
+     "a": [
+      "pb1",
+      "b8"
+     ],
+     "b": [
+      "pr8",
+      "back"
+     ],
+     "cat": "cat6a",
+     "len": 68.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto"
+     }
+    },
+    {
+     "id": "co8",
+     "a": [
+      "pb1",
+      "f8"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ],
+   "ext": {},
+   "view": "net",
+   "site": {
+    "name": "Lycée technique",
+    "north": 0,
+    "access": 6,
+    "seg": "b",
+    "buildings": [
+     {
+      "id": "B1",
+      "name": "Atelier",
+      "x": 0,
+      "y": 0,
+      "floors": [
+       {
+        "id": "F0",
+        "name": "Rez-de-chaussée",
+        "level": 0,
+        "elev": 0,
+        "height": 4,
+        "ceil": 3,
+        "plenum": 0.6,
+        "raised": 0,
+        "walls": [
+         {
+          "id": "w1",
+          "a": [
+           0,
+           0
+          ],
+          "b": [
+           56,
+           0
+          ],
+          "t": 0.25,
+          "mat": "concrete"
+         },
+         {
+          "id": "w2",
+          "a": [
+           56,
+           0
+          ],
+          "b": [
+           56,
+           16
+          ],
+          "t": 0.25,
+          "mat": "concrete"
+         },
+         {
+          "id": "w3",
+          "a": [
+           56,
+           16
+          ],
+          "b": [
+           0,
+           16
+          ],
+          "t": 0.25,
+          "mat": "concrete"
+         },
+         {
+          "id": "w4",
+          "a": [
+           0,
+           16
+          ],
+          "b": [
+           0,
+           0
+          ],
+          "t": 0.25,
+          "mat": "concrete"
+         },
+         {
+          "id": "w5",
+          "a": [
+           0,
+           6
+          ],
+          "b": [
+           40,
+           6
+          ],
+          "t": 0.1,
+          "mat": "drywall"
+         },
+         {
+          "id": "w6",
+          "a": [
+           0,
+           9
+          ],
+          "b": [
+           40,
+           9
+          ],
+          "t": 0.1,
+          "mat": "drywall"
+         },
+         {
+          "id": "w7",
+          "a": [
+           5,
+           0
+          ],
+          "b": [
+           5,
+           6
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "w8",
+          "a": [
+           20,
+           0
+          ],
+          "b": [
+           20,
+           6
+          ],
+          "t": 0.1,
+          "mat": "drywall"
+         },
+         {
+          "id": "w9",
+          "a": [
+           40,
+           0
+          ],
+          "b": [
+           40,
+           6
+          ],
+          "t": 0.1,
+          "mat": "drywall"
+         },
+         {
+          "id": "w10",
+          "a": [
+           40,
+           9
+          ],
+          "b": [
+           40,
+           16
+          ],
+          "t": 0.1,
+          "mat": "drywall"
+         }
+        ],
+        "doors": [
+         {
+          "id": "d1",
+          "wall": "w5",
+          "at": 3,
+          "w": 0.9
+         },
+         {
+          "id": "d2",
+          "wall": "w5",
+          "at": 12,
+          "w": 0.9
+         },
+         {
+          "id": "d3",
+          "wall": "w5",
+          "at": 30,
+          "w": 0.9
+         },
+         {
+          "id": "d4",
+          "wall": "w6",
+          "at": 20,
+          "w": 1.4
+         }
+        ],
+        "rooms": [
+         {
+          "id": "lt",
+          "name": "LT 0",
+          "usage": "tr",
+          "poly": [
+           [
+            0,
+            0
+           ],
+           [
+            5,
+            0
+           ],
+           [
+            5,
+            6
+           ],
+           [
+            0,
+            6
+           ]
+          ]
+         },
+         {
+          "id": "b1",
+          "name": "Bureau 1",
+          "usage": "office",
+          "poly": [
+           [
+            5,
+            0
+           ],
+           [
+            20,
+            0
+           ],
+           [
+            20,
+            6
+           ],
+           [
+            5,
+            6
+           ]
+          ]
+         },
+         {
+          "id": "b2",
+          "name": "Bureau 2",
+          "usage": "office",
+          "poly": [
+           [
+            20,
+            0
+           ],
+           [
+            40,
+            0
+           ],
+           [
+            40,
+            6
+           ],
+           [
+            20,
+            6
+           ]
+          ]
+         },
+         {
+          "id": "co",
+          "name": "Couloir",
+          "usage": "corridor",
+          "poly": [
+           [
+            0,
+            6
+           ],
+           [
+            40,
+            6
+           ],
+           [
+            40,
+            9
+           ],
+           [
+            0,
+            9
+           ]
+          ]
+         },
+         {
+          "id": "pl",
+          "name": "Plateau",
+          "usage": "open",
+          "poly": [
+           [
+            0,
+            9
+           ],
+           [
+            40,
+            9
+           ],
+           [
+            40,
+            16
+           ],
+           [
+            0,
+            16
+           ]
+          ]
+         },
+         {
+          "id": "fo",
+          "name": "Salle de formation",
+          "usage": "classroom",
+          "poly": [
+           [
+            40,
+            0
+           ],
+           [
+            56,
+            0
+           ],
+           [
+            56,
+            16
+           ],
+           [
+            40,
+            16
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "paths": [
+    {
+     "id": "pa1",
+     "floor": "F0",
+     "kind": "tray",
+     "name": "CdC du LT",
+     "pts": [
+      [
+       2.5,
+       1.5
+      ],
+      [
+       2.5,
+       7.5
+      ],
+      [
+       10,
+       7.5
+      ]
+     ],
+     "z": 2.7,
+     "w": 150,
+     "h": 60,
+     "shield": "perforated"
+    },
+    {
+     "id": "pa2",
+     "floor": "F0",
+     "kind": "tray",
+     "name": "CdC couloir",
+     "pts": [
+      [
+       10,
+       7.5
+      ],
+      [
+       54,
+       7.5
+      ]
+     ],
+     "z": 2.7,
+     "w": 200,
+     "h": 60,
+     "shield": "perforated"
+    },
+    {
+     "id": "pa3",
+     "floor": "F0",
+     "kind": "trunking",
+     "name": "Goulotte énergie",
+     "pts": [
+      [
+       1,
+       8.8
+      ],
+      [
+       39,
+       8.8
+      ]
+     ],
+     "z": 2.7,
+     "w": 100,
+     "h": 50,
+     "power": true,
+     "circuits": 18,
+     "shield": "none"
+    },
+    {
+     "id": "pa4",
+     "floor": "F0",
+     "kind": "ceiling",
+     "name": "Crochets plateau",
+     "pts": [
+      [
+       12,
+       7.5
+      ],
+      [
+       12,
+       14
+      ]
+     ],
+     "z": 2.9,
+     "shield": "none"
+    },
+    {
+     "id": "pa5",
+     "floor": "F0",
+     "kind": "ceiling",
+     "name": "",
+     "pts": [
+      [
+       30,
+       7.5
+      ],
+      [
+       30,
+       14
+      ]
+     ],
+     "z": 2.9,
+     "shield": "none"
+    }
+   ],
+   "racks": [],
+   "vlans": [],
+   "design": {
+    "std": "tia",
+    "area": 10,
+    "outlets": 2,
+    "usage": {
+     "office": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "open": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "meeting": {
+      "area": 20,
+      "outlets": 2,
+      "phones": 0.5,
+      "cams": 0,
+      "min": 1
+     },
+     "classroom": {
+      "area": 30,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 2
+     },
+     "lab": {
+      "area": 5,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 1
+     },
+     "corridor": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 1,
+      "min": 0
+     },
+     "storage": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "tech": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "other": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     }
+    },
+    "apArea": 0,
+    "spare": 20,
+    "oversub": 20,
+    "uplinks": 1,
+    "panel": 24,
+    "sw": "auto",
+    "poe": {
+     "phone": 1,
+     "ap": 4,
+     "camera": 3
+    },
+    "poeMargin": 20,
+    "cat": "cat6a",
+    "box": 305,
+    "waste": 10,
+    "cord": 1,
+    "slack": {
+     "tr": 3,
+     "wa": 0.3
+    },
+    "rackU": 42,
+    "upsMargin": 25,
+    "labels": {
+     "preset": "auto",
+     "space": "{f}{s}",
+     "link": "{fs}-{p}{n}",
+     "panel": "{fs}-{p}",
+     "rack": "{fs}.R{r}",
+     "pad": 2
+    },
+    "prices": {},
+    "currency": "EUR",
+    "labour": [],
+    "project": {
+     "client": "",
+     "site": "",
+     "author": "",
+     "date": "",
+     "rev": ""
+    },
+    "rooms": {},
+    "ip": {
+     "block": "10.10.0.0/16",
+     "gw": "first",
+     "growth": 20
+    }
+   },
+   "wifi": {
+    "reg": "eu",
+    "env": "walls",
+    "target": -67,
+    "noise": -92,
+    "snr": 25,
+    "cover": 90,
+    "cci": 10,
+    "rxH": 1,
+    "band": "any"
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Les longueurs viennent du plan",
+    "en": "Lengths come from the plan"
+   },
+   "text": {
+    "fr": "Ouvrez la vue **Plans** (Alt+2). Chaque prise est reliée au panneau **PB1** du local technique par un **lien permanent au tracé automatique** : choisissez une prise, la carte du bas donne sa longueur, décomposée en **cheminements + descentes + mou**. Les liens de l’aile est sont en pointillé : aucun cheminement ne les porte, leur longueur n’est qu’une estimation en équerre (J1255).",
+    "en": "Open the **Floor plans** view (Alt+2). Each outlet is connected to patch panel **PB1** in the telecommunications room by an **auto-routed permanent link**: select an outlet, the bottom card gives its length, split into **pathways + drops + slack**. The east wing links are dashed: no pathway carries them, their length is only a right-angle estimate (J1255)."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Dessiner l’aile est",
+    "en": "Draw the east wing"
+   },
+   "text": {
+    "fr": "Les prises **PR7** et **PR8** sont hors de toute pièce (J1254). Avec l’outil **Salle** (R), tracez la pièce de l’aile est, de x = 40 à 56 m et de y = 0 à 16 m (glisser pour un rectangle), et donnez-lui l’usage « Salle de classe ».",
+    "en": "Outlets **PR7** and **PR8** are outside any room (J1254). With the **Room** tool (R), draw the east wing room, from x = 40 to 56 m and y = 0 to 16 m (drag for a rectangle), and give it the use \"Classroom\"."
+   },
+   "check": {
+    "type": "net-plan",
+    "rooms": 6
+   }
+  },
+  {
+   "title": {
+    "fr": "Cheminements : remplissage, séparation, continuité",
+    "en": "Pathways: fill, separation, continuity"
+   },
+   "text": {
+    "fr": "Trois défauts :\n- le **conduit Ø 20 mm** du local technique porte 8 câbles Cat 6A (7 mm chacun) : remplacez-le par un chemin de câbles (inspecteur : genre, 150 × 60 mm) ;\n- la **goulotte d’énergie** (18 circuits) est à 5 cm du chemin de câbles : il faut 100 mm en classe b — déplacez-la contre le mur sud du couloir (y = 8,8 m) ;\n- les câbles de l’aile est courent plus de 6 m sans support (J1262) : prolongez le **chemin de câbles du couloir** jusqu’à x = 54 m (outil Choisir : glissez son dernier sommet, ou outil Cheminement).\nChaque lien doit mesurer **90 m au plus**.",
+    "en": "Three faults:\n- the **Ø 20 mm conduit** of the telecommunications room carries 8 Cat 6A cables (7 mm each): replace it with a cable tray (inspector: kind, 150 × 60 mm);\n- the **power trunking** (18 circuits) is 5 cm from the cable tray: class b needs 100 mm — move it against the south wall of the corridor (y = 8.8 m);\n- the east wing cables run more than 6 m without support (J1262): extend the **corridor cable tray** to x = 54 m (Select tool: drag its last corner, or the Pathway tool).\nEach link must be **90 m at most**."
+   },
+   "check": {
+    "type": "net-path",
+    "max": 90,
+    "min": 8
+   }
+  },
+  {
+   "title": {
+    "fr": "Plan sans erreur",
+    "en": "Plan without errors"
+   },
+   "text": {
+    "fr": "Plus aucune erreur dans le panneau Problèmes : remplissage (J1250) et séparation (J1253) corrigés.",
+    "en": "No more errors in the Problems panel: fill (J1250) and separation (J1253) fixed."
+   },
+   "check": {
+    "type": "net-ok"
+   }
+  }
+ ]
+}

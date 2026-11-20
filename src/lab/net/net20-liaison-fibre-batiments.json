@@ -1,0 +1,472 @@
+{
+ "id": "net20-liaison-fibre-batiments",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 45,
+ "title": {
+  "fr": "Liaison fibre entre deux bâtiments : bilan optique",
+  "en": "Fibre link between two buildings: optical budget"
+ },
+ "summary": {
+  "fr": "Le cœur de réseau du bâtiment A et le switch d’étage du bâtiment B sont reliés par 1,2 km de fibre monomode OS2, épissurée dans un tiroir optique à chaque bout. Mais les modules posés ne vont ni avec la fibre ni entre eux. Calculer le bilan optique, choisir le bon module et vérifier la marge.",
+  "en": "The core switch of building A and the floor switch of building B are joined by 1.2 km of OS2 single-mode fibre, spliced into a fibre patch panel at each end. But the fitted modules suit neither the fibre nor each other. Compute the optical budget, choose the right module and check the margin."
+ },
+ "objectives": [
+  {
+   "fr": "Associer un module optique (SR, LR, ER) au type de fibre (multimode, monomode)",
+   "en": "Match an optical module (SR, LR, ER) to the fibre type (multimode, single-mode)"
+  },
+  {
+   "fr": "Calculer la perte d’une liaison : fibre, connexions, épissures",
+   "en": "Compute a link’s loss: fibre, connections, splices"
+  },
+  {
+   "fr": "Comparer la perte à ce que le module tolère et en déduire la marge",
+   "en": "Compare the loss with what the module allows and deduce the margin"
+  },
+  {
+   "fr": "Savoir qu’un module trop puissant sature le récepteur d’une liaison courte",
+   "en": "Know that an over-powerful module saturates the receiver of a short link"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "SR (850 nm) sur multimode OM3/OM4, LR (1310 nm) et ER (1550 nm) sur monomode OS2 ; les deux bouts portent le même module.",
+   "en": "SR (850 nm) on OM3/OM4 multimode, LR (1310 nm) and ER (1550 nm) on OS2 single-mode; both ends carry the same module."
+  },
+  {
+   "fr": "Perte = longueur × affaiblissement (0,4 dB/km à 1310 nm en OS2) + 0,75 dB par connexion + 0,3 dB par épissure (valeurs maximales de la TIA-568).",
+   "en": "Loss = length × attenuation (0.4 dB/km at 1310 nm on OS2) + 0.75 dB per connection + 0.3 dB per splice (TIA-568 maximum values)."
+  },
+  {
+   "fr": "La liaison passe si la perte reste sous la perte maximale du canal (6,2 dB pour 10GBASE-LR) ; la marge est la différence.",
+   "en": "The link works if the loss stays below the maximum channel loss (6.2 dB for 10GBASE-LR); the margin is the difference."
+  },
+  {
+   "fr": "Plus de portée n’est pas mieux : un module ER sur 1,2 km sature son récepteur (il lui faut au moins 5 dB de perte ou un atténuateur).",
+   "en": "More reach is not better: an ER module on 1.2 km saturates its receiver (it needs at least 5 dB of loss or an attenuator)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Liaison fibre",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "core",
+       "type": "l3switch",
+       "x": 80,
+       "y": 60,
+       "name": "CORE",
+       "p": {
+        "sfp": {
+         "x1": "10GBASE-SR"
+        }
+       }
+      },
+      {
+       "id": "fpa",
+       "type": "fibrepanel",
+       "x": 80,
+       "y": 280,
+       "name": "FPA"
+      },
+      {
+       "id": "fpb",
+       "type": "fibrepanel",
+       "x": 760,
+       "y": 280,
+       "name": "FPB"
+      },
+      {
+       "id": "swb",
+       "type": "switch24",
+       "x": 760,
+       "y": 60,
+       "name": "SWB",
+       "p": {
+        "sfp": {
+         "x1": "10GBASE-ER"
+        }
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "k1",
+       "a": [
+        "core",
+        "x1"
+       ],
+       "b": [
+        "fpa",
+        "f1"
+       ],
+       "len": 3,
+       "media": "fibre",
+       "fibre": "os2",
+       "splices": 0
+      },
+      {
+       "id": "bb",
+       "a": [
+        "fpa",
+        "b1"
+       ],
+       "b": [
+        "fpb",
+        "b1"
+       ],
+       "len": 1200,
+       "media": "fibre",
+       "fibre": "os2",
+       "splices": 2
+      },
+      {
+       "id": "k2",
+       "a": [
+        "fpb",
+        "f1"
+       ],
+       "b": [
+        "swb",
+        "x1"
+       ],
+       "len": 3,
+       "media": "fibre",
+       "fibre": "os2",
+       "splices": 0
+      }
+     ]
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "view": "net",
+   "devices": [
+    {
+     "id": "core",
+     "type": "l3switch",
+     "x": 80,
+     "y": 60,
+     "name": "CORE",
+     "p": {
+      "sfp": {
+       "x1": "10GBASE-LR"
+      }
+     }
+    },
+    {
+     "id": "fpa",
+     "type": "fibrepanel",
+     "x": 80,
+     "y": 280,
+     "name": "FPA"
+    },
+    {
+     "id": "fpb",
+     "type": "fibrepanel",
+     "x": 760,
+     "y": 280,
+     "name": "FPB"
+    },
+    {
+     "id": "swb",
+     "type": "switch24",
+     "x": 760,
+     "y": 60,
+     "name": "SWB",
+     "p": {
+      "sfp": {
+       "x1": "10GBASE-LR"
+      }
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "k1",
+     "a": [
+      "core",
+      "x1"
+     ],
+     "b": [
+      "fpa",
+      "f1"
+     ],
+     "len": 3,
+     "media": "fibre",
+     "fibre": "os2",
+     "splices": 0
+    },
+    {
+     "id": "bb",
+     "a": [
+      "fpa",
+      "b1"
+     ],
+     "b": [
+      "fpb",
+      "b1"
+     ],
+     "len": 1200,
+     "media": "fibre",
+     "fibre": "os2",
+     "splices": 2
+    },
+    {
+     "id": "k2",
+     "a": [
+      "fpb",
+      "f1"
+     ],
+     "b": [
+      "swb",
+      "x1"
+     ],
+     "len": 3,
+     "media": "fibre",
+     "fibre": "os2",
+     "splices": 0
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le campus",
+    "en": "The campus"
+   },
+   "text": {
+    "fr": "Deux bâtiments à **1,2 km** l’un de l’autre. Dans chacun, la dorsale **OS2** (monomode 9/125 µm) arrive dans un **tiroir optique** (FPA, FPB) où elle est **épissurée** sur des pigtails : une épissure à chaque bout. Un cordon de 3 m relie le tiroir à la cage **SFP+ x1** du switch : **CORE** (cœur de réseau, bâtiment A) et **SWB** (switch d’étage, bâtiment B).\nL’onglet **Problèmes** signale déjà la liaison : regardez quels modules sont posés (inspecteur de CORE et de SWB, cage x1).",
+    "en": "Two buildings **1.2 km** apart. In each one, the **OS2** backbone (9/125 µm single-mode) reaches a **fibre patch panel** (FPA, FPB) where it is **spliced** onto pigtails: one splice at each end. A 3 m patch cord joins the panel to the **SFP+ cage x1** of the switch: **CORE** (core switch, building A) and **SWB** (floor switch, building B).\nThe **Problems** tab already reports the link: look at which modules are fitted (inspector of CORE and SWB, cage x1)."
+   },
+   "spot": [
+    ".ntDev[data-id=\"core\"]",
+    ".ntDev[data-id=\"swb\"]"
+   ],
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Quel module pour de l’OS2 ?",
+    "en": "Which module for OS2?"
+   },
+   "text": {
+    "fr": "La fibre est monomode. Quel module 10 Gb/s faut-il aux deux bouts pour 1,2 km ?",
+    "en": "The fibre is single-mode. Which 10 Gb/s module is needed at both ends for 1.2 km?"
+   },
+   "keep": {
+    "fr": "10GBASE-SR (850 nm) est fait pour le multimode (300 m sur OM3, 400 m sur OM4) ; 10GBASE-LR (1310 nm) va à 10 km sur monomode.",
+    "en": "10GBASE-SR (850 nm) is made for multimode (300 m on OM3, 400 m on OM4); 10GBASE-LR (1310 nm) reaches 10 km on single-mode."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "10GBASE-SR",
+      "en": "10GBASE-SR"
+     },
+     {
+      "fr": "10GBASE-LR",
+      "en": "10GBASE-LR"
+     },
+     {
+      "fr": "10GBASE-T",
+      "en": "10GBASE-T"
+     },
+     {
+      "fr": "1000BASE-SX",
+      "en": "1000BASE-SX"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "La perte de la liaison",
+    "en": "The link loss"
+   },
+   "text": {
+    "fr": "Comptez avec les valeurs maximales de la norme : OS2 **0,4 dB/km** à 1310 nm, **0,75 dB** par connexion (une par tiroir traversé : les connecteurs des modules sont compris dans leur spécification), **0,3 dB** par épissure. La fibre fait 1,206 km en tout (cordons compris). Quelle est la perte ?",
+    "en": "Use the standard’s maximum values: OS2 **0.4 dB/km** at 1310 nm, **0.75 dB** per connection (one per panel crossed: the module connectors are part of their specification), **0.3 dB** per splice. The fibre is 1.206 km in all (patch cords included). What is the loss?"
+   },
+   "keep": {
+    "fr": "1,206 × 0,4 = 0,48 dB + 2 × 0,75 = 1,5 dB + 2 × 0,3 = 0,6 dB : 2,58 dB.",
+    "en": "1.206 × 0.4 = 0.48 dB + 2 × 0.75 = 1.5 dB + 2 × 0.3 = 0.6 dB: 2.58 dB."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1,08 dB",
+      "en": "1.08 dB"
+     },
+     {
+      "fr": "2,58 dB",
+      "en": "2.58 dB"
+     },
+     {
+      "fr": "3,33 dB",
+      "en": "3.33 dB"
+     },
+     {
+      "fr": "5,40 dB",
+      "en": "5.40 dB"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "La marge",
+    "en": "The margin"
+   },
+   "text": {
+    "fr": "Pour 10GBASE-LR, l’IEEE 802.3 admet au plus **6,2 dB** de perte sur le canal. Quelle marge reste-t-il ? Vous pouvez le vérifier : choisissez la dorsale et ouvrez le **bilan optique** depuis l’inspecteur du câble (champ « Essayer » : 10GBASE-LR).",
+    "en": "For 10GBASE-LR, IEEE 802.3 allows at most **6.2 dB** of channel loss. What margin is left? You can check it: select the backbone and open the **optical budget** from the cable inspector (“Try” field: 10GBASE-LR)."
+   },
+   "keep": {
+    "fr": "6,2 − 2,58 = 3,62 dB de marge.",
+    "en": "6.2 − 2.58 = 3.62 dB of margin."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "3,62 dB",
+      "en": "3.62 dB"
+     },
+     {
+      "fr": "0,62 dB",
+      "en": "0.62 dB"
+     },
+     {
+      "fr": "8,78 dB",
+      "en": "8.78 dB"
+     },
+     {
+      "fr": "2,58 dB",
+      "en": "2.58 dB"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Et un module ER, « pour être large » ?",
+    "en": "What about an ER module, “to be safe”?"
+   },
+   "text": {
+    "fr": "SWB porte un 10GBASE-ER (40 km). Il émet jusqu’à **+4 dBm** et son récepteur sature au-dessus de **−1 dBm** (fiche Cisco). Que se passe-t-il sur nos 1,2 km ?",
+    "en": "SWB carries a 10GBASE-ER (40 km). It transmits up to **+4 dBm** and its receiver saturates above **−1 dBm** (Cisco data sheet). What happens on our 1.2 km?"
+   },
+   "keep": {
+    "fr": "Il faut au moins 4 − (−1) = 5 dB de perte ; avec 2,58 dB le récepteur sature (J1249) : un atténuateur, ou mieux le bon module.",
+    "en": "At least 4 − (−1) = 5 dB of loss is needed; with 2.58 dB the receiver saturates (J1249): an attenuator, or better the right module."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Rien : plus de portée, c’est plus de marge",
+      "en": "Nothing: more reach means more margin"
+     },
+     {
+      "fr": "Le récepteur reçoit trop de lumière et sature",
+      "en": "The receiver gets too much light and saturates"
+     },
+     {
+      "fr": "La fibre chauffe",
+      "en": "The fibre heats up"
+     },
+     {
+      "fr": "Le lien passe à 1 Gb/s",
+      "en": "The link drops to 1 Gb/s"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Poser les bons modules",
+    "en": "Fit the right modules"
+   },
+   "text": {
+    "fr": "Choisissez **10GBASE-LR** dans la cage x1 de CORE et dans celle de SWB (onglet **Réseau** de l’inspecteur de chaque switch).",
+    "en": "Choose **10GBASE-LR** in cage x1 of CORE and of SWB (**Network** tab of each switch’s inspector)."
+   },
+   "hint": {
+    "fr": "Les deux bouts doivent porter le même module : un SR ne parle pas à un LR (longueurs d’onde différentes).",
+    "en": "Both ends need the same module: an SR does not talk to an LR (different wavelengths)."
+   },
+   "spot": [
+    ".ntDev[data-id=\"core\"]",
+    ".ntDev[data-id=\"swb\"]",
+    "#tab-nprop"
+   ],
+   "check": {
+    "type": "net-fibre",
+    "speed": 10000,
+    "margin": 3
+   }
+  },
+  {
+   "title": {
+    "fr": "Le lien monte à 10 Gb/s",
+    "en": "The link comes up at 10 Gb/s"
+   },
+   "text": {
+    "fr": "Avec le même module aux deux bouts et un bilan qui passe, le lien entre CORE et SWB s’établit à **10 Gb/s**, ce que montre l’inspecteur de chaque switch.",
+    "en": "With the same module at both ends and a budget that passes, the link between CORE and SWB comes up at **10 Gb/s**, as each switch’s inspector shows."
+   },
+   "check": {
+    "type": "net-link",
+    "a": "CORE",
+    "b": "SWB",
+    "speed": 10000
+   }
+  },
+  {
+   "title": {
+    "fr": "Plus de défaut fibre",
+    "en": "No fibre fault left"
+   },
+   "text": {
+    "fr": "L’onglet **Problèmes** ne signale plus rien sur la liaison fibre (codes J1240 à J1249).",
+    "en": "The **Problems** tab no longer reports anything on the fibre link (codes J1240 to J1249)."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1240",
+     "J1241",
+     "J1242",
+     "J1243",
+     "J1244",
+     "J1245",
+     "J1246",
+     "J1247",
+     "J1248",
+     "J1249"
+    ]
+   }
+  }
+ ]
+}

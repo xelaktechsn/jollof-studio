@@ -121,6 +121,28 @@ export const CODES = {
   J1201: { level: 'error' }, J1202: { level: 'error' }, J1203: { level: 'error' }, J1204: { level: 'warning' }, J1205: { level: 'error' }, J1206: { level: 'error' },
   J1207: { level: 'error' }, J1208: { level: 'error' }, J1209: { level: 'error' }, J1210: { level: 'error' }, J1211: { level: 'warning' }, J1212: { level: 'error' },
   J1213: { level: 'error' }, J1214: { level: 'warning' }, J1215: { level: 'warning' }, J1216: { level: 'warning' },
+  // @sim
+  J1217: { level: 'error' }, J1218: { level: 'error' }, J1219: { level: 'error' }, J1220: { level: 'warning' }, J1221: { level: 'error' }, J1222: { level: 'error' },
+  J1223: { level: 'warning' }, J1224: { level: 'error' }, J1225: { level: 'error' }, J1226: { level: 'error' }, J1227: { level: 'warning' }, J1228: { level: 'error' },
+  J1229: { level: 'warning' }, J1230: { level: 'error' }, J1231: { level: 'warning' }, J1232: { level: 'warning' }, J1233: { level: 'warning' }, J1234: { level: 'warning' },
+  J1235: { level: 'warning' }, J1236: { level: 'error' }, J1237: { level: 'warning' }, J1238: { level: 'error' }, J1239: { level: 'error' }, J1296: { level: 'warning' },
+  // @fibre
+  J1240: { level: 'error' }, J1241: { level: 'error' }, J1242: { level: 'error' }, J1243: { level: 'error' }, J1244: { level: 'error' },
+  J1245: { level: 'error' }, J1246: { level: 'warning' }, J1247: { level: 'warning' }, J1248: { level: 'error' }, J1249: { level: 'error' },
+  // @plan
+  J1250: { level: 'error' }, J1251: { level: 'warning' }, J1252: { level: 'warning' }, J1253: { level: 'error' }, J1254: { level: 'warning' }, J1255: { level: 'warning' },
+  J1256: { level: 'warning' }, J1257: { level: 'warning' }, J1258: { level: 'warning' }, J1259: { level: 'warning' }, J1260: { level: 'warning' }, J1261: { level: 'warning' }, J1262: { level: 'warning' },
+  // @wifi
+  J1265: { level: 'warning' }, J1266: { level: 'warning' }, J1267: { level: 'warning' }, J1268: { level: 'error' },
+  J1269: { level: 'warning' }, J1270: { level: 'warning' }, J1271: { level: 'error' }, J1272: { level: 'warning' },
+  // @rack
+  J1273: { level: 'error' }, J1274: { level: 'error' }, J1275: { level: 'error' }, J1276: { level: 'error' }, J1277: { level: 'error' }, J1278: { level: 'warning' },
+  J1279: { level: 'error' }, J1280: { level: 'warning' }, J1281: { level: 'warning' }, J1282: { level: 'warning' }, J1283: { level: 'warning' }, J1284: { level: 'warning' },
+  J1285: { level: 'warning' },
+  // @cert
+  J1286: { level: 'error' }, J1287: { level: 'warning' }, J1288: { level: 'warning' }, J1289: { level: 'warning' },
+  // @design
+  J1290: { level: 'warning' }, J1291: { level: 'warning' }, J1292: { level: 'warning' }, J1293: { level: 'warning' }, J1294: { level: 'warning' }, J1295: { level: 'warning' },
   J1001: { level: 'error' }, J1002: { level: 'error' }, J1101: { level: 'error' }, J1102: { level: 'error' },
   J1103: { level: 'error' }, J1104: { level: 'error' }, J1105: { level: 'error' }, J1106: { level: 'error' },
   J1107: { level: 'error' }, J1108: { level: 'error' }, J1109: { level: 'warning' }, J1110: { level: 'error' }, J1111: { level: 'error' }, J1199: { level: 'error' }

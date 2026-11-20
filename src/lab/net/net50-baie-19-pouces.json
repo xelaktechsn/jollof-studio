@@ -1,0 +1,973 @@
+{
+ "id": "net50-baie-19-pouces",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Concevoir une baie 19 pouces",
+  "en": "Design a 19-inch rack"
+ },
+ "summary": {
+  "fr": "Une baie de 22U attend son switch 48 ports, deux panneaux de brassage, leurs passe-câbles, un onduleur et une PDU. Quelqu’un a monté le switch et le premier panneau sur les mêmes U. Placez chaque équipement sans chevauchement, dans la charge de la baie, branchez l’énergie, puis brassez les quatre prises du bureau jusqu’au switch.",
+  "en": "A 22U rack is waiting for its 48-port switch, two patch panels, their cable managers, a UPS and a PDU. Someone mounted the switch and the first panel on the same U. Place each device without overlap, within the rack load, connect the power, then patch the four office outlets through to the switch."
+ },
+ "objectives": [
+  {
+   "fr": "Lire une élévation de baie : U, faces avant et arrière, profondeur",
+   "en": "Read a rack elevation: U, front and rear faces, depth"
+  },
+  {
+   "fr": "Vérifier le poids, la PDU et l’autonomie de l’onduleur",
+   "en": "Check the weight, the PDU and the UPS runtime"
+  },
+  {
+   "fr": "Brasser des prises murales jusqu’au switch par le panneau",
+   "en": "Patch wall outlets through the panel to the switch"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "1U = 44,45 mm ; une façade 19 pouces fait 482,6 mm (EIA-310).",
+   "en": "1U = 44.45 mm; a 19-inch front panel is 482.6 mm wide (EIA-310)."
+  },
+  {
+   "fr": "Un appareil plus profond que la moitié de la baie prend aussi la face arrière.",
+   "en": "A device deeper than half the rack also takes the rear face."
+  },
+  {
+   "fr": "Un passe-câbles 1U contre chaque panneau ; un obturateur dans chaque U libre.",
+   "en": "A 1U cable manager next to each panel; a blanking panel in each free U."
+  },
+  {
+   "fr": "Le panneau relie la prise (lien permanent, derrière) au switch (cordon court, devant).",
+   "en": "The panel links the outlet (permanent link, at the back) to the switch (short cord, at the front)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Baie 19 pouces",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "sw1",
+       "type": "switch48",
+       "x": 60,
+       "y": 40,
+       "name": "SW1",
+       "rack": {
+        "id": "r1",
+        "u": 20,
+        "face": "front"
+       }
+      },
+      {
+       "id": "pb1",
+       "type": "patch24",
+       "x": 60,
+       "y": 160,
+       "name": "PB1",
+       "rack": {
+        "id": "r1",
+        "u": 20,
+        "face": "front"
+       }
+      },
+      {
+       "id": "pb2",
+       "type": "patch24",
+       "x": 60,
+       "y": 240,
+       "name": "PB2"
+      },
+      {
+       "id": "cm1",
+       "type": "cablemgr",
+       "x": 0,
+       "y": 0,
+       "name": "PASS1"
+      },
+      {
+       "id": "cm2",
+       "type": "cablemgr",
+       "x": 0,
+       "y": 0,
+       "name": "PASS2"
+      },
+      {
+       "id": "ups1",
+       "type": "ups",
+       "x": 0,
+       "y": 0,
+       "name": "OND1"
+      },
+      {
+       "id": "pdu1",
+       "type": "pdu",
+       "x": 0,
+       "y": 0,
+       "name": "PDU1"
+      },
+      {
+       "id": "o1",
+       "type": "outlet",
+       "x": 150,
+       "y": 400,
+       "name": "PR1"
+      },
+      {
+       "id": "o2",
+       "type": "outlet",
+       "x": 240,
+       "y": 400,
+       "name": "PR2"
+      },
+      {
+       "id": "o3",
+       "type": "outlet",
+       "x": 330,
+       "y": 400,
+       "name": "PR3"
+      },
+      {
+       "id": "o4",
+       "type": "outlet",
+       "x": 420,
+       "y": 400,
+       "name": "PR4"
+      }
+     ],
+     "cables": [
+      {
+       "id": "l1",
+       "a": [
+        "o1",
+        "back"
+       ],
+       "b": [
+        "pb1",
+        "b1"
+       ],
+       "cat": "cat6",
+       "len": 27,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "l2",
+       "a": [
+        "o2",
+        "back"
+       ],
+       "b": [
+        "pb1",
+        "b2"
+       ],
+       "cat": "cat6",
+       "len": 34,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "l3",
+       "a": [
+        "o3",
+        "back"
+       ],
+       "b": [
+        "pb1",
+        "b3"
+       ],
+       "cat": "cat6",
+       "len": 41,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "l4",
+       "a": [
+        "o4",
+        "back"
+       ],
+       "b": [
+        "pb1",
+        "b4"
+       ],
+       "cat": "cat6",
+       "len": 48,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "racks": [
+      {
+       "id": "r1",
+       "name": "BAIE1",
+       "kind": "floor",
+       "u": 22,
+       "w": 600,
+       "d": 1000,
+       "depth": 652.3,
+       "load": 800,
+       "runtime": 10
+      }
+     ]
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "view": "net",
+   "devices": [
+    {
+     "id": "sw1",
+     "type": "switch48",
+     "x": 60,
+     "y": 40,
+     "name": "SW1",
+     "rack": {
+      "id": "r1",
+      "u": 20,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pb1",
+     "type": "patch24",
+     "x": 60,
+     "y": 160,
+     "name": "PB1",
+     "rack": {
+      "id": "r1",
+      "u": 22,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pb2",
+     "type": "patch24",
+     "x": 60,
+     "y": 240,
+     "name": "PB2",
+     "rack": {
+      "id": "r1",
+      "u": 18,
+      "face": "front"
+     }
+    },
+    {
+     "id": "cm1",
+     "type": "cablemgr",
+     "x": 0,
+     "y": 0,
+     "name": "PASS1",
+     "rack": {
+      "id": "r1",
+      "u": 21,
+      "face": "front"
+     }
+    },
+    {
+     "id": "cm2",
+     "type": "cablemgr",
+     "x": 0,
+     "y": 0,
+     "name": "PASS2",
+     "rack": {
+      "id": "r1",
+      "u": 19,
+      "face": "front"
+     }
+    },
+    {
+     "id": "ups1",
+     "type": "ups",
+     "x": 0,
+     "y": 0,
+     "name": "OND1",
+     "rack": {
+      "id": "r1",
+      "u": 1,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pdu1",
+     "type": "pdu",
+     "x": 0,
+     "y": 0,
+     "name": "PDU1",
+     "rack": {
+      "id": "r1",
+      "u": 1,
+      "face": "rear"
+     }
+    },
+    {
+     "id": "o1",
+     "type": "outlet",
+     "x": 150,
+     "y": 400,
+     "name": "PR1"
+    },
+    {
+     "id": "o2",
+     "type": "outlet",
+     "x": 240,
+     "y": 400,
+     "name": "PR2"
+    },
+    {
+     "id": "o3",
+     "type": "outlet",
+     "x": 330,
+     "y": 400,
+     "name": "PR3"
+    },
+    {
+     "id": "o4",
+     "type": "outlet",
+     "x": 420,
+     "y": 400,
+     "name": "PR4"
+    }
+   ],
+   "cables": [
+    {
+     "id": "l1",
+     "a": [
+      "o1",
+      "back"
+     ],
+     "b": [
+      "pb1",
+      "b1"
+     ],
+     "cat": "cat6",
+     "len": 27,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "l2",
+     "a": [
+      "o2",
+      "back"
+     ],
+     "b": [
+      "pb1",
+      "b2"
+     ],
+     "cat": "cat6",
+     "len": 34,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "l3",
+     "a": [
+      "o3",
+      "back"
+     ],
+     "b": [
+      "pb1",
+      "b3"
+     ],
+     "cat": "cat6",
+     "len": 41,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "l4",
+     "a": [
+      "o4",
+      "back"
+     ],
+     "b": [
+      "pb1",
+      "b4"
+     ],
+     "cat": "cat6",
+     "len": 48,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k1",
+     "a": [
+      "pb1",
+      "f1"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 0.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k2",
+     "a": [
+      "pb1",
+      "f2"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 0.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k3",
+     "a": [
+      "pb1",
+      "f3"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 0.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k4",
+     "a": [
+      "pb1",
+      "f4"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6",
+     "len": 0.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ],
+   "racks": [
+    {
+     "id": "r1",
+     "name": "BAIE1",
+     "kind": "floor",
+     "u": 22,
+     "w": 600,
+     "d": 1000,
+     "depth": 652.3,
+     "load": 800,
+     "runtime": 10
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La baie",
+    "en": "The rack"
+   },
+   "text": {
+    "fr": "Ouvrez la vue **Baies** (Alt+3), puis **Élévation**. La baie fait **22U** : chaque U mesure **44,45 mm**. À gauche, la liste **Hors baie** ; on glisse un équipement dans un U libre, on le monte ou le descend avec les flèches.",
+    "en": "Open the **Racks** view (Alt+3), then **Elevation**. The rack is **22U**: each U is **44.45 mm**. On the left, the **Unracked** list; drag a device into a free U, move it up or down with the arrow keys."
+   },
+   "spot": [
+    ".ntViewBar [data-view=\"racks\"]"
+   ],
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Combien de place ?",
+    "en": "How much room?"
+   },
+   "text": {
+    "fr": "Le switch, les deux panneaux et les deux passe-câbles font 1U chacun, l’onduleur 2U ; la PDU est verticale (0U). Combien d’U de façade occupent-ils ensemble ?",
+    "en": "The switch, both panels and both cable managers are 1U each, the UPS is 2U; the PDU is vertical (0U). How many front U do they take together?"
+   },
+   "keep": {
+    "fr": "5 × 1U + 2U = 7U : il reste 15U, à fermer par des obturateurs.",
+    "en": "5 × 1U + 2U = 7U: 15U remain, to close with blanking panels."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "6U",
+      "en": "6U"
+     },
+     {
+      "fr": "7U",
+      "en": "7U"
+     },
+     {
+      "fr": "8U",
+      "en": "8U"
+     },
+     {
+      "fr": "9U",
+      "en": "9U"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Placer sans chevauchement",
+    "en": "Place without overlap"
+   },
+   "text": {
+    "fr": "Séparez le switch et le panneau PB1, puis rangez dans BAIE1 : PB1, un passe-câbles, le switch SW1, un passe-câbles, PB2 (de haut en bas, en haut de la baie), et l’onduleur en bas (il est lourd). Le switch est profond : il prend aussi la face arrière.",
+    "en": "Separate the switch and panel PB1, then put into BAIE1: PB1, a cable manager, switch SW1, a cable manager, PB2 (top to bottom, at the top of the rack), and the UPS at the bottom (it is heavy). The switch is deep: it also takes the rear face."
+   },
+   "hint": {
+    "fr": "Une collision est entourée de rouge. Choisissez un équipement et utilisez ↑ ↓ pour le déplacer d’un U.",
+    "en": "A collision is outlined in red. Select a device and use ↑ ↓ to move it one U."
+   },
+   "check": {
+    "type": "net-rack",
+    "rack": "BAIE1",
+    "require": [
+     {
+      "sel": "switch48"
+     },
+     {
+      "sel": "patch24",
+      "n": 2
+     },
+     {
+      "sel": "cablemgr",
+      "n": 2
+     },
+     {
+      "sel": "ups"
+     }
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "L’énergie",
+    "en": "Power"
+   },
+   "text": {
+    "fr": "Glissez la PDU verticale dans la baie (elle se fixe à l’arrière, sans prendre d’U). L’onduleur doit tenir **10 min** au moins : regardez son autonomie dans l’inspecteur de la baie.",
+    "en": "Drag the vertical PDU into the rack (it mounts at the rear, without taking a U). The UPS must last at least **10 min**: check its runtime in the rack inspector."
+   },
+   "check": {
+    "type": "net-power",
+    "rack": "BAIE1",
+    "runtime": 10
+   }
+  },
+  {
+   "title": {
+    "fr": "Le brassage",
+    "en": "Patching"
+   },
+   "text": {
+    "fr": "Les prises PR1 à PR4 arrivent derrière PB1 (ports 1 à 4). Ouvrez **Brassage** et reliez PB1 · 1 à 4 aux ports 1 à 4 de SW1 par des cordons de 0,5 m.",
+    "en": "Outlets PR1 to PR4 arrive at the back of PB1 (ports 1 to 4). Open **Patching** and connect PB1 · 1 to 4 to ports 1 to 4 of SW1 with 0.5 m cords."
+   },
+   "spot": [
+    "[data-rkpatch]"
+   ],
+   "check": {
+    "type": "net-patching",
+    "rack": "BAIE1",
+    "n": 4
+   }
+  },
+  {
+   "title": {
+    "fr": "Baie conforme",
+    "en": "Compliant rack"
+   },
+   "text": {
+    "fr": "Plus aucune collision, rien hors de la baie, charge et énergie dans les limites, un passe-câbles contre chaque panneau.",
+    "en": "No more collisions, nothing outside the rack, load and power within limits, a cable manager next to each panel."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1273",
+     "J1274",
+     "J1275",
+     "J1276",
+     "J1277",
+     "J1278",
+     "J1279",
+     "J1281",
+     "J1284",
+     "J1285"
+    ]
+   }
+  }
+ ]
+}

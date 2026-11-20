@@ -23,7 +23,7 @@ import { PARTS } from '../sim/parts.js';
 import { analyze, bbGroups } from '../sim/circuit.js';
 import { compile } from '../prog/lang.js';
 import { checkWire, checkCode, checkQuiz, expectedMeasure, checkPneuTube, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkScene } from './engine.js';
-import { pinKeys } from '../check/load.js';
+import { pinKeys, loadProject } from '../check/load.js';
 import { DEFS as LOGIC, layoutOf, sizeOf } from '../logic/elements.js';
 import { checkLogicTable, checkLogicSeq, checkLogicParts, checkExpr, checkTableFill } from '../logic/check.js';
 import { parse, expected } from '../logic/boolean.js';
@@ -36,6 +36,7 @@ import { checkPneu } from '../pneu/check.js';
 import { processSensorNames, processActRoles, actProcess } from '../pneu/process.js';
 import { netEnv, netOfProject, checkNet, isNetCheck } from '../net/labcheck.js';
 import { cleanNet } from '../net/clean.js';
+import { examTpError } from '../net/exam.js';
 import { createRuntime } from '../prog/runtime.js';
 import { NET_DEFAULT } from '../sim/models.js';
 
@@ -88,6 +89,7 @@ for (const [fdir, f] of elecFiles) {
   const isNet = fdir === netDir;
   if (isNet && !['net', 'iot'].includes(kind)) bad(tp, 'TP de réseau : start.settings.kind net ou iot');
   if (isNet && `${tp.id}.json` !== f) bad(tp, `id ${tp.id} différent du nom du fichier`);
+  { const ex = examTpError(tp); if (ex) bad(tp, ex); } // mode examen : le plan réseau du départ le porte
   // Tutoriel (départ vide) : la solution est un projet entier (montage, fils, plan pneumatique, programme).
   const proj = tp.solution && tp.solution.project;
   let start, sol;
@@ -110,7 +112,9 @@ for (const [fdir, f] of elecFiles) {
       }
     };
   };
-  const projCode = proj && Object.values(((proj.settings || {}).prog || {}).boards || {}).map(b => b.code).find(Boolean);
+  // Programme de la solution : celui d'une carte écrit à la main, sinon celui que les règles génèrent (carte en mode auto).
+  const projProg = (proj && (proj.settings || {}).prog) || {};
+  const projCode = proj && (Object.values(projProg.boards || {}).map(b => (b.auto ? '' : b.code)).find(Boolean) || ((projProg.rules || []).length ? [...loadProject(proj).programs.values()][0] || '' : ''));
   const code = projCode || (tp.solution.code ? Object.values(tp.solution.code)[0] : '');
   // Plans pneumatiques d'un tutoriel : celui du départ (souvent vide) et celui de la solution.
   const planOf = p => cleanPneu((((p.settings || {}).modules || {}).pneu || {}).circuit || null);

@@ -1,0 +1,1738 @@
+{
+ "id": "net66-plan-adressage-vlsm",
+ "series": "cablage",
+ "level": "pro",
+ "minutes": 40,
+ "title": {
+  "fr": "Plan d’adressage VLSM",
+  "en": "VLSM address plan"
+ },
+ "summary": {
+  "fr": "L’agence reçoit le bloc privé 10.30.0.0/22 pour quatre VLAN de tailles très différentes. Découpez-le à la bonne taille pour chacun (VLSM), du plus grand au plus petit, sans chevauchement, avec la passerelle en première adresse utilisable.",
+  "en": "The branch gets the private block 10.30.0.0/22 for four VLANs of very different sizes. Split it to the right size for each (VLSM), largest first, without overlap, with the gateway at the first usable address."
+ },
+ "objectives": [
+  {
+   "fr": "Choisir le préfixe qui loge un nombre d’hôtes",
+   "en": "Choose the prefix that fits a number of hosts"
+  },
+  {
+   "fr": "Placer des sous-réseaux alignés, du plus grand au plus petit",
+   "en": "Place aligned subnets, largest first"
+  },
+  {
+   "fr": "Reconnaître réseau, passerelle et diffusion",
+   "en": "Recognise network, gateway and broadcast"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un /n offre 2^(32-n) - 2 adresses d’hôtes : l’adresse du réseau et celle de diffusion sont réservées (RFC 950).",
+   "en": "A /n offers 2^(32-n) - 2 host addresses: the network and broadcast addresses are reserved (RFC 950)."
+  },
+  {
+   "fr": "En plaçant les plus grands réseaux d’abord, chacun commence à un multiple de sa taille : pas de trou, pas de chevauchement (RFC 4632).",
+   "en": "Placing the largest networks first, each starts at a multiple of its size: no gap, no overlap (RFC 4632)."
+  },
+  {
+   "fr": "10.0.0.0/8, 172.16.0.0/12 et 192.168.0.0/16 sont les blocs privés (RFC 1918).",
+   "en": "10.0.0.0/8, 172.16.0.0/12 and 192.168.0.0/16 are the private blocks (RFC 1918)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Agence de Thiès : adressage",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "devices": [],
+     "cables": [],
+     "ext": {},
+     "view": "net",
+     "site": {
+      "name": "Agence de Thiès",
+      "north": 0,
+      "access": 6,
+      "seg": "b",
+      "buildings": [
+       {
+        "id": "bA",
+        "name": "Agence",
+        "x": 0,
+        "y": 0,
+        "floors": [
+         {
+          "id": "f0",
+          "name": "RDC",
+          "level": 0,
+          "elev": 0,
+          "height": 3,
+          "ceil": 2.7,
+          "plenum": 0.5,
+          "raised": 0,
+          "walls": [
+           {
+            "id": "f0-b1-w0",
+            "a": [
+             0,
+             0
+            ],
+            "b": [
+             5,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w1",
+            "a": [
+             5,
+             0
+            ],
+            "b": [
+             5,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w2",
+            "a": [
+             5,
+             5
+            ],
+            "b": [
+             0,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w3",
+            "a": [
+             0,
+             5
+            ],
+            "b": [
+             0,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w0",
+            "a": [
+             5,
+             0
+            ],
+            "b": [
+             10,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w1",
+            "a": [
+             10,
+             0
+            ],
+            "b": [
+             10,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w2",
+            "a": [
+             10,
+             5
+            ],
+            "b": [
+             5,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w3",
+            "a": [
+             5,
+             5
+            ],
+            "b": [
+             5,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w0",
+            "a": [
+             10,
+             0
+            ],
+            "b": [
+             15,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w1",
+            "a": [
+             15,
+             0
+            ],
+            "b": [
+             15,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w2",
+            "a": [
+             15,
+             5
+            ],
+            "b": [
+             10,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w3",
+            "a": [
+             10,
+             5
+            ],
+            "b": [
+             10,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w0",
+            "a": [
+             15,
+             0
+            ],
+            "b": [
+             23,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w1",
+            "a": [
+             23,
+             0
+            ],
+            "b": [
+             23,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w2",
+            "a": [
+             23,
+             5
+            ],
+            "b": [
+             15,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w3",
+            "a": [
+             15,
+             5
+            ],
+            "b": [
+             15,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w0",
+            "a": [
+             0,
+             7
+            ],
+            "b": [
+             15,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w1",
+            "a": [
+             15,
+             7
+            ],
+            "b": [
+             15,
+             15
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w2",
+            "a": [
+             15,
+             15
+            ],
+            "b": [
+             0,
+             15
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w3",
+            "a": [
+             0,
+             15
+            ],
+            "b": [
+             0,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w0",
+            "a": [
+             0,
+             5
+            ],
+            "b": [
+             27,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w1",
+            "a": [
+             27,
+             5
+            ],
+            "b": [
+             27,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w2",
+            "a": [
+             27,
+             7
+            ],
+            "b": [
+             0,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w3",
+            "a": [
+             0,
+             7
+            ],
+            "b": [
+             0,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w0",
+            "a": [
+             23,
+             0
+            ],
+            "b": [
+             27,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w1",
+            "a": [
+             27,
+             0
+            ],
+            "b": [
+             27,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w2",
+            "a": [
+             27,
+             5
+            ],
+            "b": [
+             23,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w3",
+            "a": [
+             23,
+             5
+            ],
+            "b": [
+             23,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           }
+          ],
+          "doors": [],
+          "rooms": [
+           {
+            "id": "f0-b1",
+            "name": "Bureau 1",
+            "usage": "office",
+            "poly": [
+             [
+              0,
+              0
+             ],
+             [
+              5,
+              0
+             ],
+             [
+              5,
+              5
+             ],
+             [
+              0,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-b2",
+            "name": "Bureau 2",
+            "usage": "office",
+            "poly": [
+             [
+              5,
+              0
+             ],
+             [
+              10,
+              0
+             ],
+             [
+              10,
+              5
+             ],
+             [
+              5,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-b3",
+            "name": "Bureau 3",
+            "usage": "office",
+            "poly": [
+             [
+              10,
+              0
+             ],
+             [
+              15,
+              0
+             ],
+             [
+              15,
+              5
+             ],
+             [
+              10,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-mt",
+            "name": "Réunion",
+            "usage": "meeting",
+            "poly": [
+             [
+              15,
+              0
+             ],
+             [
+              23,
+              0
+             ],
+             [
+              23,
+              5
+             ],
+             [
+              15,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-os",
+            "name": "Plateau",
+            "usage": "open",
+            "poly": [
+             [
+              0,
+              7
+             ],
+             [
+              15,
+              7
+             ],
+             [
+              15,
+              15
+             ],
+             [
+              0,
+              15
+             ]
+            ]
+           },
+           {
+            "id": "f0-co",
+            "name": "Couloir",
+            "usage": "corridor",
+            "poly": [
+             [
+              0,
+              5
+             ],
+             [
+              27,
+              5
+             ],
+             [
+              27,
+              7
+             ],
+             [
+              0,
+              7
+             ]
+            ]
+           },
+           {
+            "id": "f0-lt",
+            "name": "Local technique",
+            "usage": "tr",
+            "poly": [
+             [
+              23,
+              0
+             ],
+             [
+              27,
+              0
+             ],
+             [
+              27,
+              5
+             ],
+             [
+              23,
+              5
+             ]
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "paths": [
+      {
+       "id": "tray1",
+       "floor": "f0",
+       "kind": "tray",
+       "name": "CDC couloir",
+       "pts": [
+        [
+         0.5,
+         6
+        ],
+        [
+         26.5,
+         6
+        ]
+       ],
+       "z": 2.6,
+       "w": 200,
+       "h": 60,
+       "shield": "none"
+      },
+      {
+       "id": "tray2",
+       "floor": "f0",
+       "kind": "tray",
+       "name": "CDC LT",
+       "pts": [
+        [
+         25,
+         6
+        ],
+        [
+         25,
+         3
+        ]
+       ],
+       "z": 2.6,
+       "w": 200,
+       "h": 60,
+       "shield": "none"
+      }
+     ],
+     "racks": [
+      {
+       "id": "r1",
+       "name": "BAIE-LT",
+       "kind": "floor",
+       "u": 24,
+       "w": 600,
+       "d": 800,
+       "depth": 652.3,
+       "load": 800,
+       "floor": "f0",
+       "room": "f0-lt",
+       "x": 25,
+       "y": 2.5,
+       "rot": 0,
+       "heat": 3000,
+       "runtime": 10,
+       "pf": 0.9,
+       "basis": "typ",
+       "volts": 230
+      }
+     ],
+     "vlans": [
+      {
+       "id": 10,
+       "name": "DATA",
+       "net": "",
+       "gw": "",
+       "hosts": 200
+      },
+      {
+       "id": 20,
+       "name": "VOICE",
+       "net": "",
+       "gw": "",
+       "hosts": 90
+      },
+      {
+       "id": 30,
+       "name": "WIFI",
+       "net": "",
+       "gw": "",
+       "hosts": 400
+      },
+      {
+       "id": 99,
+       "name": "MGMT",
+       "net": "",
+       "gw": "",
+       "hosts": 20
+      }
+     ],
+     "design": {
+      "std": "tia",
+      "area": 10,
+      "outlets": 2,
+      "usage": {
+       "office": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "open": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "meeting": {
+        "area": 20,
+        "outlets": 2,
+        "phones": 0.5,
+        "cams": 0,
+        "min": 1
+       },
+       "classroom": {
+        "area": 30,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 2
+       },
+       "lab": {
+        "area": 5,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 1
+       },
+       "corridor": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 1,
+        "min": 0
+       },
+       "storage": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "tech": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "other": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       }
+      },
+      "apArea": 0,
+      "spare": 20,
+      "oversub": 20,
+      "uplinks": 1,
+      "panel": 24,
+      "sw": "auto",
+      "poe": {
+       "phone": 1,
+       "ap": 4,
+       "camera": 3
+      },
+      "poeMargin": 20,
+      "cat": "cat6a",
+      "box": 305,
+      "waste": 10,
+      "cord": 1,
+      "slack": {
+       "tr": 3,
+       "wa": 0.3
+      },
+      "rackU": 42,
+      "upsMargin": 25,
+      "labels": {
+       "preset": "auto",
+       "space": "{f}{s}",
+       "link": "{fs}-{p}{n}",
+       "panel": "{fs}-{p}",
+       "rack": "{fs}.R{r}",
+       "pad": 2
+      },
+      "prices": {},
+      "currency": "EUR",
+      "labour": [],
+      "project": {
+       "client": "",
+       "site": "",
+       "author": "",
+       "date": "",
+       "rev": ""
+      },
+      "rooms": {},
+      "ip": {
+       "block": "10.30.0.0/22",
+       "gw": "first",
+       "growth": 0
+      }
+     },
+     "tests": null,
+     "images": {},
+     "wifi": {
+      "reg": "eu",
+      "env": "walls",
+      "target": -67,
+      "noise": -92,
+      "snr": 25,
+      "sinr": 25,
+      "cover": 90,
+      "cci": 10,
+      "rxH": 1,
+      "band": "any"
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [],
+   "cables": [],
+   "ext": {},
+   "view": "net",
+   "site": {
+    "name": "Agence de Thiès",
+    "north": 0,
+    "access": 6,
+    "seg": "b",
+    "buildings": [
+     {
+      "id": "bA",
+      "name": "Agence",
+      "x": 0,
+      "y": 0,
+      "floors": [
+       {
+        "id": "f0",
+        "name": "RDC",
+        "level": 0,
+        "elev": 0,
+        "height": 3,
+        "ceil": 2.7,
+        "plenum": 0.5,
+        "raised": 0,
+        "walls": [
+         {
+          "id": "f0-b1-w0",
+          "a": [
+           0,
+           0
+          ],
+          "b": [
+           5,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w1",
+          "a": [
+           5,
+           0
+          ],
+          "b": [
+           5,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w2",
+          "a": [
+           5,
+           5
+          ],
+          "b": [
+           0,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w3",
+          "a": [
+           0,
+           5
+          ],
+          "b": [
+           0,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w0",
+          "a": [
+           5,
+           0
+          ],
+          "b": [
+           10,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w1",
+          "a": [
+           10,
+           0
+          ],
+          "b": [
+           10,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w2",
+          "a": [
+           10,
+           5
+          ],
+          "b": [
+           5,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w3",
+          "a": [
+           5,
+           5
+          ],
+          "b": [
+           5,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w0",
+          "a": [
+           10,
+           0
+          ],
+          "b": [
+           15,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w1",
+          "a": [
+           15,
+           0
+          ],
+          "b": [
+           15,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w2",
+          "a": [
+           15,
+           5
+          ],
+          "b": [
+           10,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w3",
+          "a": [
+           10,
+           5
+          ],
+          "b": [
+           10,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w0",
+          "a": [
+           15,
+           0
+          ],
+          "b": [
+           23,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w1",
+          "a": [
+           23,
+           0
+          ],
+          "b": [
+           23,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w2",
+          "a": [
+           23,
+           5
+          ],
+          "b": [
+           15,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w3",
+          "a": [
+           15,
+           5
+          ],
+          "b": [
+           15,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w0",
+          "a": [
+           0,
+           7
+          ],
+          "b": [
+           15,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w1",
+          "a": [
+           15,
+           7
+          ],
+          "b": [
+           15,
+           15
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w2",
+          "a": [
+           15,
+           15
+          ],
+          "b": [
+           0,
+           15
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w3",
+          "a": [
+           0,
+           15
+          ],
+          "b": [
+           0,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w0",
+          "a": [
+           0,
+           5
+          ],
+          "b": [
+           27,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w1",
+          "a": [
+           27,
+           5
+          ],
+          "b": [
+           27,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w2",
+          "a": [
+           27,
+           7
+          ],
+          "b": [
+           0,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w3",
+          "a": [
+           0,
+           7
+          ],
+          "b": [
+           0,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w0",
+          "a": [
+           23,
+           0
+          ],
+          "b": [
+           27,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w1",
+          "a": [
+           27,
+           0
+          ],
+          "b": [
+           27,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w2",
+          "a": [
+           27,
+           5
+          ],
+          "b": [
+           23,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w3",
+          "a": [
+           23,
+           5
+          ],
+          "b": [
+           23,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         }
+        ],
+        "doors": [],
+        "rooms": [
+         {
+          "id": "f0-b1",
+          "name": "Bureau 1",
+          "usage": "office",
+          "poly": [
+           [
+            0,
+            0
+           ],
+           [
+            5,
+            0
+           ],
+           [
+            5,
+            5
+           ],
+           [
+            0,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-b2",
+          "name": "Bureau 2",
+          "usage": "office",
+          "poly": [
+           [
+            5,
+            0
+           ],
+           [
+            10,
+            0
+           ],
+           [
+            10,
+            5
+           ],
+           [
+            5,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-b3",
+          "name": "Bureau 3",
+          "usage": "office",
+          "poly": [
+           [
+            10,
+            0
+           ],
+           [
+            15,
+            0
+           ],
+           [
+            15,
+            5
+           ],
+           [
+            10,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-mt",
+          "name": "Réunion",
+          "usage": "meeting",
+          "poly": [
+           [
+            15,
+            0
+           ],
+           [
+            23,
+            0
+           ],
+           [
+            23,
+            5
+           ],
+           [
+            15,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-os",
+          "name": "Plateau",
+          "usage": "open",
+          "poly": [
+           [
+            0,
+            7
+           ],
+           [
+            15,
+            7
+           ],
+           [
+            15,
+            15
+           ],
+           [
+            0,
+            15
+           ]
+          ]
+         },
+         {
+          "id": "f0-co",
+          "name": "Couloir",
+          "usage": "corridor",
+          "poly": [
+           [
+            0,
+            5
+           ],
+           [
+            27,
+            5
+           ],
+           [
+            27,
+            7
+           ],
+           [
+            0,
+            7
+           ]
+          ]
+         },
+         {
+          "id": "f0-lt",
+          "name": "Local technique",
+          "usage": "tr",
+          "poly": [
+           [
+            23,
+            0
+           ],
+           [
+            27,
+            0
+           ],
+           [
+            27,
+            5
+           ],
+           [
+            23,
+            5
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "paths": [
+    {
+     "id": "tray1",
+     "floor": "f0",
+     "kind": "tray",
+     "name": "CDC couloir",
+     "pts": [
+      [
+       0.5,
+       6
+      ],
+      [
+       26.5,
+       6
+      ]
+     ],
+     "z": 2.6,
+     "w": 200,
+     "h": 60,
+     "shield": "none"
+    },
+    {
+     "id": "tray2",
+     "floor": "f0",
+     "kind": "tray",
+     "name": "CDC LT",
+     "pts": [
+      [
+       25,
+       6
+      ],
+      [
+       25,
+       3
+      ]
+     ],
+     "z": 2.6,
+     "w": 200,
+     "h": 60,
+     "shield": "none"
+    }
+   ],
+   "racks": [
+    {
+     "id": "r1",
+     "name": "BAIE-LT",
+     "kind": "floor",
+     "u": 24,
+     "w": 600,
+     "d": 800,
+     "depth": 652.3,
+     "load": 800,
+     "floor": "f0",
+     "room": "f0-lt",
+     "x": 25,
+     "y": 2.5,
+     "rot": 0,
+     "heat": 3000,
+     "runtime": 10,
+     "pf": 0.9,
+     "basis": "typ",
+     "volts": 230
+    }
+   ],
+   "vlans": [
+    {
+     "id": 10,
+     "name": "DATA",
+     "net": "10.30.2.0/24",
+     "gw": "10.30.2.1",
+     "hosts": 200
+    },
+    {
+     "id": 20,
+     "name": "VOICE",
+     "net": "10.30.3.0/25",
+     "gw": "10.30.3.1",
+     "hosts": 90
+    },
+    {
+     "id": 30,
+     "name": "WIFI",
+     "net": "10.30.0.0/23",
+     "gw": "10.30.0.1",
+     "hosts": 400
+    },
+    {
+     "id": 99,
+     "name": "MGMT",
+     "net": "10.30.3.128/27",
+     "gw": "10.30.3.129",
+     "hosts": 20
+    }
+   ],
+   "design": {
+    "std": "tia",
+    "area": 10,
+    "outlets": 2,
+    "usage": {
+     "office": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "open": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "meeting": {
+      "area": 20,
+      "outlets": 2,
+      "phones": 0.5,
+      "cams": 0,
+      "min": 1
+     },
+     "classroom": {
+      "area": 30,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 2
+     },
+     "lab": {
+      "area": 5,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 1
+     },
+     "corridor": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 1,
+      "min": 0
+     },
+     "storage": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "tech": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "other": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     }
+    },
+    "apArea": 0,
+    "spare": 20,
+    "oversub": 20,
+    "uplinks": 1,
+    "panel": 24,
+    "sw": "auto",
+    "poe": {
+     "phone": 1,
+     "ap": 4,
+     "camera": 3
+    },
+    "poeMargin": 20,
+    "cat": "cat6a",
+    "box": 305,
+    "waste": 10,
+    "cord": 1,
+    "slack": {
+     "tr": 3,
+     "wa": 0.3
+    },
+    "rackU": 42,
+    "upsMargin": 25,
+    "labels": {
+     "preset": "auto",
+     "space": "{f}{s}",
+     "link": "{fs}-{p}{n}",
+     "panel": "{fs}-{p}",
+     "rack": "{fs}.R{r}",
+     "pad": 2
+    },
+    "prices": {},
+    "currency": "EUR",
+    "labour": [],
+    "project": {
+     "client": "",
+     "site": "",
+     "author": "",
+     "date": "",
+     "rev": ""
+    },
+    "rooms": {},
+    "ip": {
+     "block": "10.30.0.0/22",
+     "gw": "first",
+     "growth": 0
+    }
+   },
+   "tests": null,
+   "images": {},
+   "wifi": {
+    "reg": "eu",
+    "env": "walls",
+    "target": -67,
+    "noise": -92,
+    "snr": 25,
+    "sinr": 25,
+    "cover": 90,
+    "cci": 10,
+    "rxH": 1,
+    "band": "any"
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Les besoins",
+    "en": "The needs"
+   },
+   "text": {
+    "fr": "Vue **Conception**, onglet **Adressage** : WIFI 400 hôtes, DATA 200, VOICE 90, MGMT 20. Le bloc est **10.30.0.0/22** (1024 adresses).",
+    "en": "**Design** view, **Addressing** tab: WIFI 400 hosts, DATA 200, VOICE 90, MGMT 20. The block is **10.30.0.0/22** (1024 addresses)."
+   },
+   "spot": [
+    ".ntViewBar [data-view=\"design\"]"
+   ],
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "La taille du WIFI",
+    "en": "The WIFI size"
+   },
+   "text": {
+    "fr": "400 hôtes et la passerelle : quel préfixe au plus juste ?",
+    "en": "400 hosts plus the gateway: which tightest prefix?"
+   },
+   "keep": {
+    "fr": "/23 : 512 - 2 = 510 adresses d’hôtes (un /24 n’en a que 254).",
+    "en": "/23: 512 - 2 = 510 host addresses (a /24 only has 254)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "/24",
+      "en": "/24"
+     },
+     {
+      "fr": "/23",
+      "en": "/23"
+     },
+     {
+      "fr": "/22",
+      "en": "/22"
+     },
+     {
+      "fr": "/25",
+      "en": "/25"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Le plan",
+    "en": "The plan"
+   },
+   "text": {
+    "fr": "Gardez le bloc **10.30.0.0/22**, la passerelle en **première adresse utilisable** et une réserve de **0 %**, puis **Appliquer le plan aux VLAN** (ou saisissez les réseaux vous-même dans les VLAN).",
+    "en": "Keep the block **10.30.0.0/22**, the gateway at the **first usable address** and a **0 %** growth allowance, then **Apply the plan to the VLANs** (or type the networks into the VLANs yourself)."
+   },
+   "check": {
+    "type": "net-subnet",
+    "block": "10.30.0.0/22",
+    "vlans": [
+     10,
+     20,
+     30,
+     99
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Diffusion",
+    "en": "Broadcast"
+   },
+   "text": {
+    "fr": "Le VLAN VOICE reçoit 10.30.3.0/25. Quelle est son adresse de diffusion ?",
+    "en": "VLAN VOICE gets 10.30.3.0/25. What is its broadcast address?"
+   },
+   "keep": {
+    "fr": "10.30.3.127 : la dernière adresse du /25 (128 adresses).",
+    "en": "10.30.3.127: the last address of the /25 (128 addresses)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "10.30.3.255",
+      "en": "10.30.3.255"
+     },
+     {
+      "fr": "10.30.3.127",
+      "en": "10.30.3.127"
+     },
+     {
+      "fr": "10.30.3.128",
+      "en": "10.30.3.128"
+     },
+     {
+      "fr": "10.30.3.1",
+      "en": "10.30.3.1"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

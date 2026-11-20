@@ -23,6 +23,17 @@
 //   { type: 'net-ip', of: sel, mode?: 'static'|'dhcp', ip?: '192.168.1.10', prefix?: 24, gw?: '192.168.1.1',
 //       net?: '192.168.1.0/24' }                         réglage IP d'un équipement (adresse effective pour un module)
 //   { type: 'net-wifi', of: sel, ap?: sel }               associé en Wi-Fi (à ce point d'accès ou cette box)
+// Contrôles de la simulation professionnelle (partie sim, plus bas : simLab) :
+//   { type: 'net-vlan', of: sel | [sel…], vlan: 10 }      chaque équipement de of est dans le VLAN 10
+//   { type: 'net-vlan', map: { sel: 10, sel2: 20 } }     chaque groupe dans son VLAN
+//   { type: 'net-vlan', apart: [sel, sel] }               les deux groupes sont dans des domaines de diffusion différents
+//   { type: 'net-trace', from: sel, to: sel | ip, via?: [sel…], hops?: n }   traceroute réussi, par ces routeurs
+//       dans cet ordre (via), en n sauts au plus (hops)
+//   { type: 'net-stp', root?: sel, vlan?: 10, alternate?: n }   pas de tempête ; la racine (de l'instance de ce VLAN en Rapid
+//       PVST+) est cet équipement ; n ports bloqués au moins
+//   { type: 'net-lag', of: sel, id?: 'Po1', min?: 2 }      agrégat formé (LACP ou statique) avec min ports actifs
+//   { type: 'net-route', on: sel, to: ip, via?: ip, kind?: 'ospf'|'static'|'connected' }   le routeur a une route vers ip
+//       (par cette passerelle, de ce genre : apprise par OSPF par exemple)
 // Contrôles « en direct » (le programme de la carte doit tourner : simulation lancée) :
 //   { type: 'net-http', from: sel, to: sel | ip, path?: '/', expect?: 'regex' }   page web lue par le navigateur
 //   { type: 'net-mqtt', broker?: sel, topic: 'atelier/#', expect?: 'regex', subscribed?: 'atelier/led' }
@@ -34,20 +45,27 @@ import { createLan } from './lan.js';
 import { specOf, portsOf } from './devices.js';
 import { analyzeCable, stdOf, CATS } from './cable.js';
 import { netIssues } from './issues.js';
+import { cleanNet } from './clean.js';
 import { ipNum, sameNet, prefixOf } from './ip.js';
 import { topicMatch } from './mqtt.js';
 import { NET_AUTO, NET_LIVE, isNetCheck } from './labkinds.js';
+import { lagWhyText } from './issues-sim.js';
+import { LAB as PLAN_LAB } from './checks/plan.js';
+import { LAB as WIFI_LAB } from './checks/wifi.js';
+import { LAB as RACK_LAB } from './checks/rack.js';
+import { LAB as CERT_LAB } from './checks/cert.js';
+import { LAB as DESIGN_LAB } from './checks/design.js';
+import { LAB as FIBRE_LAB } from './checks/fibre.js';
 export { NET_AUTO, NET_LIVE, isNetCheck };
+/** Contrôles de la conception professionnelle, définis avec leurs vérifications (src/net/checks/*.js). */
+const PRO_LAB = { ...PLAN_LAB, ...WIFI_LAB, ...RACK_LAB, ...CERT_LAB, ...DESIGN_LAB, ...FIBRE_LAB, ...simLab() };
 
 const low = v => String(v ?? '').trim().toLowerCase();
 
 /* ---------- Réseau d'un projet (fichier) ---------- */
 const ETH = ['w5500', 'enc28j60'], WIFI = ['esp32', 'esp32s3', 'esp32c3', 'nodemcu'];
 /** Plan réseau d'un projet .jollof (settings.modules.net), ou un plan vide. */
-export const netOfProject = p => {
-  const n = ((((p || {}).settings || {}).modules || {}).net) || {};
-  return { devices: Array.isArray(n.devices) ? n.devices : [], cables: Array.isArray(n.cables) ? n.cables : [], ext: n.ext || {} };
-};
+export const netOfProject = p => cleanNet(((((p || {}).settings || {}).modules || {}).net) || {});
 /**
  * Nœuds « externes » du montage : modules Ethernet (port 'eth') et cartes Wi-Fi. comps : composants du montage, avec
  * l'état écrit par le programme (periph.eth, periph.wifi) quand il tourne ; kindOf(c) : genre de la carte (esp32…).
@@ -282,8 +300,116 @@ export function checkNet(c, env) {
     case 'net-http': return checkNetHttp(c, env);
     case 'net-mqtt': return checkNetMqtt(c, env);
     case 'net-modbus': return checkNetModbus(c, env);
-    default: return { ok: false, why: 'type' };
+    default: return PRO_LAB[c.type] ? PRO_LAB[c.type].check(c, env) : { ok: false, why: 'type' };
   }
+}
+
+/* ---------- Simulation professionnelle (partie sim) ---------- */
+function simLab() {
+  const names = (st, ids) => ids.map(id => nameOf(st.byId.get(id))).join(', ');
+  return {
+    'net-vlan': {
+      check(c, env) {
+        const lan = lanOf(env), st = lan.state();
+        if (c.apart) {
+          const [A, B] = c.apart.map(sel => pick(st, sel)); if (!A.length || !B.length) return { ok: false, why: 'none' };
+          for (const a of A) for (const b of B) if (lan.domain(a.id) === lan.domain(b.id)) return { ok: false, why: 'same', a: nameOf(a), b: nameOf(b) };
+          return { ok: true };
+        }
+        // map : { sel: vlan } (plusieurs groupes en un contrôle), sinon of (un sélecteur ou une liste) et vlan.
+        const want = c.map ? Object.entries(c.map) : [].concat(c.of ?? []).map(sel => [sel, c.vlan]);
+        for (const [sel, vlan] of want) {
+          const N = pick(st, sel); if (!N.length) return { ok: false, why: 'none', sel };
+          for (const n of N) { const v = lan.vlanOf(n.id); if (v !== +vlan) return { ok: false, why: 'vlan', name: nameOf(n), vlan: v, want: +vlan }; }
+        }
+        return want.length ? { ok: true } : { ok: false, why: 'none' };
+      },
+      text(c, r) {
+        if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', r.sel || c.of || (c.apart || []).join(', '));
+        if (r.why === 'same') return tl('{0} et {1} sont encore dans le même réseau de diffusion : séparez-les en VLAN.', r.a, r.b);
+        return r.vlan == null ? tl('{0} n’est dans aucun VLAN (port d’accès du switch administrable à régler).', r.name) : tl('{0} est dans le VLAN {1}, pas dans le VLAN {2}.', r.name, r.vlan, r.want);
+      }
+    },
+    'net-trace': {
+      check(c, env) {
+        const lan = lanOf(env), st = lan.state(), F = pick(st, c.from), T = targets(lan, st, c.to);
+        if (!F.length) return { ok: false, why: 'nofrom' };
+        if (!T.length || !T[0].ip) return { ok: false, why: 'noto' };
+        for (const f of F) {
+          const r = lan.trace(f.id, T[0].ip);
+          if (!r.ok) return { ok: false, why: r.why, from: nameOf(f), to: T[0].name, hops: r.hops.length };
+          const routers = r.hops.slice(0, -1).map(h => h.node);
+          if (c.hops && r.hops.length > +c.hops) return { ok: false, why: 'hops', from: nameOf(f), n: r.hops.length };
+          if (c.via) {
+            const want = c.via.map(sel => new Set(pick(st, sel).map(n => n.id)));
+            let i = 0; for (const id of routers) if (i < want.length && want[i].has(id)) i++;
+            if (i < want.length) return { ok: false, why: 'via', from: nameOf(f), path: names(st, routers) || '—' };
+          }
+        }
+        return { ok: true };
+      },
+      text(c, r) {
+        if (r.why === 'nofrom' || r.why === 'noto') return tl('Équipement introuvable dans le plan : {0}.', r.why === 'nofrom' ? c.from : c.to);
+        if (r.why === 'hops') return tl('Traceroute depuis {0} : {1} sauts, c’est trop.', r.from, r.n);
+        if (r.why === 'via') return tl('Traceroute depuis {0} : le chemin passe par {1}, pas par {2}.', r.from, r.path, c.via.join(', '));
+        return tl('Traceroute de {0} vers {1} : échec, {2}.', r.from, r.to, whyText(r.why));
+      }
+    },
+    'net-stp': {
+      check(c, env) {
+        const lan = lanOf(env), st = lan.state();
+        if (st.storm.size) return { ok: false, why: 'storm' };
+        let alt = 0; const roots = new Set();
+        const inst = c.vlan != null && st.l2.stpI.has(+c.vlan) ? st.l2.stpI.get(+c.vlan) : st.l2.single ? st.l2.stpI.get(0) : null;
+        for (const [, s] of inst || st.l2.stp) { roots.add(s.root); for (const p of s.ports.values()) if (!p.fwd) alt++; }
+        if (c.root) { const R = new Set(pick(st, c.root).map(n => n.id)); if (!R.size) return { ok: false, why: 'none' }; if (![...roots].some(r => R.has(r)) || roots.size !== 1) return { ok: false, why: 'root', root: names(st, [...roots]) || '—' }; }
+        if (c.alternate && alt < +c.alternate) return { ok: false, why: 'alternate', n: alt };
+        return { ok: true };
+      },
+      text(c, r) {
+        if (r.why === 'storm') return tl('Tempête de diffusion : une boucle n’est pas coupée (Spanning Tree arrêté ?).');
+        if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', c.root);
+        if (r.why === 'root') return tl('La racine du Spanning Tree est {0}, pas {1} : baissez la priorité de {1}.', r.root, c.root);
+        return tl('Aucun port n’est bloqué ({0}) : il manque le lien redondant.', r.n);
+      }
+    },
+    'net-lag': {
+      check(c, env) {
+        const lan = lanOf(env), st = lan.state(), N = pick(st, c.of); if (!N.length) return { ok: false, why: 'none' };
+        for (const n of N) {
+          const m = lan.lags(n.id), g = m ? (c.id ? m.get(c.id) : [...m.values()][0]) : null;
+          if (!g) return { ok: false, why: 'nolag', name: nameOf(n) };
+          if (!g.ok) return { ok: false, why: g.why || 'down', name: nameOf(n), id: g.id };
+          if (g.active.length < (+c.min || 2)) return { ok: false, why: 'min', name: nameOf(n), id: g.id, n: g.active.length };
+        }
+        return { ok: true };
+      },
+      text(c, r) {
+        if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', c.of);
+        if (r.why === 'nolag') return tl('{0} n’a pas d’agrégat de liens.', r.name);
+        if (r.why === 'min') return tl('{0}, agrégat {1} : {2} port(s) actif(s) seulement.', r.name, r.id, r.n);
+        return tl('{0}, agrégat {1} : pas formé ({2}).', r.name, r.id, r.why === 'down' ? tl('aucun port relié') : lagWhyText(r.why));
+      }
+    },
+    'net-route': {
+      check(c, env) {
+        const lan = lanOf(env), st = lan.state(), N = pick(st, c.on); if (!N.length) return { ok: false, why: 'none' };
+        for (const n of N) {
+          const r = lan.lookup(n.id, c.to);
+          if (!r) return { ok: false, why: 'noroute', name: nameOf(n) };
+          if (c.via && r.via !== c.via) return { ok: false, why: 'via', name: nameOf(n), via: r.via || tl('réseau connecté') };
+          if (c.kind && r.kind !== c.kind) return { ok: false, why: 'kind', name: nameOf(n), kind: r.kind };
+        }
+        return { ok: true };
+      },
+      text(c, r) {
+        if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', c.on);
+        if (r.why === 'via') return tl('{0} joint {1} par {2}, pas par {3}.', r.name, c.to, r.via, c.via);
+        if (r.why === 'kind') return tl('{0} joint {1} par une route {2}, pas {3}.', r.name, c.to, r.kind, c.kind);
+        return tl('{0} n’a aucune route vers {1}.', r.name, c.to);
+      }
+    }
+  };
 }
 
 /* ---------- Messages ---------- */
@@ -299,7 +425,12 @@ const WHY = {
   mdix: () => tl('ni l’un ni l’autre n’a l’Auto-MDIX : il faut l’autre genre de câble'), open: () => tl('le câble n’arrive à aucun appareil actif'),
   power: () => tl('un des deux appareils n’est pas alimenté'), nocable: () => tl('aucun câble branché'), down: () => tl('pas de lien'),
   budget: () => tl('budget PoE du switch épuisé'), class: () => tl('classe PoE trop haute pour ce port'), nopoe: () => tl('pas de PoE sur ce câble'), short: () => tl('court-circuit sur les paires d’alimentation'),
-  refused: () => tl('connexion refusée : aucun serveur n’écoute sur ce port'), timeout: () => tl('pas de réponse à temps'), noreply: () => tl('pas de réponse'), closed: () => tl('connexion fermée sans réponse')
+  refused: () => tl('connexion refusée : aucun serveur n’écoute sur ce port'),
+  acl: () => tl('bloqué par une liste d’accès d’un routeur'), ttl: () => tl('durée de vie (TTL) épuisée : boucle de routage'), maxhops: () => tl('trop de sauts : le traceroute s’arrête'),
+  nonode: () => tl('équipement introuvable'), shut: () => tl('port coupé par l’administrateur'), nomodule: () => tl('cage SFP sans module'),
+  cage: () => tl('module qui n’entre pas dans cette cage'), media: () => tl('le support ne va pas avec les ports (fibre sur un port RJ45, module optique sur du cuivre)'),
+  mismatch: () => tl('modules différents aux deux bouts'), fibretype: () => tl('module qui ne va pas avec ce type de fibre'), reach: () => tl('liaison plus longue que la portée du module'),
+  overload: () => tl('récepteur saturé'), timeout: () => tl('pas de réponse à temps'), noreply: () => tl('pas de réponse'), closed: () => tl('connexion fermée sans réponse')
 };
 export const whyText = w => { const s = String(w || ''); if (WHY[s]) return WHY[s](); if (s.startsWith('reply:')) return tl('la réponse ne revient pas ({0})', whyText(s.slice(6))); return s; };
 const KIND_TXT = { straight: () => tl('droit'), crossover: () => tl('croisé'), fault: () => tl('défectueux'), none: () => tl('non serti') };
@@ -310,8 +441,9 @@ const FIELD_TXT = { mode: () => tl('mode (fixe ou DHCP)'), ip: () => tl('adresse
 /** Message d'un contrôle du réseau, réussi ou non. */
 export function netResultText(c, r) {
   if (r.ok) {
-    return ({ 'net-devices': tl('Tous les équipements sont posés.'), 'net-cable': tl('Câble conforme.'), 'net-link': tl('Lien établi.'), 'net-ping': tl('Le ping passe.'), 'net-dhcp': tl('Adresses reçues du serveur DHCP.'), 'net-poe': tl('Appareils alimentés.'), 'net-ok': tl('Plan réseau sans erreur.'), 'net-ip': tl('Réglage IP correct.'), 'net-wifi': tl('Connecté au Wi-Fi.'), 'net-http': tl('La page web s’affiche.'), 'net-mqtt': tl('Le broker reçoit les messages.'), 'net-modbus': tl('L’automate répond en Modbus TCP.') })[c.type] || tl('C’est bien ça.');
+    return ({ 'net-devices': tl('Tous les équipements sont posés.'), 'net-cable': tl('Câble conforme.'), 'net-link': tl('Lien établi.'), 'net-ping': tl('Le ping passe.'), 'net-dhcp': tl('Adresses reçues du serveur DHCP.'), 'net-poe': tl('Appareils alimentés.'), 'net-ok': tl('Plan réseau sans erreur.'), 'net-ip': tl('Réglage IP correct.'), 'net-wifi': tl('Connecté au Wi-Fi.'), 'net-http': tl('La page web s’affiche.'), 'net-mqtt': tl('Le broker reçoit les messages.'), 'net-modbus': tl('L’automate répond en Modbus TCP.'), 'net-fibre': tl('Liaison fibre conforme.'), 'net-vlan': tl('VLAN conformes.'), 'net-trace': tl('Le traceroute passe par le bon chemin.'), 'net-stp': tl('Spanning Tree conforme.'), 'net-lag': tl('Agrégat formé.'), 'net-route': tl('Route présente.') })[c.type] || tl('C’est bien ça.');
   }
+  if (PRO_LAB[c.type]) return PRO_LAB[c.type].text(c, r);
   switch (c.type) {
     case 'net-devices': return tl('Il manque dans le plan réseau : {0}.', r.missing.map(m => `${m.n > 1 ? m.n + ' × ' : ''}${m.type}${m.name ? ' ' + m.name : ''}`).join(', '));
     case 'net-cable':

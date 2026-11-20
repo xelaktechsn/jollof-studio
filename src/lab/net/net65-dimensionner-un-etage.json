@@ -1,0 +1,7726 @@
+{
+ "id": "net65-dimensionner-un-etage",
+ "series": "cablage",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Dimensionner le câblage d’un étage de bureaux",
+  "en": "Dimension the cabling of an office floor"
+ },
+ "summary": {
+  "fr": "L’agence de Thiès a ses pièces dessinées et une baie dans le local technique, mais aucune prise. Appliquez la règle de densité (un poste de travail pour 10 m², deux prises par poste), réglez la réserve de ports, laissez le générateur poser prises, panneaux, switchs et liens, puis raccordez la prise posée avant l’étude et vérifiez l’étiquetage TIA-606.",
+  "en": "The Thiès branch has its rooms drawn and a rack in the telecom room, but no outlet. Apply the density rule (one work area per 10 m², two outlets per work area), set the port spare, let the generator place outlets, panels, switches and links, then connect the outlet placed before the study and check the TIA-606 labelling."
+ },
+ "objectives": [
+  {
+   "fr": "Passer de la surface des pièces au nombre de prises",
+   "en": "Go from room areas to the number of outlets"
+  },
+  {
+   "fr": "Prévoir une réserve de ports et lire la surréservation",
+   "en": "Plan a port spare and read the oversubscription"
+  },
+  {
+   "fr": "Lire des identifiants TIA-606 (local, panneau, port)",
+   "en": "Read TIA-606 identifiers (space, panel, port)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Règle courante : un poste de travail pour 10 m² de surface utile, deux prises au moins par poste (TIA-569, TIA-568).",
+   "en": "Common rule: one work area per 10 m² of usable area, at least two outlets per work area (TIA-569, TIA-568)."
+  },
+  {
+   "fr": "Une réserve de ports (20 à 30 %) évite d’ajouter un switch à la première nouvelle prise.",
+   "en": "A port spare (20 to 30 %) avoids adding a switch for the first new outlet."
+  },
+  {
+   "fr": "Identifiant fs-an : étage et local (0A), panneau (A), port (04) ; les deux bouts d’un lien portent le même.",
+   "en": "fs-an identifier: floor and space (0A), panel (A), port (04); both ends of a link carry the same one."
+  },
+  {
+   "fr": "Surréservation = débit des ports d’accès / débit des liaisons montantes (20:1 au plus vers la distribution).",
+   "en": "Oversubscription = access port bandwidth / uplink bandwidth (20:1 at most towards distribution)."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Agence de Thiès",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "pr0",
+       "type": "outlet",
+       "x": 0,
+       "y": 0,
+       "name": "PR-CAM",
+       "p": {},
+       "loc": {
+        "floor": "f0",
+        "x": 12,
+        "y": 6,
+        "h": 2.6
+       }
+      }
+     ],
+     "cables": [],
+     "ext": {},
+     "view": "net",
+     "site": {
+      "name": "Agence de Thiès",
+      "north": 0,
+      "access": 6,
+      "seg": "b",
+      "buildings": [
+       {
+        "id": "bA",
+        "name": "Agence",
+        "x": 0,
+        "y": 0,
+        "floors": [
+         {
+          "id": "f0",
+          "name": "RDC",
+          "level": 0,
+          "elev": 0,
+          "height": 3,
+          "ceil": 2.7,
+          "plenum": 0.5,
+          "raised": 0,
+          "walls": [
+           {
+            "id": "f0-b1-w0",
+            "a": [
+             0,
+             0
+            ],
+            "b": [
+             5,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w1",
+            "a": [
+             5,
+             0
+            ],
+            "b": [
+             5,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w2",
+            "a": [
+             5,
+             5
+            ],
+            "b": [
+             0,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b1-w3",
+            "a": [
+             0,
+             5
+            ],
+            "b": [
+             0,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w0",
+            "a": [
+             5,
+             0
+            ],
+            "b": [
+             10,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w1",
+            "a": [
+             10,
+             0
+            ],
+            "b": [
+             10,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w2",
+            "a": [
+             10,
+             5
+            ],
+            "b": [
+             5,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b2-w3",
+            "a": [
+             5,
+             5
+            ],
+            "b": [
+             5,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w0",
+            "a": [
+             10,
+             0
+            ],
+            "b": [
+             15,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w1",
+            "a": [
+             15,
+             0
+            ],
+            "b": [
+             15,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w2",
+            "a": [
+             15,
+             5
+            ],
+            "b": [
+             10,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-b3-w3",
+            "a": [
+             10,
+             5
+            ],
+            "b": [
+             10,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w0",
+            "a": [
+             15,
+             0
+            ],
+            "b": [
+             23,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w1",
+            "a": [
+             23,
+             0
+            ],
+            "b": [
+             23,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w2",
+            "a": [
+             23,
+             5
+            ],
+            "b": [
+             15,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-mt-w3",
+            "a": [
+             15,
+             5
+            ],
+            "b": [
+             15,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w0",
+            "a": [
+             0,
+             7
+            ],
+            "b": [
+             15,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w1",
+            "a": [
+             15,
+             7
+            ],
+            "b": [
+             15,
+             15
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w2",
+            "a": [
+             15,
+             15
+            ],
+            "b": [
+             0,
+             15
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-os-w3",
+            "a": [
+             0,
+             15
+            ],
+            "b": [
+             0,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w0",
+            "a": [
+             0,
+             5
+            ],
+            "b": [
+             27,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w1",
+            "a": [
+             27,
+             5
+            ],
+            "b": [
+             27,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w2",
+            "a": [
+             27,
+             7
+            ],
+            "b": [
+             0,
+             7
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-co-w3",
+            "a": [
+             0,
+             7
+            ],
+            "b": [
+             0,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w0",
+            "a": [
+             23,
+             0
+            ],
+            "b": [
+             27,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w1",
+            "a": [
+             27,
+             0
+            ],
+            "b": [
+             27,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w2",
+            "a": [
+             27,
+             5
+            ],
+            "b": [
+             23,
+             5
+            ],
+            "t": 2,
+            "mat": "plaster"
+           },
+           {
+            "id": "f0-lt-w3",
+            "a": [
+             23,
+             5
+            ],
+            "b": [
+             23,
+             0
+            ],
+            "t": 2,
+            "mat": "plaster"
+           }
+          ],
+          "doors": [],
+          "rooms": [
+           {
+            "id": "f0-b1",
+            "name": "Bureau 1",
+            "usage": "office",
+            "poly": [
+             [
+              0,
+              0
+             ],
+             [
+              5,
+              0
+             ],
+             [
+              5,
+              5
+             ],
+             [
+              0,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-b2",
+            "name": "Bureau 2",
+            "usage": "office",
+            "poly": [
+             [
+              5,
+              0
+             ],
+             [
+              10,
+              0
+             ],
+             [
+              10,
+              5
+             ],
+             [
+              5,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-b3",
+            "name": "Bureau 3",
+            "usage": "office",
+            "poly": [
+             [
+              10,
+              0
+             ],
+             [
+              15,
+              0
+             ],
+             [
+              15,
+              5
+             ],
+             [
+              10,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-mt",
+            "name": "Réunion",
+            "usage": "meeting",
+            "poly": [
+             [
+              15,
+              0
+             ],
+             [
+              23,
+              0
+             ],
+             [
+              23,
+              5
+             ],
+             [
+              15,
+              5
+             ]
+            ]
+           },
+           {
+            "id": "f0-os",
+            "name": "Plateau",
+            "usage": "open",
+            "poly": [
+             [
+              0,
+              7
+             ],
+             [
+              15,
+              7
+             ],
+             [
+              15,
+              15
+             ],
+             [
+              0,
+              15
+             ]
+            ]
+           },
+           {
+            "id": "f0-co",
+            "name": "Couloir",
+            "usage": "corridor",
+            "poly": [
+             [
+              0,
+              5
+             ],
+             [
+              27,
+              5
+             ],
+             [
+              27,
+              7
+             ],
+             [
+              0,
+              7
+             ]
+            ]
+           },
+           {
+            "id": "f0-lt",
+            "name": "Local technique",
+            "usage": "tr",
+            "poly": [
+             [
+              23,
+              0
+             ],
+             [
+              27,
+              0
+             ],
+             [
+              27,
+              5
+             ],
+             [
+              23,
+              5
+             ]
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     },
+     "paths": [
+      {
+       "id": "tray1",
+       "floor": "f0",
+       "kind": "tray",
+       "name": "CDC couloir",
+       "pts": [
+        [
+         0.5,
+         6
+        ],
+        [
+         26.5,
+         6
+        ]
+       ],
+       "z": 2.6,
+       "w": 200,
+       "h": 60,
+       "shield": "none"
+      },
+      {
+       "id": "tray2",
+       "floor": "f0",
+       "kind": "tray",
+       "name": "CDC LT",
+       "pts": [
+        [
+         25,
+         6
+        ],
+        [
+         25,
+         3
+        ]
+       ],
+       "z": 2.6,
+       "w": 200,
+       "h": 60,
+       "shield": "none"
+      }
+     ],
+     "racks": [
+      {
+       "id": "r1",
+       "name": "BAIE-LT",
+       "kind": "floor",
+       "u": 24,
+       "w": 600,
+       "d": 800,
+       "depth": 652.3,
+       "load": 800,
+       "floor": "f0",
+       "room": "f0-lt",
+       "x": 25,
+       "y": 2.5,
+       "rot": 0,
+       "heat": 3000,
+       "runtime": 10,
+       "pf": 0.9,
+       "basis": "typ",
+       "volts": 230
+      }
+     ],
+     "vlans": [],
+     "design": {
+      "std": "tia",
+      "area": 10,
+      "outlets": 2,
+      "usage": {
+       "office": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "open": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "meeting": {
+        "area": 20,
+        "outlets": 2,
+        "phones": 0.5,
+        "cams": 0,
+        "min": 1
+       },
+       "classroom": {
+        "area": 30,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 2
+       },
+       "lab": {
+        "area": 5,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 1
+       },
+       "corridor": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 1,
+        "min": 0
+       },
+       "storage": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "tech": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "other": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       }
+      },
+      "apArea": 0,
+      "spare": 10,
+      "oversub": 20,
+      "uplinks": 1,
+      "panel": 24,
+      "sw": "auto",
+      "poe": {
+       "phone": 1,
+       "ap": 4,
+       "camera": 3
+      },
+      "poeMargin": 20,
+      "cat": "cat6a",
+      "box": 305,
+      "waste": 10,
+      "cord": 1,
+      "slack": {
+       "tr": 3,
+       "wa": 0.3
+      },
+      "rackU": 42,
+      "upsMargin": 25,
+      "labels": {
+       "preset": "auto",
+       "space": "{f}{s}",
+       "link": "{fs}-{p}{n}",
+       "panel": "{fs}-{p}",
+       "rack": "{fs}.R{r}",
+       "pad": 2
+      },
+      "prices": {},
+      "currency": "EUR",
+      "labour": [],
+      "project": {
+       "client": "",
+       "site": "",
+       "author": "",
+       "date": "",
+       "rev": ""
+      },
+      "rooms": {},
+      "ip": {
+       "block": "10.10.0.0/16",
+       "gw": "first",
+       "growth": 20
+      }
+     },
+     "tests": null,
+     "images": {},
+     "wifi": {
+      "reg": "eu",
+      "env": "walls",
+      "target": -67,
+      "noise": -92,
+      "snr": 25,
+      "sinr": 25,
+      "cover": 90,
+      "cci": 10,
+      "rxH": 1,
+      "band": "any"
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "pr0",
+     "type": "outlet",
+     "x": 0,
+     "y": 0,
+     "name": "PR-CAM",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 12,
+      "y": 6,
+      "h": 2.6
+     }
+    },
+    {
+     "id": "pb1",
+     "type": "patch24",
+     "x": 460,
+     "y": 400,
+     "name": "PB-0A-A",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 24,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pass1",
+     "type": "cablemgr",
+     "x": 260,
+     "y": 200,
+     "name": "PC-0A-1",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 23,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pb2",
+     "type": "patch24",
+     "x": 670,
+     "y": 400,
+     "name": "PB-0A-B",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 22,
+      "face": "front"
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch48",
+     "x": 260,
+     "y": 200,
+     "name": "SW-0A-1",
+     "p": {
+      "budget": 740,
+      "pseType": "at",
+      "portW": 30,
+      "ports": {
+       "p1": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p2": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p3": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p4": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p5": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p6": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p7": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p8": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p9": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p10": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p11": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p12": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p13": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p14": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p15": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p16": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p17": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p18": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p19": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p20": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p21": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 0,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p22": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 0,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p23": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p24": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p25": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p26": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p27": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p28": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p29": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p30": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p31": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p32": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p33": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p34": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p35": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p36": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p37": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p38": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p39": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p40": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p41": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p42": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p43": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p44": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p45": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       },
+       "p46": {
+        "mode": "access",
+        "vlan": 10,
+        "voice": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": true,
+        "shut": false
+       }
+      },
+      "stp": {
+       "on": true,
+       "mode": "rpvst",
+       "prio": 32768,
+       "vlans": {}
+      },
+      "lags": [],
+      "sfp": {}
+     },
+     "rack": {
+      "id": "r1",
+      "u": 21,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pb3",
+     "type": "patch24",
+     "x": 460,
+     "y": 460,
+     "name": "PB-0A-C",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 20,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pass2",
+     "type": "cablemgr",
+     "x": 260,
+     "y": 200,
+     "name": "PC-0A-4",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 19,
+      "face": "front"
+     }
+    },
+    {
+     "id": "sw2",
+     "type": "switch24",
+     "x": 470,
+     "y": 200,
+     "name": "SW-0A-2",
+     "p": {
+      "budget": 370,
+      "pseType": "at",
+      "portW": 30,
+      "ports": {},
+      "stp": {
+       "on": true,
+       "mode": "rpvst",
+       "prio": 32768,
+       "vlans": {}
+      },
+      "lags": [],
+      "sfp": {}
+     },
+     "rack": {
+      "id": "r1",
+      "u": 18,
+      "face": "front"
+     }
+    },
+    {
+     "id": "pr1",
+     "type": "outlet2",
+     "x": 260,
+     "y": 580,
+     "name": "PR-Bureau 1-1",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 3.24,
+      "y": 0.28,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr2",
+     "type": "outlet2",
+     "x": 316,
+     "y": 580,
+     "name": "PR-Bureau 1-2",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 4.79,
+      "y": 4.79,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr3",
+     "type": "outlet2",
+     "x": 372,
+     "y": 580,
+     "name": "PR-Bureau 1-3",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 0.28,
+      "y": 3.24,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr4",
+     "type": "outlet2",
+     "x": 428,
+     "y": 580,
+     "name": "PR-Bureau 2-1",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 8.24,
+      "y": 0.28,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr5",
+     "type": "outlet2",
+     "x": 484,
+     "y": 580,
+     "name": "PR-Bureau 2-2",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 9.79,
+      "y": 4.79,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr6",
+     "type": "outlet2",
+     "x": 540,
+     "y": 580,
+     "name": "PR-Bureau 2-3",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 5.28,
+      "y": 3.24,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr7",
+     "type": "outlet2",
+     "x": 596,
+     "y": 580,
+     "name": "PR-Bureau 3-1",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 13.24,
+      "y": 0.28,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr8",
+     "type": "outlet2",
+     "x": 652,
+     "y": 580,
+     "name": "PR-Bureau 3-2",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 14.79,
+      "y": 4.79,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr9",
+     "type": "outlet2",
+     "x": 708,
+     "y": 580,
+     "name": "PR-Bureau 3-3",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 10.28,
+      "y": 3.24,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr10",
+     "type": "outlet2",
+     "x": 764,
+     "y": 580,
+     "name": "PR-Réunion-1",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 21.29,
+      "y": 0.21,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr11",
+     "type": "outlet2",
+     "x": 820,
+     "y": 580,
+     "name": "PR-Réunion-2",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 16.71,
+      "y": 4.79,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr12",
+     "type": "outlet2",
+     "x": 876,
+     "y": 580,
+     "name": "PR-Plateau-1",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 2.16,
+      "y": 7.17,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr13",
+     "type": "outlet2",
+     "x": 260,
+     "y": 650,
+     "name": "PR-Plateau-2",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 5.87,
+      "y": 7.27,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr14",
+     "type": "outlet2",
+     "x": 316,
+     "y": 650,
+     "name": "PR-Plateau-3",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 9.44,
+      "y": 7.27,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr15",
+     "type": "outlet2",
+     "x": 372,
+     "y": 650,
+     "name": "PR-Plateau-4",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 13.17,
+      "y": 7.17,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr16",
+     "type": "outlet2",
+     "x": 428,
+     "y": 650,
+     "name": "PR-Plateau-5",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 14.71,
+      "y": 9.32,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr17",
+     "type": "outlet2",
+     "x": 484,
+     "y": 650,
+     "name": "PR-Plateau-6",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 14.71,
+      "y": 13,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr18",
+     "type": "outlet2",
+     "x": 540,
+     "y": 650,
+     "name": "PR-Plateau-7",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 12.84,
+      "y": 14.83,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr19",
+     "type": "outlet2",
+     "x": 596,
+     "y": 650,
+     "name": "PR-Plateau-8",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 9.13,
+      "y": 14.73,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr20",
+     "type": "outlet2",
+     "x": 652,
+     "y": 650,
+     "name": "PR-Plateau-9",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 5.56,
+      "y": 14.73,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr21",
+     "type": "outlet2",
+     "x": 708,
+     "y": 650,
+     "name": "PR-Plateau-10",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 1.83,
+      "y": 14.83,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr22",
+     "type": "outlet2",
+     "x": 764,
+     "y": 650,
+     "name": "PR-Plateau-11",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 0.29,
+      "y": 12.68,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pr23",
+     "type": "outlet2",
+     "x": 820,
+     "y": 650,
+     "name": "PR-Plateau-12",
+     "p": {},
+     "loc": {
+      "floor": "f0",
+      "x": 0.29,
+      "y": 9,
+      "h": 0.3
+     }
+    },
+    {
+     "id": "pdu1",
+     "type": "pdu",
+     "x": 0,
+     "y": 0,
+     "name": "PDU-BAIE-LT",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 1,
+      "face": "rear"
+     }
+    },
+    {
+     "id": "ond1",
+     "type": "ups",
+     "x": 0,
+     "y": 0,
+     "name": "UPS-BAIE-LT",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 1,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt1",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-3",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 3,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt2",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-4",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 4,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt3",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-5",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 5,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt4",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-6",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 6,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt5",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-7",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 7,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt6",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-8",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 8,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt7",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-9",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 9,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt8",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-10",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 10,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt9",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-11",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 11,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt10",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-12",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 12,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt11",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-13",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 13,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt12",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-14",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 14,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt13",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-15",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 15,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt14",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-16",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 16,
+      "face": "front"
+     }
+    },
+    {
+     "id": "obt15",
+     "type": "blank",
+     "x": 0,
+     "y": 0,
+     "name": "OBT-BAIE-LT-17",
+     "p": {},
+     "rack": {
+      "id": "r1",
+      "u": 17,
+      "face": "front"
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "pr1",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b1"
+     ],
+     "cat": "cat6a",
+     "len": 38.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 24.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "pb1",
+      "f1"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "pr1",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b2"
+     ],
+     "cat": "cat6a",
+     "len": 38.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 24.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "pb1",
+      "f2"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "pr2",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b3"
+     ],
+     "cat": "cat6a",
+     "len": 32,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 23.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "pb1",
+      "f3"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c7",
+     "a": [
+      "pr2",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b4"
+     ],
+     "cat": "cat6a",
+     "len": 32,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 23.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c8",
+     "a": [
+      "pb1",
+      "f4"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c9",
+     "a": [
+      "pr3",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b5"
+     ],
+     "cat": "cat6a",
+     "len": 37.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c10",
+     "a": [
+      "pb1",
+      "f5"
+     ],
+     "b": [
+      "sw1",
+      "p5"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c11",
+     "a": [
+      "pr3",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b6"
+     ],
+     "cat": "cat6a",
+     "len": 37.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c12",
+     "a": [
+      "pb1",
+      "f6"
+     ],
+     "b": [
+      "sw1",
+      "p6"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c13",
+     "a": [
+      "pr4",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b7"
+     ],
+     "cat": "cat6a",
+     "len": 33.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 19.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c14",
+     "a": [
+      "pb1",
+      "f7"
+     ],
+     "b": [
+      "sw1",
+      "p7"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c15",
+     "a": [
+      "pr4",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b8"
+     ],
+     "cat": "cat6a",
+     "len": 33.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 19.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c16",
+     "a": [
+      "pb1",
+      "f8"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c17",
+     "a": [
+      "pr5",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b9"
+     ],
+     "cat": "cat6a",
+     "len": 27,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c18",
+     "a": [
+      "pb1",
+      "f9"
+     ],
+     "b": [
+      "sw1",
+      "p9"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c19",
+     "a": [
+      "pr5",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b10"
+     ],
+     "cat": "cat6a",
+     "len": 27,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c20",
+     "a": [
+      "pb1",
+      "f10"
+     ],
+     "b": [
+      "sw1",
+      "p10"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c21",
+     "a": [
+      "pr6",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b11"
+     ],
+     "cat": "cat6a",
+     "len": 33,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.7,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c22",
+     "a": [
+      "pb1",
+      "f11"
+     ],
+     "b": [
+      "sw1",
+      "p11"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c23",
+     "a": [
+      "pr6",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b12"
+     ],
+     "cat": "cat6a",
+     "len": 33,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.7,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c24",
+     "a": [
+      "pb1",
+      "f12"
+     ],
+     "b": [
+      "sw1",
+      "p12"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c25",
+     "a": [
+      "pr7",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b13"
+     ],
+     "cat": "cat6a",
+     "len": 28.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 14.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c26",
+     "a": [
+      "pb1",
+      "f13"
+     ],
+     "b": [
+      "sw1",
+      "p13"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c27",
+     "a": [
+      "pr7",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b14"
+     ],
+     "cat": "cat6a",
+     "len": 28.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 14.8,
+       "drops": 10,
+       "slack": 3.3,
+       "access": 5.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c28",
+     "a": [
+      "pb1",
+      "f14"
+     ],
+     "b": [
+      "sw1",
+      "p14"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c29",
+     "a": [
+      "pr8",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b15"
+     ],
+     "cat": "cat6a",
+     "len": 22,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c30",
+     "a": [
+      "pb1",
+      "f15"
+     ],
+     "b": [
+      "sw1",
+      "p15"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c31",
+     "a": [
+      "pr8",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b16"
+     ],
+     "cat": "cat6a",
+     "len": 22,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.2,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c32",
+     "a": [
+      "pb1",
+      "f16"
+     ],
+     "b": [
+      "sw1",
+      "p16"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c33",
+     "a": [
+      "pr9",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b17"
+     ],
+     "cat": "cat6a",
+     "len": 28,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 17.7,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c34",
+     "a": [
+      "pb1",
+      "f17"
+     ],
+     "b": [
+      "sw1",
+      "p17"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c35",
+     "a": [
+      "pr9",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b18"
+     ],
+     "cat": "cat6a",
+     "len": 28,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 17.7,
+       "drops": 7,
+       "slack": 3.3,
+       "access": 2.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c36",
+     "a": [
+      "pb1",
+      "f18"
+     ],
+     "b": [
+      "sw1",
+      "p18"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c37",
+     "a": [
+      "pr10",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b19"
+     ],
+     "cat": "cat6a",
+     "len": 12.2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 0,
+       "drops": 8.9,
+       "slack": 3.3,
+       "access": 4.6,
+       "paths": [
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c38",
+     "a": [
+      "pb1",
+      "f19"
+     ],
+     "b": [
+      "sw1",
+      "p19"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c39",
+     "a": [
+      "pr10",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b20"
+     ],
+     "cat": "cat6a",
+     "len": 12.2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 0,
+       "drops": 8.9,
+       "slack": 3.3,
+       "access": 4.6,
+       "paths": [
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c40",
+     "a": [
+      "pb1",
+      "f20"
+     ],
+     "b": [
+      "sw1",
+      "p20"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c41",
+     "a": [
+      "pr11",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b21"
+     ],
+     "cat": "cat6a",
+     "len": 20.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 11.3,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c42",
+     "a": [
+      "pb1",
+      "f21"
+     ],
+     "b": [
+      "sw1",
+      "p21"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c43",
+     "a": [
+      "pr11",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b22"
+     ],
+     "cat": "cat6a",
+     "len": 20.1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 11.3,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c44",
+     "a": [
+      "pb1",
+      "f22"
+     ],
+     "b": [
+      "sw1",
+      "p22"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c45",
+     "a": [
+      "pr12",
+      "back1"
+     ],
+     "b": [
+      "pb1",
+      "b23"
+     ],
+     "cat": "cat6a",
+     "len": 34.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 25.8,
+       "drops": 5.4,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c46",
+     "a": [
+      "pb1",
+      "f23"
+     ],
+     "b": [
+      "sw1",
+      "p23"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c47",
+     "a": [
+      "pr12",
+      "back2"
+     ],
+     "b": [
+      "pb1",
+      "b24"
+     ],
+     "cat": "cat6a",
+     "len": 34.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 25.8,
+       "drops": 5.4,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c48",
+     "a": [
+      "pb1",
+      "f24"
+     ],
+     "b": [
+      "sw1",
+      "p24"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c49",
+     "a": [
+      "pr13",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b1"
+     ],
+     "cat": "cat6a",
+     "len": 31,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.1,
+       "drops": 5.6,
+       "slack": 3.3,
+       "access": 1.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c50",
+     "a": [
+      "pb2",
+      "f1"
+     ],
+     "b": [
+      "sw1",
+      "p25"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c51",
+     "a": [
+      "pr13",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b2"
+     ],
+     "cat": "cat6a",
+     "len": 31,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.1,
+       "drops": 5.6,
+       "slack": 3.3,
+       "access": 1.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c52",
+     "a": [
+      "pb2",
+      "f2"
+     ],
+     "b": [
+      "sw1",
+      "p26"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c53",
+     "a": [
+      "pr14",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b3"
+     ],
+     "cat": "cat6a",
+     "len": 27.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.6,
+       "drops": 5.6,
+       "slack": 3.3,
+       "access": 1.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c54",
+     "a": [
+      "pb2",
+      "f3"
+     ],
+     "b": [
+      "sw1",
+      "p27"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c55",
+     "a": [
+      "pr14",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b4"
+     ],
+     "cat": "cat6a",
+     "len": 27.5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.6,
+       "drops": 5.6,
+       "slack": 3.3,
+       "access": 1.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c56",
+     "a": [
+      "pb2",
+      "f4"
+     ],
+     "b": [
+      "sw1",
+      "p28"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c57",
+     "a": [
+      "pr15",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b5"
+     ],
+     "cat": "cat6a",
+     "len": 23.6,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 14.8,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c58",
+     "a": [
+      "pb2",
+      "f5"
+     ],
+     "b": [
+      "sw1",
+      "p29"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c59",
+     "a": [
+      "pr15",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b6"
+     ],
+     "cat": "cat6a",
+     "len": 23.6,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 14.8,
+       "drops": 5.5,
+       "slack": 3.3,
+       "access": 1.2,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c60",
+     "a": [
+      "pb2",
+      "f6"
+     ],
+     "b": [
+      "sw1",
+      "p30"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c61",
+     "a": [
+      "pr16",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b7"
+     ],
+     "cat": "cat6a",
+     "len": 24.3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.3,
+       "drops": 7.7,
+       "slack": 3.3,
+       "access": 3.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c62",
+     "a": [
+      "pb2",
+      "f7"
+     ],
+     "b": [
+      "sw1",
+      "p31"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c63",
+     "a": [
+      "pr16",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b8"
+     ],
+     "cat": "cat6a",
+     "len": 24.3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.3,
+       "drops": 7.7,
+       "slack": 3.3,
+       "access": 3.3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c64",
+     "a": [
+      "pb2",
+      "f8"
+     ],
+     "b": [
+      "sw1",
+      "p32"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c65",
+     "a": [
+      "pr17",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b9"
+     ],
+     "cat": "cat6a",
+     "len": 27.9,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.3,
+       "drops": 11.3,
+       "slack": 3.3,
+       "access": 7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c66",
+     "a": [
+      "pb2",
+      "f9"
+     ],
+     "b": [
+      "sw1",
+      "p33"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c67",
+     "a": [
+      "pr17",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b10"
+     ],
+     "cat": "cat6a",
+     "len": 27.9,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 13.3,
+       "drops": 11.3,
+       "slack": 3.3,
+       "access": 7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c68",
+     "a": [
+      "pb2",
+      "f10"
+     ],
+     "b": [
+      "sw1",
+      "p34"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c69",
+     "a": [
+      "pr18",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b11"
+     ],
+     "cat": "cat6a",
+     "len": 31.7,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 15.2,
+       "drops": 13.2,
+       "slack": 3.3,
+       "access": 8.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c70",
+     "a": [
+      "pb2",
+      "f11"
+     ],
+     "b": [
+      "sw1",
+      "p35"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c71",
+     "a": [
+      "pr18",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b12"
+     ],
+     "cat": "cat6a",
+     "len": 31.7,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 15.2,
+       "drops": 13.2,
+       "slack": 3.3,
+       "access": 8.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c72",
+     "a": [
+      "pb2",
+      "f12"
+     ],
+     "b": [
+      "sw1",
+      "p36"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c73",
+     "a": [
+      "pr19",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b13"
+     ],
+     "cat": "cat6a",
+     "len": 35.3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.9,
+       "drops": 13.1,
+       "slack": 3.3,
+       "access": 8.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c74",
+     "a": [
+      "pb2",
+      "f13"
+     ],
+     "b": [
+      "sw1",
+      "p37"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c75",
+     "a": [
+      "pr19",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b14"
+     ],
+     "cat": "cat6a",
+     "len": 35.3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 18.9,
+       "drops": 13.1,
+       "slack": 3.3,
+       "access": 8.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c76",
+     "a": [
+      "pb2",
+      "f14"
+     ],
+     "b": [
+      "sw1",
+      "p38"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c77",
+     "a": [
+      "pr20",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b15"
+     ],
+     "cat": "cat6a",
+     "len": 38.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.4,
+       "drops": 13.1,
+       "slack": 3.3,
+       "access": 8.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c78",
+     "a": [
+      "pb2",
+      "f15"
+     ],
+     "b": [
+      "sw1",
+      "p39"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c79",
+     "a": [
+      "pr20",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b16"
+     ],
+     "cat": "cat6a",
+     "len": 38.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 22.4,
+       "drops": 13.1,
+       "slack": 3.3,
+       "access": 8.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c80",
+     "a": [
+      "pb2",
+      "f16"
+     ],
+     "b": [
+      "sw1",
+      "p40"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c81",
+     "a": [
+      "pr21",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b17"
+     ],
+     "cat": "cat6a",
+     "len": 42.7,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 26.2,
+       "drops": 13.2,
+       "slack": 3.3,
+       "access": 8.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c82",
+     "a": [
+      "pb2",
+      "f17"
+     ],
+     "b": [
+      "sw1",
+      "p41"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c83",
+     "a": [
+      "pr21",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b18"
+     ],
+     "cat": "cat6a",
+     "len": 42.7,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 26.2,
+       "drops": 13.2,
+       "slack": 3.3,
+       "access": 8.8,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c84",
+     "a": [
+      "pb2",
+      "f18"
+     ],
+     "b": [
+      "sw1",
+      "p42"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c85",
+     "a": [
+      "pr22",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b19"
+     ],
+     "cat": "cat6a",
+     "len": 41.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 11,
+       "slack": 3.3,
+       "access": 6.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c86",
+     "a": [
+      "pb2",
+      "f19"
+     ],
+     "b": [
+      "sw1",
+      "p43"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c87",
+     "a": [
+      "pr22",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b20"
+     ],
+     "cat": "cat6a",
+     "len": 41.8,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 11,
+       "slack": 3.3,
+       "access": 6.7,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c88",
+     "a": [
+      "pb2",
+      "f20"
+     ],
+     "b": [
+      "sw1",
+      "p44"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c89",
+     "a": [
+      "pr23",
+      "back1"
+     ],
+     "b": [
+      "pb2",
+      "b21"
+     ],
+     "cat": "cat6a",
+     "len": 38.2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 7.4,
+       "slack": 3.3,
+       "access": 3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c90",
+     "a": [
+      "pb2",
+      "f21"
+     ],
+     "b": [
+      "sw1",
+      "p45"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c91",
+     "a": [
+      "pr23",
+      "back2"
+     ],
+     "b": [
+      "pb2",
+      "b22"
+     ],
+     "cat": "cat6a",
+     "len": 38.2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 27.5,
+       "drops": 7.4,
+       "slack": 3.3,
+       "access": 3,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c92",
+     "a": [
+      "pb2",
+      "f22"
+     ],
+     "b": [
+      "sw1",
+      "p46"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c900",
+     "a": [
+      "pr0",
+      "back"
+     ],
+     "b": [
+      "pb2",
+      "b23"
+     ],
+     "cat": "cat6a",
+     "len": 21.3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     },
+     "route": {
+      "mode": "auto",
+      "calc": {
+       "path": 16,
+       "drops": 2,
+       "slack": 3.3,
+       "access": 0.5,
+       "paths": [
+        "tray1",
+        "tray2"
+       ],
+       "fallback": null
+      }
+     }
+    },
+    {
+     "id": "c901",
+     "a": [
+      "pb2",
+      "f23"
+     ],
+     "b": [
+      "sw1",
+      "p47"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ],
+   "ext": {},
+   "view": "net",
+   "site": {
+    "name": "Agence de Thiès",
+    "north": 0,
+    "access": 6,
+    "seg": "b",
+    "buildings": [
+     {
+      "id": "bA",
+      "name": "Agence",
+      "x": 0,
+      "y": 0,
+      "floors": [
+       {
+        "id": "f0",
+        "name": "RDC",
+        "level": 0,
+        "elev": 0,
+        "height": 3,
+        "ceil": 2.7,
+        "plenum": 0.5,
+        "raised": 0,
+        "walls": [
+         {
+          "id": "f0-b1-w0",
+          "a": [
+           0,
+           0
+          ],
+          "b": [
+           5,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w1",
+          "a": [
+           5,
+           0
+          ],
+          "b": [
+           5,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w2",
+          "a": [
+           5,
+           5
+          ],
+          "b": [
+           0,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b1-w3",
+          "a": [
+           0,
+           5
+          ],
+          "b": [
+           0,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w0",
+          "a": [
+           5,
+           0
+          ],
+          "b": [
+           10,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w1",
+          "a": [
+           10,
+           0
+          ],
+          "b": [
+           10,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w2",
+          "a": [
+           10,
+           5
+          ],
+          "b": [
+           5,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b2-w3",
+          "a": [
+           5,
+           5
+          ],
+          "b": [
+           5,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w0",
+          "a": [
+           10,
+           0
+          ],
+          "b": [
+           15,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w1",
+          "a": [
+           15,
+           0
+          ],
+          "b": [
+           15,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w2",
+          "a": [
+           15,
+           5
+          ],
+          "b": [
+           10,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-b3-w3",
+          "a": [
+           10,
+           5
+          ],
+          "b": [
+           10,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w0",
+          "a": [
+           15,
+           0
+          ],
+          "b": [
+           23,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w1",
+          "a": [
+           23,
+           0
+          ],
+          "b": [
+           23,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w2",
+          "a": [
+           23,
+           5
+          ],
+          "b": [
+           15,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-mt-w3",
+          "a": [
+           15,
+           5
+          ],
+          "b": [
+           15,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w0",
+          "a": [
+           0,
+           7
+          ],
+          "b": [
+           15,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w1",
+          "a": [
+           15,
+           7
+          ],
+          "b": [
+           15,
+           15
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w2",
+          "a": [
+           15,
+           15
+          ],
+          "b": [
+           0,
+           15
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-os-w3",
+          "a": [
+           0,
+           15
+          ],
+          "b": [
+           0,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w0",
+          "a": [
+           0,
+           5
+          ],
+          "b": [
+           27,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w1",
+          "a": [
+           27,
+           5
+          ],
+          "b": [
+           27,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w2",
+          "a": [
+           27,
+           7
+          ],
+          "b": [
+           0,
+           7
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-co-w3",
+          "a": [
+           0,
+           7
+          ],
+          "b": [
+           0,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w0",
+          "a": [
+           23,
+           0
+          ],
+          "b": [
+           27,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w1",
+          "a": [
+           27,
+           0
+          ],
+          "b": [
+           27,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w2",
+          "a": [
+           27,
+           5
+          ],
+          "b": [
+           23,
+           5
+          ],
+          "t": 2,
+          "mat": "plaster"
+         },
+         {
+          "id": "f0-lt-w3",
+          "a": [
+           23,
+           5
+          ],
+          "b": [
+           23,
+           0
+          ],
+          "t": 2,
+          "mat": "plaster"
+         }
+        ],
+        "doors": [],
+        "rooms": [
+         {
+          "id": "f0-b1",
+          "name": "Bureau 1",
+          "usage": "office",
+          "poly": [
+           [
+            0,
+            0
+           ],
+           [
+            5,
+            0
+           ],
+           [
+            5,
+            5
+           ],
+           [
+            0,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-b2",
+          "name": "Bureau 2",
+          "usage": "office",
+          "poly": [
+           [
+            5,
+            0
+           ],
+           [
+            10,
+            0
+           ],
+           [
+            10,
+            5
+           ],
+           [
+            5,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-b3",
+          "name": "Bureau 3",
+          "usage": "office",
+          "poly": [
+           [
+            10,
+            0
+           ],
+           [
+            15,
+            0
+           ],
+           [
+            15,
+            5
+           ],
+           [
+            10,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-mt",
+          "name": "Réunion",
+          "usage": "meeting",
+          "poly": [
+           [
+            15,
+            0
+           ],
+           [
+            23,
+            0
+           ],
+           [
+            23,
+            5
+           ],
+           [
+            15,
+            5
+           ]
+          ]
+         },
+         {
+          "id": "f0-os",
+          "name": "Plateau",
+          "usage": "open",
+          "poly": [
+           [
+            0,
+            7
+           ],
+           [
+            15,
+            7
+           ],
+           [
+            15,
+            15
+           ],
+           [
+            0,
+            15
+           ]
+          ]
+         },
+         {
+          "id": "f0-co",
+          "name": "Couloir",
+          "usage": "corridor",
+          "poly": [
+           [
+            0,
+            5
+           ],
+           [
+            27,
+            5
+           ],
+           [
+            27,
+            7
+           ],
+           [
+            0,
+            7
+           ]
+          ]
+         },
+         {
+          "id": "f0-lt",
+          "name": "Local technique",
+          "usage": "tr",
+          "poly": [
+           [
+            23,
+            0
+           ],
+           [
+            27,
+            0
+           ],
+           [
+            27,
+            5
+           ],
+           [
+            23,
+            5
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "paths": [
+    {
+     "id": "tray1",
+     "floor": "f0",
+     "kind": "tray",
+     "name": "CDC couloir",
+     "pts": [
+      [
+       0.5,
+       6
+      ],
+      [
+       26.5,
+       6
+      ]
+     ],
+     "z": 2.6,
+     "w": 200,
+     "h": 60,
+     "shield": "none"
+    },
+    {
+     "id": "tray2",
+     "floor": "f0",
+     "kind": "tray",
+     "name": "CDC LT",
+     "pts": [
+      [
+       25,
+       6
+      ],
+      [
+       25,
+       3
+      ]
+     ],
+     "z": 2.6,
+     "w": 200,
+     "h": 60,
+     "shield": "none"
+    }
+   ],
+   "racks": [
+    {
+     "id": "r1",
+     "name": "BAIE-LT",
+     "kind": "floor",
+     "u": 24,
+     "w": 600,
+     "d": 800,
+     "depth": 652.3,
+     "load": 800,
+     "floor": "f0",
+     "room": "f0-lt",
+     "x": 25,
+     "y": 2.5,
+     "rot": 0,
+     "heat": 3000,
+     "runtime": 10,
+     "pf": 0.9,
+     "basis": "typ",
+     "volts": 230
+    }
+   ],
+   "vlans": [
+    {
+     "id": 10,
+     "name": "DATA",
+     "net": "",
+     "gw": ""
+    },
+    {
+     "id": 20,
+     "name": "VOICE",
+     "net": "",
+     "gw": ""
+    },
+    {
+     "id": 30,
+     "name": "WIFI",
+     "net": "",
+     "gw": ""
+    },
+    {
+     "id": 99,
+     "name": "MGMT",
+     "net": "",
+     "gw": ""
+    }
+   ],
+   "design": {
+    "std": "tia",
+    "area": 10,
+    "outlets": 2,
+    "usage": {
+     "office": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "open": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "meeting": {
+      "area": 20,
+      "outlets": 2,
+      "phones": 0.5,
+      "cams": 0,
+      "min": 1
+     },
+     "classroom": {
+      "area": 30,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 2
+     },
+     "lab": {
+      "area": 5,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 1
+     },
+     "corridor": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 1,
+      "min": 0
+     },
+     "storage": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "tech": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "other": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     }
+    },
+    "apArea": 0,
+    "spare": 25,
+    "oversub": 20,
+    "uplinks": 1,
+    "panel": 24,
+    "sw": "auto",
+    "poe": {
+     "phone": 1,
+     "ap": 4,
+     "camera": 3
+    },
+    "poeMargin": 20,
+    "cat": "cat6a",
+    "box": 305,
+    "waste": 10,
+    "cord": 1,
+    "slack": {
+     "tr": 3,
+     "wa": 0.3
+    },
+    "rackU": 42,
+    "upsMargin": 25,
+    "labels": {
+     "preset": "auto",
+     "space": "{f}{s}",
+     "link": "{fs}-{p}{n}",
+     "panel": "{fs}-{p}",
+     "rack": "{fs}.R{r}",
+     "pad": 2
+    },
+    "prices": {},
+    "currency": "EUR",
+    "labour": [],
+    "project": {
+     "client": "",
+     "site": "",
+     "author": "",
+     "date": "",
+     "rev": ""
+    },
+    "rooms": {},
+    "ip": {
+     "block": "10.10.0.0/16",
+     "gw": "first",
+     "growth": 20
+    }
+   },
+   "tests": null,
+   "images": {},
+   "wifi": {
+    "reg": "eu",
+    "env": "walls",
+    "target": -67,
+    "noise": -92,
+    "snr": 25,
+    "sinr": 25,
+    "cover": 90,
+    "cci": 10,
+    "rxH": 1,
+    "band": "any"
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "L’étage",
+    "en": "The floor"
+   },
+   "text": {
+    "fr": "Ouvrez la vue **Plans** (Alt+2) : trois bureaux de 25 m², une salle de réunion, un plateau, un couloir et le local technique avec sa baie. Puis la vue **Conception** (Alt+4), onglet **Dimensionnement** : le calcul part de la surface de chaque pièce et de son usage.",
+    "en": "Open the **Plans** view (Alt+2): three 25 m² offices, a meeting room, an open-plan area, a corridor and the telecom room with its rack. Then the **Design** view (Alt+4), **Dimensioning** tab: the calculation starts from each room’s area and use."
+   },
+   "spot": [
+    ".ntViewBar [data-view=\"design\"]"
+   ],
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Un bureau de 25 m²",
+    "en": "A 25 m² office"
+   },
+   "text": {
+    "fr": "Un poste de travail pour 10 m², deux prises par poste. Combien de prises dans un bureau de 25 m² ?",
+    "en": "One work area per 10 m², two outlets per work area. How many outlets in a 25 m² office?"
+   },
+   "keep": {
+    "fr": "25 / 10 = 2,5 : on arrondit au-dessus, 3 postes, donc 6 prises.",
+    "en": "25 / 10 = 2.5: round up, 3 work areas, so 6 outlets."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "4",
+      "en": "4"
+     },
+     {
+      "fr": "5",
+      "en": "5"
+     },
+     {
+      "fr": "6",
+      "en": "6"
+     },
+     {
+      "fr": "2",
+      "en": "2"
+     }
+    ],
+    "answer": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "Réserve et générateur",
+    "en": "Spare and generator"
+   },
+   "text": {
+    "fr": "Dans **Réserve et réseau**, réglez la **réserve de ports** à **25 %** (gardez 10 m² par poste). Lisez le résultat (prises, ports, switchs, panneaux), puis cliquez **Appliquer** : prises, panneaux, switchs, liens permanents et cordons sont posés en une seule étape.",
+    "en": "In **Spare and network**, set the **port spare** to **25 %** (keep 10 m² per work area). Read the result (outlets, ports, switches, panels), then click **Apply**: outlets, panels, switches, permanent links and cords are placed in a single step."
+   },
+   "check": {
+    "type": "net-dim",
+    "spare": 25,
+    "area": 10
+   }
+  },
+  {
+   "title": {
+    "fr": "La prise du couloir",
+    "en": "The corridor outlet"
+   },
+   "text": {
+    "fr": "La prise **PR-CAM** du couloir (pour une caméra) a été posée avant l’étude : le générateur l’a laissée telle quelle et elle n’est raccordée à rien (J1294). Tirez son lien permanent de son port **mur** vers un port arrière libre d’un panneau, puis un cordon de l’avant de ce port vers un port libre d’un switch.",
+    "en": "The corridor outlet **PR-CAM** (for a camera) was placed before the study: the generator left it as it was and it is connected to nothing (J1294). Run its permanent link from its **wall** port to a free back port of a panel, then a cord from the front of that port to a free switch port."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1294",
+     "J1295",
+     "J1290"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Étiquetage",
+    "en": "Labelling"
+   },
+   "text": {
+    "fr": "Onglet **Étiquetage** : chaque port de prise porte l’identifiant du port du panneau où arrive son câble, au format **fs-an** (par exemple **0A-A04**). Aucun doublon, aucune prise sans identifiant.",
+    "en": "**Labelling** tab: each outlet port carries the identifier of the panel port its cable lands on, in **fs-an** form (for example **0A-A04**). No duplicate, no outlet without an identifier."
+   },
+   "check": {
+    "type": "net-labels",
+    "match": "^\\d+[A-Z]+-[A-Z]+\\d{2}$"
+   }
+  },
+  {
+   "title": {
+    "fr": "Surréservation",
+    "en": "Oversubscription"
+   },
+   "text": {
+    "fr": "Un switch de 48 ports à 1 Gb/s monte vers le cœur par une seule liaison à 10 Gb/s. Quelle est sa surréservation ?",
+    "en": "A 48-port 1 Gb/s switch goes up to the core over a single 10 Gb/s link. What is its oversubscription?"
+   },
+   "keep": {
+    "fr": "48 × 1 / 10 = 4,8:1, bien sous les 20:1 visés entre accès et distribution.",
+    "en": "48 × 1 / 10 = 4.8:1, well below the 20:1 target between access and distribution."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "48:1",
+      "en": "48:1"
+     },
+     {
+      "fr": "4,8:1",
+      "en": "4.8:1"
+     },
+     {
+      "fr": "10:1",
+      "en": "10:1"
+     },
+     {
+      "fr": "1:1",
+      "en": "1:1"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

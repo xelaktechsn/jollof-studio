@@ -1,0 +1,156 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+   Copyright (C) 2026 Mamadou Sarr
+   Vue « Baies » du plan réseau : vue d'ensemble (cartes), élévation à l'échelle, liste hors baie, brassage. */
+:root {
+  --nt-rk-cab: #10151b; --nt-rk-inner: #0b0f13; --nt-rk-line: #3a4552; --nt-rk-slot: #ffffff10; --nt-rk-rail: #56616d;
+  --nt-rk-dev: #232b34; --nt-rk-ear: #2c3540; --nt-rk-back: #1a2027; --nt-rk-hole: #0a0d10; --nt-rk-port: #0d1115;
+  --nt-rk-port-edge: #5b6774; --nt-rk-used: #22313f; --nt-rk-cage: #3b4652; --nt-rk-vent: #151a20; --nt-rk-screen: #0e2235;
+  --nt-rk-ring: #6b7785; --nt-rk-led-off: #2f3a45;
+  --nt-rk-v0: #60a5fa; --nt-rk-v1: #f472b6; --nt-rk-v2: #34d399; --nt-rk-v3: #fbbf24; --nt-rk-v4: #a78bfa; --nt-rk-v5: #f87171; --nt-rk-v6: #22d3ee; --nt-rk-v7: #a3e635;
+}
+:root[data-theme="light"] {
+  --nt-rk-cab: #e7ebef; --nt-rk-inner: #f7f9fb; --nt-rk-line: #9aa6b2; --nt-rk-slot: #00000012; --nt-rk-rail: #a9b4bf;
+  --nt-rk-dev: #fdfdfe; --nt-rk-ear: #e3e8ed; --nt-rk-back: #eef1f4; --nt-rk-hole: #c4ccd4; --nt-rk-port: #2b333c;
+  --nt-rk-port-edge: #7b8794; --nt-rk-used: #3c5266; --nt-rk-cage: #8c98a5; --nt-rk-vent: #d5dbe1; --nt-rk-screen: #cfe3f5;
+  --nt-rk-ring: #6d7884; --nt-rk-led-off: #c9d0d7;
+  --nt-rk-v0: #2563eb; --nt-rk-v1: #db2777; --nt-rk-v2: #059669; --nt-rk-v3: #d97706; --nt-rk-v4: #7c3aed; --nt-rk-v5: #dc2626; --nt-rk-v6: #0891b2; --nt-rk-v7: #65a30d;
+}
+.ntRk { background: var(--stage); display: flex; flex-direction: column; }
+.ntRkBar { position: relative; flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 64px 8px 12px; z-index: 6; }
+.ntRkBar .btn.glass { background: var(--glass); border: 1px solid var(--line); }
+.ntRkBar .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); }
+.ntRkPick { display: flex; align-items: center; padding: 3px; border-radius: 9px; border: 1px solid var(--line); }
+.ntRkPick .sel { height: 28px; min-width: 140px; }
+.ntRkPick .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* Vue d'ensemble */
+.ntRkOver { position: relative; flex: 1; min-height: 0; overflow: auto; padding: 4px 16px 24px; }
+.ntRkCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+.ntRkCard { appearance: none; text-align: left; font: inherit; color: var(--fg); display: grid; grid-template-columns: 56px 1fr; grid-template-rows: auto 1fr; gap: 10px 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+.ntRkCard:hover { border-color: var(--line-2); background: var(--panel-2); }
+.ntRkCard.sel { border-color: var(--accent); }
+.ntRkCard header { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ntRkCard header .ic { width: 18px; height: 18px; color: var(--nt-c5e); flex: none; }
+.ntRkCard header b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntRkCard header small { color: var(--muted); font-size: 11.5px; white-space: nowrap; }
+.ntRkBadge { margin-left: auto; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--bg); background: var(--nt-f); }
+.ntRkBadge.err { background: var(--nt-err); } .ntRkBadge.ok { background: none; color: var(--nt-g); }
+.ntRkBadge .ic { width: 14px; height: 14px; }
+.ntRkMini svg { width: 40px; height: 120px; display: block; }
+.ntRkMiniCab { fill: var(--nt-rk-inner); stroke: var(--nt-rk-line); stroke-width: 1px; }
+.ntRkMiniDev { fill: var(--nt-rk-rail); }
+.ntRkMiniDev.t-net { fill: var(--nt-c5e); } .ntRkMiniDev.t-patch { fill: var(--nt-c6); } .ntRkMiniDev.t-ups { fill: var(--nt-poe); }
+.ntRkCard dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 10px; align-content: start; font-size: 11.5px; }
+.ntRkCard dt { color: var(--muted); }
+.ntRkCard dd { margin: 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ntRkCard dd span { white-space: nowrap; }
+.ntRkCard dd .ntRkGauge { flex: 1; min-width: 40px; }
+.ntRkGauge { height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; margin-top: 3px; }
+.ntRkGauge i { display: block; height: 100%; background: var(--nt-g); }
+.ntRkGauge.warn i { background: var(--nt-f); } .ntRkGauge.bad i { background: var(--nt-err); }
+.ntRkEmpty { max-width: 420px; margin: 60px auto; text-align: center; display: grid; justify-items: center; gap: 8px; color: var(--fg-2); }
+.ntRkEmpty > .ic { width: 40px; height: 40px; color: var(--nt-c5e); }
+.ntRkEmpty p { margin: 0; color: var(--muted); font-size: 12.5px; }
+.ntRkEmpty .row { display: flex; gap: 8px; margin-top: 6px; }
+
+/* Élévation */
+.ntRkElev { position: relative; flex: 1; min-height: 0; }
+.ntRkElev[hidden], .ntRkOver[hidden] { display: none; }
+.ntRkSide { position: absolute; left: 12px; top: 0; bottom: 12px; width: 150px; overflow: auto; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); z-index: 5; }
+.ntRkSide h4 { margin: 2px 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.ntRkSide .mut { font-size: 11.5px; margin: 4px; }
+.ntRkItem { appearance: none; width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg); font: inherit; font-size: 12px; cursor: grab; text-align: left; }
+.ntRkItem:hover { background: var(--raise); }
+.ntRkItem.sel { border-color: var(--accent); }
+.ntRkItem .ic { width: 16px; height: 16px; color: var(--nt-c5e); flex: none; }
+.ntRkItem span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntRkItem small { color: var(--muted); font-size: 10.5px; }
+.ntRkCanvas { position: absolute; left: 168px; right: 0; top: 0; bottom: 0; overflow: hidden; touch-action: none; }
+.ntRk.patchOn .ntRkCanvas { bottom: 210px; }
+.ntRkSvg { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
+.ntRkSum { position: absolute; left: 180px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); font-size: 12px; color: var(--fg-2); max-width: calc(100% - 250px); z-index: 4; }
+.ntRk.patchOn .ntRkSum { bottom: 222px; }
+.ntRkSum span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ntRkSum .ic { width: 14px; height: 14px; color: var(--muted); }
+.ntRkSum .bad { color: var(--danger-ink, var(--nt-err)); }
+.ntRkSel { position: absolute; right: 68px; top: 4px; width: 250px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 24px #0004; z-index: 6; font-size: 12px; }
+.ntRkSel header { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; margin-bottom: 6px; }
+.ntRkSel header .ic { width: 18px; height: 18px; color: var(--nt-c5e); grid-row: span 2; }
+.ntRkSel header small { color: var(--muted); }
+.ntRkSel .ntF { margin: 5px 0; grid-template-columns: 1fr 116px; gap: 6px; }
+.ntRkSel .ntF > span { font-size: 11.5px; line-height: 1.2; }
+.ntRkSel .mut { margin: 8px 0 0; font-size: 11px; }
+.ntRkPatch { position: absolute; left: 168px; right: 0; bottom: 0; height: 210px; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); z-index: 5; }
+.ntRkPatch[hidden] { display: none; }
+.ntRkPatch header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 64px 2px 12px; font-size: 12.5px; }
+.ntRkPatch header b { display: inline-flex; align-items: center; gap: 6px; }
+.ntRkPatch header .ic { width: 15px; height: 15px; color: var(--nt-c5e); }
+.ntRkPatchForm { display: flex; align-items: center; gap: 6px; padding: 2px 64px 6px 12px; flex-wrap: nowrap; font-size: 12px; }
+.ntRkPatchForm .sel { height: 28px; flex: 1 1 0; min-width: 0; width: auto; max-width: 200px; }
+.ntRkPatchForm .btn { flex: none; }
+.ntRkLen { display: inline-flex; align-items: center; gap: 4px; }
+.ntRkLen { flex: none; }
+.ntRkLen .inp { width: 58px; height: 28px; }
+.ntRkPatchScroll { flex: 1; overflow: auto; padding: 0 64px 8px 12px; }
+.ntRkPatchScroll .ntTable { width: 100%; font-size: 11.5px; }
+.ntRkPatchScroll td, .ntRkPatchScroll th { white-space: nowrap; }
+.ntRkPatchScroll tr[data-rkcable] { cursor: pointer; }
+.ntRkPatchScroll .tb { width: 22px; height: 22px; min-width: 0; padding: 0; }
+.ntRkPatchScroll .tb .ic { width: 13px; height: 13px; }
+.ntRkPatchScroll tr.sel td { background: var(--raise); }
+.ntRkPatchScroll .led { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--nt-down); }
+.ntRkPatchScroll .led.g { background: var(--nt-g); }
+.ntRkTot td { white-space: normal; }
+.ntRkTips { margin: 0; padding-left: 18px; font-size: 12px; color: var(--fg-2); }
+.ntRkTips li { margin: 3px 0; }
+td.bad { color: var(--nt-err); }
+
+/* Dessin de la baie (unités : mm) */
+.ntRkCab { fill: var(--nt-rk-cab); stroke: var(--nt-rk-line); stroke-width: 2px; }
+.ntRkCab.sel { stroke: var(--accent); stroke-width: 4px; }
+.ntRkInner { fill: var(--nt-rk-inner); }
+.ntRkSlot { fill: transparent; stroke: var(--nt-rk-slot); stroke-width: .6px; }
+.ntRkU { font-size: 11px; fill: var(--muted); text-anchor: end; font-variant-numeric: tabular-nums; pointer-events: none; }
+.ntRkRail { fill: var(--nt-rk-rail); opacity: .55; pointer-events: none; }
+.ntRkTitle { font-size: 24px; font-weight: 600; fill: var(--fg); pointer-events: none; }
+.ntRkEar { fill: var(--nt-rk-ear); }
+.ntRkBody { fill: var(--nt-rk-dev); stroke: var(--nt-rk-line); stroke-width: .7px; }
+.ntRkBody.back { fill: var(--nt-rk-back); stroke-dasharray: 4 3; }
+.ntRkScrew { fill: var(--nt-rk-hole); }
+.ntRkPort { fill: var(--nt-rk-port); stroke: var(--nt-rk-port-edge); stroke-width: .5px; }
+.ntRkPort.used { fill: var(--nt-rk-used); stroke: var(--nt-c5e); }
+.ntRkPort.punch { fill: var(--nt-rk-cage); }
+.ntRkPsu { fill: var(--nt-rk-vent); stroke: var(--nt-rk-port-edge); stroke-width: .6px; }
+.ntRkLcSplit { stroke: var(--nt-rk-port-edge); stroke-width: .5px; }
+.ntRkCage { fill: var(--nt-rk-cage); stroke: var(--nt-rk-port-edge); stroke-width: .5px; }
+.ntRkCage.used { stroke: var(--nt-c6a); stroke-width: 1px; }
+.ntRkLed { fill: var(--nt-rk-led-off); }
+.ntRkLed.g { fill: var(--nt-g); } .ntRkLed.f { fill: var(--nt-f); } .ntRkLed.e { fill: var(--nt-e); } .ntRkLed.down { fill: var(--nt-down); }
+.ntRkLed.err { fill: var(--nt-err); }
+.ntRkLbl { fill: var(--fg-2); font-weight: 600; pointer-events: none; }
+.ntRkNum { fill: var(--muted); text-anchor: middle; pointer-events: none; }
+.ntRkRing { fill: none; stroke: var(--nt-rk-ring); stroke-width: 2.4px; }
+.ntRkVent { fill: var(--nt-rk-vent); }
+.ntRkScreen { fill: var(--nt-rk-screen); stroke: var(--nt-rk-line); stroke-width: .6px; }
+.ntRkStatus { fill: var(--accent); opacity: .85; }
+.ntRkBtn, .ntRkOutlet, .ntRkBay { fill: var(--nt-rk-port); stroke: var(--nt-rk-port-edge); stroke-width: .5px; }
+.ntRkPdu, .ntRkBox { fill: var(--nt-rk-dev); stroke: var(--nt-rk-line); stroke-width: 1px; }
+.ntRkShelf { fill: var(--nt-rk-rail); }
+.ntRkFanC { fill: var(--nt-rk-vent); stroke: var(--nt-rk-line); stroke-width: 1px; }
+.ntRkFanB { stroke: var(--nt-rk-line); stroke-width: 1px; }
+.ntRkHit { fill: transparent; stroke: none; }
+.ntRkDev { cursor: grab; }
+.ntRkDev:hover .ntRkHit { stroke: var(--line-2); stroke-width: 1.5px; }
+.ntRkDev.sel .ntRkHit, .ntRkZero.sel .ntRkPdu { stroke: var(--accent); stroke-width: 3px; }
+.ntRkDev.bad .ntRkHit { stroke: var(--nt-err); stroke-width: 2.5px; stroke-dasharray: 8 5; }
+.ntRkDev.moving { opacity: .4; }
+.ntRkGhost { stroke-width: 2.5px; pointer-events: none; }
+.ntRkGhost.ok { fill: color-mix(in srgb, var(--accent) 22%, transparent); stroke: var(--accent); }
+.ntRkGhost.bad { fill: color-mix(in srgb, var(--nt-err) 22%, transparent); stroke: var(--nt-err); }
+.ntRkGhostT { font-size: 16px; font-weight: 600; pointer-events: none; }
+.ntRkGhostT.ok { fill: var(--accent); } .ntRkGhostT.bad { fill: var(--nt-err); }
+.ntRkCord { fill: none; stroke: var(--nt-c6); stroke-width: 2.4px; stroke-linecap: round; opacity: .92; cursor: pointer; }
+.ntRkCord.cat5e { stroke: var(--nt-c5e); } .ntRkCord.cat6a { stroke: var(--nt-c6a); }
+.ntRkCord.v0 { stroke: var(--nt-rk-v0); } .ntRkCord.v1 { stroke: var(--nt-rk-v1); } .ntRkCord.v2 { stroke: var(--nt-rk-v2); } .ntRkCord.v3 { stroke: var(--nt-rk-v3); }
+.ntRkCord.v4 { stroke: var(--nt-rk-v4); } .ntRkCord.v5 { stroke: var(--nt-rk-v5); } .ntRkCord.v6 { stroke: var(--nt-rk-v6); } .ntRkCord.v7 { stroke: var(--nt-rk-v7); }
+.ntRkCord:hover, .ntRkCord.sel { stroke-width: 4px; opacity: 1; }

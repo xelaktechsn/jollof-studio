@@ -16,8 +16,8 @@
 //   Ethernet : le module W5500 (bibliothèque Ethernet d'Arduino) répond par la cale comme les autres modules SPI et
 //     parle au réseau simulé du projet ; un client MQTT (PubSubClient) qui passe par lui est donc admis, tant que le
 //     programme n'inclut pas aussi le Wi-Fi. Le module ENC28J60 non : le programme y porte sa propre pile TCP/IP sur
-//     des trames brutes, que le mode fidèle ne relie au réseau sur aucune carte ; avec lui, l'ESP32 reste sur
-//     l'interpréteur, qui le simule.
+//     des trames brutes, que le mode fidèle ne relie au réseau sur aucune carte ; avec lui, toute carte (Uno, Mega,
+//     Pico, ESP32) reste sur l'interpréteur, qui le simule (INTERP_ONLY).
 import { tl } from '../i18n/index.js';
 
 /** Bibliothèques réseau : Wi-Fi, Bluetooth, et ce qui en dépend (serveur web, HTTP, MQTT, ESP-NOW, OTA…). */
@@ -42,6 +42,19 @@ export function esp32Refusal(code) {
 
 /** Types de modules que le mode fidèle de l'ESP32 ne fait pas répondre. */
 export const UNBRIDGED = ['ir', 'max485', 'hx711', 'enc28j60'];
+
+/**
+ * Modules qui gardent la carte sur l'interpréteur, quelle que soit la carte (Uno, Mega, Pico, ESP32) : l'ENC28J60 n'est
+ * qu'une carte réseau, le vrai programme (EthernetENC, UIPEthernet, EtherCard) y porte sa propre pile TCP/IP sur des
+ * trames brutes, que le mode fidèle ne relie pas au réseau simulé. L'interpréteur, lui, le relie au plan réseau.
+ */
+export const INTERP_ONLY = ['enc28j60'];
+/** Raison de lancer la carte sur l'interpréteur à cause de ces modules (comps : ceux reliés à la carte), sinon null. */
+export function interpOnlyReason(comps) {
+  const mods = (comps || []).filter(c => c && INTERP_ONLY.includes(c.type));
+  if (!mods.length) return null;
+  return tl('module Ethernet {0} (ENC28J60) : sa pile TCP/IP n’existe que dans le simulateur intégré, qui le relie au plan réseau', [...new Set(mods.map(c => c.name || c.type))].join(', '));
+}
 
 /** Message pour les modules branchés qui ne répondront pas (noms des composants), sinon null. */
 export function unbridgedWarning(comps) {

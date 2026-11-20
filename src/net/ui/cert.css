@@ -1,0 +1,141 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Testeur de certification (src/net/ui/certui.js) et onglet « Tests » de la vue Conception. Préfixe « ntCe ». La fenêtre
+ * reprend le cadre commun du testeur de câble (nt-ov, nt-dlg : crimp.css) ; couleurs par jetons du thème et jetons --nt-ce-*
+ * (variante claire plus bas). Dessin propre : écran d'appareil générique, rien d'un testeur du commerce. */
+:root { --nt-ce-ok: #34d399; --nt-ce-mg: #fbbf24; --nt-ce-bad: #f87171; --nt-ce-lim: #f87171;
+  --nt-ce-s0: #60a5fa; --nt-ce-s1: #4ade80; --nt-ce-s2: #fb923c; --nt-ce-s3: #c084fc; --nt-ce-s4: #22d3ee; --nt-ce-s5: #f472b6;
+  --nt-ce-okbg: #34d39922; --nt-ce-mgbg: #fbbf2422; --nt-ce-badbg: #f8717124; }
+:root[data-theme="light"] { --nt-ce-ok: #15803d; --nt-ce-mg: #b45309; --nt-ce-bad: #dc2626; --nt-ce-lim: #dc2626;
+  --nt-ce-s0: #2563eb; --nt-ce-s1: #16a34a; --nt-ce-s2: #ea580c; --nt-ce-s3: #7c3aed; --nt-ce-s4: #0891b2; --nt-ce-s5: #db2777;
+  --nt-ce-okbg: #15803d14; --nt-ce-mgbg: #b4530916; --nt-ce-badbg: #dc262614; }
+
+/* ---------- Fenêtre ---------- */
+.ntCeDlg { width: min(1180px, 100%); height: min(760px, 100%); }
+.ntCeBody { min-height: 0; }
+.ntCeSide { flex: none; width: 272px; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; border-right: 1px solid var(--line); }
+.ntCeFld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-2); }
+.ntCeFld > span { font-weight: 600; color: var(--fg); }
+.ntCeFld small { color: var(--muted); line-height: 1.35; }
+.ntCeFld .sel, .ntCeFld .inp { width: 100%; box-sizing: border-box; min-height: 30px; }
+.ntCeGo { justify-content: center; }
+.ntCeGo .nt-kbd { margin-left: auto; }
+.ntCeSep { height: 1px; background: var(--line); margin: 2px 0; }
+.ntCeNote { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.ntCeProg { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); }
+.ntCeProg[hidden] { display: none; }
+.ntCeBar { flex: 1; min-width: 60px; height: 6px; border-radius: 3px; background: var(--raise); border: 1px solid var(--line); overflow: hidden; }
+.ntCeBar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .12s; }
+.ntCeBar i.go { width: 40%; animation: ntCeSweep 0.9s ease-in-out infinite; }
+@keyframes ntCeSweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+.ntCeMain { flex: 1; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; background: var(--stage); }
+.ntCeMsg { font-size: 12px; color: var(--fg-2); }
+.ntCeMsg.ok { color: var(--nt-ce-ok); } .ntCeMsg.err { color: var(--nt-ce-bad); } .ntCeMsg.warn { color: var(--nt-ce-mg); }
+
+/* Écran de l'appareil : verdict, faits, carte de câblage */
+.ntCeScreen { position: relative; display: flex; align-items: stretch; flex-wrap: wrap; gap: 12px 18px; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line-2); background: var(--panel); box-shadow: inset 0 0 0 3px var(--panel-2); }
+.ntCeScreen.ok { border-color: var(--nt-ce-ok); } .ntCeScreen.mg { border-color: var(--nt-ce-mg); } .ntCeScreen.mgbad, .ntCeScreen.bad { border-color: var(--nt-ce-bad); }
+.ntCeVerdict { display: flex; flex-direction: column; justify-content: center; min-width: 120px; padding: 6px 14px; border-radius: 8px; background: var(--raise); }
+.ntCeVerdict b { font: 700 30px/1.05 var(--mono); letter-spacing: .04em; }
+.ntCeVerdict span { font-size: 11.5px; color: var(--fg-2); }
+.ntCeScreen.ok .ntCeVerdict { background: var(--nt-ce-okbg); } .ntCeScreen.ok .ntCeVerdict b { color: var(--nt-ce-ok); }
+.ntCeScreen.mg .ntCeVerdict { background: var(--nt-ce-mgbg); } .ntCeScreen.mg .ntCeVerdict b { color: var(--nt-ce-mg); }
+.ntCeScreen.mgbad .ntCeVerdict, .ntCeScreen.bad .ntCeVerdict { background: var(--nt-ce-badbg); } .ntCeScreen.mgbad .ntCeVerdict b, .ntCeScreen.bad .ntCeVerdict b { color: var(--nt-ce-bad); }
+.ntCeFacts { flex: 1; min-width: 240px; display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px 14px; align-content: center; }
+.ntCeFacts > div { display: flex; flex-direction: column; min-width: 0; }
+.ntCeFacts small { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+.ntCeFacts b { font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntCeFacts span { font-size: 11.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntCeSim { position: absolute; top: 6px; right: 10px; font-size: 10.5px; color: var(--muted); font-style: italic; }
+.ntCeWm { display: flex; gap: 3px; align-items: flex-end; align-self: center; }
+.ntCeWm span { display: flex; flex-direction: column; align-items: center; width: 20px; border-radius: 4px; border: 1px solid var(--line); background: var(--raise); font: 600 11px/1.3 var(--mono); }
+.ntCeWm span i { font-style: normal; color: var(--nt-ce-ok); }
+.ntCeWm span.bad { border-color: var(--nt-ce-bad); } .ntCeWm span.bad i { color: var(--nt-ce-bad); }
+.ntCeRun { display: flex; flex-direction: column; gap: 8px; width: 100%; padding: 22px 4px; text-align: center; }
+.ntCeRun span { color: var(--fg-2); }
+.ntCeEmpty { margin: auto; max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; color: var(--fg-2); padding: 24px; }
+.ntCeEmpty > .ic { width: 40px; height: 40px; color: var(--accent); }
+.ntCeEmpty b { color: var(--fg); font-size: 14px; }
+
+/* Onglets des paramètres, graphique, légende */
+.ntCeTabs { display: flex; flex-wrap: wrap; gap: 4px; }
+.ntCeTb { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); color: var(--fg-2); font-size: 12px; cursor: pointer; }
+.ntCeTb small { font: 11px var(--mono); color: var(--muted); }
+.ntCeTb:hover { color: var(--fg); background: var(--raise); }
+.ntCeTb.on { border-color: var(--accent); color: var(--fg); background: var(--raise); }
+.ntCeTb:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ntCeDot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+.ntCeDot.ok { background: var(--nt-ce-ok); } .ntCeDot.mg { background: var(--nt-ce-mg); } .ntCeDot.mgbad, .ntCeDot.bad { background: var(--nt-ce-bad); }
+.ntCeChartBox { display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+.ntCeChart { width: 100%; height: auto; max-height: 300px; display: block; }
+.ntCePlot { fill: var(--panel-2); stroke: var(--line); }
+.ntCeGrid { stroke: var(--line); stroke-width: 1px; }
+.ntCeTick { fill: var(--muted); font: 10px var(--mono); }
+.ntCeS { stroke-width: 1.6px; stroke-linejoin: round; }
+.ntCeS.dim { opacity: .18; }
+.ntCeLim { stroke: var(--nt-ce-lim); stroke-width: 2.4px; stroke-dasharray: 7 4; }
+.ntCeS0 { stroke: var(--nt-ce-s0); } .ntCeS1 { stroke: var(--nt-ce-s1); } .ntCeS2 { stroke: var(--nt-ce-s2); }
+.ntCeS3 { stroke: var(--nt-ce-s3); } .ntCeS4 { stroke: var(--nt-ce-s4); } .ntCeS5 { stroke: var(--nt-ce-s5); }
+.ntCeLegend { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--fg-2); }
+.ntCeLg { all: unset; display: inline-flex; align-items: center; gap: 5px; cursor: pointer; padding: 1px 4px; border-radius: 4px; font: 11.5px var(--mono); }
+.ntCeLg.on { background: var(--raise); color: var(--fg); }
+.ntCeLg.lim { cursor: default; font-family: var(--sans); }
+.ntCeSw { width: 16px; height: 0; border-top: 3px solid currentColor; display: inline-block; }
+.ntCeSw.ntCeS0 { color: var(--nt-ce-s0); } .ntCeSw.ntCeS1 { color: var(--nt-ce-s1); } .ntCeSw.ntCeS2 { color: var(--nt-ce-s2); }
+.ntCeSw.ntCeS3 { color: var(--nt-ce-s3); } .ntCeSw.ntCeS4 { color: var(--nt-ce-s4); } .ntCeSw.ntCeS5 { color: var(--nt-ce-s5); }
+.ntCeSw.lim { color: var(--nt-ce-lim); border-top-style: dashed; }
+
+/* Tableau des paramètres */
+.ntCeTblBox { border-radius: 10px; border: 1px solid var(--line); background: var(--panel); overflow: auto; }
+.ntCeTable { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ntCeTable th, .ntCeTable td { padding: 5px 9px; border-bottom: 1px solid var(--line); text-align: left; white-space: nowrap; }
+.ntCeTable th { color: var(--muted); font-weight: 600; font-size: 11px; background: var(--panel-2); }
+.ntCeTable td:first-child { white-space: normal; }
+.ntCeTable td.st { font: 700 11.5px var(--mono); }
+.ntCeTable td.st.ok { color: var(--nt-ce-ok); } .ntCeTable td.st.mg { color: var(--nt-ce-mg); } .ntCeTable td.st.bad { color: var(--nt-ce-bad); }
+.ntCeTable tr:last-child td { border-bottom: 0; }
+
+/* Synthèse d'un lot */
+.ntCeH { margin: 4px 0 0; font-size: 13px; }
+.ntCeBad { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.ntCeBad button { all: unset; box-sizing: border-box; width: 100%; display: flex; justify-content: flex-start; text-align: left; align-items: center; gap: 8px; padding: 6px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; font-size: 12px; }
+.ntCeBad button:hover { background: var(--raise); }
+.ntCeBad button span { margin-left: auto; color: var(--fg-2); font: 11.5px var(--mono); }
+.ntCeOk { display: flex; align-items: center; gap: 8px; color: var(--nt-ce-ok); margin: 0; }
+.ntCeOk .ic { width: 16px; height: 16px; }
+
+/* Pastilles de verdict */
+.ntCeV { display: inline-block; padding: 1px 7px; border-radius: 10px; font: 700 11px/1.5 var(--mono); border: 1px solid transparent; }
+.ntCeV.ok { color: var(--nt-ce-ok); background: var(--nt-ce-okbg); } .ntCeV.mg { color: var(--nt-ce-mg); background: var(--nt-ce-mgbg); }
+.ntCeV.mgbad, .ntCeV.bad { color: var(--nt-ce-bad); background: var(--nt-ce-badbg); }
+.ntCeV.none { color: var(--muted); border-color: var(--line); font-family: var(--sans); font-weight: 500; }
+.ntCeV.warn { margin-left: 4px; color: var(--nt-ce-mg); border-color: var(--nt-ce-mg); font-family: var(--sans); font-weight: 500; }
+
+/* ---------- Onglet Tests (vue Conception) ---------- */
+.ntCeTab { display: flex; flex-direction: column; gap: 10px; min-height: 0; color: var(--fg); font-size: 13px; }
+.ntCeTabHead { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; justify-content: space-between; }
+.ntCeStats { display: flex; flex-wrap: wrap; gap: 6px; }
+.ntCeStat { display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel); font-size: 12px; color: var(--fg-2); }
+.ntCeStat b { font: 700 15px var(--mono); color: var(--fg); }
+.ntCeStat.ok b { color: var(--nt-ce-ok); } .ntCeStat.mg b, .ntCeStat.warn b { color: var(--nt-ce-mg); } .ntCeStat.mgbad b, .ntCeStat.bad b { color: var(--nt-ce-bad); }
+.ntCeTools { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ntCeTools .sel { width: auto; min-width: 150px; }
+.ntCeListBox { min-height: 0; overflow: auto; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); }
+.ntCeList { width: 100%; border-collapse: collapse; font-size: 12px; }
+.ntCeList th { position: sticky; top: 0; z-index: 1; background: var(--panel-2); color: var(--muted); font-weight: 600; font-size: 11px; text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ntCeList td { padding: 5px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+.ntCeList .n { text-align: right; font-family: var(--mono); }
+.ntCeList tbody tr { cursor: pointer; }
+.ntCeList tbody tr:hover { background: var(--raise); }
+.ntCeList tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* Plan de travail étroit (la fenêtre couvre la zone centrale) : réglages en bandeau au-dessus de l'écran, tout défile. */
+@container (max-width: 900px) {
+  .ntCeBody { flex-direction: column; overflow: auto; }
+  .ntCeSide { width: auto; flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
+  .ntCeSide .ntCeFld { flex: 1 1 170px; min-width: 0; }
+  .ntCeSide .ntCeFld small, .ntCeSide .ntCeNote, .ntCeSep { display: none; }
+  .ntCeProg { flex: 1 1 100%; }
+  .ntCeMain { flex: none; overflow: visible; }
+}
+.ntCeMsg { flex: 1 1 220px; min-width: 0; }

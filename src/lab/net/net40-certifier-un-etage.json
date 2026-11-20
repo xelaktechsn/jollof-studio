@@ -1,0 +1,1236 @@
+{
+ "id": "net40-certifier-un-etage",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Certifier les liens d’un étage",
+  "en": "Certify the links of a floor"
+ },
+ "summary": {
+  "fr": "Fin de chantier : six liens permanents Cat 6A, du panneau de brassage aux prises murales, doivent être certifiés avant la réception. Le testeur de certification (simulé) trouve quatre liens en échec : une paire séparée, un lien trop long, un câblage mélangé et un câble de la mauvaise catégorie. Trouver chaque défaut, le réparer, et rendre un étage où tout passe.",
+  "en": "End of the job: six Cat 6A permanent links, from the patch panel to the wall outlets, must be certified before handover. The (simulated) certification tester finds four failing links: a split pair, a link that is too long, a mixed wiring and a cable of the wrong category. Find each fault, fix it, and hand over a floor where everything passes."
+ },
+ "objectives": [
+  {
+   "fr": "Distinguer lien permanent et canal, et savoir lequel on certifie",
+   "en": "Tell a permanent link from a channel, and know which one is certified"
+  },
+  {
+   "fr": "Lire un autotest : PASS, PASS*, FAIL*, FAIL, marge la plus faible, paire et fréquence en cause",
+   "en": "Read an autotest: PASS, PASS*, FAIL*, FAIL, worst margin, pair and frequency at fault"
+  },
+  {
+   "fr": "Relier un échec à sa cause : carte de câblage, longueur, catégorie",
+   "en": "Link a failure to its cause: wire map, length, category"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "On certifie le lien permanent (panneau → prise) : c’est la partie durable du câblage ; 90 m au plus.",
+   "en": "The permanent link (panel → outlet) is what gets certified: it is the lasting part of the cabling; 90 m at most."
+  },
+  {
+   "fr": "Une paire séparée passe au testeur de continuité mais échoue à la diaphonie (NEXT) : seule la certification la voit.",
+   "en": "A split pair passes a continuity tester but fails crosstalk (NEXT): only certification sees it."
+  },
+  {
+   "fr": "Un FAIL* compte comme un échec ; un PASS* reste conforme mais se signale (ANSI/TIA-1152).",
+   "en": "A FAIL* counts as a failure; a PASS* is still compliant but is flagged (ANSI/TIA-1152)."
+  },
+  {
+   "fr": "Un câble Cat 5e ne tient pas les limites Cat 6A jusqu’à 500 MHz, même s’il donne un lien gigabit.",
+   "en": "A Cat 5e cable does not meet Cat 6A limits up to 500 MHz, even if it gives a gigabit link."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Certifier un étage",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 60,
+       "y": 150,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pb1",
+       "type": "patch",
+       "x": 40,
+       "y": 270,
+       "name": "PB1",
+       "p": {}
+      },
+      {
+       "id": "pr1",
+       "type": "outlet",
+       "x": 230,
+       "y": 430,
+       "name": "PR1",
+       "p": {}
+      },
+      {
+       "id": "pr2",
+       "type": "outlet",
+       "x": 340,
+       "y": 430,
+       "name": "PR2",
+       "p": {}
+      },
+      {
+       "id": "pr3",
+       "type": "outlet",
+       "x": 450,
+       "y": 430,
+       "name": "PR3",
+       "p": {}
+      },
+      {
+       "id": "pr4",
+       "type": "outlet",
+       "x": 560,
+       "y": 430,
+       "name": "PR4",
+       "p": {}
+      },
+      {
+       "id": "pr5",
+       "type": "outlet",
+       "x": 670,
+       "y": 430,
+       "name": "PR5",
+       "p": {}
+      },
+      {
+       "id": "pr6",
+       "type": "outlet",
+       "x": 780,
+       "y": 430,
+       "name": "PR6",
+       "p": {}
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 230,
+       "y": 560,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c0",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p8"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "k1",
+       "a": [
+        "sw1",
+        "p1"
+       ],
+       "b": [
+        "pb1",
+        "f1"
+       ],
+       "cat": "cat6a",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h1",
+       "a": [
+        "pb1",
+        "b1"
+       ],
+       "b": [
+        "pr1",
+        "back"
+       ],
+       "len": 38,
+       "cat": "cat6a",
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h2",
+       "a": [
+        "pb1",
+        "b2"
+       ],
+       "b": [
+        "pr2",
+        "back"
+       ],
+       "len": 52,
+       "cat": "cat6a",
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "g",
+          "wbl",
+          "bl",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "g",
+          "wbl",
+          "bl",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h3",
+       "a": [
+        "pb1",
+        "b3"
+       ],
+       "b": [
+        "pr3",
+        "back"
+       ],
+       "len": 104,
+       "cat": "cat6a",
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h4",
+       "a": [
+        "pb1",
+        "b4"
+       ],
+       "b": [
+        "pr4",
+        "back"
+       ],
+       "len": 61,
+       "cat": "cat6a",
+       "wire": {
+        "a": {
+         "order": [
+          "wg",
+          "g",
+          "wo",
+          "bl",
+          "wbl",
+          "o",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h5",
+       "a": [
+        "pb1",
+        "b5"
+       ],
+       "b": [
+        "pr5",
+        "back"
+       ],
+       "len": 44,
+       "cat": "cat5e",
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "h6",
+       "a": [
+        "pb1",
+        "b6"
+       ],
+       "b": [
+        "pr6",
+        "back"
+       ],
+       "len": 70,
+       "cat": "cat6a",
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "k2",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "pr1",
+        "front"
+       ],
+       "cat": "cat6a",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ]
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "view": "net",
+   "devices": [
+    {
+     "id": "box1",
+     "type": "router",
+     "x": 60,
+     "y": 40,
+     "name": "BOX1",
+     "p": {
+      "lan": {
+       "ip": "192.168.1.1",
+       "prefix": 24
+      },
+      "dhcp": {
+       "on": true,
+       "from": 100,
+       "to": 199
+      },
+      "wan": {
+       "mode": "none",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "wifi": {
+       "on": false,
+       "ssid": "Box-Jollof",
+       "pass": "jollof2024"
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch",
+     "x": 60,
+     "y": 150,
+     "name": "SW1",
+     "p": {
+      "legacy": false
+     }
+    },
+    {
+     "id": "pb1",
+     "type": "patch",
+     "x": 40,
+     "y": 270,
+     "name": "PB1",
+     "p": {}
+    },
+    {
+     "id": "pr1",
+     "type": "outlet",
+     "x": 230,
+     "y": 430,
+     "name": "PR1",
+     "p": {}
+    },
+    {
+     "id": "pr2",
+     "type": "outlet",
+     "x": 340,
+     "y": 430,
+     "name": "PR2",
+     "p": {}
+    },
+    {
+     "id": "pr3",
+     "type": "outlet",
+     "x": 450,
+     "y": 430,
+     "name": "PR3",
+     "p": {}
+    },
+    {
+     "id": "pr4",
+     "type": "outlet",
+     "x": 560,
+     "y": 430,
+     "name": "PR4",
+     "p": {}
+    },
+    {
+     "id": "pr5",
+     "type": "outlet",
+     "x": 670,
+     "y": 430,
+     "name": "PR5",
+     "p": {}
+    },
+    {
+     "id": "pr6",
+     "type": "outlet",
+     "x": 780,
+     "y": 430,
+     "name": "PR6",
+     "p": {}
+    },
+    {
+     "id": "pc1",
+     "type": "pc",
+     "x": 230,
+     "y": 560,
+     "name": "PC1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c0",
+     "a": [
+      "box1",
+      "lan1"
+     ],
+     "b": [
+      "sw1",
+      "p8"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k1",
+     "a": [
+      "sw1",
+      "p1"
+     ],
+     "b": [
+      "pb1",
+      "f1"
+     ],
+     "cat": "cat6a",
+     "len": 1,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h1",
+     "a": [
+      "pb1",
+      "b1"
+     ],
+     "b": [
+      "pr1",
+      "back"
+     ],
+     "len": 38,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h2",
+     "a": [
+      "pb1",
+      "b2"
+     ],
+     "b": [
+      "pr2",
+      "back"
+     ],
+     "len": 52,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h3",
+     "a": [
+      "pb1",
+      "b3"
+     ],
+     "b": [
+      "pr3",
+      "back"
+     ],
+     "len": 86,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h4",
+     "a": [
+      "pb1",
+      "b4"
+     ],
+     "b": [
+      "pr4",
+      "back"
+     ],
+     "len": 61,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h5",
+     "a": [
+      "pb1",
+      "b5"
+     ],
+     "b": [
+      "pr5",
+      "back"
+     ],
+     "len": 44,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "h6",
+     "a": [
+      "pb1",
+      "b6"
+     ],
+     "b": [
+      "pr6",
+      "back"
+     ],
+     "len": 70,
+     "cat": "cat6a",
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "k2",
+     "a": [
+      "pc1",
+      "eth0"
+     ],
+     "b": [
+      "pr1",
+      "front"
+     ],
+     "cat": "cat6a",
+     "len": 3,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ]
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La recette d’un étage",
+    "en": "Handing over a floor"
+   },
+   "text": {
+    "fr": "Le cahier des charges demande des liens **Cat 6A** (Wi-Fi 6E, 10 Gbit/s plus tard). Les six câbles posés entre le dos du panneau **PB1** et le dos des prises **PR1 à PR6** sont les **liens permanents** : c’est eux que l’installateur certifie avant de rendre le chantier. Le **canal** ajoute les cordons (switch → panneau, prise → PC) ; il change avec les cordons, le lien permanent reste.",
+    "en": "The specification asks for **Cat 6A** links (Wi-Fi 6E, 10 Gbit/s later). The six cables between the back of panel **PB1** and the back of outlets **PR1 to PR6** are the **permanent links**: they are what the installer certifies before handing over. The **channel** adds the cords (switch → panel, outlet → PC); it changes with the cords, the permanent link stays."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le testeur de certification",
+    "en": "The certification tester"
+   },
+   "text": {
+    "fr": "Sélectionnez un câble entre PB1 et une prise, puis ouvrez le **testeur de certification** (commande « Certifier tous les liens » de la palette, Ctrl+Maj+P, ou onglet **Tests** de la vue Conception). Choisissez la limite **Cat 6A lien permanent** et lancez **Tester tout**. Pour chaque lien : carte de câblage, longueur, affaiblissement, NEXT, PS NEXT, ACR-F et réflexion, comparés aux limites de 1 à 500 MHz.\nLes valeurs sont **simulées** à partir du plan : catégorie, longueur et sertissage de chaque câble.",
+    "en": "Select a cable between PB1 and an outlet, then open the **certification tester** (palette command “Certify all links”, Ctrl+Shift+P, or the **Tests** tab of the Design view). Choose the **Cat 6A permanent link** limit and run **Test all**. For each link: wire map, length, insertion loss, NEXT, PS NEXT, ACR-F and return loss, compared with the limits from 1 to 500 MHz.\nThe values are **simulated** from the plan: category, length and crimping of each cable."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "PR2 : une paire séparée",
+    "en": "PR2: a split pair"
+   },
+   "text": {
+    "fr": "Le lien vers **PR2** échoue en carte de câblage et en NEXT sur les paires 36-45. Chaque broche arrive bien en face (un testeur de continuité dirait « bon ») mais les fiches ont été serties dans l’ordre des couleurs par deux : les broches 3 et 6 ne portent plus une même paire torsadée.\nRéparez : sélectionnez le câble PB1 ↔ PR2 et remplacez-le par un **câble droit neuf** (T568B des deux côtés), ou refaites les deux fiches.",
+    "en": "The link to **PR2** fails the wire map and NEXT on pairs 36-45. Each pin does reach the other end (a continuity tester would say “good”) but the plugs were crimped in colour order two by two: pins 3 and 6 no longer carry one twisted pair.\nFix it: select the PB1 ↔ PR2 cable and replace it with a **new straight cable** (T568B at both ends), or redo both plugs."
+   },
+   "check": {
+    "type": "net-cert",
+    "of": "PR2",
+    "limit": "cat6a-pl"
+   }
+  },
+  {
+   "title": {
+    "fr": "PR3 : trop long",
+    "en": "PR3: too long"
+   },
+   "text": {
+    "fr": "Le lien vers **PR3** mesure **104 m** : au-delà de 90 m (99 m avec l’incertitude de la NVP), la longueur échoue, et l’affaiblissement dépasse la limite aux hautes fréquences.\nRéparez : le câble suit un détour inutile ; refaites le trajet par le chemin de câbles direct, **86 m** (longueur du câble dans l’inspecteur).",
+    "en": "The link to **PR3** is **104 m** long: beyond 90 m (99 m with the NVP uncertainty), the length fails, and the insertion loss exceeds the limit at high frequencies.\nFix it: the cable takes a useless detour; reroute it along the direct cable tray, **86 m** (cable length in the inspector)."
+   },
+   "check": {
+    "type": "net-cert",
+    "of": "PR3",
+    "limit": "cat6a-pl"
+   }
+  },
+  {
+   "title": {
+    "fr": "PR4 : T568A d’un côté, T568B de l’autre",
+    "en": "PR4: T568A at one end, T568B at the other"
+   },
+   "text": {
+    "fr": "Le lien vers **PR4** échoue en carte de câblage : les paires 1-2 et 3-6 sont croisées. La prise a été câblée en **T568A** et le panneau en **T568B**. Un câble croisé n’a pas sa place dans une installation : chaque lien est droit, dans la même norme aux deux bouts.\nRéparez : un câble droit neuf, ou refaites la fiche côté prise en T568B.",
+    "en": "The link to **PR4** fails the wire map: pairs 1-2 and 3-6 are crossed. The outlet was wired **T568A** and the panel **T568B**. A crossover has no place in an installation: every link is straight, with the same standard at both ends.\nFix it: a new straight cable, or redo the outlet end in T568B."
+   },
+   "check": {
+    "type": "net-cert",
+    "of": "PR4",
+    "limit": "cat6a-pl"
+   }
+  },
+  {
+   "title": {
+    "fr": "PR5 : la mauvaise catégorie",
+    "en": "PR5: the wrong category"
+   },
+   "text": {
+    "fr": "Le lien vers **PR5** a une bonne carte de câblage et une bonne longueur, mais échoue en **NEXT** au-delà de 250 MHz : c’est un câble **Cat 5e**, prévu pour 100 MHz. Testé à sa propre limite (Cat 5e), il passerait ; le cahier des charges demande du Cat 6A.\nRéparez : remplacez-le par un câble **Cat 6A** (catégorie dans l’inspecteur du câble).",
+    "en": "The link to **PR5** has a good wire map and a good length, but fails **NEXT** above 250 MHz: it is a **Cat 5e** cable, made for 100 MHz. Tested at its own limit (Cat 5e) it would pass; the specification asks for Cat 6A.\nFix it: replace it with a **Cat 6A** cable (category in the cable inspector)."
+   },
+   "check": {
+    "type": "net-cert",
+    "of": "PR5",
+    "limit": "cat6a-pl"
+   }
+  },
+  {
+   "title": {
+    "fr": "PASS* ou FAIL* ?",
+    "en": "PASS* or FAIL*?"
+   },
+   "text": {
+    "fr": "Un résultat marqué d’un astérisque est plus proche de la limite que la précision du testeur. Que dit ANSI/TIA-1152 ?",
+    "en": "A result marked with an asterisk is closer to the limit than the tester’s accuracy. What does ANSI/TIA-1152 say?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "PASS* compte comme une réussite, FAIL* comme un échec",
+      "en": "PASS* counts as a pass, FAIL* as a failure"
+     },
+     {
+      "fr": "Les deux comptent comme des réussites",
+      "en": "Both count as passes"
+     },
+     {
+      "fr": "Les deux comptent comme des échecs",
+      "en": "Both count as failures"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Tout l’étage passe",
+    "en": "The whole floor passes"
+   },
+   "text": {
+    "fr": "Relancez **Tester tout** à la limite Cat 6A lien permanent : les six liens doivent réussir. Exportez ensuite le **rapport imprimable** : c’est lui que l’on remet au client avec les courbes de chaque lien.",
+    "en": "Run **Test all** again at the Cat 6A permanent link limit: all six links must pass. Then export the **printable report**: it is what you hand to the client, with the plots of each link."
+   },
+   "check": {
+    "type": "net-cert",
+    "limit": "cat6a-pl",
+    "min": 6
+   }
+  },
+  {
+   "title": {
+    "fr": "Plus aucune faute",
+    "en": "No faults left"
+   },
+   "text": {
+    "fr": "Le panneau Problèmes ne doit plus montrer d’erreur réseau (carte de câblage, paire séparée, certification).",
+    "en": "The Problems panel must no longer show any network error (wire map, split pair, certification)."
+   },
+   "check": {
+    "type": "net-ok"
+   }
+  }
+ ]
+}

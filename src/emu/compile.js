@@ -6,10 +6,10 @@
 import { tl } from '../i18n/index.js';
 import * as native from '../native.js';
 
-import { FQBN, EMULATED, QEMU_KINDS } from './boards.js';
+import { FQBN, EMULATED, QEMU_KINDS, libBuildArgs } from './boards.js';
 import { esp32Refusal } from './esp32-limits.js';
 import { ESP32_LINK_PROPERTY } from './esp32-wraps.js';
-export { FQBN, EMULATED };
+export { FQBN, EMULATED, libBuildArgs };
 const CORE_URLS = {
   'rp2040:rp2040': 'https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json',
   'esp32:esp32': 'https://espressif.github.io/arduino-esp32/package_esp32_index.json',
@@ -39,7 +39,9 @@ export const LIBS = {
   // Radio LoRa SX1278 (sim/lora.js) : bibliothèque de Sandeep Mistry.
   'LoRa.h': ['LoRa'],
   // Modules Ethernet : W5500 (bibliothèque Ethernet d'Arduino), ENC28J60 (UIPEthernet, EtherCard) ; client MQTT.
-  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient']
+  'Ethernet.h': ['Ethernet'], 'UIPEthernet.h': ['UIPEthernet'], 'EtherCard.h': ['EtherCard'], 'PubSubClient.h': ['PubSubClient'],
+  // ENC28J60 : EthernetENC (successeur d'UIPEthernet, même API que la bibliothèque Ethernet) ; Modbus TCP d'Arduino.
+  'EthernetENC.h': ['EthernetENC'], 'ArduinoModbus.h': ['ArduinoModbus', 'ArduinoRS485'], 'ArduinoRS485.h': ['ArduinoRS485']
 };
 
 /** Accès à arduino-cli : par défaut l'application de bureau ; les tests passent le leur. */
@@ -138,7 +140,7 @@ async function compileOne(code, kind, log, cli) {
   let out;
   try {
     const sketch = await cli.write(code, { shim: esp32 }), [, build] = await cli.paths();
-    out = await cli.run(['compile', '--fqbn', FQBN[kind], ...(esp32 ? ['--build-property', ESP32_LINK_PROPERTY] : []), '--output-dir', build, sketch]);
+    out = await cli.run(['compile', '--fqbn', FQBN[kind], ...(esp32 ? ['--build-property', ESP32_LINK_PROPERTY] : []), ...libBuildArgs(FQBN[kind], code), '--output-dir', build, sketch]);
   } catch (e) {
     return { ok: false, errors: [{ line: 1, col: 1, msg: String((e && e.message) || e), code: 'J1200' }] };
   }

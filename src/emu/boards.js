@@ -20,3 +20,15 @@ export const EMULATED = new Set(Object.keys(FQBN).filter(k => !QEMU_KINDS.has(k)
 export function setQemuReady(on, kinds = null) {
   for (const k of QEMU_KINDS) { if (on && (!kinds || kinds.includes(k))) EMULATED.add(k); else EMULATED.delete(k); }
 }
+
+/**
+ * Options de compilation qu'exigent certaines bibliothèques sur certains cœurs. ArduinoRS485 (dépendance d'ArduinoModbus,
+ * même en Modbus TCP) ne connaît pas le cœur arduino-pico : ni SERIAL_PORT_HARDWARE ni A5/A6. On les fixe (Serial1,
+ * broches DE/RE à -1 : la bibliothèque ne les touche pas) ; le Modbus TCP n'utilise pas la liaison RS-485.
+ * Rend la liste d'arguments pour arduino-cli (--build-property …).
+ */
+export function libBuildArgs(fqbn, code) {
+  if (String(fqbn).startsWith('rp2040:') && /#include\s*[<"]Arduino(?:RS485|Modbus)\.h[>"]/.test(code))
+    return ['--build-property', 'compiler.cpp.extra_flags=-DSERIAL_PORT_HARDWARE=Serial1 -DRS485_DEFAULT_DE_PIN=-1 -DRS485_DEFAULT_RE_PIN=-1'];
+  return [];
+}

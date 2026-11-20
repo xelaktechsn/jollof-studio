@@ -15,6 +15,7 @@ import { tftHex } from '../sim/tft.js';
 import { sdStore } from '../sim/sdcard.js';
 import { syncCard } from './devices/sdcard.js';
 import { ESP32_LINK_PROPERTY } from './esp32-wraps.js';
+import { libBuildArgs } from './boards.js';
 
 export const hasCli = spawnSync('arduino-cli', ['version']).status === 0;
 const CACHE = path.join(os.tmpdir(), 'jollof-fw-cache');
@@ -27,13 +28,14 @@ const CACHE = path.join(os.tmpdir(), 'jollof-fw-cache');
  */
 export function compileSketch(src, fqbn = 'arduino:avr:uno') {
   const esp = fqbn.startsWith('esp32:'), shim = esp ? fs.readFileSync(new URL('./esp32-shim/jollof_qemu_shim.cpp', import.meta.url), 'utf8') : '';
-  const h = crypto.createHash('sha1').update(fqbn + '\n' + src + shim + (esp ? ESP32_LINK_PROPERTY : '')).digest('hex').slice(0, 16), name = 's' + h;
+  const extra = libBuildArgs(fqbn, src);
+  const h = crypto.createHash('sha1').update(fqbn + '\n' + src + shim + (esp ? ESP32_LINK_PROPERTY : '') + extra.join(' ')).digest('hex').slice(0, 16), name = 's' + h;
   const bin = fqbn.startsWith('rp2040:') || esp, read = f => (bin ? new Uint8Array(fs.readFileSync(f)) : fs.readFileSync(f, 'utf8'));
   const dir = path.join(CACHE, name), out = path.join(CACHE, name + '-build'), hex = path.join(out, name + (esp ? '.ino.merged.bin' : bin ? '.ino.bin' : '.ino.hex'));
   if (fs.existsSync(hex)) return read(hex);
   fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, name + '.ino'), src);
   if (esp) fs.writeFileSync(path.join(dir, 'jollof_qemu_shim.cpp'), shim);
-  const c = spawnSync('arduino-cli', ['compile', '--fqbn', fqbn, ...(esp ? ['--build-property', ESP32_LINK_PROPERTY] : []), '--output-dir', out, dir], { encoding: 'utf8' });
+  const c = spawnSync('arduino-cli', ['compile', '--fqbn', fqbn, ...(esp ? ['--build-property', ESP32_LINK_PROPERTY] : []), ...extra, '--output-dir', out, dir], { encoding: 'utf8' });
   if (c.status !== 0) throw new Error((c.stdout + c.stderr).split('\n').filter(l => /error/i.test(l)).slice(0, 5).join('\n') || 'compilation impossible');
   return read(hex);
 }

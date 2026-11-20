@@ -8,7 +8,7 @@ import { driveBoard } from '../sim/drive.js';
 import { compile } from './lang.js';
 import { createRuntime } from './runtime.js';
 import { EMULATED, QEMU_KINDS, setQemuReady } from '../emu/boards.js';
-import { esp32Refusal, UNBRIDGED } from '../emu/esp32-limits.js';
+import { esp32Refusal, UNBRIDGED, INTERP_ONLY, interpOnlyReason } from '../emu/esp32-limits.js';
 import { generate, skeleton, newRule, ruleText, condText, SIGNALS, ACTIONS, OPS, TEXT_OPS, signalOf, defArg, isSensor, isActuator, actsFor, actItem, migrate, findById, actsOf, involves, numberRules, defaultActs,
   SERIAL, SERIAL_ACTS, SHOWS, termsOf, termDefaults, srcSignal, varSignal, fmtTime, VAR_TYPE_LABELS, varText, seqText, uid, ident } from './rules.js';
 import { NET, NET_SIG, NET_ACTS, PAGE_ROWS, TOPIC_PUB, TOPIC_SUB, netLink, netItem, netText, fixNet, autoMac, cleanTopic } from './rules-net.js';
@@ -112,6 +112,7 @@ export function createProgram(app) {
   function realOk(b) {
     const kind = b && boardKind(b);
     if (!kind || !EMULATED.has(kind) || !isTauri() || cliMissing) return false;
+    if (interpMods(b).length) return false; // ENC28J60 : pile TCP/IP du programme non reliée au réseau simulé
     if (!QEMU_KINDS.has(kind)) return true;
     const e = P.boards[b.id];
     if (esp32Refusal(typeof (e && e.code) === 'string' ? e.code : '')) return false; // Wi-Fi, Bluetooth : pas de radio émulée
@@ -122,6 +123,10 @@ export function createProgram(app) {
     if (!UNBRIDGED.length) return [];
     try { const sn = snapshot(); return comps().filter(c => UNBRIDGED.includes(c.type) && sn.inspect(c).board === b); } catch (e) { return []; }
   }
+  /** Modules reliés à cette carte qui la gardent sur l'interpréteur, quelle que soit la carte (ENC28J60). */
+  function interpMods(b) {
+    try { const sn = snapshot(); return comps().filter(c => INTERP_ONLY.includes(c.type) && sn.inspect(c).board === b); } catch (e) { return []; }
+  }
   /** Pourquoi cette carte tourne sur le simulateur intégré (texte pour le journal), ou null. */
   function whyInterp(b) {
     const kind = boardKind(b);
@@ -130,6 +135,8 @@ export function createProgram(app) {
     if (!EMULATED.has(kind) && !QEMU_KINDS.has(kind)) return tl('pas encore de processeur émulé pour cette carte');
     if (!isTauri()) return tl('la version web ne peut pas compiler : installez l’application');
     if (cliMissing) return tl('arduino-cli introuvable');
+    const only = interpOnlyReason(interpMods(b));
+    if (only) return only;
     const esp = QEMU_KINDS.has(kind);
     if (esp && !EMULATED.has(kind)) return tl('émulateur de l’ESP32 non installé');
     const e = P.boards[b.id];
@@ -332,6 +339,7 @@ export function createProgram(app) {
     rts.set(b.id, attach(b, createRuntime(res.js, makeHw(b), res.debug || { globals: res.globals })));
     uploaded.set(b.id, code);
     const why = whyInterp(b);
+    if (why && isTauri() && interpMods(b).length) app.status(tl('{0} tourne sur le simulateur intégré : {1}.', b.name, why), 'ok');
     log(b, why ? tl('{0}— {1} démarre (simulateur intégré : {2}) —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name, why) : tl('{0}— {1} démarre —\n', (logs.get(b.id) || '').length ? '\n' : '', b.name));
     return true;
   }

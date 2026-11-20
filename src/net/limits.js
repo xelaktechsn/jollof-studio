@@ -4,6 +4,15 @@
 // montage). Les normes ANSI/TIA-568 et ISO/IEC 11801 sont payantes : leurs chiffres sont lus dans les guides des
 // fabricants qui les citent (Belden, Fluke Networks) ; IEEE 802.3 par les documents publics du groupe de travail et
 // les livres blancs de l'Ethernet Alliance. src/check/sources.test.mjs exige une source pour chaque nombre.
+// Les chiffres de la conception professionnelle (câblage structuré, baies, fibre, Wi-Fi, certification…) sont dans
+// src/net/lim/*.js, fusionnés ici.
+import { SIM_LIM } from './lim/sim.js';
+import { PLAN_LIM } from './lim/plan.js';
+import { WIFI_LIM } from './lim/wifi.js';
+import { RACK_LIM } from './lim/rack.js';
+import { CERT_LIM } from './lim/cert.js';
+import { DESIGN_LIM } from './lim/design.js';
+import { FIBRE_LIM } from './lim/fibre.js';
 
 export const NET = {
   /** Canal horizontal : 100 m au plus, dont 90 m de lien permanent et 10 m de cordons (TIA-568, cité par Belden). */
@@ -33,6 +42,7 @@ export const NET = {
   /** Auto-MDIX : facultatif en 10BASE-T, 100BASE-TX et 1000BASE-T, obligatoire en 10GBASE-T. */
   MDIX_REQUIRED: { v: { 10: false, 100: false, 1000: false, 10000: true }, src: ['ieeeMaint1115', 'ieeeMaint1183', 'unhIolFeTestPlans'] },
   /** Ports des services : DHCP (serveur 67, client 68), MQTT 1883, Modbus TCP 502. */
-  PORTS: { v: { dhcpServer: 67, dhcpClient: 68, mqtt: 1883, modbus: 502 }, src: ['rfc2131', 'mqtt311', 'modbusTcpGuide'] }
+  PORTS: { v: { dhcpServer: 67, dhcpClient: 68, mqtt: 1883, modbus: 502 }, src: ['rfc2131', 'mqtt311', 'modbusTcpGuide'] },
+  ...SIM_LIM, ...PLAN_LIM, ...WIFI_LIM, ...RACK_LIM, ...CERT_LIM, ...DESIGN_LIM, ...FIBRE_LIM
 };
 export const v = k => NET[k].v;

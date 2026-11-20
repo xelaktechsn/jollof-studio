@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later
+ * Copyright (C) 2026 Mamadou Sarr
+ * Calculette du bilan optique (src/net/ui/fibreui.js) : fenêtre commune de crimp.css (.nt-ov, .nt-dlg), contenu en ntFb…
+ * Couleurs : jetons du thème et du plan réseau (--nt-g, --nt-err), rien d'écrit en dur. */
+.ntFbOv .nt-dlg { width: min(780px, 100%); height: auto; max-height: 100%; }
+.ntFbBody { flex: 1; min-height: 0; overflow: auto; display: grid; grid-template-columns: 300px 1fr; }
+.ntFbSide { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-right: 1px solid var(--line); background: var(--panel-2); }
+.ntFbSide h4, .ntFbMain h4 { margin: 4px 0 0; font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.ntFbRow { display: grid; grid-template-columns: 1fr 168px; align-items: center; gap: 8px; color: var(--fg-2); font-size: 12px; }
+.ntFbRow select, .ntFbRow input { min-width: 0; width: 100%; box-sizing: border-box; height: 28px; padding: 0 6px; border-radius: 6px; border: 1px solid var(--line-2); background: var(--raise); color: var(--fg); font: inherit; }
+.ntFbRow select:focus-visible, .ntFbRow input:focus-visible, .ntFbChk input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ntFbChk { display: flex; align-items: flex-start; gap: 8px; color: var(--fg-2); font-size: 12px; }
+.ntFbChk input { margin: 2px 0 0; accent-color: var(--accent); }
+.ntFbPlaced { color: var(--fg-2); font: 12px/1.4 var(--mono); overflow-wrap: anywhere; }
+.ntFbMain { min-width: 0; display: flex; flex-direction: column; gap: 10px; padding: 12px 14px; }
+.ntFbTbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ntFbTbl th { text-align: left; font-weight: 500; color: var(--fg); padding: 6px 8px 6px 0; border-bottom: 1px solid var(--line); }
+.ntFbTbl td { padding: 6px 0 6px 8px; border-bottom: 1px solid var(--line); color: var(--fg-2); }
+.ntFbDb { text-align: right; white-space: nowrap; font-family: var(--mono); color: var(--fg); }
+.ntFbDet { font-size: 11.5px; }
+.ntFbR-total th, .ntFbR-total .ntFbDb, .ntFbR-margin th, .ntFbR-margin .ntFbDb { font-weight: 700; }
+.ntFbR-total th, .ntFbR-total td { border-top: 2px solid var(--line-2); }
+.ntFbMeter { height: 8px; border-radius: 4px; background: var(--raise); border: 1px solid var(--line); overflow: hidden; }
+.ntFbMeter i { display: block; height: 100%; border-radius: 3px; transition: width .2s; }
+.ntFbMeter i.ntFbOk { background: var(--nt-g); }
+.ntFbMeter i.ntFbBad { background: var(--nt-err); }
+.ntFbVerdict { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--raise); color: var(--fg); font-weight: 600; }
+.ntFbVerdict span { display: block; font-weight: 400; color: var(--fg-2); margin-top: 2px; }
+.ntFbVerdict.ntFbOk { border-color: var(--nt-g); color: var(--ok-ink, var(--fg)); }
+.ntFbVerdict.ntFbBad { border-color: var(--nt-err); color: var(--danger-ink, var(--fg)); }
+.ntFbNote { color: var(--muted); font-size: 11.5px; }
+.nt-ft .ntFbNote { flex: 1 1 260px; }
+@container (max-width: 620px) {
+  .ntFbBody { grid-template-columns: 1fr; }
+  .ntFbSide { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+@container (max-width: 420px) {
+  .ntFbRow { grid-template-columns: 1fr; gap: 4px; }
+  .nt-ft .ntFbNote { display: none; }
+}

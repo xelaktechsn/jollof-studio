@@ -8,6 +8,8 @@
 // la continuité est bonne mais la diaphonie fait perdre des trames).
 // segments : les câbles posés bout à bout à travers des prises passives (prise murale, panneau de brassage) ; un câble
 // seul = [câble].
+// Mode examen (exam: true) : ni verdict ni nom de défaut ; restent les voyants, pas à pas, et la carte de câblage brute
+// (sans paire séparée ni broche en faute signalées) : c'est à l'élève de conclure.
 import { tl } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { WIRES, PIN_PAIRS, analyzeChain } from '../cable.js';
@@ -123,10 +125,10 @@ function deviceSvg(segments, names, step, leds) {
 }
 
 /* ---------- Carte de câblage (mode Qualification) ---------- */
-function wireMapSvg(segments, r, names) {
+function wireMapSvg(segments, r, names, exam = false) {
   const [E0] = chainEnds(segments), W = 340, H = 250, LX = 104, RXm = 236, y = p => 38 + (p - 1) * 25;
   const order = E0 && Array.isArray(E0.order) ? E0.order : [];
-  const splitPairs = new Set(r.pairs.map((x, k) => (x.split ? k : -1)).filter(k => k >= 0));
+  const splitPairs = new Set(exam ? [] : r.pairs.map((x, k) => (x.split ? k : -1)).filter(k => k >= 0));
   let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(tl('Carte de câblage'))}">`;
   s += `<text class="nt-mhead" x="${LX}" y="14">${esc(names.a || tl('Côté A'))}</text><text class="nt-mhead" x="${RXm}" y="14">${esc(names.b || tl('Côté B'))}</text>`;
   // Paires torsadées du début : 1-2, 3-6, 4-5, 7-8 (accolades à gauche ; rouge = paire séparée).
@@ -149,7 +151,7 @@ function wireMapSvg(segments, r, names) {
       if (Wd && Wd.stripe) s += `<path class="nt-mline" d="${d}" stroke="${col}" stroke-width="4.5" stroke-dasharray="4 5" stroke-linecap="butt"/>`;
     }
   }
-  const bad = new Set(r.faults.filter(f => f.type === 'short' || f.type === 'open').flatMap(f => f.pins));
+  const bad = new Set(exam ? [] : r.faults.filter(f => f.type === 'short' || f.type === 'open').flatMap(f => f.pins));
   for (let p = 1; p <= 8; p++) {
     s += `<circle class="nt-mdot${bad.has(p) ? ' nt-mbad' : ''}" cx="${LX}" cy="${y(p)}" r="9"/><text class="nt-mpin" x="${LX}" y="${y(p)}">${p}</text>`;
     s += `<circle class="nt-mdot" cx="${RXm}" cy="${y(p)}" r="9"/><text class="nt-mpin" x="${RXm}" y="${y(p)}">${p}</text>`;
@@ -159,9 +161,9 @@ function wireMapSvg(segments, r, names) {
 
 /**
  * Ouvre le testeur. segments : [câble] ou les câbles d'un lien bout à bout ; names : { a, b } (appareils ou prises aux
- * deux bouts) ; mode : 'continuity' (par défaut) ou 'qualification'. Rend { close(), update(segments) }.
+ * deux bouts) ; mode : 'continuity' (par défaut) ou 'qualification' ; exam : sans verdict. Rend { close(), update(segments) }.
  */
-export function openTester({ host, segments = [], names = {}, mode = 'continuity', onClose } = {}) {
+export function openTester({ host, segments = [], names = {}, mode = 'continuity', exam = false, onClose } = {}) {
   const st = { segs: segments, mode: mode === 'qualification' ? 'qualification' : 'continuity', step: 0, play: true, rep: null };
   const O = overlay(host, { label: tl('Testeur de câble réseau') });
   const { dlg } = O;
@@ -197,14 +199,19 @@ export function openTester({ host, segments = [], names = {}, mode = 'continuity
     const rep = st.rep;
     dlg.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode)));
     const res = $('.nt-res');
-    res.className = 'nt-res ' + (rep.pass ? 'nt-ok' : 'nt-bad');
-    res.innerHTML = `<div class="nt-vh">${icon(rep.pass ? 'check' : 'alert')}<span>${esc(rep.pass ? tl('Test réussi') : tl('Test échoué'))}</span></div>`
-      + `<ul>${rep.items.map(x => `<li><b>${esc(x.label)}</b><span>${esc(x.why)}</span></li>`).join('')}</ul>`
-      + (rep.note ? `<p class="nt-note">${esc(rep.note)}</p>` : '');
+    if (exam) {
+      res.className = 'nt-res nt-novd';
+      res.innerHTML = `<div class="nt-vh">${icon('lock')}<span>${esc(tl('Mode examen : pas de verdict. Lisez les voyants et la carte de câblage, puis concluez.'))}</span></div>`;
+    } else {
+      res.className = 'nt-res ' + (rep.pass ? 'nt-ok' : 'nt-bad');
+      res.innerHTML = `<div class="nt-vh">${icon(rep.pass ? 'check' : 'alert')}<span>${esc(rep.pass ? tl('Test réussi') : tl('Test échoué'))}</span></div>`
+        + `<ul>${rep.items.map(x => `<li><b>${esc(x.label)}</b><span>${esc(x.why)}</span></li>`).join('')}</ul>`
+        + (rep.note ? `<p class="nt-note">${esc(rep.note)}</p>` : '');
+    }
     const q = st.mode === 'qualification';
     $('.nt-low').classList.toggle('nt-nomap', !q);
     $('.nt-map').hidden = !q;
-    if (q) $('.nt-map').innerHTML = `<h4>${esc(tl('Carte de câblage'))}</h4>` + wireMapSvg(st.segs, rep.r, names);
+    if (q) $('.nt-map').innerHTML = `<h4>${esc(tl('Carte de câblage'))}</h4>` + wireMapSvg(st.segs, rep.r, names, exam);
     const pb = $('[data-act="play"]');
     pb.innerHTML = icon(st.play ? 'pause' : 'play') + `<span>${esc(st.play ? tl('Mettre en pause') : tl('Reprendre'))}</span>`;
     renderDevices();

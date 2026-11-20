@@ -1,0 +1,9 @@
+{
+ "name": "Collège : réseau d’un bâtiment de deux étages",
+ "description": "Un projet de professionnel : bâtiment de 48 × 17 m sur deux niveaux, 26 pièces, un local technique par étage (baie 42U, panneaux, switchs PoE+, onduleur), rocade fibre OM4 entre les étages, cœur de niveau 3 avec quatre VLAN (données, voix, Wi-Fi, gestion), DHCP et DNS par relais, routeur d’accès à Internet avec traduction d’adresses, 17 points d’accès Wi-Fi 6 avec plan de canaux, 95 prises aux longueurs réelles, liens certifiés. Vues Plans, Baies et Conception.",
+ "en": {
+  "name": "Middle school: network of a two-storey building",
+  "description": "A professional project: a 48 × 17 m building on two levels, 26 rooms, one telecom room per floor (42U rack, patch panels, PoE+ switches, UPS), an OM4 fibre backbone between the floors, a layer-3 core with four VLANs (data, voice, Wi-Fi, management), DHCP and DNS through a relay, an Internet access router with address translation, 17 Wi-Fi 6 access points with a channel plan, 95 outlets with real lengths, certified links. Floor plans, Racks and Design views."
+ },
+ "kind": "net"
+}

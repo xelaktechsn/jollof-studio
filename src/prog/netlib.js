@@ -15,7 +15,7 @@
 // Les attentes (DHCP, établissement d'une connexion, ping) passent par des générateurs qui s'endorment en temps virtuel.
 import { byteStr, fromBytes, bytesOf } from '../net/bytes.js';
 import { parseRequest, response } from '../net/http.js';
-import { connectPacket, publishPacket, subscribePacket, unsubscribePacket, pingPacket, disconnectPacket, mqttReader, parsePublish, MQTT } from '../net/mqtt.js';
+import { connectPacket, publishPacket, subscribePacket, unsubscribePacket, pingPacket, disconnectPacket, mqttReader, parsePublish, ackPacket, MQTT } from '../net/mqtt.js';
 import { modbusRequest, readPdu, writeCoilPdu, writeRegPdu, parseResponse } from '../net/modbus.js';
 
 /** Modules Ethernet reliés en SPI (types de composants du banc). */
@@ -388,15 +388,23 @@ export function createNetLib(ctx) {
       this.pid = (this.pid % 65535) + 1; return this.out(subscribePacket(this.pid, [[fmt(topic), qos | 0]])) > 0;
     }
     unsubscribe(topic) { if (!this.connected()) return false; this.pid = (this.pid % 65535) + 1; return this.out(unsubscribePacket(this.pid, [fmt(topic)])) > 0; }
-    /** Messages reçus : le rappel du programme s'exécute pour chacun, dans loop(), comme la vraie bibliothèque. */
+    /**
+     * Messages reçus : le rappel du programme s'exécute pour chacun, dans loop(), comme la vraie bibliothèque (2.8) :
+     * QoS 1 : PUBACK après le rappel ; QoS 2 (que le broker n'envoie pas, l'abonnement étant en QoS 0 ou 1) : lu comme
+     * un QoS 0, les deux octets de l'identifiant en tête du contenu, sans PUBREC ; sans rappel, rien, pas même le PUBACK.
+     */
     loop() {
       if (!this.connected()) return false;
       this.pump();
       if (this.keep && ctx.now() - this.last >= this.keep * 1000) this.out(pingPacket());
-      const msgs = this.inbox.splice(0), cb = this.cb;
+      const msgs = this.inbox.splice(0), cb = this.cb, self = this;
       if (!msgs.length || !cb) return true;
       return (function* () {
-        for (const m of msgs) yield* cb(ctx.cbuf(m.topic), Array.from(m.payload), m.payload.length);
+        for (const m of msgs) {
+          const bytes = m.qos === 2 ? [m.id >> 8, m.id & 255, ...m.payload] : Array.from(m.payload);
+          yield* cb(ctx.cbuf(m.topic), bytes, bytes.length);
+          if (m.qos === 1 && self.connected()) self.out(ackPacket(MQTT.PUBACK, m.id));
+        }
         return true;
       })();
     }

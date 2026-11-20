@@ -1,0 +1,1210 @@
+{
+ "id": "iot04-regles-mqtt-page",
+ "series": "objets",
+ "workspace": "elec",
+ "level": "lycee",
+ "minutes": 45,
+ "title": {
+  "fr": "Règles connectées : MQTT et page web sans écrire de code",
+  "en": "Connected rules: MQTT and a web page without writing code"
+ },
+ "summary": {
+  "fr": "Un Arduino Uno et un module W5500 rejoignent le réseau de l’atelier. Des règles, écrites en phrases, publient la position d’un potentiomètre sur le serveur MQTT, allument une lampe quand un message arrive, et montrent une page web. Le programme est généré à partir des règles, le même pour le simulateur et pour la vraie carte.",
+  "en": "An Arduino Uno and a W5500 module join the workshop network. Rules, written as sentences, publish a potentiometer’s position to the MQTT server, switch a lamp on when a message arrives, and show a web page. The program is generated from the rules, the same for the simulator and the real board."
+ },
+ "objectives": [
+  {
+   "fr": "Publier une mesure sur un serveur MQTT avec une règle",
+   "en": "Publish a reading to an MQTT server with a rule"
+  },
+  {
+   "fr": "Commander une sortie par un message reçu (abonnement)",
+   "en": "Drive an output from a received message (subscription)"
+  },
+  {
+   "fr": "Montrer des valeurs sur la page web de la carte",
+   "en": "Show values on the board’s web page"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "« Réseau » est une pièce des règles : il publie, il reçoit des messages et des demandes de page.",
+   "en": "“Network” is a part of the rules: it publishes, receives messages and page requests."
+  },
+  {
+   "fr": "Une règle « quand le message du sujet … vaut … » abonne la carte à ce sujet.",
+   "en": "A rule “when the message on topic … is …” subscribes the board to that topic."
+  },
+  {
+   "fr": "Le programme généré n’attend jamais le réseau : la carte reste réactive même sans serveur.",
+   "en": "The generated program never waits for the network: the board stays responsive even without a server."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Règles connectées",
+  "comps": [
+   {
+    "id": "uno_0",
+    "type": "uno",
+    "name": "UNO",
+    "x": 0,
+    "z": 0,
+    "r": 0
+   },
+   {
+    "id": "ams1117_1",
+    "type": "ams1117",
+    "name": "U1",
+    "x": 9,
+    "z": -47,
+    "r": 0
+   },
+   {
+    "id": "w5500_2",
+    "type": "w5500",
+    "name": "ETH1",
+    "x": 56,
+    "z": 1,
+    "r": 0
+   },
+   {
+    "id": "pot_3",
+    "type": "pot",
+    "name": "POT1",
+    "x": -22,
+    "z": -38,
+    "r": 0
+   },
+   {
+    "id": "led-red_5",
+    "type": "led-red",
+    "name": "LED1",
+    "x": -44,
+    "z": 6,
+    "r": 0
+   },
+   {
+    "id": "res-220_6",
+    "type": "res-220",
+    "name": "R1",
+    "x": -44,
+    "z": 22,
+    "r": 0
+   }
+  ],
+  "wires": [],
+  "settings": {
+   "kind": "iot",
+   "dur": 1.2,
+   "env": {
+    "temp": 24,
+    "hum": 55,
+    "press": 1013,
+    "lux": 300,
+    "dist": 35,
+    "motion": 0,
+    "soil": 40,
+    "gas": 0,
+    "sound": 45,
+    "tilt": 0
+   },
+   "prog": {
+    "rules": [],
+    "boards": {}
+   },
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "box1",
+       "type": "router",
+       "x": 60,
+       "y": 40,
+       "name": "BOX1",
+       "p": {
+        "lan": {
+         "ip": "192.168.1.1",
+         "prefix": 24
+        },
+        "dhcp": {
+         "on": true,
+         "from": 100,
+         "to": 199
+        },
+        "wan": {
+         "mode": "none",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "wifi": {
+         "on": false,
+         "ssid": "Box-Jollof",
+         "pass": "jollof2024"
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch",
+       "x": 360,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "legacy": false
+       }
+      },
+      {
+       "id": "pc1",
+       "type": "pc",
+       "x": 200,
+       "y": 280,
+       "name": "PC1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "mqtt1",
+       "type": "broker",
+       "x": 380,
+       "y": 300,
+       "name": "MQTT1",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "192.168.1.10",
+         "prefix": 24,
+         "gw": "192.168.1.1",
+         "dns": ""
+        }
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "box1",
+        "lan1"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 1,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "pc1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 3,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c9",
+       "a": [
+        "mqtt1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6",
+       "len": 2,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {
+      "e:w5500_2": {
+       "x": 560,
+       "y": 280
+      }
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "project": {
+   "app": "jollof-studio",
+   "version": 1,
+   "name": "Règles connectées",
+   "comps": [
+    {
+     "id": "uno_0",
+     "type": "uno",
+     "name": "UNO",
+     "x": 0,
+     "z": 0,
+     "r": 0
+    },
+    {
+     "id": "ams1117_1",
+     "type": "ams1117",
+     "name": "U1",
+     "x": 9,
+     "z": -47,
+     "r": 0
+    },
+    {
+     "id": "w5500_2",
+     "type": "w5500",
+     "name": "ETH1",
+     "x": 56,
+     "z": 1,
+     "r": 0
+    },
+    {
+     "id": "pot_3",
+     "type": "pot",
+     "name": "POT1",
+     "x": -22,
+     "z": -38,
+     "r": 0
+    },
+    {
+     "id": "breadboard_4",
+     "type": "breadboard",
+     "name": "BB1",
+     "x": 0,
+     "z": 75,
+     "r": 0
+    },
+    {
+     "id": "led-red_5",
+     "type": "led-red",
+     "name": "LED1",
+     "x": -44,
+     "z": 6,
+     "r": 0
+    },
+    {
+     "id": "res-220_6",
+     "type": "res-220",
+     "name": "R1",
+     "x": -44,
+     "z": 22,
+     "r": 0
+    }
+   ],
+   "wires": [
+    {
+     "id": "w1",
+     "a": [
+      "ams1117_1",
+      "GND"
+     ],
+     "b": [
+      "uno_0",
+      "GND"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w2",
+     "a": [
+      "w5500_2",
+      "3V3"
+     ],
+     "b": [
+      "ams1117_1",
+      "OUT"
+     ],
+     "color": "#e8833a"
+    },
+    {
+     "id": "w3",
+     "a": [
+      "w5500_2",
+      "GND"
+     ],
+     "b": [
+      "uno_0",
+      "GND (3)"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w4",
+     "a": [
+      "w5500_2",
+      "SCK"
+     ],
+     "b": [
+      "uno_0",
+      "D13"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w5",
+     "a": [
+      "w5500_2",
+      "MOSI"
+     ],
+     "b": [
+      "uno_0",
+      "D11"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w6",
+     "a": [
+      "w5500_2",
+      "MISO"
+     ],
+     "b": [
+      "uno_0",
+      "D12"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w7",
+     "a": [
+      "w5500_2",
+      "CS"
+     ],
+     "b": [
+      "uno_0",
+      "D10"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w8",
+     "a": [
+      "uno_0",
+      "5V"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+12"
+     ],
+     "color": "#d64545"
+    },
+    {
+     "id": "w9",
+     "a": [
+      "ams1117_1",
+      "IN"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+15"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w10",
+     "a": [
+      "pot_3",
+      "3"
+     ],
+     "b": [
+      "breadboard_4",
+      "T+6"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w11",
+     "a": [
+      "uno_0",
+      "GND (2)"
+     ],
+     "b": [
+      "breadboard_4",
+      "T-13"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w12",
+     "a": [
+      "pot_3",
+      "1"
+     ],
+     "b": [
+      "breadboard_4",
+      "T-5"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w13",
+     "a": [
+      "pot_3",
+      "W"
+     ],
+     "b": [
+      "uno_0",
+      "A0"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w14",
+     "a": [
+      "led-red_5",
+      "K"
+     ],
+     "b": [
+      "uno_0",
+      "GND (4)"
+     ],
+     "color": "#3a3f45"
+    },
+    {
+     "id": "w15",
+     "a": [
+      "led-red_5",
+      "A"
+     ],
+     "b": [
+      "res-220_6",
+      "2"
+     ],
+     "color": "#4c8bf5"
+    },
+    {
+     "id": "w16",
+     "a": [
+      "res-220_6",
+      "1"
+     ],
+     "b": [
+      "uno_0",
+      "D7"
+     ],
+     "color": "#4c8bf5"
+    }
+   ],
+   "settings": {
+    "kind": "iot",
+    "dur": 1.2,
+    "env": {
+     "temp": 24,
+     "hum": 55,
+     "press": 1013,
+     "lux": 300,
+     "dist": 35,
+     "motion": 0,
+     "soil": 40,
+     "gas": 0,
+     "sound": 45,
+     "tilt": 0
+    },
+    "prog": {
+     "rules": [
+      {
+       "kind": "rule",
+       "id": "r1",
+       "src": {
+        "every": 2000
+       },
+       "op": ">",
+       "v": 1,
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a1",
+         "comp": "@net",
+         "act": "publish",
+         "arg": null,
+         "topic": "atelier/pot",
+         "what": {
+          "comp": "pot_3",
+          "sig": "pos"
+         }
+        }
+       ],
+       "else": []
+      },
+      {
+       "kind": "rule",
+       "id": "r2",
+       "src": null,
+       "op": "==",
+       "v": 1,
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a2",
+         "comp": "@net",
+         "act": "page",
+         "arg": null,
+         "what": {
+          "comp": "pot_3",
+          "sig": "pos"
+         }
+        }
+       ],
+       "else": []
+      },
+      {
+       "kind": "rule",
+       "id": "r3",
+       "src": {
+        "comp": "@net",
+        "sig": "msg",
+        "topic": "atelier/lampe"
+       },
+       "op": "==",
+       "v": "ON",
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a3",
+         "comp": "led-red_5",
+         "act": "on",
+         "arg": null
+        },
+        {
+         "kind": "act",
+         "id": "a4",
+         "comp": "@net",
+         "act": "page",
+         "arg": "Lampe allumée"
+        }
+       ],
+       "else": []
+      },
+      {
+       "kind": "rule",
+       "id": "r4",
+       "src": {
+        "comp": "@net",
+        "sig": "msg",
+        "topic": "atelier/lampe"
+       },
+       "op": "==",
+       "v": "OFF",
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a5",
+         "comp": "led-red_5",
+         "act": "off",
+         "arg": null
+        },
+        {
+         "kind": "act",
+         "id": "a6",
+         "comp": "@net",
+         "act": "page",
+         "arg": "Lampe éteinte"
+        }
+       ],
+       "else": []
+      },
+      {
+       "kind": "rule",
+       "id": "r5",
+       "src": {
+        "comp": "@net",
+        "sig": "page"
+       },
+       "op": "==",
+       "v": "/on",
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a7",
+         "comp": "led-red_5",
+         "act": "on",
+         "arg": null
+        }
+       ],
+       "else": []
+      },
+      {
+       "kind": "rule",
+       "id": "r6",
+       "src": {
+        "comp": "@net",
+        "sig": "mqtt"
+       },
+       "op": "==",
+       "v": 1,
+       "from": [
+        0,
+        100
+       ],
+       "then": [
+        {
+         "kind": "act",
+         "id": "a8",
+         "comp": "@net",
+         "act": "publish",
+         "arg": "en ligne",
+         "topic": "atelier/etat"
+        }
+       ],
+       "else": []
+      }
+     ],
+     "boards": {
+      "uno_0": {
+       "code": "",
+       "auto": true
+      }
+     }
+    },
+    "modules": {
+     "net": {
+      "view": "net",
+      "devices": [
+       {
+        "id": "box1",
+        "type": "router",
+        "x": 60,
+        "y": 40,
+        "name": "BOX1",
+        "p": {
+         "lan": {
+          "ip": "192.168.1.1",
+          "prefix": 24
+         },
+         "dhcp": {
+          "on": true,
+          "from": 100,
+          "to": 199
+         },
+         "wan": {
+          "mode": "none",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "wifi": {
+          "on": false,
+          "ssid": "Box-Jollof",
+          "pass": "jollof2024"
+         }
+        }
+       },
+       {
+        "id": "sw1",
+        "type": "switch",
+        "x": 360,
+        "y": 60,
+        "name": "SW1",
+        "p": {
+         "legacy": false
+        }
+       },
+       {
+        "id": "pc1",
+        "type": "pc",
+        "x": 200,
+        "y": 280,
+        "name": "PC1",
+        "p": {
+         "ip": {
+          "mode": "dhcp",
+          "ip": "",
+          "prefix": 24,
+          "gw": "",
+          "dns": ""
+         },
+         "legacy": false
+        }
+       },
+       {
+        "id": "mqtt1",
+        "type": "broker",
+        "x": 380,
+        "y": 300,
+        "name": "MQTT1",
+        "p": {
+         "ip": {
+          "mode": "static",
+          "ip": "192.168.1.10",
+          "prefix": 24,
+          "gw": "192.168.1.1",
+          "dns": ""
+         }
+        }
+       }
+      ],
+      "cables": [
+       {
+        "id": "c1",
+        "a": [
+         "box1",
+         "lan1"
+        ],
+        "b": [
+         "sw1",
+         "p1"
+        ],
+        "cat": "cat6",
+        "len": 1,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c2",
+        "a": [
+         "pc1",
+         "eth0"
+        ],
+        "b": [
+         "sw1",
+         "p2"
+        ],
+        "cat": "cat6",
+        "len": 3,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c3",
+        "a": [
+         "e:w5500_2",
+         "eth"
+        ],
+        "b": [
+         "sw1",
+         "p3"
+        ],
+        "cat": "cat6",
+        "len": 2,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       },
+       {
+        "id": "c9",
+        "a": [
+         "mqtt1",
+         "eth0"
+        ],
+        "b": [
+         "sw1",
+         "p4"
+        ],
+        "cat": "cat6",
+        "len": 2,
+        "wire": {
+         "a": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "b": {
+          "order": [
+           "wo",
+           "o",
+           "wg",
+           "bl",
+           "wbl",
+           "g",
+           "wbr",
+           "br"
+          ],
+          "crimped": true,
+          "shorts": []
+         },
+         "cut": []
+        }
+       }
+      ],
+      "ext": {
+       "e:w5500_2": {
+        "x": 560,
+        "y": 280
+       }
+      }
+     }
+    }
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Des règles qui parlent au réseau",
+    "en": "Rules that talk to the network"
+   },
+   "text": {
+    "fr": "Dans l’onglet **Règles**, la pièce **Réseau** sait **publier** une valeur sur un sujet MQTT, **réagir** à un message reçu, et **afficher** des lignes sur la page web de la carte. Aucune ligne de code à écrire : le programme est généré à partir des phrases.",
+    "en": "In the **Rules** tab, the **Network** part can **publish** a value on an MQTT topic, **react** to a received message, and **show** lines on the board’s web page. No code to write: the program is generated from the sentences."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Câbler le montage",
+    "en": "Wire the circuit"
+   },
+   "text": {
+    "fr": "Onglet **Câblage**, **Câbler tout le circuit** : le W5500 sur le bus SPI (D13, D12, D11, D10) alimenté par le régulateur 3,3 V, le potentiomètre sur A0, la LED et sa résistance sur une sortie.",
+    "en": "**Wiring** tab, **Wire the whole circuit**: the W5500 on the SPI bus (D13, D12, D11, D10) powered by the 3.3 V regulator, the potentiometer on A0, the LED and its resistor on an output."
+   },
+   "spot": [
+    "#tab-wiring",
+    "#autoAll"
+   ],
+   "check": {
+    "type": "wired"
+   }
+  },
+  {
+   "title": {
+    "fr": "Le câble réseau",
+    "en": "The network cable"
+   },
+   "text": {
+    "fr": "Plan **Réseau** : reliez le port RJ45 du module **ETH1** à un port libre du switch **SW1**. Le serveur MQTT **MQTT1** (192.168.1.10) y est déjà branché.",
+    "en": "**Network** workspace: connect the RJ45 port of module **ETH1** to a free port of switch **SW1**. The MQTT server **MQTT1** (192.168.1.10) is already plugged in."
+   },
+   "spot": [
+    ".ntTools [data-tool=\"cable\"]",
+    ".ntDev[data-id^=\"e:\"] .ntPort[data-port=\"eth\"]",
+    ".ntDev[data-id=\"sw1\"]"
+   ],
+   "check": {
+    "type": "net-link",
+    "a": "ETH1",
+    "b": "SW1",
+    "speed": 100
+   }
+  },
+  {
+   "title": {
+    "fr": "Les règles",
+    "en": "The rules"
+   },
+   "text": {
+    "fr": "Onglet **Règles**, avec la pièce **Réseau** :\n- **toutes les 2 s** : publie **POT1 · position** sur le sujet `atelier/pot` ;\n- **toujours** : la page web affiche **POT1 · position** ;\n- **quand le message du sujet** `atelier/lampe` **vaut** `ON` : LED1 s’allume, la page affiche « Lampe allumée » ; **vaut** `OFF` : LED1 s’éteint, « Lampe éteinte » ;\n- **quand la page web reçoit** `/on` : LED1 s’allume ;\n- **quand la carte est connectée au serveur MQTT** : publie « en ligne » sur `atelier/etat`.",
+    "en": "**Rules** tab, with the **Network** part:\n- **every 2 s**: publish **POT1 · position** on topic `atelier/pot`;\n- **always**: the web page shows **POT1 · position**;\n- **when the message on topic** `atelier/lampe` **is** `ON`: LED1 turns on, the page shows “Lampe allumée”; **is** `OFF`: LED1 turns off, “Lampe éteinte”;\n- **when the web page receives** `/on`: LED1 turns on;\n- **when the board is connected to the MQTT server**: publish “en ligne” on `atelier/etat`."
+   },
+   "check": {
+    "type": "code",
+    "must": [
+     "#include\\s*<PubSubClient\\.h>",
+     "mqttPublier\\(PSTR\\(\"atelier/pot\"\\)",
+     "mqttAbonner\\(PSTR\\(\"atelier/lampe\"\\)\\)",
+     "strcmp_P\\(pageChemin, PSTR\\(\"/on\"\\)\\) == 0",
+     "atelier/etat"
+    ],
+    "compile": true
+   }
+  },
+  {
+   "title": {
+    "fr": "La publication",
+    "en": "The publication"
+   },
+   "text": {
+    "fr": "Lancez la simulation. Dans le panneau de **MQTT1**, le sujet `atelier/pot` reçoit la position du potentiomètre toutes les 2 s, et `atelier/etat` vaut « en ligne ».",
+    "en": "Start the simulation. In **MQTT1**’s panel, topic `atelier/pot` receives the potentiometer position every 2 s, and `atelier/etat` reads “en ligne”."
+   },
+   "spot": [
+    ".ntDev[data-id=\"mqtt1\"]"
+   ],
+   "check": {
+    "type": "net-mqtt",
+    "broker": "MQTT1",
+    "topic": "atelier/pot",
+    "expect": "^\\d+$"
+   }
+  },
+  {
+   "title": {
+    "fr": "L’abonnement",
+    "en": "The subscription"
+   },
+   "text": {
+    "fr": "La carte s’est abonnée à `atelier/lampe`. Depuis le panneau de **MQTT1**, publiez `ON` sur ce sujet : LED1 s’allume.",
+    "en": "The board subscribed to `atelier/lampe`. From **MQTT1**’s panel, publish `ON` on that topic: LED1 turns on."
+   },
+   "check": {
+    "type": "net-mqtt",
+    "broker": "MQTT1",
+    "subscribed": "atelier/lampe"
+   }
+  },
+  {
+   "title": {
+    "fr": "La page web",
+    "en": "The web page"
+   },
+   "text": {
+    "fr": "Ouvrez le **navigateur** du PC **PC1** à l’adresse de la carte (moniteur série, ou baux de la box) : la page montre la position du potentiomètre et un lien `/on`.",
+    "en": "Open **PC1**’s **browser** at the board’s address (serial monitor, or the box’s leases): the page shows the potentiometer position and an `/on` link."
+   },
+   "spot": [
+    ".ntDev[data-id=\"pc1\"]",
+    "[data-nt=\"browser\"]"
+   ],
+   "check": {
+    "type": "net-http",
+    "from": "PC1",
+    "to": "ETH1",
+    "path": "/",
+    "expect": "POT1 · position\\s*:\\s*\\d+"
+   }
+  },
+  {
+   "title": {
+    "fr": "Sans serveur",
+    "en": "Without a server"
+   },
+   "text": {
+    "fr": "Débranchez le câble de **MQTT1**. Que fait la carte ?",
+    "en": "Unplug **MQTT1**’s cable. What does the board do?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Elle continue : la page web répond, et elle retente la connexion toutes les 5 s",
+      "en": "It keeps going: the web page answers, and it retries the connection every 5 s"
+     },
+     {
+      "fr": "Elle se bloque jusqu’au retour du serveur",
+      "en": "It freezes until the server comes back"
+     },
+     {
+      "fr": "Elle redémarre",
+      "en": "It restarts"
+     }
+    ],
+    "answer": 0
+   }
+  }
+ ]
+}

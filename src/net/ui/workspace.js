@@ -15,16 +15,21 @@ import { createLan } from '../lan.js';
 import { DEVICES, LIB_GROUPS, specOf, portsOf, newDevice } from '../devices.js';
 import { makeCable, CATS, CAT_IDS, analyzeCable } from '../cable.js';
 import { cleanNet } from '../clean.js';
+import { applyRoutes } from '../route.js';
 import { netIssues, NET_SRC } from '../issues.js';
 import { prefixOf, isIp, maskStr } from '../ip.js';
 import { extNodes, whyText } from '../labcheck.js';
 import { openCrimp, cableSvg, crimpVerdict } from './crimp.js';
 import { openTester, testerSummary } from './tester.js';
+import { isExam, examLocked } from '../exam.js';
 import { explain } from '../../check/explain.js';
 import { SOURCES } from '../../check/sources.js';
+import '../../check/sources-net.js';
 import { cleanHtml } from '../../sim/models.js';
 import { kindOf, boardOf } from '../../sim/boards.js';
 import { macOf } from '../../sim/models.js';
+import { simPane, simPaneEvent, vlanDbPane, traceLines, autoArrange, vlanColor, roleText } from './simpane.js';
+import { portCfg, MANAGED } from '../vlan.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const norm = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -33,12 +38,32 @@ const snap = v => Math.round(v / GRID) * GRID;
 const speedTxt = s => (s >= 10000 ? '10 Gb/s' : s >= 1000 ? '1 Gb/s' : s >= 100 ? '100 Mb/s' : s ? '10 Mb/s' : '');
 const ledCls = l => (!l ? 'off' : !l.up ? 'down' : l.errors ? 'err' : l.speed >= 1000 ? 'g' : l.speed >= 100 ? 'f' : 'e');
 const PREF = 'jollof-net-cable';
+/**
+ * Vues du projet réseau : un seul modèle (data), plusieurs vues. Logique : le schéma des équipements et des câbles
+ * (ce fichier) ; Plans : site, étages, pièces, cheminements, prises, Wi-Fi (plan.js) ; Baies : élévations des baies
+ * (racks.js) ; Conception : dimensionnement, étiquettes, tableaux, nomenclature, tests (design.js). Chargées à la demande.
+ */
+const VIEWS = [
+  { id: 'logic', icon: 'network', name: () => tl('Vue logique'), tip: () => tl('Schéma logique : équipements, câbles, adresses') },
+  { id: 'plan', icon: 'floorPlan', name: () => tl('Plans'), tip: () => tl('Plans d’étage : pièces, prises, cheminements, Wi-Fi') },
+  { id: 'racks', icon: 'rack', name: () => tl('Baies'), tip: () => tl('Baies : élévations, brassage, puissance') },
+  { id: 'design', icon: 'clipboard', name: () => tl('Conception'), tip: () => tl('Dimensionnement, étiquettes, tableaux, nomenclature, tests') }
+];
+const VIEW_MODS = { plan: () => import('./plan.js').then(m => m.createPlanView), racks: () => import('./racks.js').then(m => m.createRackView), design: () => import('./design.js').then(m => m.createDesignView) };
 
 /** Positions des ports sur le dessin d'un équipement (repère local, origine en haut à gauche). */
+const LAYOUTS = new Map(); // disposition des ports par type (quand les ports ne dépendent pas des réglages)
 function portLayout(d, spec) {
+  const fixed = spec.ports.length === 0 && !d.ext;
+  if (fixed && LAYOUTS.has(d.type)) return LAYOUTS.get(d.type);
+  const out = portLayout0(d, spec); if (fixed) LAYOUTS.set(d.type, out);
+  return out;
+}
+function portLayout0(d, spec) {
   const ports = portsOf(d), w = spec.w, h = spec.h, out = new Map();
   const row = (list, y) => { const n = list.length, gap = Math.min(18, (w - 16) / Math.max(1, n)); const x0 = w / 2 - (gap * (n - 1)) / 2; list.forEach((p, i) => out.set(p.id, { x: x0 + i * gap, y })); };
-  if (d.type === 'patch' || d.type === 'outlet') { row(ports.filter(p => !p.punch), h); row(ports.filter(p => p.punch), 0); }
+  if (spec.role === 'passive') { row(ports.filter(p => !p.punch), h); row(ports.filter(p => p.punch), 0); }
+  else if (spec.rows === 2) { row(ports.filter((p, i) => i % 2 === 0), 0); row(ports.filter((p, i) => i % 2 === 1), h); } // switch 48 ports : impairs en haut, pairs en bas
   else row(ports, h);
   return out;
 }
@@ -46,8 +71,13 @@ function portLayout(d, spec) {
 export function createNetWorkspace(app, ui, raw) {
   const $ = s => document.querySelector(s), appEl = $('.app');
   let data = cleanNet(raw), on = false, fitted = false;
+  let cur = 'logic'; const views = { logic: null }, viewLoads = {}; // vue montrée ; vues chargées
   let sel = null; // { kind: 'dev' | 'cable', id }
   let tool = 'select', pingFrom = null, pingOut = null, browser = null, crimpUi = null, testerUi = null;
+  // Traceroute (outil R) : départ choisi, dernier résultat (sauts dessinés sur le schéma) ; couleurs des VLAN ; câblage passif caché.
+  let traceFrom = null, traceOut = null, vlanView = false, hidePassive = false;
+  try { const o = JSON.parse(localStorage.getItem('jollof-net-sim') || 'null'); if (o) { vlanView = !!o.vlan; hidePassive = !!o.passive; } } catch (e) { /* stockage indisponible */ }
+  const saveSimPref = () => { try { localStorage.setItem('jollof-net-sim', JSON.stringify({ vlan: vlanView, passive: hidePassive })); } catch (e) { /* rien */ } };
   let cableDef = { kind: 'straight', cat: 'cat6', len: 3 };
   try { const v = JSON.parse(localStorage.getItem(PREF) || 'null'); if (v && CATS[v.cat]) cableDef = { ...cableDef, ...v }; } catch (e) { /* stockage indisponible */ }
   const view = { x: -40, y: -40, k: 1 };
@@ -76,30 +106,44 @@ export function createNetWorkspace(app, ui, raw) {
 
   /* ---------- Historique (Ctrl+Z) ---------- */
   const H = { undo: [], redo: [] };
-  let snapshot = JSON.stringify(data);
+  // Les images des plans importés restent hors de l'historique (lourdes, et une image ne s'annule pas).
+  const snapData = () => JSON.stringify(data, (k, v) => (k === 'images' ? undefined : v)); // (snap : la grille du dessin)
+  let snapshot = snapData();
   function commit() {
-    const s = JSON.stringify(data); if (s === snapshot) return;
+    const s = snapData(); if (s === snapshot) return;
     H.undo.push(snapshot); if (H.undo.length > 120) H.undo.shift(); H.redo = []; snapshot = s;
     changed();
   }
   function travel(from, to) {
     if (!from.length) return;
-    to.push(JSON.stringify(data)); data = cleanNet(JSON.parse(from.pop())); data.view = 'net'; snapshot = JSON.stringify(data);
-    if (sel && !(sel.kind === 'dev' ? findDev(sel.id) || sel.id.startsWith('e:') : data.cables.some(c => c.id === sel.id))) sel = null;
+    const images = data.images;
+    to.push(snapData()); data = cleanNet({ ...JSON.parse(from.pop()), images }); data.view = 'net'; snapshot = snapData();
+    // Équipement ou câble disparu : plus de sélection (les autres vues vérifient leurs propres objets).
+    if (sel && (sel.kind === 'dev' || sel.kind === 'cable') && !(sel.kind === 'dev' ? findDev(sel.id) || sel.id.startsWith('e:') : data.cables.some(c => c.id === sel.id))) sel = null;
     changed(); app.status(tl('Annulé ou rétabli.'));
   }
   const history = { undo: () => travel(H.undo, H.redo), redo: () => travel(H.redo, H.undo), canUndo: () => H.undo.length > 0, canRedo: () => H.redo.length > 0 };
   function changed() {
-    lan.refresh(); render(); renderPane(); counts(); app.markDirty(); if (app.recheck) app.recheck(); if (on) app.historyUI();
+    applyRoutes(data); // longueurs réelles des câbles au tracé automatique (plans, cheminements)
+    lan.refresh(); render(); renderPane(); counts(); viewsChanged(); app.markDirty(); if (app.recheck) app.recheck(); if (on) app.historyUI();
     if (data.devices.length && app.ensureSpace) app.ensureSpace('net');
   }
-  const findDev = id => data.devices.find(d => d.id === id) || null;
+  // Équipement par identifiant : index refait quand la liste change (un grand plan en demande des milliers par dessin).
+  const DX = { arr: null, len: -1, map: new Map() };
+  const findDev = id => {
+    if (DX.arr !== data.devices || DX.len !== data.devices.length) { DX.arr = data.devices; DX.len = data.devices.length; DX.map = new Map(data.devices.map(d => [d.id, d])); }
+    const d = DX.map.get(id); if (d && d.id === id) return d;
+    return data.devices.find(x => x.id === id) || null;
+  };
   const nodeById = id => lan.state().byId.get(id) || null;
 
   /* ---------- Plan de travail ---------- */
   const host = document.createElement('div'); host.className = 'ntHost'; host.hidden = true;
   $('#stage').appendChild(host);
   host.innerHTML = `
+    <div class="ntViewBar" role="tablist" aria-label="${tl('Vues du projet réseau')}">${VIEWS.map(v => `<button type="button" role="tab" class="ntVTab" data-view="${v.id}" aria-selected="${v.id === 'logic'}" data-tip="${esc(v.tip())} · Alt+${VIEWS.indexOf(v) + 1}">${icon(v.icon)}<span>${esc(v.name())}</span></button>`).join('')}</div>
+    <button type="button" class="ntExam" data-exam hidden>${icon('lock')}<span>${tl('Mode examen')}</span></button>
+    <div class="ntVw ntLogic">
     <div class="ntView"><svg class="ntSvg" xmlns="http://www.w3.org/2000/svg"><g class="ntWorld"><g class="ntCables"></g><g class="ntWifi"></g><g class="ntDevs"></g><g class="ntOver"></g></g></svg></div>
     <div class="ntBar top">
       <div class="seg glass ntTools" role="group" aria-label="${tl('Outils du plan réseau')}">
@@ -107,6 +151,12 @@ export function createNetWorkspace(app, ui, raw) {
         <button type="button" class="segBtn" data-tool="cable" data-tip="${tl('Câble · C : cliquer un port puis un autre')}">${icon('cable')}<span>${tl('Câble')}</span></button>
         <button type="button" class="segBtn" data-tool="tester" data-tip="${tl('Testeur de câble · T : cliquer un câble ou un port')}">${icon('cableTester')}<span>${tl('Testeur')}</span></button>
         <button type="button" class="segBtn" data-tool="ping" data-tip="${tl('Ping · P : cliquer l’appareil de départ puis celui d’arrivée')}">${icon('ping')}<span>Ping</span></button>
+        <button type="button" class="segBtn" data-tool="trace" data-tip="${tl('Traceroute · R : cliquer l’appareil de départ puis la destination ; les routeurs traversés sont numérotés')}">${icon('traceroute')}<span>Traceroute</span></button>
+      </div>
+      <div class="seg glass ntSimBar" role="group" aria-label="${tl('Affichage du schéma')}">
+        <button type="button" class="segBtn" data-simv="vlan" data-tip="${tl('Couleur des câbles par VLAN (trunks en violet), ports bloqués par le Spanning Tree')}">${icon('vlanTag')}<span>VLAN</span></button>
+        <button type="button" class="segBtn" data-simv="passive" data-tip="${tl('Cacher le câblage passif (prises, panneaux) : un trait direct de port actif à port actif')}">${icon('patchPanel')}<span>${tl('Passifs')}</span></button>
+        <button type="button" class="segBtn" data-simv="arrange" data-tip="${tl('Disposition automatique : cœur, distribution, accès, postes')}">${icon('treeLayout')}<span>${tl('Ranger')}</span></button>
       </div>
       <div class="glass ntDef" aria-label="${tl('Câble neuf')}">
         <label><span>${tl('Câble neuf')}</span><select class="sel" data-def="kind">
@@ -119,7 +169,9 @@ export function createNetWorkspace(app, ui, raw) {
     <div class="ntBar bottom"><div class="ntLegend glass"><span><i class="g"></i>1 Gb/s</span><span><i class="f"></i>100 Mb/s</span><span><i class="e"></i>10 Mb/s</span><span><i class="err"></i>${tl('erreurs')}</span><span><i class="down"></i>${tl('pas de lien')}</span><span><i class="poe"></i>PoE</span></div><span class="grow"></span><span class="ntHint glass"></span></div>
     <div class="ntEmpty"><div class="ntEmptyCard">${icon('network')}<b>${tl('Plan réseau')}</b>
       <p>${tl('Glissez une box, un switch et des PC depuis la bibliothèque, puis tirez des câbles de port en port. Cliquez un câble pour le sertir ou le tester, un PC pour régler son adresse IP et faire un ping.')}</p>
-      <div class="row"><button type="button" class="btn primary" data-labs>${icon('checklist')}<span>${tl('TP de réseau')}</span></button><button type="button" class="btn" data-starter>${icon('wand')}<span>${tl('Petit réseau de départ')}</span></button></div></div></div>`;
+      <div class="row"><button type="button" class="btn primary" data-labs>${icon('checklist')}<span>${tl('TP de réseau')}</span></button><button type="button" class="btn" data-starter>${icon('wand')}<span>${tl('Petit réseau de départ')}</span></button></div></div></div>
+    </div>`;
+  const logicEl = host.querySelector('.ntLogic');
   const svg = host.querySelector('.ntSvg'), world = host.querySelector('.ntWorld'), gCab = host.querySelector('.ntCables'), gWifi = host.querySelector('.ntWifi'), gDev = host.querySelector('.ntDevs'), gOver = host.querySelector('.ntOver');
   const hint = host.querySelector('.ntHint');
   const defEl = k => host.querySelector(`[data-def="${k}"]`);
@@ -129,20 +181,25 @@ export function createNetWorkspace(app, ui, raw) {
     try { localStorage.setItem(PREF, JSON.stringify(cableDef)); } catch (e) { /* rien */ }
   });
   host.addEventListener('click', e => {
+    const vt = e.target.closest('.ntViewBar [data-view]'); if (vt) { openView(vt.dataset.view); return; }
+    if (e.target.closest('[data-exam]')) { setExam(false); return; }
+    if (!logicEl.contains(e.target)) return; // les autres vues gèrent leurs clics
     const t = e.target.closest('[data-tool]'); if (t) { setTool(t.dataset.tool); return; }
     if (e.target.closest('[data-labs]')) { if (app.openLabs) app.openLabs('net'); return; }
     if (e.target.closest('[data-starter]')) starter();
+    const sv = e.target.closest('[data-simv]'); if (sv) simView(sv.dataset.simv);
   });
   function setTool(t) {
-    tool = t; pingFrom = null;
+    tool = t; pingFrom = null; traceFrom = null;
     host.querySelectorAll('[data-tool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.tool === t)));
-    host.classList.toggle('toolCable', t === 'cable'); host.classList.toggle('toolTester', t === 'tester'); host.classList.toggle('toolPing', t === 'ping');
+    host.classList.toggle('toolCable', t === 'cable'); host.classList.toggle('toolTester', t === 'tester'); host.classList.toggle('toolPing', t === 'ping'); host.classList.toggle('toolTrace', t === 'trace');
     paintHint(); render();
   }
   function paintHint() {
     hint.textContent = tool === 'cable' ? (rubber ? tl('Cliquez le port d’arrivée (Échap : annuler).') : tl('Cliquez un port libre : le câble part de là.'))
       : tool === 'tester' ? tl('Cliquez un câble (ou un port) pour le passer au testeur.')
         : tool === 'ping' ? (pingFrom ? tl('Ping depuis {0} : cliquez l’appareil à joindre.', nameOf(pingFrom)) : tl('Cliquez l’appareil qui envoie le ping.'))
+          : tool === 'trace' ? (traceFrom ? tl('Traceroute depuis {0} : cliquez la destination.', nameOf(traceFrom)) : tl('Cliquez l’appareil d’où part le traceroute.'))
           : tl('Glisser un appareil : le déplacer · d’un port à un autre : un câble · clic : ses réglages à droite');
   }
   /** Petit réseau pour commencer : une box, un switch, deux PC, câblés. */
@@ -169,19 +226,44 @@ export function createNetWorkspace(app, ui, raw) {
     const v = host.querySelector('.ntView'), g = 20 * view.k;
     v.style.setProperty('--gk', g + 'px'); v.style.setProperty('--gx', (-view.x * view.k) % g + 'px'); v.style.setProperty('--gy', (-view.y * view.k) % g + 'px');
     if (nav) nav.update();
+    // Grand plan : on ne dessine que ce qui est autour de la vue ; sortie de cette zone, ou changement de niveau de détail :
+    // nouveau dessin à l'image suivante.
+    if (drawn && (drawn.lod !== lodOf() || !inside(viewRect(0), drawn.rect))) renderSoon();
   }
+  /** Rectangle du monde visible, agrandi de margin écrans de chaque côté. */
+  function viewRect(margin) {
+    const r = rectOf(), w = (r.width || 1200) / view.k, h = (r.height || 800) / view.k;
+    return { x0: view.x - w * margin, y0: view.y - h * margin, x1: view.x + w * (1 + margin), y1: view.y + h * (1 + margin) };
+  }
+  const inside = (a, b) => a.x0 >= b.x0 && a.y0 >= b.y0 && a.x1 <= b.x1 && a.y1 <= b.y1;
+  /** Niveau de détail : 0 vue d'ensemble (ports simplifiés, pas d'étiquettes de câble), 1 normal. */
+  const lodOf = () => (view.k < 0.5 ? 0 : 1);
+  let drawn = null, rafR = 0;
+  const renderSoon = () => { if (!rafR) rafR = requestAnimationFrame(() => { rafR = 0; render(); }); };
+  /** Plus de 150 équipements : dessin limité à la vue (et une marge d'un écran). */
+  const CULL = 150;
   function render() {
-    if (!on) return;
+    if (!on || cur !== 'logic') return;
     const st = lan.state();
     host.querySelector('.ntEmpty').hidden = st.all.length > 0;
     counts();
-    // Équipements.
+    // Index du dessin (un grand plan : des milliers de ports et de câbles) : câble de chaque port, adresse de chaque nœud.
+    cabIdx = new Map(); for (const cb of data.cables) { cabIdx.set(cb.a[0] + '|' + cb.a[1], cb); cabIdx.set(cb.b[0] + '|' + cb.b[1], cb); }
+    const ipIdx = new Map(); for (const x of st.ifaces) if (!ipIdx.has(x.node) && (x.role === 'host' || x.role === 'lan' || (x.role === 'l3' && x.ip))) ipIdx.set(x.node, x);
+    const isPassive = id => { const n = nodeById(id); return !!n && specOf(n).role === 'passive'; };
+    // Équipements (grand plan : seulement autour de la vue).
+    const cull = st.all.length > CULL, area = viewRect(1), lod = cull ? lodOf() : 1;
+    drawn = cull ? { rect: area, lod } : null;
+    const vis = (x, y, w, hh) => !cull || (x + w >= area.x0 && x <= area.x1 && y + hh >= area.y0 && y <= area.y1);
     let h = '';
     for (const n of st.all) {
       const s = specOf(n), q = posOf(n), pw = st.power.get(n.id), off = pw && !pw.on;
-      const f = st.ifaces.find(x => x.node === n.id && (x.role === 'host' || x.role === 'lan'));
-      const isSel = sel && sel.kind === 'dev' && sel.id === n.id, isPing = pingFrom === n.id;
-      h += `<g class="ntDev${isSel ? ' sel' : ''}${off ? ' off' : ''}${n.ext ? ' ext' : ''}${isPing ? ' pingFrom' : ''} r-${s.role}" data-id="${esc(n.id)}" transform="translate(${q.x} ${q.y})">`;
+      if (s.role === 'mech') continue; // équipement de baie sans rôle réseau : vue Baies seulement
+      if (hidePassive && s.role === 'passive') continue; // câblage passif caché : traits directs plus bas
+      if (!vis(q.x, q.y - 20, s.w, s.h + 40) && !(sel && sel.id === n.id)) continue;
+      const f = ipIdx.get(n.id);
+      const isSel = sel && sel.kind === 'dev' && sel.id === n.id, isPing = pingFrom === n.id || traceFrom === n.id;
+      h += `<g class="ntDev${isSel ? ' sel' : ''}${off ? ' off' : ''}${n.ext ? ' ext' : ''}${isPing ? ' pingFrom' : ''}${traceFrom === n.id ? ' traceFrom' : ''} r-${s.role}" data-id="${esc(n.id)}" transform="translate(${q.x} ${q.y})">`;
       h += `<rect class="ntBody" width="${s.w}" height="${s.h}" rx="8"/>`;
       // Icône, nom, puis l'adresse IP dans le corps de l'appareil (les ports sont sur ses bords).
       const ip = f && f.ip ? f.ip : '', small = s.h < 56 || s.role === 'switch' || s.role === 'passive';
@@ -195,9 +277,17 @@ export function createNetWorkspace(app, ui, raw) {
         if (ip) h += `<text class="ntIp${f.src === 'apipa' ? ' bad' : ''}" x="${s.w / 2}" y="${s.h - 9}">${esc(ip)}</text>`;
       }
       if (off) h += `<text class="ntTag bad" x="${s.w / 2}" y="${-7}">${tl('éteint')}</text>`;
-      else if (n.type === 'ap' || (n.type === 'router' && n.p.wifi && n.p.wifi.on)) h += `<text class="ntSsid" x="${s.w / 2}" y="${-7}">« ${esc(st.ssidOf(n))} »</text>`;
+      else if (s.role === 'ap' || (n.type === 'router' && n.p.wifi && n.p.wifi.on)) h += `<text class="ntSsid" x="${s.w / 2}" y="${-7}">« ${esc(st.ssidOf(n))} »</text>`;
+      const plist = new Map(portsOf(n).map(x => [x.id, x]));
       for (const [pid, p] of portLayout(n, s)) {
-        const l = lan.port(n.id, pid), port = portsOf(n).find(x => x.id === pid), cab = cableAt(n.id, pid);
+        const l = lan.port(n.id, pid), port = plist.get(pid), cab = cableAt(n.id, pid);
+        if (!lod) { h += `<rect class="ntPort ntPortS ${port.passive ? 'pass' : ledCls(l)}" data-port="${esc(pid)}" x="${p.x - PORT_W / 2}" y="${p.y - PORT_H / 2}" width="${PORT_W}" height="${PORT_H}"/>`; continue; } // vue d'ensemble : un simple pavé
+        // Port bloqué (Spanning Tree, agrégat en attente) : une barre en travers.
+        // Rapid PVST+ : bloqué pour certains VLAN seulement → marque partielle, VLAN listés dans la bulle.
+        if (l && l.up && s.managed) {
+          const bv = st.l2.blocked(n.id, pid), all = st.l2.portVlans(n, pid).length, lm = st.l2.member.get(n.id + '|' + pid), sb = lm && (lm.state === 'standby' || lm.state === 'suspended');
+          if (bv.length || sb) blk.push([q.x + p.x, q.y + p.y, `${port.label} · ${sb ? tl('port bloqué') : roleText(lan.l2port(n.id, pid, bv[0]).role)}${bv.length && !sb ? ' · VLAN ' + bv.join(', ') : ''}`, !sb && bv.length < all]);
+        }
         const poeOn = port.poe === 'pse' && st.poe.get(n.id) && st.poe.get(n.id).ports.some(x => x.port === pid && !x.denied);
         h += `<g class="ntPort${cab ? ' used' : ''}${port.punch ? ' punch' : ''}" data-port="${esc(pid)}" transform="translate(${p.x - PORT_W / 2} ${p.y - PORT_H / 2})"><title>${esc(port.label)}${l ? ' · ' + (l.up ? speedTxt(l.speed) : tl('pas de lien')) : ''}</title>`
           + `<rect width="${PORT_W}" height="${PORT_H}" rx="2"/>${port.passive ? '' : `<circle class="led ${ledCls(l)}" cx="${PORT_W / 2}" cy="${PORT_H / 2}" r="2.3"/>`}${poeOn ? `<rect class="poeMark" x="-1" y="-1" width="${PORT_W + 2}" height="${PORT_H + 2}" rx="3"/>` : ''}</g>`;
@@ -205,21 +295,49 @@ export function createNetWorkspace(app, ui, raw) {
       }
       h += '</g>';
     }
-    gDev.innerHTML = h;
+    gDev.innerHTML = h + blk.map(([x, y, t, part]) => `<line class="ntBlk${part ? ' part' : ''}" x1="${x - 7}" y1="${y + 6}" x2="${x + 7}" y2="${y - 6}"><title>${esc(t)}</title></line>`).join('');
+    blk.length = 0;
+    // VLAN d'un câble (couleurs) : le canal qui le contient, et le port du switch administrable au bout.
+    const chanOf = new Map();
+    if (vlanView || hidePassive) for (const [k, ch] of st.chans) if (ch.far) for (const cb of ch.cables) if (!chanOf.has(cb.id)) chanOf.set(cb.id, [k.split('|'), [ch.far.n, ch.far.p]]);
+    const vlanCls = cb => {
+      const e = chanOf.get(cb.id); if (!vlanView || !e) return '';
+      let cls = '', blocked = false;
+      for (const [n, p] of e) {
+        const d = nodeById(n); if (!d) continue;
+        if (specOf(d).managed) { const c2 = portCfg(d, p), l = lan.port(n, p); if (l && l.up && st.l2.blocked(n, p).length >= st.l2.portVlans(d, p).length) blocked = true; if (!cls || c2.mode === 'trunk') cls = c2.mode === 'trunk' ? ' vl trunk' : ` vl" style="--vc:${vlanColor(data, c2.vlan)}`; }
+        else if (d.type === 'routerpro' && ((d.p || {}).ifs || []).some(f => f.port === p && f.vlan) && !cls) cls = ' vl trunk';
+      }
+      // « bloqué » avant la couleur : la couleur se termine par un attribut style.
+      return blocked ? ' blocked' + cls : cls;
+    };
     // Câbles.
     let c = '';
+    const chanDone = new Set();
     for (const cb of data.cables) {
       const A = nodeById(cb.a[0]), B = nodeById(cb.b[0]); if (!A || !B) continue;
-      const pa = portPos(A, cb.a[1]), pb = portPos(B, cb.b[1]), r = analyzeCable(cb.wire);
-      const bad = r.kind === 'none' ? 'raw' : r.faults.length ? 'bad' : '';
+      if (hidePassive && (isPassive(A.id) || isPassive(B.id))) {
+        // Câblage passif caché : un trait direct d'un port actif à l'autre, une fois par canal.
+        const e = chanOf.get(cb.id); if (!e) continue;
+        const kk = [e[0].join('|'), e[1].join('|')].sort().join('#'); if (chanDone.has(kk)) continue; chanDone.add(kk);
+        const X = nodeById(e[0][0]), Y = nodeById(e[1][0]); if (!X || !Y) continue;
+        const pa = portPos(X, e[0][1]), pb = portPos(Y, e[1][1]), my0 = (pa.y + pb.y) / 2, d = `M${pa.x} ${pa.y} C${pa.x} ${my0} ${pb.x} ${my0} ${pb.x} ${pb.y}`;
+        c += `<g class="ntChan${vlanCls(cb)}" data-cable="${esc(cb.id)}"><path class="hit" d="${d}"/><path class="line" d="${d}"/></g>`;
+        continue;
+      }
+      const pa = portPos(A, cb.a[1]), pb = portPos(B, cb.b[1]);
+      if (cull && !vis(Math.min(pa.x, pb.x) - 60, Math.min(pa.y, pb.y) - 60, Math.abs(pb.x - pa.x) + 120, Math.abs(pb.y - pa.y) + 120)) continue;
+      const r = cableAn(cb.wire);
+      const bad = r.kind === 'none' ? 'raw' : r.faults.length && !isExam(data) ? 'bad' : ''; // examen : défaut non montré
       // Courbe en S d'un port à l'autre ; deux ports à la même hauteur : un arc vers le bas.
       const my0 = (pa.y + pb.y) / 2, flat = Math.abs(pb.y - pa.y) < 30, bend = flat ? Math.max(40, Math.abs(pb.x - pa.x) / 3) : 0;
       const d = flat ? `M${pa.x} ${pa.y} C${pa.x} ${pa.y + bend} ${pb.x} ${pb.y + bend} ${pb.x} ${pb.y}` : `M${pa.x} ${pa.y} C${pa.x} ${my0} ${pb.x} ${my0} ${pb.x} ${pb.y}`;
       const sa = flat ? 1 : 0, sb = flat ? 1 : 0, dy = bend;
       const isSel = sel && sel.kind === 'cable' && sel.id === cb.id;
-      c += `<g class="ntCab ${cb.cat} ${bad}${isSel ? ' sel' : ''}" data-cable="${esc(cb.id)}"><path class="hit" d="${d}"/><path class="line" d="${d}"/>`;
+      c += `<g class="ntCab ${cb.cat} ${bad}${isSel ? ' sel' : ''}${vlanCls(cb)}" data-cable="${esc(cb.id)}"><path class="hit" d="${d}"/><path class="line" d="${d}"/>`;
       const mx = (pa.x + pb.x) / 2, my = (pa.y + pb.y) / 2 + (sa + sb) * dy * 0.375;
-      c += `<text class="ntCabL" x="${mx}" y="${my}">${esc(String(cb.len).replace('.', isEn ? '.' : ','))} m${bad === 'raw' ? ' · ' + tl('à sertir') : bad ? ' · ' + tl('défaut') : ''}</text></g>`;
+      if (lod) c += `<text class="ntCabL" x="${mx}" y="${my}">${esc(String(cb.len).replace('.', isEn ? '.' : ','))} m${bad === 'raw' ? ' · ' + tl('à sertir') : bad ? ' · ' + tl('défaut') : ''}</text>`;
+      c += '</g>';
     }
     gCab.innerHTML = c;
     // Wi-Fi : un trait pointillé du point d'accès à chaque client.
@@ -230,9 +348,36 @@ export function createNetWorkspace(app, ui, raw) {
       w += `<line class="ntAir" x1="${a.x + sa.w / 2}" y1="${a.y + sa.h / 2}" x2="${b.x + sb.w / 2}" y2="${b.y + sb.h / 2}"/>`;
     }
     gWifi.innerHTML = w;
-    paintRubber();
+    paintRubber(); paintTrace(); paintLegend();
   }
-  const cableAt = (n, p) => data.cables.find(c => (c.a[0] === n && c.a[1] === p) || (c.b[0] === n && c.b[1] === p)) || null;
+  let cabIdx = null; const blk = [];
+  // Carte de câblage d'un câble (dessin), gardée en mémoire par le contenu de ses fiches.
+  const CAN = new Map(), cableAn = w => { const k = JSON.stringify(w); let r = CAN.get(k); if (!r) { r = analyzeCable(w); if (CAN.size > 4000) CAN.clear(); CAN.set(k, r); } return r; };
+  const cableAt = (n, p) => (cabIdx ? cabIdx.get(n + '|' + p) || null : data.cables.find(c => (c.a[0] === n && c.a[1] === p) || (c.b[0] === n && c.b[1] === p)) || null);
+  /** Dernier traceroute : chemin pointillé et sauts numérotés (routeurs traversés, puis la destination). */
+  function paintTrace() {
+    let g = world.querySelector('.ntTraceG'); if (!g) { world.insertAdjacentHTML('beforeend', '<g class="ntTraceG"></g>'); g = world.querySelector('.ntTraceG'); }
+    if (!traceOut) { g.innerHTML = ''; return; }
+    const ctr = id => { const n = nodeById(id); if (!n) return null; const q = posOf(n), s = specOf(n); return [q.x + s.w / 2, q.y + s.h / 2]; };
+    const pts = [ctr(traceOut.from)], marks = [];
+    for (const hp of traceOut.r.hops || []) { const c2 = hp.node ? ctr(hp.node) : null; if (c2) { pts.push(c2); marks.push([c2, hp.n, hp.ok]); } }
+    const ok = pts.filter(Boolean);
+    g.innerHTML = (ok.length > 1 ? `<polyline class="ntTracePath" points="${ok.map(p => p.join(',')).join(' ')}"/>` : '')
+      + marks.map(([[x, y], n, okh]) => `<g class="ntHop${okh ? '' : ' bad'}" transform="translate(${x + 14} ${y - 14})"><circle r="9"/><text>${n}</text></g>`).join('');
+  }
+  const legendBase = host.querySelector('.ntLegend').innerHTML;
+  /** Légende : vitesses des liens, ou couleurs des VLAN quand le schéma est coloré par VLAN. */
+  function paintLegend() {
+    const el = host.querySelector('.ntLegend'), V = data.vlans || [];
+    el.innerHTML = vlanView ? V.slice(0, 10).map(v => `<span class="ntVlKey" style="--vc:${vlanColor(data, v.id)}"><i></i>${v.id} ${esc(v.name)}</span>`).join('') + `<span class="ntVlKey"><i class="trunk"></i>trunk</span><span class="ntVlKey"><i class="blk"></i>${tl('bloqué (Spanning Tree)')}</span>` : legendBase;
+    host.querySelectorAll('[data-simv]').forEach(b => { if (b.dataset.simv !== 'arrange') b.setAttribute('aria-pressed', String(b.dataset.simv === 'vlan' ? vlanView : hidePassive)); });
+  }
+  /** Boutons d'affichage : couleurs des VLAN, câblage passif caché, disposition automatique. */
+  function simView(k) {
+    if (k === 'vlan') { vlanView = !vlanView; saveSimPref(); render(); return; }
+    if (k === 'passive') { hidePassive = !hidePassive; saveSimPref(); render(); return; }
+    if (k === 'arrange') { const n = autoArrange(data, lan); commit(); fit(); app.status(tl('{0} équipement(s) rangé(s) en couches : cœur, distribution, accès, postes.', n), 'ok'); }
+  }
 
   /* ---------- Vue : zoom, déplacement, tout voir ---------- */
   const rectOf = () => svg.getBoundingClientRect();
@@ -256,15 +401,15 @@ export function createNetWorkspace(app, ui, raw) {
   }
   const fit = () => fitTo(bounds(nodes()));
   const selNode = () => (sel && sel.kind === 'dev' ? nodeById(sel.id) : null);
-  const nav = createNavDock(host, {
-    active: () => on, target: () => svg, tools: () => ['select', 'pan', 'zoom'],
+  const nav = createNavDock(logicEl, {
+    active: () => on && cur === 'logic', target: () => svg, tools: () => ['select', 'pan', 'zoom'],
     zoomBy: (f, x, y) => zoomAt(f, x, y), panBy: (dx, dy) => { view.x -= dx / view.k; view.y -= dy / view.k; applyView(); },
     zoomPct: () => Math.round(view.k * 100), setZoomPct: p => { zoomAt(p / 100 / view.k); },
     fit, fitSel: () => { const n = selNode(); if (!n) return false; fitTo(bounds([n])); return true; }, hasSel: () => !!selNode(),
     zoomRect(r, sr) { const a = toWorld(r.left, r.top), b = toWorld(r.right, r.bottom); void sr; fitTo({ x0: a.x, y0: a.y, x1: b.x, y1: b.y }); return true; },
     mini: { data: () => { const b = bounds(nodes()); if (!b) return null; const r = rectOf(); return { bounds: [b.x0, b.y0, b.x1, b.y1], boxes: nodes().map(n => { const q = posOf(n), s = specOf(n); return [q.x, q.y, s.w, s.h, sel && sel.id === n.id]; }), view: [view.x, view.y, view.x + r.width / view.k, view.y + r.height / view.k] }; }, centerOn: (x, y) => { const r = rectOf(); view.x = x - r.width / 2 / view.k; view.y = y - r.height / 2 / view.k; applyView(); } },
     status: m => app.status(m), title: tl('Plan réseau'),
-    shortcuts: () => [['V', tl('Choisir et déplacer')], ['C', tl('Outil câble')], ['T', tl('Testeur de câble')], ['P', 'Ping'], ['Del', tl('Retirer la sélection')], ['Esc', tl('Annuler le geste en cours')]]
+    shortcuts: () => [['V', tl('Choisir et déplacer')], ['C', tl('Outil câble')], ['T', tl('Testeur de câble')], ['P', 'Ping'], ['R', 'Traceroute'], ['Del', tl('Retirer la sélection')], ['Esc', tl('Annuler le geste en cours')]]
   });
   svg.addEventListener('wheel', e => { if (!on) return; e.preventDefault(); const r = rectOf(); zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - r.left, e.clientY - r.top); }, { passive: false });
 
@@ -288,6 +433,7 @@ export function createNetWorkspace(app, ui, raw) {
     const h = hitOf(e), w = toWorld(e.clientX, e.clientY);
     if (tool === 'tester') { if (h.cable) testCable(h.cable); else if (h.port) testPort(h.port.n, h.port.p); return; }
     if (tool === 'ping') { if (h.dev) pingClick(h.dev); return; }
+    if (tool === 'trace') { if (h.dev) traceClick(h.dev); return; }
     if (h.port) {
       const c = cableAt(h.port.n, h.port.p);
       if (rubber) { finishRubber(h.port); return; }
@@ -313,7 +459,7 @@ export function createNetWorkspace(app, ui, raw) {
     if (drag.pan) { view.x = drag.vx - (e.clientX - drag.sx) / view.k; view.y = drag.vy - (e.clientY - drag.sy) / view.k; applyView(); return; }
     const x = snap(w.x - drag.ox), y = snap(w.y - drag.oy), n = nodeById(drag.id); if (!n) return;
     if (n.ext) { const k = n.id.slice(2); data.ext[k] = { x, y }; } else { const d = findDev(drag.id); d.x = x; d.y = y; }
-    drag.moved = true; lan.refresh(); render();
+    drag.moved = true; renderSoon(); // la position ne change rien au réseau simulé : seulement le dessin, une fois par image
   });
   svg.addEventListener('pointerup', e => {
     if (rubber && rubber.drag) { const h = hitOf(e); if (h.port && (h.port.n !== rubber.n || h.port.p !== rubber.p)) finishRubber(h.port); else if (!h.port) { rubber.drag = false; if (Math.hypot(rubber.x - portPos(nodeById(rubber.n), rubber.p).x, rubber.y - portPos(nodeById(rubber.n), rubber.p).y) > 12) { rubber = null; paintRubber(); } paintHint(); } return; }
@@ -330,6 +476,95 @@ export function createNetWorkspace(app, ui, raw) {
     app.status(cableDef.kind === 'blank' ? tl('Câble posé, fiches à sertir : boutons « Sertir » dans l’inspecteur.') : tl('Câble posé : {0} m, {1}.', c.len, CATS[c.cat].name), 'ok');
   }
   function select(s) { sel = s; render(); renderPane(); if (on && s) app.setTab('nprop'); nav.update(); }
+
+  /* ---------- Vues (contrat) ----------
+   * Une vue est créée par createXView(ctx) et rend { el, show(), hide(), render(why), key(e) → bool, keyup?(e), fit(),
+   * reveal(id) → bool, pane(sel) → html | null (inspecteur), paneEvent(e, sel) → bool, drop?(type, ev | null) }.
+   * ctx : tout ce qu'une vue partage avec le plan réseau (même modèle, même historique, même sélection, même simulation). */
+  const viewHooks = new Set();
+  const ctx = {
+    app, tl, icon, esc, isEn,
+    /** Élément où la vue ajoute sa racine (sous la barre des vues). */
+    host,
+    /** Modèle du projet réseau (le même pour toutes les vues) : le modifier, puis ctx.commit(). */
+    data: () => data,
+    /** Enregistre la modification dans l'historique (Ctrl+Z), recalcule longueurs et réseau, redessine tout. */
+    commit: () => commit(),
+    lan: () => lan,
+    issues: () => { try { return shownIssues(); } catch (e) { console.error(e); return []; } },
+    /** Sélection partagée : { kind: 'dev' | 'cable' | 'room' | 'wall' | 'door' | 'path' | 'rack' | 'floor' | 'building' | …, id } ou null. */
+    selection: () => sel,
+    select: s => select(s),
+    /** Redessine l'inspecteur (après un changement qui ne passe pas par commit). */
+    renderPane: () => renderPane(),
+    /** Fonction appelée après chaque changement du modèle (commit, annuler, ouverture) : fn(why). Rend de quoi l'enlever. */
+    onChange: fn => { viewHooks.add(fn); return () => viewHooks.delete(fn); },
+    createNavDock, status: (m, k) => app.status(m, k), toast,
+    openView: id => openView(id), view: () => cur, isOn: () => on,
+    nameOf: id => nameOf(id), findDev: id => findDev(id),
+    /** Pose un équipement (schéma logique : place libre) ; rend l'équipement (à compléter, puis ctx.commit()). */
+    newDevice: (type, at = {}) => { const d = newDevice(type, new Set(data.devices.map(z => z.name)), { x: at.x ?? 0, y: at.y ?? 0 }); d.id = freeId(type); data.devices.push(d); return d; },
+    addCable: (a, b, o) => addCable(a, b, o),
+    reveal: id => reveal(id),
+    openTester: (segs, names) => openTesterOn(segs, names),
+    srcNote: code => srcNote(code)
+  };
+  function viewsChanged(why = 'change') {
+    for (const f of viewHooks) { try { f(why); } catch (e) { console.error(e); } }
+    const vw = views[cur]; if (on && cur !== 'logic' && vw) { try { vw.render(why); } catch (e) { console.error(e); } }
+  }
+  function paintViewBar() { host.querySelectorAll('.ntViewBar [data-view]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === cur))); }
+  /** Charge (une fois) et montre une vue ; rend une promesse de l'objet de la vue (null pour Logique). */
+  function openView(id) {
+    if (!VIEWS.some(v => v.id === id)) return Promise.resolve(null);
+    if (!on) setMode(true);
+    const show = vw => {
+      if (cur !== id) {
+        const old = views[cur]; if (cur !== 'logic' && old) old.hide();
+        cur = id; logicEl.hidden = id !== 'logic';
+        if (id === 'logic') { render(); nav.update(); } else if (vw) { vw.show(); vw.render('show'); }
+        paintViewBar(); renderPane();
+        app.status(VIEWS.find(v => v.id === id).name());
+      }
+      return vw;
+    };
+    if (id === 'logic') return Promise.resolve(show(null));
+    if (views[id]) return Promise.resolve(show(views[id]));
+    if (!viewLoads[id]) viewLoads[id] = VIEW_MODS[id]().then(make => { views[id] = make(ctx); views[id].hide(); return views[id]; }).catch(e => { console.error(e); delete viewLoads[id]; app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); throw e; });
+    return viewLoads[id].then(show);
+  }
+  /** Vue qui montre un objet du modèle (panneau Problèmes) : plans pour les pièces, murs, cheminements ; baies pour les baies. */
+  function whereIs(id) {
+    if (!id) return 'logic';
+    for (const b of (data.site && data.site.buildings) || []) {
+      if (b.id === id) return 'plan';
+      for (const f of b.floors || []) {
+        if (f.id === id) return 'plan';
+        for (const k of ['rooms', 'walls', 'doors']) if ((f[k] || []).some(x => x.id === id)) return 'plan';
+      }
+    }
+    if ((data.paths || []).some(p => p.id === id)) return 'plan';
+    if ((data.racks || []).some(r => r.id === id)) return 'racks';
+    const d = findDev(id);
+    if (d && specOf(d).role === 'mech') return 'racks';
+    if (d && cur !== 'logic' && views[cur] && views[cur].reveal) return cur;
+    return 'logic';
+  }
+  // Palette de commandes : outils de la simulation (traceroute, disposition, base des VLAN, affichage).
+  if (app.commands) {
+    const isNet = () => spacesOf(app.kind()).includes('net');
+    app.commands.register({ id: 'net.sim.trace', cat: tl('Réseau'), icon: 'traceroute', label: tl('Réseau : traceroute'), keys: 'R', when: isNet, run: () => openView('logic').then(() => setTool('trace')) });
+    app.commands.register({ id: 'net.sim.arrange', cat: tl('Réseau'), icon: 'treeLayout', label: tl('Réseau : disposition automatique du schéma'), when: isNet, run: () => openView('logic').then(() => simView('arrange')) });
+    app.commands.register({ id: 'net.sim.vlans', cat: tl('Réseau'), icon: 'vlanTag', label: tl('Réseau : base des VLAN'), when: isNet, run: () => openView('logic').then(() => { select(null); app.setTab('nprop'); renderPane(); const v = pane.querySelector('#ntVlanDb'); if (v) v.scrollIntoView({ block: 'start' }); }) });
+    app.commands.register({ id: 'net.sim.vlanview', cat: tl('Réseau'), icon: 'vlanTag', label: tl('Réseau : couleurs des VLAN sur le schéma'), when: isNet, run: () => openView('logic').then(() => simView('vlan')) });
+    app.commands.register({ id: 'net.sim.passive', cat: tl('Réseau'), icon: 'patchPanel', label: tl('Réseau : cacher ou montrer les prises et panneaux'), when: isNet, run: () => openView('logic').then(() => simView('passive')) });
+  }
+  /** Testeur de certification (certui.js, chargé à la demande). */
+  function openCertLazy(o) { return import('./certui.js').then(m => m.openCert(ctx, o)).catch(err => { console.error(err); app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); }); }
+  if (app.commands) app.commands.register({ id: 'net.cert.all', cat: tl('Réseau'), icon: 'certifier', label: tl('Réseau : certifier tous les liens'), when: () => spacesOf(app.kind()).includes('net'), run: () => openCertLazy({ batch: true }) });
+  if (app.commands) app.commands.register({ id: 'net.exam', cat: tl('Réseau'), icon: 'lock', label: tl('Réseau : mode examen (enseignant)'), when: () => spacesOf(app.kind()).includes('net'), run: () => openView('logic').then(() => setExam(!isExam(data))) });
+  // Palette de commandes : changer de vue.
+  if (app.commands) for (const [i, v] of VIEWS.entries()) app.commands.register({ id: 'net.view.' + v.id, cat: tl('Réseau'), icon: v.icon, label: tl('Réseau : vue {0}', v.name()), keys: 'Alt+' + (i + 1), when: () => spacesOf(app.kind()).includes('net'), run: () => openView(v.id) });
 
   /* ---------- Bibliothèque ---------- */
   const lib = document.createElement('aside');
@@ -365,6 +600,8 @@ export function createNetWorkspace(app, ui, raw) {
     const up = ev => {
       removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true);
       if (ghost) { ghost.remove(); ghost = null; }
+      const vw = views[cur];
+      if (cur !== 'logic' && vw && vw.drop) { vw.drop(t, moved ? ev : null); return; }
       const r = rectOf();
       if (!moved) { place(t, view.x + r.width / 2 / view.k - DEVICES[t].w / 2, view.y + r.height / 2 / view.k - DEVICES[t].h / 2); return; }
       if (ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom) { const w = toWorld(ev.clientX, ev.clientY); place(t, w.x - DEVICES[t].w / 2, w.y - DEVICES[t].h / 2); }
@@ -403,15 +640,16 @@ export function createNetWorkspace(app, ui, raw) {
   function openTesterOn(segments, names) {
     if (testerUi) testerUi.close();
     ui.tester = true;
-    testerUi = openTester({ host, segments, names, mode: 'qualification', onClose: () => { testerUi = null; ui.tester = false; } });
-    app.log(tl('Testeur · {0} ↔ {1} : {2}', names.a, names.b, testerSummary(segments)), 'info');
+    const exam = isExam(data); // mode examen : voyants et carte de câblage, sans verdict
+    testerUi = openTester({ host, segments, names, mode: 'qualification', exam, onClose: () => { testerUi = null; ui.tester = false; } });
+    app.log(exam ? tl('Testeur · {0} ↔ {1}', names.a, names.b) : tl('Testeur · {0} ↔ {1} : {2}', names.a, names.b, testerSummary(segments)), 'info');
   }
   function crimp(id, side) {
     const c = data.cables.find(x => x.id === id); if (!c) return;
     if (crimpUi) crimpUi.close();
     ui.crimp = true;
     crimpUi = openCrimp({
-      host, end: c.wire[side], side, title: tl('Fiche {0} du câble {1} ↔ {2}', side.toUpperCase(), nameOf(c.a[0]), nameOf(c.b[0])),
+      host, end: c.wire[side], side, showStandard: !isExam(data), title: tl('Fiche {0} du câble {1} ↔ {2}', side.toUpperCase(), nameOf(c.a[0]), nameOf(c.b[0])),
       onDone: end => { crimpUi = null; ui.crimp = false; c.wire[side] = { order: end.order.slice(), crimped: !!end.crimped, shorts: (end.shorts || []).slice() }; commit(); },
       onCancel: () => { crimpUi = null; ui.crimp = false; }
     });
@@ -419,11 +657,32 @@ export function createNetWorkspace(app, ui, raw) {
   function pingClick(id) {
     const n = nodeById(id); if (!n) return;
     if (!pingFrom) {
-      if (specOf(n).role !== 'host' && n.type !== 'router') { app.status(tl('Un ping part d’un appareil qui a une adresse IP (PC, imprimante, carte…).'), 'warn'); return; }
+      if (!canSend(n)) { app.status(tl('Un ping part d’un appareil qui a une adresse IP (PC, imprimante, carte…).'), 'warn'); return; }
       pingFrom = id; render(); paintHint(); return;
     }
     const from = pingFrom; pingFrom = null; paintHint();
     const f = lan.ipOf(id); doPing(from, f && f.ip ? f.ip : nameOf(id));
+  }
+  /** Appareil qui a une adresse IP et peut envoyer un ping ou un traceroute (poste, box, routeur, switch de niveau 3). */
+  const canSend = n => specOf(n).role === 'host' || n.type === 'router' || specOf(n).role === 'l3' || n.type === 'l3switch';
+  function traceClick(id) {
+    const n = nodeById(id); if (!n) return;
+    if (!traceFrom) {
+      if (!canSend(n)) { app.status(tl('Un traceroute part d’un appareil qui a une adresse IP.'), 'warn'); return; }
+      traceFrom = id; render(); paintHint(); return;
+    }
+    const from = traceFrom; traceFrom = null; paintHint();
+    const f = lan.ipOf(id); doTrace(from, f && f.ip ? f.ip : nameOf(id));
+  }
+  /** Traceroute : sauts dessinés sur le schéma, lignes dans le journal (dock Sortie), résultat dans l'inspecteur. */
+  function doTrace(from, target) {
+    const r = lan.trace(from, target); ui.ping = true;
+    const lines = traceLines(r, target, nameOf);
+    for (const l of lines) app.log(l, r.ok ? 'info' : 'err');
+    if (r.ok) toast(tl('Traceroute {0} → {1} : {2} saut(s)', nameOf(from), r.ip, r.hops.length), 'ok');
+    else toast(tl('Traceroute {0} → {1} : échec, {2}', nameOf(from), r.ip || target, whyText(r.why)), 'err', 6000);
+    traceOut = { from, target, r, lines }; render(); renderPane();
+    return r;
   }
   function doPing(from, target) {
     const r = lan.ping(from, target); ui.ping = true;
@@ -510,6 +769,8 @@ export function createNetWorkspace(app, ui, raw) {
   const pane = document.createElement('div'); pane.className = 'pane ntPane'; pane.id = 'pane-nprop'; pane.setAttribute('role', 'tabpanel'); pane.hidden = true;
   $('#modPane').before(pane);
   $('#tab-nprop').onclick = () => { app.setTab('nprop'); renderPane(); };
+  // L'inspecteur d'une vue (pièce, mur, cheminement, baie…) traite ses propres champs avant ceux des équipements.
+  for (const t of ['change', 'click', 'input', 'submit']) pane.addEventListener(t, e => { const vw = views[cur]; if (cur !== 'logic' && vw && vw.paneEvent && vw.paneEvent(e, sel) === true) { e.stopImmediatePropagation(); if (t === 'submit') e.preventDefault(); } }, true);
   let paneT = 0;
   const renderPaneSoon = () => { clearTimeout(paneT); paneT = setTimeout(renderPane, 120); };
   const field = (label, html, tip = '') => `<label class="ntF"${tip ? ` data-tip="${esc(tip)}"` : ''}><span>${label}</span>${html}</label>`;
@@ -523,8 +784,30 @@ export function createNetWorkspace(app, ui, raw) {
       return `<tr><td><i class="led ${ledCls(l)}"></i>${esc(p.label)}</td><td>${esc(peer)}</td><td>${st}</td></tr>`;
     }).join('');
   }
+  /** Fautes du plan ; en examen, sans J1201 ni J1202 (câblage des fiches : c'est à l'élève de le trouver au testeur). */
+  // Fautes du plan, gardées tant que ni le réseau simulé (version) ni le modèle enregistré (instantané) n'ont changé :
+  // l'inspecteur, le panneau Problèmes et les vues les demandent plusieurs fois par modification.
+  let issMemo = null;
+  function shownIssues() {
+    if (issMemo && issMemo.ver === lan.version && issMemo.snap === snapshot && issMemo.exam === isExam(data)) return issMemo.iss;
+    const all = netIssues(lan, data), iss = isExam(data) ? all.filter(i => i.code !== 'J1201' && i.code !== 'J1202') : all;
+    issMemo = { ver: lan.version, snap: snapshot, exam: isExam(data), iss };
+    return iss;
+  }
+  /** Mode examen : pastille dans la barre des vues (l'enlever : hors séance, après confirmation). */
+  function paintExam() { const b = host.querySelector('[data-exam]'), on = isExam(data); b.hidden = !on; b.dataset.tip = examLocked(app.sessions) ? tl('Mode examen : verrouillé pendant la séance') : tl('Mode examen : sertissage, testeur et inspecteur ne donnent pas la réponse. Cliquer pour le retirer.'); }
+  async function setExam(on) {
+    if (isExam(data) === on) return;
+    if (examLocked(app.sessions)) { app.status(tl('Mode examen : verrouillé pendant la séance'), 'warn'); return; }
+    if (!on && !(await confirmDlg(tl('Retirer le mode examen ?'), tl('Le sertissage, le testeur et l’inspecteur montreront de nouveau les verdicts.'), tl('Retirer')))) return;
+    if (on) data.exam = true; else delete data.exam;
+    commit(); app.status(on ? tl('Mode examen : les verdicts sont cachés') : tl('Mode examen retiré'), 'ok');
+  }
   function renderPane() {
+    paintExam();
     if (!on && pane.hidden) return;
+    const vw = views[cur];
+    if (cur !== 'logic' && vw && vw.pane) { const vh = vw.pane(sel); if (vh != null) { pane.innerHTML = vh; return; } }
     const st = lan.state(); let h = '';
     const n = selNode(), c = sel && sel.kind === 'cable' ? data.cables.find(x => x.id === sel.id) : null;
     if (n) {
@@ -534,7 +817,7 @@ export function createNetWorkspace(app, ui, raw) {
       if (!n.ext) h += `<section class="ntSec">${field(tl('Nom'), inp('name', n.name, 'maxlength="24"'))}</section>`;
       if (pw && !pw.on) h += `<p class="ntWarn">${icon('alert')}${tl('Éteint : {0}', whyText(pw.why))}</p>`;
       else if (pw && pw.w) h += `<p class="ntOk">${icon('zap')}${tl('Alimenté par PoE : classe {0}, {1} W réservés sur le switch.', pw.cls, pw.w)}</p>`;
-      const rows = portRows(n);
+      const rows = MANAGED.has(n.type) ? '' : portRows(n); // switch administrable : tableau des ports plus bas (simpane.js)
       if (rows) h += `<section class="ntSec"><h4>${tl('Ports')}</h4><table class="ntTable"><tr><th>${tl('Port')}</th><th>${tl('Relié à')}</th><th>${tl('État')}</th></tr>${rows}</table></section>`;
       if (s.role === 'host') {
         h += `<section class="ntSec"><h4>${tl('Adresse IP')}</h4>`;
@@ -549,9 +832,9 @@ export function createNetWorkspace(app, ui, raw) {
         if (n.type === 'laptop') h += `<section class="ntSec"><h4>Wi-Fi</h4>${field(tl('Réseau (SSID)'), inp('wifi.ssid', P.wifi.ssid, 'maxlength="32"'))}${field(tl('Mot de passe'), inp('wifi.pass', P.wifi.pass, 'maxlength="63"'))}${st.wifiAssoc.get(n.id) ? `<p class="ntOk">${tl('Connecté à {0}', nameOf(st.wifiAssoc.get(n.id)))}</p>` : st.wifiWhy.get(n.id) ? `<p class="ntWarn">${esc(whyText('wifi:' + st.wifiWhy.get(n.id)))}</p>` : ''}</section>`;
         if ('poeClass' in P) h += `<section class="ntSec"><h4>PoE</h4>${field(tl('Classe PoE'), `<select class="sel" data-k="poeClass">${[0, 1, 2, 3, 4, 5, 6, 7, 8].map(k => `<option value="${k}"${k === P.poeClass ? ' selected' : ''}>${k}</option>`).join('')}</select>`)}${chk('adapter', P.power === 'adapter', tl('Alimenté par son propre bloc secteur'))}</section>`;
         // Ping et navigateur.
-        h += `<section class="ntSec"><h4>Ping</h4><form class="ntPing" data-form="ping"><input class="inp" name="t" placeholder="${tl('adresse ou nom (ex. 192.168.1.1, PC2)')}" spellcheck="false" value="${esc(pingOut && pingOut.from === n.id ? pingOut.target : '')}"><button class="btn small primary" data-nt="ping">${icon('ping')}<span>Ping</span></button></form>`;
+        h += `<section class="ntSec"><h4>Ping</h4><form class="ntPing" data-form="ping"><input class="inp" name="t" placeholder="${tl('adresse ou nom (ex. 192.168.1.1, PC2)')}" spellcheck="false" value="${esc(pingOut && pingOut.from === n.id ? pingOut.target : '')}"><button class="btn small primary" data-nt="ping">${icon('ping')}<span>Ping</span></button><button type="button" class="btn small" data-nt="trace">${icon('traceroute')}<span>Traceroute</span></button></form>`;
         if (pingOut && pingOut.from === n.id) { const r = pingOut.r; h += `<pre class="ntPingOut ${r.ok ? 'ok' : 'bad'}">${esc(pingText(r, pingOut.target))}</pre>`; }
-        h += '</section>';
+        h += traceBlock(n) + '</section>';
         if (n.type === 'pc' || n.type === 'laptop') h += `<section class="ntSec"><button type="button" class="btn small" data-nt="browser">${icon('globe')}<span>${tl('Ouvrir le navigateur')}</span></button></section>`;
       }
       if (n.type === 'router') {
@@ -564,7 +847,15 @@ export function createNetWorkspace(app, ui, raw) {
         const wf = st.ifaces.find(x => x.node === n.id && x.role === 'wan'); if (wf) h += `<p class="ntIpNow">WAN : <b>${esc(wf.ip)}</b>/${wf.prefix}</p>`;
         h += `</section><section class="ntSec"><h4>Wi-Fi</h4>${chk('wifi.on', P.wifi.on, tl('Wi-Fi de la box actif'))}${P.wifi.on ? field(tl('Nom (SSID)'), inp('wifi.ssid', P.wifi.ssid, 'maxlength="32"')) + field(tl('Mot de passe'), inp('wifi.pass', P.wifi.pass, 'maxlength="63"')) : ''}</section>`;
       }
-      if (n.type === 'ap') h += `<section class="ntSec"><h4>Wi-Fi</h4>${field(tl('Nom (SSID)'), inp('ssid', P.ssid, 'maxlength="32"'))}${field(tl('Mot de passe'), inp('pass', P.pass, 'maxlength="63"'))}${chk('adapter', P.power === 'adapter', tl('Alimenté par son propre bloc secteur'))}<p class="mut">${tl('{0} appareil(s) connecté(s)', [...st.wifiAssoc.values()].filter(x => x === n.id).length)}</p></section>`;
+      if (s.role === 'ap') h += `<section class="ntSec"><h4>Wi-Fi</h4>${field(tl('Nom (SSID)'), inp('ssid', P.ssid, 'maxlength="32"'))}${field(tl('Mot de passe'), inp('pass', P.pass, 'maxlength="63"'))}${chk('adapter', P.power === 'adapter', tl('Alimenté par son propre bloc secteur'))}<p class="mut">${tl('{0} appareil(s) connecté(s)', [...st.wifiAssoc.values()].filter(x => x === n.id).length)}</p></section>`;
+      if (s.role !== 'host' && canSend(n) && n.type !== 'router') {
+        // Routeur, switch de niveau 3 : ping et traceroute depuis l'équipement (il choisit sa sortie dans sa table).
+        h += `<section class="ntSec"><h4>${tl('Ping et traceroute')}</h4><form class="ntPing" data-form="ping"><input class="inp" name="t" placeholder="${tl('adresse ou nom (ex. 192.168.1.1, PC2)')}" spellcheck="false" value="${esc(traceOut && traceOut.from === n.id ? traceOut.target : pingOut && pingOut.from === n.id ? pingOut.target : '')}"><button class="btn small primary" data-nt="ping">${icon('ping')}<span>Ping</span></button><button type="button" class="btn small" data-nt="trace">${icon('traceroute')}<span>Traceroute</span></button></form>`;
+        if (pingOut && pingOut.from === n.id) { const r = pingOut.r; h += `<pre class="ntPingOut ${r.ok ? 'ok' : 'bad'}">${esc(pingText(r, pingOut.target))}</pre>`; }
+        h += traceBlock(n) + '</section>';
+      }
+      h += simPane(ctx, n); // VLAN, Spanning Tree, agrégats, interfaces, routes, DHCP, ACL, NAT, DNS
+      if ('budget' in P && s.role === 'switch' && n.type !== 'poeswitch') { const pi = st.poe.get(n.id) || { used: 0, budget: P.budget }; h += `<section class="ntSec"><h4>${tl('Budget PoE')}</h4><div class="ntGauge"><i style="width:${Math.min(100, (pi.used / (pi.budget || 1)) * 100)}%"></i></div><p>${tl('{0} W réservés sur {1} W', Math.round(pi.used * 100) / 100, pi.budget)}</p>${field(tl('Budget total (W)'), inp('budget', P.budget, 'type="number" min="0" max="5000"'))}</section>`; }
       if (n.type === 'poeswitch') { const pi = st.poe.get(n.id) || { used: 0, budget: P.budget }; h += `<section class="ntSec"><h4>${tl('Budget PoE')}</h4><div class="ntGauge"><i style="width:${Math.min(100, (pi.used / (pi.budget || 1)) * 100)}%"></i></div><p>${tl('{0} W réservés sur {1} W', Math.round(pi.used * 100) / 100, pi.budget)}</p>${field(tl('Budget total (W)'), inp('budget', P.budget, 'type="number" min="0" max="2000"'))}${field(tl('Norme des ports'), `<select class="sel" data-k="pseType">${[['af', '802.3af (15,4 W)'], ['at', '802.3at (30 W)'], ['bt3', '802.3bt type 3 (60 W)'], ['bt4', '802.3bt type 4 (90 W)']].map(([k, l]) => `<option value="${k}"${P.pseType === k ? ' selected' : ''}>${l}</option>`).join('')}</select>`)}</section>`; }
       if (s.role === 'switch') {
         const mt = lan.macTable(n.id);
@@ -584,34 +875,42 @@ export function createNetWorkspace(app, ui, raw) {
       }
     } else if (c) {
       const r = analyzeCable(c.wire), A = nodeById(c.a[0]), B = nodeById(c.b[0]);
-      const v = e => { const x = crimpVerdict(e.order, false); return e.crimped ? x.head : tl('non sertie'); };
+      const exam = isExam(data); // mode examen : ni conformité des fiches, ni résultat du test, ni défaut caché
+      const v = e => (!e.crimped ? tl('non sertie') : exam ? tl('sertie') : crimpVerdict(e.order, false).head);
       h += `<div class="ntHead">${icon('cable')}<div><b>${tl('Câble {0} ↔ {1}', esc(A ? nameOf(A.id) : '?'), esc(B ? nameOf(B.id) : '?'))}</b><small>${esc(CATS[c.cat].name)} · ${c.len} m</small></div><button type="button" class="tb" data-a="delcable" data-tip="${tl('Retirer ce câble')}" aria-label="${tl('Retirer')}">${icon('trash')}</button></div>`;
-      h += `<div class="ntCableArt">${cableSvg(c.wire)}</div>`;
-      h += `<p class="${r.faults.length || r.kind === 'none' ? 'ntWarn' : 'ntOk'}">${esc(testerSummary([c.wire]))}</p>`;
+      h += `<div class="ntCableArt">${cableSvg(c.wire, exam)}</div>`;
+      h += exam ? `<p class="mut">${icon('lock')} ${tl('Mode examen : passez le câble au testeur et concluez vous-même.')}</p>` : `<p class="${r.faults.length || r.kind === 'none' ? 'ntWarn' : 'ntOk'}">${esc(testerSummary([c.wire]))}</p>`;
       h += `<section class="ntSec"><div class="ntEnds"><div><b>${tl('Fiche A')}</b> <small>${esc(A ? nameOf(A.id) : '')}</small><span>${esc(v(c.wire.a))}</span><button type="button" class="btn small" data-nt="crimpA">${icon('rj45')}<span>${tl('Sertir')}</span></button></div>
         <div><b>${tl('Fiche B')}</b> <small>${esc(B ? nameOf(B.id) : '')}</small><span>${esc(v(c.wire.b))}</span><button type="button" class="btn small" data-nt="crimpB">${icon('rj45')}<span>${tl('Sertir')}</span></button></div></div>
         <button type="button" class="btn small primary" data-nt="test">${icon('cableTester')}<span>${tl('Passer au testeur')}</span></button></section>`;
+      if (c.media === 'fibre') h += `<section class="ntSec"><button type="button" class="btn small" data-nt="fibre">${icon('fibre')}<span>${tl('Bilan optique')}</span></button></section>`;
+      else h += `<section class="ntSec"><button type="button" class="btn small" data-nt="cert" data-tip="${tl('Certification simulée : carte de câblage, longueur, affaiblissement, diaphonie, pertes en retour')}">${icon('certifier')}<span>${tl('Certifier ce lien')}</span></button></section>`;
       h += `<section class="ntSec">${field(tl('Catégorie'), `<select class="sel" data-ck="cat">${CAT_IDS.map(k => `<option value="${k}"${k === c.cat ? ' selected' : ''}>${CATS[k].name} (${CATS[k].mhz} MHz)</option>`).join('')}</select>`)}${field(tl('Longueur (m)'), `<input class="inp" data-ck="len" type="number" min="0.1" max="500" step="0.5" value="${c.len}">`)}</section>`;
-      h += `<section class="ntSec"><h4>${tl('Remplacer')}</h4><div class="row"><button type="button" class="btn small subtle" data-a="renew" data-v="straight">${tl('Câble droit neuf')}</button><button type="button" class="btn small subtle" data-a="renew" data-v="crossover">${tl('Câble croisé neuf')}</button><button type="button" class="btn small subtle" data-a="renew" data-v="blank">${tl('À sertir')}</button></div>
+      if (exam) h += `<section class="ntSec"><h4>${tl('Remplacer')}</h4><div class="row"><button type="button" class="btn small subtle" data-a="renew" data-v="blank">${tl('À sertir')}</button></div></section>`;
+      else h += `<section class="ntSec"><h4>${tl('Remplacer')}</h4><div class="row"><button type="button" class="btn small subtle" data-a="renew" data-v="straight">${tl('Câble droit neuf')}</button><button type="button" class="btn small subtle" data-a="renew" data-v="crossover">${tl('Câble croisé neuf')}</button><button type="button" class="btn small subtle" data-a="renew" data-v="blank">${tl('À sertir')}</button></div>
         <details class="ntFault"><summary>${tl('Défaut à cacher (enseignant)')}</summary><p class="mut">${tl('Coupe un conducteur à l’intérieur du câble : le testeur le montrera ouvert.')}</p><div class="row">${['wo', 'o', 'wg', 'bl', 'wbl', 'g', 'wbr', 'br'].map(w => `<label class="ntChk"><input type="checkbox" data-cut="${w}"${c.wire.cut.includes(w) ? ' checked' : ''}><span>${esc(tl({ wo: 'blanc-orange', o: 'orange', wg: 'blanc-vert', bl: 'bleu', wbl: 'blanc-bleu', g: 'vert', wbr: 'blanc-marron', br: 'marron' }[w]))}</span></label>`).join('')}</div></details></section>`;
     } else {
-      const iss = netIssues(lan, data);
+      const iss = shownIssues();
       h += `<div class="ntHead">${icon('network')}<div><b>${tl('Plan réseau')}</b><small>${tl('{0} équipement(s), {1} câble(s)', data.devices.length, data.cables.length)}</small></div></div>`;
       h += `<p class="ntDoc">${tl('Cliquez un équipement ou un câble pour voir ses réglages. Les fautes du plan sont dans le panneau Problèmes (Ctrl+Maj+M).')}</p>`;
       h += iss.length ? `<section class="ntSec"><h4>${tl('À corriger')}</h4><ul class="ntIss">${iss.slice(0, 12).map((i, k) => `<li class="${i.kind}" data-iss="${k}"><code>${i.code}</code> ${esc(i.text)}</li>`).join('')}</ul></section>` : `<p class="ntOk">${icon('check')}${tl('Aucune faute dans le plan réseau.')}</p>`;
+      h += vlanDbPane(ctx);
       const ev = lan.events().slice(-8).reverse();
       if (ev.length) h += `<section class="ntSec"><h4>${tl('Derniers échanges')}</h4><ul class="ntEv">${ev.map(e => `<li>${esc(eventText(e))}</li>`).join('')}</ul></section>`;
     }
     pane.innerHTML = h;
   }
+  /** Résultat du dernier traceroute parti de n (inspecteur). */
+  const traceBlock = n => (traceOut && traceOut.from === n.id ? `<pre class="ntTrace${traceOut.r.ok ? '' : ' bad'}">${esc(traceOut.lines.join('\n'))}</pre>` : '');
   const pingText = (r, target) => r.ok
     ? [1, 2, 3, 4].map(i => tl('Réponse de {0} : temps={1} ms', r.ip, Math.max(1, (r.ms || 1) + (i % 2)))).join('\n') + '\n' + tl('4 envoyés, 4 reçus, 0 % de perte')
     : tl('Ping {0} : échec.', r.ip || target) + '\n' + whyText(r.why);
-  const eventText = e => (e.t === 'ping' ? tl('Ping {0} → {1} : {2}', nameOf(e.from), e.ip, e.ok ? 'OK' : whyText(e.why)) : e.t === 'dhcp' ? tl('DHCP : {0} reçoit {1}', nameOf(e.to), e.ip) : e.t === 'mqtt' ? `MQTT ${e.kind} ${e.client || ''} ${e.topic || ''} ${e.text || ''}` : e.t === 'tcp' ? tl('TCP {0} → {1}:{2} {3}', nameOf(e.from), nameOf(e.to), e.port, e.ok ? 'OK' : tl('refusé')) : e.t === 'modbus' ? tl('Modbus : fonction {0}, adresse {1}', e.fn, e.addr) : e.t === 'dns' ? `DNS ${e.name || ''}` : e.t);
+  const eventText = e => (e.t === 'trace' ? tl('Traceroute {0} → {1} : {2}', nameOf(e.from), e.ip, e.ok ? 'OK' : whyText(e.why)) : e.t === 'ping' ? tl('Ping {0} → {1} : {2}', nameOf(e.from), e.ip, e.ok ? 'OK' : whyText(e.why)) : e.t === 'dhcp' ? tl('DHCP : {0} reçoit {1}', nameOf(e.to), e.ip) : e.t === 'mqtt' ? `MQTT ${e.kind} ${e.client || ''} ${e.topic || ''} ${e.text || ''}` : e.t === 'tcp' ? tl('TCP {0} → {1}:{2} {3}', nameOf(e.from), nameOf(e.to), e.port, e.ok ? 'OK' : tl('refusé')) : e.t === 'modbus' ? tl('Modbus : fonction {0}, adresse {1}', e.fn, e.addr) : e.t === 'dns' ? `DNS ${e.name || ''}` : e.t);
   /* Réglages : chaque champ écrit dans les propriétés de l'équipement choisi. */
   const setPath = (o, path, v) => { const ks = path.split('.'); let x = o; for (const k of ks.slice(0, -1)) x = x[k] || (x[k] = {}); x[ks[ks.length - 1]] = v; };
   pane.addEventListener('change', e => {
     const t = e.target, n = sel && sel.kind === 'dev' ? findDev(sel.id) : null;
+    if (simPaneEvent(ctx, e, n)) return;
     if (t.dataset.ck && sel && sel.kind === 'cable') {
       const c = data.cables.find(x => x.id === sel.id);
       if (t.dataset.ck === 'cat' && CATS[t.value]) c.cat = t.value;
@@ -637,13 +936,17 @@ export function createNetWorkspace(app, ui, raw) {
     setPath(n.p, k, v); commit();
   });
   pane.addEventListener('click', async e => {
+    if (simPaneEvent(ctx, e, sel && sel.kind === 'dev' ? findDev(sel.id) : null)) return;
     const b = e.target.closest('[data-nt],[data-a],[data-ipmode],[data-wanmode],[data-reg],[data-iss]'); if (!b) return;
     const n = sel && sel.kind === 'dev' ? findDev(sel.id) : null;
     if (b.dataset.ipmode && n) { n.p.ip.mode = b.dataset.ipmode; if (n.p.ip.mode === 'static' && !n.p.ip.ip) { const f = lan.ipOf(n.id); if (f && f.ip && f.src === 'dhcp') Object.assign(n.p.ip, { ip: f.ip, prefix: f.prefix, gw: f.gw }); } commit(); return; }
     if (b.dataset.wanmode && n) { n.p.wan.mode = b.dataset.wanmode; commit(); return; }
     if (b.dataset.reg && b.classList.contains('ntBit')) { const [tab, a] = b.dataset.reg.split(':'), d = findDev(sel.id); d.p.regs[tab][+a] = d.p.regs[tab][+a] ? 0 : 1; commit(); return; }
-    if (b.dataset.iss != null) { const i = netIssues(lan, data)[+b.dataset.iss]; if (i && i.id) reveal(i.id); return; }
+    if (b.dataset.iss != null) { const i = shownIssues()[+b.dataset.iss]; if (i && i.id) reveal(i.id); return; }
     const a = b.dataset.nt || b.dataset.a;
+    if (a === 'trace') { const t = (b.closest('form') || pane).querySelector('input[name="t"]'); const v = t && t.value.trim(); if (v) doTrace(sel.id, v); return; }
+    if (a === 'cert') { openCertLazy({ cables: [sel.id] }); return; }
+    if (a === 'fibre') { import('./fibreui.js').then(m => m.openBudget(ctx, sel.id)).catch(err => { console.error(err); app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); }); return; }
     if (a === 'crimpA') crimp(sel.id, 'a'); else if (a === 'crimpB') crimp(sel.id, 'b'); else if (a === 'test') testCable(sel.id);
     else if (a === 'browser') { const gw = lan.ipOf(sel.id); openBrowser(sel.id, gw && gw.gw ? `http://${gw.gw}/` : ''); }
     else if (a === 'del') removeSel();
@@ -682,6 +985,7 @@ export function createNetWorkspace(app, ui, raw) {
       app.setTab('nprop'); lan.refresh(); render(); renderPane();
       if (!fitted) { fitted = true; requestAnimationFrame(() => { fit(); render(); }); }
       setTool(tool);
+      if (cur !== 'logic' && views[cur]) { views[cur].show(); views[cur].render('show'); }
     } else {
       app.history(null);
       if (countsBefore) $('#counts').textContent = countsBefore;
@@ -700,17 +1004,19 @@ export function createNetWorkspace(app, ui, raw) {
     const a = document.activeElement;
     if (a && (/INPUT|SELECT|TEXTAREA/.test(a.tagName) || a.isContentEditable)) return;
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (e.altKey && !mod && /^Digit[1-9]$/.test(e.code)) { const v = VIEWS[+e.code.slice(5) - 1]; if (v) { openView(v.id); e.preventDefault(); e.stopImmediatePropagation(); return; } }
+    if (cur !== 'logic') { const vw = views[cur]; if (vw && vw.key && vw.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; } if (!mod) e.stopImmediatePropagation(); return; }
     if (mod) return; // enregistrer, ouvrir, annuler, bibliothèque : l'application
     if (nav.key(e)) { e.preventDefault(); e.stopImmediatePropagation(); return; }
     let done = true;
-    if (k === 'escape') { if (rubber) { rubber = null; paintRubber(); } else if (pingFrom) { pingFrom = null; render(); } else if (tool !== 'select') setTool('select'); else select(null); paintHint(); }
+    if (k === 'escape') { if (rubber) { rubber = null; paintRubber(); } else if (pingFrom || traceFrom) { pingFrom = null; traceFrom = null; render(); } else if (traceOut && tool === 'select') { traceOut = null; render(); } else if (tool !== 'select') setTool('select'); else select(null); paintHint(); }
     else if (k === 'delete' || k === 'backspace') removeSel();
-    else if (k === 'v') setTool('select'); else if (k === 'c') setTool('cable'); else if (k === 't') setTool('tester'); else if (k === 'p') setTool('ping');
+    else if (k === 'v') setTool('select'); else if (k === 'c') setTool('cable'); else if (k === 't') setTool('tester'); else if (k === 'p') setTool('ping'); else if (k === 'r') setTool('trace');
     else done = false;
     if (done) e.preventDefault();
     e.stopImmediatePropagation(); // pas de raccourcis de la scène 3D ici
   }, true);
-  addEventListener('keyup', e => nav.key(e), true);
+  addEventListener('keyup', e => { if (!on) return; if (cur === 'logic') nav.key(e); else { const vw = views[cur]; if (vw && vw.keyup) vw.keyup(e); } }, true);
 
   /* ---------- Montage changé (projet Objets connectés) ---------- */
   if (app.onChange) app.onChange(() => { lan.refresh(); if (on) { render(); renderPaneSoon(); } });
@@ -726,6 +1032,9 @@ export function createNetWorkspace(app, ui, raw) {
   function reveal(id) {
     if (!on) setMode(true);
     if (!id) return;
+    const where = whereIs(id);
+    if (where !== 'logic') { openView(where).then(vw => { if (vw && vw.reveal) vw.reveal(id); }); return; }
+    if (cur !== 'logic') openView('logic');
     if (data.cables.some(c => c.id === id)) select({ kind: 'cable', id });
     else if (nodeById(id)) { select({ kind: 'dev', id }); fitTo(bounds([nodeById(id)])); }
   }
@@ -734,7 +1043,7 @@ export function createNetWorkspace(app, ui, raw) {
   return {
     isOn: () => on, setMode, lan: () => lan, data: () => data, reveal,
     load(d) {
-      data = cleanNet(d); sel = null; pingOut = null; fitted = false; H.undo = []; H.redo = []; snapshot = JSON.stringify(data);
+      data = cleanNet(d); sel = null; pingOut = null; fitted = false; H.undo = []; H.redo = []; snapshot = snapData();
       lan.reset(); lan.refresh();
       for (const x of [crimpUi, testerUi]) if (x) x.close();
       if (browser) { browser.el.remove(); browser = null; }
@@ -742,7 +1051,7 @@ export function createNetWorkspace(app, ui, raw) {
       if (!d) { if (on && app.comps().length) setMode(false); render(); renderPane(); return; }
       setMode(data.view === 'net' || (!spacesOf(app.kind()).includes('elec') && spacesOf(app.kind()).includes('net')));
       if (on) { fitted = true; requestAnimationFrame(() => { fit(); render(); }); }
-      render(); renderPane(); counts();
+      render(); renderPane(); counts(); viewsChanged('load');
     },
     save() {
       if (!data.devices.length && !data.cables.length && !on) return undefined;
@@ -752,11 +1061,13 @@ export function createNetWorkspace(app, ui, raw) {
     diags() {
       if (!data.devices.length && !data.cables.length) return [];
       let iss = [];
-      try { iss = netIssues(lan, data); } catch (e) { console.error(e); return []; }
+      try { iss = shownIssues(); } catch (e) { console.error(e); return []; }
       return iss.map(i => { const ex = explain(i.code); return { code: i.code, level: i.kind === 'err' ? 'error' : 'warning', title: i.text, key: 'nt:' + i.code + ':' + (i.id || '') + ':' + i.text, where: tl('plan réseau'), space: 'net', el: i.id || null, loc: {}, note: ex ? `${ex.why} ${tl('Source : {0}.', srcNote(i.code))}` : '' }; });
     },
     /** Outils (IA, TP) : ping, test d'un câble, pose. */
     ping: (from, target) => doPing(from, target), place: (type, x, y) => place(type, x, y), refresh: () => changed(), commit, select,
+    /** Vues du projet réseau (Logique, Plans, Baies, Conception) : ouvre une vue (promesse de son objet). */
+    openView: id => openView(id), view: () => cur, ctx: () => ctx,
     drawPdf: null
   };
 }

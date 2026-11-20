@@ -4,7 +4,9 @@
 // gauche), huit canaux numérotés et les huit conducteurs sortis de la gaine. L'élève les range comme il veut : glisser-
 // déposer (souris ou doigt), ou clic sur un conducteur puis clic sur une broche, ou clavier (Tab, Entrée, chiffres 1 à 8).
 // Les erreurs sont permises (ordre quelconque, conducteurs absents) : c'est le testeur qui les révèle. « Sertir » fige la
-// fiche (end.crimped = true) et donne le verdict ; « Couper la fiche » permet de recommencer.
+// fiche (end.crimped = true) et donne le verdict, seulement quand la carte des normes est montrée (showStandard et
+// carte dépliée) : en mode examen (showStandard: false) ou carte repliée, rien ne dit si l'ordre est bon ; « Couper la
+// fiche » permet de recommencer.
 // Le modèle (ordre des conducteurs, normes) est celui de src/net/cable.js ; ce module n'est que l'interface.
 import { tl, isEn, CANCEL } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
@@ -51,18 +53,20 @@ function thumbBody(end, ox = 0, oy = 0) {
   }
   return s;
 }
-const endLabel = end => {
+const endStd = end => {
   const k = stdOf(end);
   if (!end || !end.crimped) return tl('non sertie');
   return k ? 'T568' + k : tl('non normalisée');
 };
 /** Miniature d'une extrémité (fiche et couleurs de ses conducteurs), en SVG. */
 export function crimpThumb(end) {
-  return `<svg class="nt-thumb" width="56" height="50" viewBox="0 0 56 50" role="img" aria-label="${esc(tl('Fiche RJ45') + ' : ' + endLabel(end))}">${thumbBody(end)}</svg>`;
+  return `<svg class="nt-thumb" width="56" height="50" viewBox="0 0 56 50" role="img" aria-label="${esc(tl('Fiche RJ45') + ' : ' + endStd(end))}">${thumbBody(end)}</svg>`;
 }
 /** Les deux extrémités d'un câble côte à côte, reliées par la gaine ; conducteurs coupés : croix rouge sur la gaine. */
-export function cableSvg(cable) {
-  const a = cable && cable.a, b = cable && cable.b, cut = (cable && Array.isArray(cable.cut) ? cable.cut : []).filter(w => WIRES[w]);
+export function cableSvg(cable, exam = false) {
+  // Mode examen : ni norme des fiches ni conducteur coupé (défaut caché par l'enseignant), seulement « sertie ».
+  const a = cable && cable.a, b = cable && cable.b, cut = exam ? [] : (cable && Array.isArray(cable.cut) ? cable.cut : []).filter(w => WIRES[w]);
+  const endLabel = exam ? e => (e && e.crimped ? tl('sertie') : tl('non sertie')) : endStd;
   const label = `A : ${endLabel(a)} · B : ${endLabel(b)}` + (cut.length ? ' · ' + tl('coupés : {0}', cut.map(wireName).join(', ')) : '');
   let s = `<svg class="nt-cablesvg" width="156" height="80" viewBox="0 0 156 80" role="img" aria-label="${esc(label)}">`;
   s += `<path d="M36 63 C36 80 120 80 120 63" fill="none" stroke="#5b6470" stroke-width="9" stroke-linecap="round"/><path d="M36 63 C36 80 120 80 120 63" fill="none" stroke="#8b95a1" stroke-width="7" stroke-linecap="round"/>`;
@@ -260,8 +264,13 @@ export function openCrimp({ host, end, title, side, showStandard = true, onDone,
     if (live) s += `<div class="nt-hint" aria-live="polite">${esc(live)}</div>`;
     $('.nt-status').innerHTML = s;
     const v = $('.nt-verdict');
-    if (st.crimped) {
-      const r = crimpVerdict(st.order, showStandard);
+    if (st.crimped && !(showStandard && st.ref)) {
+      // Carte des normes cachée (mode examen : showStandard faux, ou l'élève l'a repliée) : pas de verdict non plus,
+      // il dirait la norme à sa place.
+      v.className = 'nt-verdict nt-novd';
+      v.innerHTML = `<div class="nt-vh">${icon('info')}<span>${esc(showStandard ? tl('Fiche sertie : affichez les normes pour voir le verdict.') : tl('Fiche sertie : pas de verdict en mode examen.'))}</span></div>`;
+    } else if (st.crimped) {
+      const r = crimpVerdict(st.order);
       v.className = 'nt-verdict ' + r.cls;
       v.innerHTML = `<div class="nt-vh">${icon(r.ok ? 'check' : 'alert')}<span>${esc(r.head)}</span></div>${r.items.length ? `<ul>${r.items.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}`;
     } else { v.className = 'nt-verdict'; v.innerHTML = ''; }

@@ -37,7 +37,13 @@ export const isBroadcast = ip => ip === '255.255.255.255';
 /** Adresse locale au lien (169.254.0.0/16, RFC 3927) : donnée par le système quand aucun serveur DHCP ne répond. */
 export const isLinkLocal = ip => /^169\.254\./.test(String(ip || ''));
 /** Adresse MAC d'un équipement, stable : dérivée de son identifiant (préfixe administré localement 02:…). */
+const MACS = new Map(); // mémoire (un grand plan en demande des milliers par recalcul)
 export function macFor(id) {
+  const k = String(id), m = MACS.get(k); if (m) return m;
+  if (MACS.size > 20000) MACS.clear();
+  MACS.set(k, macOf(k)); return MACS.get(k);
+}
+function macOf(id) {
   let h = 2166136261;
   for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
   const b = [0x02, 0x4a, (h >>> 24) & 255, (h >>> 16) & 255, (h >>> 8) & 255, h & 255];

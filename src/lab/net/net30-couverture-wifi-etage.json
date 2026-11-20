@@ -1,0 +1,1433 @@
+{
+ "id": "net30-couverture-wifi-etage",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Couverture Wi-Fi d’un étage",
+  "en": "Wi-Fi coverage of a floor"
+ },
+ "summary": {
+  "fr": "Au rez-de-chaussée du lycée, six salles de classe donnent sur un couloir aux murs en parpaing. Trois points d’accès ont été posés au bout du couloir, tous sur le même canal, et l’un ne s’allume même pas. Lire la carte de couverture, placer les points d’accès, choisir les canaux : toutes les salles doivent recevoir au moins -67 dBm, sans deux cellules sur le même canal.",
+  "en": "On the ground floor of the high school, six classrooms open onto a corridor with concrete-block walls. Three access points were installed at the end of the corridor, all on the same channel, and one does not even power up. Read the coverage map, place the access points, choose the channels: every classroom must receive at least -67 dBm, with no two cells on the same channel."
+ },
+ "objectives": [
+  {
+   "fr": "Lire une carte de couverture Wi-Fi (signal, cellules, chevauchement)",
+   "en": "Read a Wi-Fi coverage map (signal, cells, overlap)"
+  },
+  {
+   "fr": "Placer des points d’accès pour couvrir des salles derrière des murs",
+   "en": "Place access points to cover rooms behind walls"
+  },
+  {
+   "fr": "Faire un plan de canaux sans recouvrement (1, 6, 11 à 2,4 GHz)",
+   "en": "Make a channel plan without overlap (1, 6, 11 on 2.4 GHz)"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Objectif de conception courant : -67 dBm en bordure de cellule (guides Cisco), avec 25 dB de rapport signal/bruit.",
+   "en": "Common design goal: -67 dBm at the cell edge (Cisco guides), with a 25 dB signal-to-noise ratio."
+  },
+  {
+   "fr": "Un mur en parpaing de 20 cm coûte environ 15 dB à 2,4 GHz et 25 dB à 5 GHz (UIT-R P.2040) : un point d’accès par zone de salles, pas tous au même endroit.",
+   "en": "A 20 cm concrete-block wall costs about 15 dB at 2.4 GHz and 25 dB at 5 GHz (ITU-R P.2040): one access point per group of rooms, not all in one place."
+  },
+  {
+   "fr": "À 2,4 GHz, seuls 1, 6 et 11 ne se chevauchent pas ; deux cellules voisines ne partagent jamais un canal (J1266).",
+   "en": "On 2.4 GHz, only 1, 6 and 11 do not overlap; two neighbouring cells never share a channel (J1266)."
+  },
+  {
+   "fr": "La carte est un modèle simplifié : une mesure sur place valide toujours la conception.",
+   "en": "The map is a simplified model: an on-site survey always validates the design."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "Couverture Wi-Fi",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "view": "net",
+     "devices": [
+      {
+       "id": "sw1",
+       "type": "poeswitch",
+       "x": 380,
+       "y": 60,
+       "name": "SW1",
+       "p": {
+        "budget": 64,
+        "pseType": "at",
+        "portW": 30
+       }
+      },
+      {
+       "id": "ap1",
+       "type": "ap",
+       "x": 200,
+       "y": 300,
+       "name": "AP1",
+       "p": {
+        "ssid": "Lycee",
+        "pass": "jollof2024",
+        "power": "poe",
+        "poeClass": 3,
+        "radios": {
+         "b24": {
+          "on": true,
+          "ch": 1,
+          "w": 20,
+          "tx": 14,
+          "gain": 4
+         },
+         "b5": {
+          "on": true,
+          "ch": 36,
+          "w": 40,
+          "tx": 17,
+          "gain": 5
+         }
+        }
+       },
+       "loc": {
+        "floor": "F0",
+        "x": 4,
+        "y": 9,
+        "h": 2.7
+       }
+      },
+      {
+       "id": "ap2",
+       "type": "ap",
+       "x": 400,
+       "y": 300,
+       "name": "AP2",
+       "p": {
+        "ssid": "Lycee",
+        "pass": "jollof2024",
+        "power": "poe",
+        "poeClass": 3,
+        "radios": {
+         "b24": {
+          "on": true,
+          "ch": 1,
+          "w": 20,
+          "tx": 14,
+          "gain": 4
+         },
+         "b5": {
+          "on": true,
+          "ch": 36,
+          "w": 40,
+          "tx": 17,
+          "gain": 5
+         }
+        }
+       },
+       "loc": {
+        "floor": "F0",
+        "x": 8,
+        "y": 9,
+        "h": 2.7
+       }
+      },
+      {
+       "id": "ap3",
+       "type": "ap",
+       "x": 600,
+       "y": 300,
+       "name": "AP3",
+       "p": {
+        "ssid": "Lycee",
+        "pass": "jollof2024",
+        "power": "poe",
+        "poeClass": 3,
+        "radios": {
+         "b24": {
+          "on": true,
+          "ch": 1,
+          "w": 20,
+          "tx": 14,
+          "gain": 4
+         },
+         "b5": {
+          "on": true,
+          "ch": 36,
+          "w": 40,
+          "tx": 17,
+          "gain": 5
+         }
+        }
+       },
+       "loc": {
+        "floor": "F0",
+        "x": 12,
+        "y": 9,
+        "h": 2.7
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "ap1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 12,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "ap2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 15,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "ap3",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p6"
+       ],
+       "cat": "cat6",
+       "len": 18,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "site": {
+      "name": "Lycée",
+      "north": 0,
+      "buildings": [
+       {
+        "id": "B1",
+        "name": "Bâtiment A",
+        "x": 0,
+        "y": 0,
+        "floors": [
+         {
+          "id": "F0",
+          "name": "Rez-de-chaussée",
+          "level": 0,
+          "elev": 0,
+          "height": 3.5,
+          "ceil": 2.7,
+          "plenum": 0.6,
+          "raised": 0,
+          "walls": [
+           {
+            "id": "wN",
+            "a": [
+             0,
+             0
+            ],
+            "b": [
+             48,
+             0
+            ],
+            "t": 0.2,
+            "mat": "concrete"
+           },
+           {
+            "id": "wS",
+            "a": [
+             0,
+             18
+            ],
+            "b": [
+             48,
+             18
+            ],
+            "t": 0.2,
+            "mat": "concrete"
+           },
+           {
+            "id": "wW",
+            "a": [
+             0,
+             0
+            ],
+            "b": [
+             0,
+             18
+            ],
+            "t": 0.2,
+            "mat": "concrete"
+           },
+           {
+            "id": "wE",
+            "a": [
+             48,
+             0
+            ],
+            "b": [
+             48,
+             18
+            ],
+            "t": 0.2,
+            "mat": "concrete"
+           },
+           {
+            "id": "cN",
+            "a": [
+             0,
+             7
+            ],
+            "b": [
+             48,
+             7
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "cS",
+            "a": [
+             0,
+             11
+            ],
+            "b": [
+             48,
+             11
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "p1",
+            "a": [
+             16,
+             0
+            ],
+            "b": [
+             16,
+             7
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "p2",
+            "a": [
+             32,
+             0
+            ],
+            "b": [
+             32,
+             7
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "p3",
+            "a": [
+             16,
+             11
+            ],
+            "b": [
+             16,
+             18
+            ],
+            "t": 0.2,
+            "mat": "block"
+           },
+           {
+            "id": "p4",
+            "a": [
+             32,
+             11
+            ],
+            "b": [
+             32,
+             18
+            ],
+            "t": 0.2,
+            "mat": "block"
+           }
+          ],
+          "doors": [
+           {
+            "id": "d0",
+            "wall": "cN",
+            "at": 3,
+            "w": 0.9
+           },
+           {
+            "id": "d1",
+            "wall": "cN",
+            "at": 19,
+            "w": 0.9
+           },
+           {
+            "id": "d2",
+            "wall": "cN",
+            "at": 35,
+            "w": 0.9
+           },
+           {
+            "id": "d3",
+            "wall": "cS",
+            "at": 3,
+            "w": 0.9
+           },
+           {
+            "id": "d4",
+            "wall": "cS",
+            "at": 19,
+            "w": 0.9
+           },
+           {
+            "id": "d5",
+            "wall": "cS",
+            "at": 35,
+            "w": 0.9
+           }
+          ],
+          "rooms": [
+           {
+            "id": "s1",
+            "name": "Salle 1",
+            "usage": "classroom",
+            "poly": [
+             [
+              0,
+              0
+             ],
+             [
+              16,
+              0
+             ],
+             [
+              16,
+              7
+             ],
+             [
+              0,
+              7
+             ]
+            ]
+           },
+           {
+            "id": "s2",
+            "name": "Salle 2",
+            "usage": "classroom",
+            "poly": [
+             [
+              16,
+              0
+             ],
+             [
+              32,
+              0
+             ],
+             [
+              32,
+              7
+             ],
+             [
+              16,
+              7
+             ]
+            ]
+           },
+           {
+            "id": "s3",
+            "name": "Salle 3",
+            "usage": "classroom",
+            "poly": [
+             [
+              32,
+              0
+             ],
+             [
+              48,
+              0
+             ],
+             [
+              48,
+              7
+             ],
+             [
+              32,
+              7
+             ]
+            ]
+           },
+           {
+            "id": "s4",
+            "name": "Salle 4",
+            "usage": "classroom",
+            "poly": [
+             [
+              0,
+              11
+             ],
+             [
+              16,
+              11
+             ],
+             [
+              16,
+              18
+             ],
+             [
+              0,
+              18
+             ]
+            ]
+           },
+           {
+            "id": "s5",
+            "name": "Salle 5",
+            "usage": "classroom",
+            "poly": [
+             [
+              16,
+              11
+             ],
+             [
+              32,
+              11
+             ],
+             [
+              32,
+              18
+             ],
+             [
+              16,
+              18
+             ]
+            ]
+           },
+           {
+            "id": "s6",
+            "name": "Salle 6",
+            "usage": "classroom",
+            "poly": [
+             [
+              32,
+              11
+             ],
+             [
+              48,
+              11
+             ],
+             [
+              48,
+              18
+             ],
+             [
+              32,
+              18
+             ]
+            ]
+           },
+           {
+            "id": "co",
+            "name": "Couloir",
+            "usage": "corridor",
+            "poly": [
+             [
+              0,
+              7
+             ],
+             [
+              48,
+              7
+             ],
+             [
+              48,
+              11
+             ],
+             [
+              0,
+              11
+             ]
+            ]
+           }
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "view": "net",
+   "devices": [
+    {
+     "id": "sw1",
+     "type": "poeswitch",
+     "x": 380,
+     "y": 60,
+     "name": "SW1",
+     "p": {
+      "budget": 64,
+      "pseType": "at",
+      "portW": 30
+     }
+    },
+    {
+     "id": "ap1",
+     "type": "ap",
+     "x": 200,
+     "y": 300,
+     "name": "AP1",
+     "p": {
+      "ssid": "Lycee",
+      "pass": "jollof2024",
+      "power": "poe",
+      "poeClass": 3,
+      "radios": {
+       "b24": {
+        "on": true,
+        "ch": 1,
+        "w": 20,
+        "tx": 14,
+        "gain": 4
+       },
+       "b5": {
+        "on": true,
+        "ch": 36,
+        "w": 40,
+        "tx": 17,
+        "gain": 5
+       }
+      }
+     },
+     "loc": {
+      "floor": "F0",
+      "x": 8,
+      "y": 9,
+      "h": 2.7
+     }
+    },
+    {
+     "id": "ap2",
+     "type": "ap",
+     "x": 400,
+     "y": 300,
+     "name": "AP2",
+     "p": {
+      "ssid": "Lycee",
+      "pass": "jollof2024",
+      "power": "poe",
+      "poeClass": 3,
+      "radios": {
+       "b24": {
+        "on": true,
+        "ch": 6,
+        "w": 20,
+        "tx": 14,
+        "gain": 4
+       },
+       "b5": {
+        "on": true,
+        "ch": 44,
+        "w": 40,
+        "tx": 17,
+        "gain": 5
+       }
+      }
+     },
+     "loc": {
+      "floor": "F0",
+      "x": 24,
+      "y": 9,
+      "h": 2.7
+     }
+    },
+    {
+     "id": "ap3",
+     "type": "ap",
+     "x": 600,
+     "y": 300,
+     "name": "AP3",
+     "p": {
+      "ssid": "Lycee",
+      "pass": "jollof2024",
+      "power": "poe",
+      "poeClass": 3,
+      "radios": {
+       "b24": {
+        "on": true,
+        "ch": 11,
+        "w": 20,
+        "tx": 14,
+        "gain": 4
+       },
+       "b5": {
+        "on": true,
+        "ch": 52,
+        "w": 40,
+        "tx": 17,
+        "gain": 5
+       }
+      }
+     },
+     "loc": {
+      "floor": "F0",
+      "x": 40,
+      "y": 9,
+      "h": 2.7
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "ap1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 15,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "ap2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 25,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "ap3",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 40,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ],
+   "site": {
+    "name": "Lycée",
+    "north": 0,
+    "buildings": [
+     {
+      "id": "B1",
+      "name": "Bâtiment A",
+      "x": 0,
+      "y": 0,
+      "floors": [
+       {
+        "id": "F0",
+        "name": "Rez-de-chaussée",
+        "level": 0,
+        "elev": 0,
+        "height": 3.5,
+        "ceil": 2.7,
+        "plenum": 0.6,
+        "raised": 0,
+        "walls": [
+         {
+          "id": "wN",
+          "a": [
+           0,
+           0
+          ],
+          "b": [
+           48,
+           0
+          ],
+          "t": 0.2,
+          "mat": "concrete"
+         },
+         {
+          "id": "wS",
+          "a": [
+           0,
+           18
+          ],
+          "b": [
+           48,
+           18
+          ],
+          "t": 0.2,
+          "mat": "concrete"
+         },
+         {
+          "id": "wW",
+          "a": [
+           0,
+           0
+          ],
+          "b": [
+           0,
+           18
+          ],
+          "t": 0.2,
+          "mat": "concrete"
+         },
+         {
+          "id": "wE",
+          "a": [
+           48,
+           0
+          ],
+          "b": [
+           48,
+           18
+          ],
+          "t": 0.2,
+          "mat": "concrete"
+         },
+         {
+          "id": "cN",
+          "a": [
+           0,
+           7
+          ],
+          "b": [
+           48,
+           7
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "cS",
+          "a": [
+           0,
+           11
+          ],
+          "b": [
+           48,
+           11
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "p1",
+          "a": [
+           16,
+           0
+          ],
+          "b": [
+           16,
+           7
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "p2",
+          "a": [
+           32,
+           0
+          ],
+          "b": [
+           32,
+           7
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "p3",
+          "a": [
+           16,
+           11
+          ],
+          "b": [
+           16,
+           18
+          ],
+          "t": 0.2,
+          "mat": "block"
+         },
+         {
+          "id": "p4",
+          "a": [
+           32,
+           11
+          ],
+          "b": [
+           32,
+           18
+          ],
+          "t": 0.2,
+          "mat": "block"
+         }
+        ],
+        "doors": [
+         {
+          "id": "d0",
+          "wall": "cN",
+          "at": 3,
+          "w": 0.9
+         },
+         {
+          "id": "d1",
+          "wall": "cN",
+          "at": 19,
+          "w": 0.9
+         },
+         {
+          "id": "d2",
+          "wall": "cN",
+          "at": 35,
+          "w": 0.9
+         },
+         {
+          "id": "d3",
+          "wall": "cS",
+          "at": 3,
+          "w": 0.9
+         },
+         {
+          "id": "d4",
+          "wall": "cS",
+          "at": 19,
+          "w": 0.9
+         },
+         {
+          "id": "d5",
+          "wall": "cS",
+          "at": 35,
+          "w": 0.9
+         }
+        ],
+        "rooms": [
+         {
+          "id": "s1",
+          "name": "Salle 1",
+          "usage": "classroom",
+          "poly": [
+           [
+            0,
+            0
+           ],
+           [
+            16,
+            0
+           ],
+           [
+            16,
+            7
+           ],
+           [
+            0,
+            7
+           ]
+          ]
+         },
+         {
+          "id": "s2",
+          "name": "Salle 2",
+          "usage": "classroom",
+          "poly": [
+           [
+            16,
+            0
+           ],
+           [
+            32,
+            0
+           ],
+           [
+            32,
+            7
+           ],
+           [
+            16,
+            7
+           ]
+          ]
+         },
+         {
+          "id": "s3",
+          "name": "Salle 3",
+          "usage": "classroom",
+          "poly": [
+           [
+            32,
+            0
+           ],
+           [
+            48,
+            0
+           ],
+           [
+            48,
+            7
+           ],
+           [
+            32,
+            7
+           ]
+          ]
+         },
+         {
+          "id": "s4",
+          "name": "Salle 4",
+          "usage": "classroom",
+          "poly": [
+           [
+            0,
+            11
+           ],
+           [
+            16,
+            11
+           ],
+           [
+            16,
+            18
+           ],
+           [
+            0,
+            18
+           ]
+          ]
+         },
+         {
+          "id": "s5",
+          "name": "Salle 5",
+          "usage": "classroom",
+          "poly": [
+           [
+            16,
+            11
+           ],
+           [
+            32,
+            11
+           ],
+           [
+            32,
+            18
+           ],
+           [
+            16,
+            18
+           ]
+          ]
+         },
+         {
+          "id": "s6",
+          "name": "Salle 6",
+          "usage": "classroom",
+          "poly": [
+           [
+            32,
+            11
+           ],
+           [
+            48,
+            11
+           ],
+           [
+            48,
+            18
+           ],
+           [
+            32,
+            18
+           ]
+          ]
+         },
+         {
+          "id": "co",
+          "name": "Couloir",
+          "usage": "corridor",
+          "poly": [
+           [
+            0,
+            7
+           ],
+           [
+            48,
+            7
+           ],
+           [
+            48,
+            11
+           ],
+           [
+            0,
+            11
+           ]
+          ]
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "La carte de couverture",
+    "en": "The coverage map"
+   },
+   "text": {
+    "fr": "Ouvrez la vue **Plans** et activez le calque **Wi-Fi**. Chaque point du plan reçoit le signal du point d’accès le plus fort : vert au-dessus de **-67 dBm** (objectif courant des guides de conception), puis jaune, orange, rouge.\n- Le calcul suit l’UIT-R P.1238 (distance) et l’UIT-R P.2040 (murs) : c’est un **modèle simplifié**.\n- Un mur en parpaing coûte beaucoup plus à 5 GHz qu’à 2,4 GHz.",
+    "en": "Open the **Plans** view and turn on the **Wi-Fi** layer. Each point of the plan receives the signal of the strongest access point: green above **-67 dBm** (the usual design goal), then yellow, orange, red.\n- The calculation follows ITU-R P.1238 (distance) and ITU-R P.2040 (walls): it is a **simplified model**.\n- A concrete-block wall costs much more at 5 GHz than at 2.4 GHz."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Quel mur ?",
+    "en": "Which wall?"
+   },
+   "text": {
+    "fr": "À 5 GHz, laquelle de ces parois affaiblit le plus le signal ?",
+    "en": "At 5 GHz, which of these walls weakens the signal the most?"
+   },
+   "keep": {
+    "fr": "Le parpaing de 20 cm (compté comme du béton) : environ 25 dB à 5 GHz, contre 2 dB pour une cloison en plaques de plâtre.",
+    "en": "The 20 cm concrete block (counted as concrete): about 25 dB at 5 GHz, against 2 dB for a plasterboard partition."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Une cloison en plaques de plâtre",
+      "en": "A plasterboard partition"
+     },
+     {
+      "fr": "Un mur en parpaing de 20 cm",
+      "en": "A 20 cm concrete-block wall"
+     },
+     {
+      "fr": "Une porte en bois",
+      "en": "A wooden door"
+     }
+    ],
+    "answer": 1
+   }
+  },
+  {
+   "title": {
+    "fr": "Allumer AP3",
+    "en": "Power up AP3"
+   },
+   "text": {
+    "fr": "AP3 est branché sur le port **6** du switch, qui n’est pas un port PoE : il reste éteint (J1212) et n’émet rien. Rebranchez son câble sur un port PoE (1 à 4).",
+    "en": "AP3 is plugged into port **6** of the switch, which is not a PoE port: it stays off (J1212) and transmits nothing. Move its cable to a PoE port (1 to 4)."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1212"
+    ]
+   }
+  },
+  {
+   "title": {
+    "fr": "Les canaux",
+    "en": "The channels"
+   },
+   "text": {
+    "fr": "Les trois points d’accès sont sur le canal **1** (2,4 GHz) et **36** (5 GHz) : leurs cellules se recouvrent, ils se partagent le temps d’antenne. Donnez-leur des canaux différents (1, 6 et 11 à 2,4 GHz ; d’autres blocs à 5 GHz) dans l’inspecteur, ou lancez **Plan de canaux auto**.",
+    "en": "The three access points are on channel **1** (2.4 GHz) and **36** (5 GHz): their cells overlap, they share the airtime. Give them different channels (1, 6 and 11 on 2.4 GHz; other blocks on 5 GHz) in the inspector, or run **Auto channel plan**."
+   },
+   "hint": {
+    "fr": "Le plan automatique tient compte des murs et de la distance entre points d’accès ; Ctrl+Z l’annule.",
+    "en": "The automatic plan accounts for walls and distance between access points; Ctrl+Z undoes it."
+   },
+   "check": {
+    "type": "net-wifi-chan"
+   }
+  },
+  {
+   "title": {
+    "fr": "Couvrir toutes les salles",
+    "en": "Cover every classroom"
+   },
+   "text": {
+    "fr": "Les salles du milieu et du bout du couloir sont dans le rouge. Dans la vue **Plans**, répartissez les trois points d’accès le long du couloir (ils restent au plafond) : chaque salle de classe doit avoir au moins **90 %** de sa surface à **-67 dBm** ou plus. Gardez des canaux différents pour les cellules voisines.",
+    "en": "The classrooms in the middle and at the end of the corridor are in the red. In the **Plans** view, spread the three access points along the corridor (they stay on the ceiling): each classroom must have at least **90 %** of its area at **-67 dBm** or more. Keep different channels for neighbouring cells."
+   },
+   "hint": {
+    "fr": "Un point d’accès dans le couloir couvre les deux salles qui lui font face, à travers un seul mur.",
+    "en": "An access point in the corridor covers the two rooms facing it, through a single wall."
+   },
+   "check": {
+    "type": "net-wifi-cover",
+    "min": 90
+   }
+  },
+  {
+   "title": {
+    "fr": "Tout est en ordre",
+    "en": "Everything in order"
+   },
+   "text": {
+    "fr": "Plus aucune erreur dans l’onglet **Problèmes** : les trois points d’accès sont alimentés, leurs canaux sont autorisés et leur puissance reste dans leur fiche.",
+    "en": "No error left in the **Problems** tab: the three access points are powered, their channels are allowed and their power stays within their datasheet."
+   },
+   "check": {
+    "type": "net-ok"
+   }
+  },
+  {
+   "title": {
+    "fr": "À retenir",
+    "en": "Remember"
+   },
+   "text": {
+    "fr": "Trois points d’accès dans un couloir : quels canaux à 2,4 GHz ?",
+    "en": "Three access points along a corridor: which channels on 2.4 GHz?"
+   },
+   "keep": {
+    "fr": "1, 6 et 11 : les seuls trois canaux qui ne se chevauchent pas (22 MHz de large, espacés de 5 MHz).",
+    "en": "1, 6 and 11: the only three channels that do not overlap (22 MHz wide, 5 MHz apart)."
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "1, 2 et 3",
+      "en": "1, 2 and 3"
+     },
+     {
+      "fr": "1, 6 et 11",
+      "en": "1, 6 and 11"
+     },
+     {
+      "fr": "6, 6 et 6",
+      "en": "6, 6 and 6"
+     },
+     {
+      "fr": "1, 7 et 13",
+      "en": "1, 7 and 13"
+     }
+    ],
+    "answer": 1
+   }
+  }
+ ]
+}

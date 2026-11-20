@@ -1,0 +1,1766 @@
+{
+ "id": "net60-vlan-routage-inter-vlan",
+ "series": "reseau",
+ "level": "pro",
+ "minutes": 50,
+ "title": {
+  "fr": "Segmentation en VLAN avec routage inter-VLAN",
+  "en": "VLAN segmentation with inter-VLAN routing"
+ },
+ "summary": {
+  "fr": "Un bâtiment avec trois services sur un même switch : administration, atelier, invités. On les sépare en VLAN 802.1Q, on fait passer les VLAN par un trunk jusqu’au switch de cœur de niveau 3, qui route entre eux et relaie le DHCP vers le serveur. Puis on vérifie au ping et au traceroute, et on fixe la racine du Spanning Tree.",
+  "en": "One building with three departments on the same switch: administration, workshop, guests. We split them into 802.1Q VLANs, carry the VLANs over a trunk to the layer 3 core switch, which routes between them and relays DHCP to the server. Then we check with ping and traceroute, and set the Spanning Tree root."
+ },
+ "objectives": [
+  {
+   "fr": "Placer des ports d’accès dans des VLAN",
+   "en": "Put access ports in VLANs"
+  },
+  {
+   "fr": "Configurer un trunk 802.1Q et ses VLAN autorisés",
+   "en": "Configure an 802.1Q trunk and its allowed VLANs"
+  },
+  {
+   "fr": "Créer des interfaces VLAN (SVI) et un relais DHCP",
+   "en": "Create VLAN interfaces (SVIs) and a DHCP relay"
+  },
+  {
+   "fr": "Lire un traceroute",
+   "en": "Read a traceroute"
+  },
+  {
+   "fr": "Choisir la racine du Spanning Tree",
+   "en": "Choose the Spanning Tree root"
+  }
+ ],
+ "takeaways": [
+  {
+   "fr": "Un VLAN est un réseau de diffusion à part : deux postes de VLAN différents ne se voient pas sans routeur.",
+   "en": "A VLAN is a separate broadcast network: two computers in different VLANs do not see each other without a router."
+  },
+  {
+   "fr": "Port d’accès : un VLAN, sans étiquette. Trunk : plusieurs VLAN étiquetés 802.1Q, et un VLAN natif sans étiquette, le même aux deux bouts.",
+   "en": "Access port: one VLAN, untagged. Trunk: several 802.1Q-tagged VLANs, and one untagged native VLAN, the same at both ends."
+  },
+  {
+   "fr": "La passerelle d’un VLAN est son interface VLAN (SVI) sur le switch de niveau 3 ; le relais DHCP (ip helper) envoie les demandes au serveur, qui choisit l’étendue d’après l’adresse du relais (giaddr).",
+   "en": "A VLAN’s gateway is its VLAN interface (SVI) on the layer 3 switch; the DHCP relay (ip helper) sends requests to the server, which picks the scope from the relay address (giaddr)."
+  },
+  {
+   "fr": "Le Spanning Tree élit la racine par la priorité la plus basse : on la fixe sur le cœur.",
+   "en": "Spanning Tree elects the root by lowest priority: set it on the core."
+  }
+ ],
+ "start": {
+  "app": "jollof-studio",
+  "version": 1,
+  "name": "VLAN et routage inter-VLAN",
+  "comps": [],
+  "wires": [],
+  "settings": {
+   "kind": "net",
+   "modules": {
+    "net": {
+     "devices": [
+      {
+       "id": "core",
+       "type": "l3switch",
+       "x": 300,
+       "y": 0,
+       "name": "CORE",
+       "p": {
+        "ports": {},
+        "stp": {
+         "on": true,
+         "prio": 32768
+        },
+        "lags": [],
+        "sfp": {},
+        "routing": true,
+        "svis": [],
+        "routes": [],
+        "dhcp": [],
+        "acls": []
+       }
+      },
+      {
+       "id": "srv",
+       "type": "server",
+       "x": 800,
+       "y": -10,
+       "name": "SRV",
+       "p": {
+        "ip": {
+         "mode": "static",
+         "ip": "10.0.99.10",
+         "prefix": 24,
+         "gw": "10.0.99.1",
+         "dns": ""
+        },
+        "dhcp": [
+         {
+          "net": "10.0.10.0/24",
+          "from": "10.0.10.100",
+          "to": "10.0.10.199",
+          "gw": "10.0.10.1",
+          "dns": "10.0.99.10",
+          "on": true
+         },
+         {
+          "net": "10.0.20.0/24",
+          "from": "10.0.20.100",
+          "to": "10.0.20.199",
+          "gw": "10.0.20.1",
+          "dns": "10.0.99.10",
+          "on": true
+         },
+         {
+          "net": "10.0.30.0/24",
+          "from": "10.0.30.100",
+          "to": "10.0.30.199",
+          "gw": "10.0.30.1",
+          "dns": "10.0.99.10",
+          "on": true
+         }
+        ],
+        "dns": {
+         "on": true,
+         "records": []
+        }
+       }
+      },
+      {
+       "id": "sw1",
+       "type": "switch24",
+       "x": 300,
+       "y": 180,
+       "name": "SW1",
+       "p": {
+        "budget": 370,
+        "pseType": "at",
+        "portW": 30,
+        "ports": {},
+        "stp": {
+         "on": true,
+         "prio": 32768
+        },
+        "lags": [],
+        "sfp": {}
+       }
+      },
+      {
+       "id": "adm1",
+       "type": "pc",
+       "x": 160,
+       "y": 360,
+       "name": "ADM1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "adm2",
+       "type": "pc",
+       "x": 270,
+       "y": 360,
+       "name": "ADM2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "atl1",
+       "type": "pc",
+       "x": 380,
+       "y": 360,
+       "name": "ATL1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "atl2",
+       "type": "pc",
+       "x": 490,
+       "y": 360,
+       "name": "ATL2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "inv1",
+       "type": "pc",
+       "x": 600,
+       "y": 360,
+       "name": "INV1",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      },
+      {
+       "id": "inv2",
+       "type": "pc",
+       "x": 710,
+       "y": 360,
+       "name": "INV2",
+       "p": {
+        "ip": {
+         "mode": "dhcp",
+         "ip": "",
+         "prefix": 24,
+         "gw": "",
+         "dns": ""
+        },
+        "legacy": false
+       }
+      }
+     ],
+     "cables": [
+      {
+       "id": "c1",
+       "a": [
+        "sw1",
+        "p24"
+       ],
+       "b": [
+        "core",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 15,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c2",
+       "a": [
+        "srv",
+        "eth0"
+       ],
+       "b": [
+        "core",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 2,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c3",
+       "a": [
+        "adm1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p1"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c4",
+       "a": [
+        "adm2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p2"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c5",
+       "a": [
+        "atl1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p3"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c6",
+       "a": [
+        "atl2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p4"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c7",
+       "a": [
+        "inv1",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p5"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      },
+      {
+       "id": "c8",
+       "a": [
+        "inv2",
+        "eth0"
+       ],
+       "b": [
+        "sw1",
+        "p6"
+       ],
+       "cat": "cat6",
+       "len": 5,
+       "wire": {
+        "a": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "b": {
+         "order": [
+          "wo",
+          "o",
+          "wg",
+          "bl",
+          "wbl",
+          "g",
+          "wbr",
+          "br"
+         ],
+         "crimped": true,
+         "shorts": []
+        },
+        "cut": []
+       }
+      }
+     ],
+     "ext": {},
+     "view": "net",
+     "site": {
+      "name": "",
+      "north": 0,
+      "access": 6,
+      "seg": "b",
+      "buildings": []
+     },
+     "paths": [],
+     "racks": [],
+     "vlans": [
+      {
+       "id": 10,
+       "name": "Administration",
+       "net": "10.0.10.0/24",
+       "gw": "10.0.10.1"
+      },
+      {
+       "id": 20,
+       "name": "Atelier",
+       "net": "10.0.20.0/24",
+       "gw": "10.0.20.1"
+      },
+      {
+       "id": 30,
+       "name": "Invites",
+       "net": "10.0.30.0/24",
+       "gw": "10.0.30.1"
+      },
+      {
+       "id": 99,
+       "name": "Serveurs",
+       "net": "10.0.99.0/24",
+       "gw": "10.0.99.1"
+      }
+     ],
+     "design": {
+      "std": "tia",
+      "area": 10,
+      "outlets": 2,
+      "usage": {
+       "office": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "open": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 1,
+        "cams": 0,
+        "min": 1
+       },
+       "meeting": {
+        "area": 20,
+        "outlets": 2,
+        "phones": 0.5,
+        "cams": 0,
+        "min": 1
+       },
+       "classroom": {
+        "area": 30,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 2
+       },
+       "lab": {
+        "area": 5,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 1
+       },
+       "corridor": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 1,
+        "min": 0
+       },
+       "storage": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "tech": {
+        "area": 0,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       },
+       "other": {
+        "area": 10,
+        "outlets": 2,
+        "phones": 0,
+        "cams": 0,
+        "min": 0
+       }
+      },
+      "apArea": 0,
+      "spare": 20,
+      "oversub": 20,
+      "uplinks": 1,
+      "panel": 24,
+      "sw": "auto",
+      "poe": {
+       "phone": 1,
+       "ap": 4,
+       "camera": 3
+      },
+      "poeMargin": 20,
+      "cat": "cat6a",
+      "box": 305,
+      "waste": 10,
+      "cord": 1,
+      "slack": {
+       "tr": 3,
+       "wa": 0.3
+      },
+      "rackU": 42,
+      "upsMargin": 25,
+      "labels": {
+       "preset": "auto",
+       "space": "{f}{s}",
+       "link": "{fs}-{p}{n}",
+       "panel": "{fs}-{p}",
+       "rack": "{fs}.R{r}",
+       "pad": 2
+      },
+      "prices": {},
+      "currency": "EUR",
+      "labour": [],
+      "project": {
+       "client": "",
+       "site": "",
+       "author": "",
+       "date": "",
+       "rev": ""
+      },
+      "rooms": {},
+      "ip": {
+       "block": "10.10.0.0/16",
+       "gw": "first",
+       "growth": 20
+      }
+     },
+     "tests": null,
+     "images": {},
+     "wifi": {
+      "reg": "eu",
+      "env": "walls",
+      "target": -67,
+      "noise": -92,
+      "snr": 25,
+      "cover": 90,
+      "cci": 10,
+      "rxH": 1,
+      "band": "any"
+     }
+    }
+   }
+  }
+ },
+ "solution": {
+  "net": {
+   "devices": [
+    {
+     "id": "core",
+     "type": "l3switch",
+     "x": 300,
+     "y": 0,
+     "name": "CORE",
+     "p": {
+      "ports": {
+       "p1": {
+        "mode": "trunk",
+        "vlan": 1,
+        "native": 1,
+        "allowed": "10,20,30",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p2": {
+        "mode": "access",
+        "vlan": 99,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       }
+      },
+      "stp": {
+       "on": true,
+       "prio": 4096
+      },
+      "lags": [],
+      "sfp": {},
+      "routing": true,
+      "svis": [
+       {
+        "vlan": 10,
+        "ip": "10.0.10.1",
+        "prefix": 24,
+        "helper": "10.0.99.10",
+        "aclIn": "",
+        "aclOut": ""
+       },
+       {
+        "vlan": 20,
+        "ip": "10.0.20.1",
+        "prefix": 24,
+        "helper": "10.0.99.10",
+        "aclIn": "",
+        "aclOut": ""
+       },
+       {
+        "vlan": 30,
+        "ip": "10.0.30.1",
+        "prefix": 24,
+        "helper": "10.0.99.10",
+        "aclIn": "",
+        "aclOut": ""
+       },
+       {
+        "vlan": 99,
+        "ip": "10.0.99.1",
+        "prefix": 24,
+        "helper": "",
+        "aclIn": "",
+        "aclOut": ""
+       }
+      ],
+      "routes": [],
+      "dhcp": [],
+      "acls": []
+     }
+    },
+    {
+     "id": "srv",
+     "type": "server",
+     "x": 800,
+     "y": -10,
+     "name": "SRV",
+     "p": {
+      "ip": {
+       "mode": "static",
+       "ip": "10.0.99.10",
+       "prefix": 24,
+       "gw": "10.0.99.1",
+       "dns": ""
+      },
+      "dhcp": [
+       {
+        "net": "10.0.10.0/24",
+        "from": "10.0.10.100",
+        "to": "10.0.10.199",
+        "gw": "10.0.10.1",
+        "dns": "10.0.99.10",
+        "on": true
+       },
+       {
+        "net": "10.0.20.0/24",
+        "from": "10.0.20.100",
+        "to": "10.0.20.199",
+        "gw": "10.0.20.1",
+        "dns": "10.0.99.10",
+        "on": true
+       },
+       {
+        "net": "10.0.30.0/24",
+        "from": "10.0.30.100",
+        "to": "10.0.30.199",
+        "gw": "10.0.30.1",
+        "dns": "10.0.99.10",
+        "on": true
+       }
+      ],
+      "dns": {
+       "on": true,
+       "records": []
+      }
+     }
+    },
+    {
+     "id": "sw1",
+     "type": "switch24",
+     "x": 300,
+     "y": 180,
+     "name": "SW1",
+     "p": {
+      "budget": 370,
+      "pseType": "at",
+      "portW": 30,
+      "ports": {
+       "p1": {
+        "mode": "access",
+        "vlan": 10,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p2": {
+        "mode": "access",
+        "vlan": 10,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p3": {
+        "mode": "access",
+        "vlan": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p4": {
+        "mode": "access",
+        "vlan": 20,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p5": {
+        "mode": "access",
+        "vlan": 30,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p6": {
+        "mode": "access",
+        "vlan": 30,
+        "native": 1,
+        "allowed": "all",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       },
+       "p24": {
+        "mode": "trunk",
+        "vlan": 1,
+        "native": 1,
+        "allowed": "10,20,30",
+        "lag": "",
+        "cost": 0,
+        "edge": false,
+        "shut": false
+       }
+      },
+      "stp": {
+       "on": true,
+       "prio": 32768
+      },
+      "lags": [],
+      "sfp": {}
+     }
+    },
+    {
+     "id": "adm1",
+     "type": "pc",
+     "x": 160,
+     "y": 360,
+     "name": "ADM1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "adm2",
+     "type": "pc",
+     "x": 270,
+     "y": 360,
+     "name": "ADM2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "atl1",
+     "type": "pc",
+     "x": 380,
+     "y": 360,
+     "name": "ATL1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "atl2",
+     "type": "pc",
+     "x": 490,
+     "y": 360,
+     "name": "ATL2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "inv1",
+     "type": "pc",
+     "x": 600,
+     "y": 360,
+     "name": "INV1",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    },
+    {
+     "id": "inv2",
+     "type": "pc",
+     "x": 710,
+     "y": 360,
+     "name": "INV2",
+     "p": {
+      "ip": {
+       "mode": "dhcp",
+       "ip": "",
+       "prefix": 24,
+       "gw": "",
+       "dns": ""
+      },
+      "legacy": false
+     }
+    }
+   ],
+   "cables": [
+    {
+     "id": "c1",
+     "a": [
+      "sw1",
+      "p24"
+     ],
+     "b": [
+      "core",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 15,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c2",
+     "a": [
+      "srv",
+      "eth0"
+     ],
+     "b": [
+      "core",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 2,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c3",
+     "a": [
+      "adm1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p1"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c4",
+     "a": [
+      "adm2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p2"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c5",
+     "a": [
+      "atl1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p3"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c6",
+     "a": [
+      "atl2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p4"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c7",
+     "a": [
+      "inv1",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p5"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    },
+    {
+     "id": "c8",
+     "a": [
+      "inv2",
+      "eth0"
+     ],
+     "b": [
+      "sw1",
+      "p6"
+     ],
+     "cat": "cat6",
+     "len": 5,
+     "wire": {
+      "a": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "b": {
+       "order": [
+        "wo",
+        "o",
+        "wg",
+        "bl",
+        "wbl",
+        "g",
+        "wbr",
+        "br"
+       ],
+       "crimped": true,
+       "shorts": []
+      },
+      "cut": []
+     }
+    }
+   ],
+   "ext": {},
+   "view": "net",
+   "site": {
+    "name": "",
+    "north": 0,
+    "access": 6,
+    "seg": "b",
+    "buildings": []
+   },
+   "paths": [],
+   "racks": [],
+   "vlans": [
+    {
+     "id": 10,
+     "name": "Administration",
+     "net": "10.0.10.0/24",
+     "gw": "10.0.10.1"
+    },
+    {
+     "id": 20,
+     "name": "Atelier",
+     "net": "10.0.20.0/24",
+     "gw": "10.0.20.1"
+    },
+    {
+     "id": 30,
+     "name": "Invites",
+     "net": "10.0.30.0/24",
+     "gw": "10.0.30.1"
+    },
+    {
+     "id": 99,
+     "name": "Serveurs",
+     "net": "10.0.99.0/24",
+     "gw": "10.0.99.1"
+    }
+   ],
+   "design": {
+    "std": "tia",
+    "area": 10,
+    "outlets": 2,
+    "usage": {
+     "office": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "open": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 1,
+      "cams": 0,
+      "min": 1
+     },
+     "meeting": {
+      "area": 20,
+      "outlets": 2,
+      "phones": 0.5,
+      "cams": 0,
+      "min": 1
+     },
+     "classroom": {
+      "area": 30,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 2
+     },
+     "lab": {
+      "area": 5,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 1
+     },
+     "corridor": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 1,
+      "min": 0
+     },
+     "storage": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "tech": {
+      "area": 0,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     },
+     "other": {
+      "area": 10,
+      "outlets": 2,
+      "phones": 0,
+      "cams": 0,
+      "min": 0
+     }
+    },
+    "apArea": 0,
+    "spare": 20,
+    "oversub": 20,
+    "uplinks": 1,
+    "panel": 24,
+    "sw": "auto",
+    "poe": {
+     "phone": 1,
+     "ap": 4,
+     "camera": 3
+    },
+    "poeMargin": 20,
+    "cat": "cat6a",
+    "box": 305,
+    "waste": 10,
+    "cord": 1,
+    "slack": {
+     "tr": 3,
+     "wa": 0.3
+    },
+    "rackU": 42,
+    "upsMargin": 25,
+    "labels": {
+     "preset": "auto",
+     "space": "{f}{s}",
+     "link": "{fs}-{p}{n}",
+     "panel": "{fs}-{p}",
+     "rack": "{fs}.R{r}",
+     "pad": 2
+    },
+    "prices": {},
+    "currency": "EUR",
+    "labour": [],
+    "project": {
+     "client": "",
+     "site": "",
+     "author": "",
+     "date": "",
+     "rev": ""
+    },
+    "rooms": {},
+    "ip": {
+     "block": "10.10.0.0/16",
+     "gw": "first",
+     "growth": 20
+    }
+   },
+   "tests": null,
+   "images": {},
+   "wifi": {
+    "reg": "eu",
+    "env": "walls",
+    "target": -67,
+    "noise": -92,
+    "snr": 25,
+    "cover": 90,
+    "cci": 10,
+    "rxH": 1,
+    "band": "any"
+   }
+  }
+ },
+ "steps": [
+  {
+   "title": {
+    "fr": "Le point de départ",
+    "en": "The starting point"
+   },
+   "text": {
+    "fr": "Les six postes sont sur **SW1**, un switch administrable, tous dans le VLAN 1 par défaut. **CORE** est un switch de niveau 3 (cœur) et **SRV** le serveur DHCP, dans le réseau des serveurs 10.0.99.0/24. La base des VLAN du projet (inspecteur, quand rien n’est choisi) prévoit 10 Administration, 20 Atelier, 30 Invités et 99 Serveurs.",
+    "en": "The six computers are on **SW1**, a managed switch, all in VLAN 1 by default. **CORE** is a layer 3 (core) switch and **SRV** the DHCP server, in the server network 10.0.99.0/24. The project’s VLAN database (inspector, when nothing is selected) plans 10 Administration, 20 Workshop, 30 Guests and 99 Servers."
+   },
+   "check": {
+    "type": "info"
+   }
+  },
+  {
+   "title": {
+    "fr": "Pourquoi des VLAN ?",
+    "en": "Why VLANs?"
+   },
+   "text": {
+    "fr": "Tous les postes sont dans le même réseau de diffusion. Que changent les VLAN ?",
+    "en": "All computers are in the same broadcast network. What do VLANs change?"
+   },
+   "check": {
+    "type": "quiz",
+    "options": [
+     {
+      "fr": "Chaque service devient un réseau de diffusion à part : les invités ne voient plus les postes de l’administration, et on contrôle ce qui passe entre services au routeur",
+      "en": "Each department becomes its own broadcast network: guests no longer see the administration computers, and what passes between departments is controlled at the router"
+     },
+     {
+      "fr": "Les câbles vont plus vite",
+      "en": "Cables get faster"
+     },
+     {
+      "fr": "On n’a plus besoin d’adresses IP",
+      "en": "IP addresses are no longer needed"
+     }
+    ],
+    "answer": 0
+   }
+  },
+  {
+   "title": {
+    "fr": "Ports d’accès",
+    "en": "Access ports"
+   },
+   "text": {
+    "fr": "Choisissez **SW1**. Dans le tableau des ports, mettez les ports 1 et 2 (ADM1, ADM2) en accès VLAN 10, les ports 3 et 4 (ATL1, ATL2) en VLAN 20, les ports 5 et 6 (INV1, INV2) en VLAN 30.",
+    "en": "Select **SW1**. In the port table, set ports 1 and 2 (ADM1, ADM2) to access VLAN 10, ports 3 and 4 (ATL1, ATL2) to VLAN 20, ports 5 and 6 (INV1, INV2) to VLAN 30."
+   },
+   "check": {
+    "type": "net-vlan",
+    "map": {
+     "ADM1": 10,
+     "ADM2": 10,
+     "ATL1": 20,
+     "ATL2": 20,
+     "INV1": 30,
+     "INV2": 30
+    }
+   }
+  },
+  {
+   "title": {
+    "fr": "Trunk, interfaces VLAN et relais DHCP",
+    "en": "Trunk, VLAN interfaces and DHCP relay"
+   },
+   "text": {
+    "fr": "Le port 24 de SW1 et le port T1 de CORE deviennent un **trunk** qui porte les VLAN 10,20,30. Sur CORE : port T2 (le serveur) en accès VLAN 99 ; interfaces VLAN 10.0.10.1, 10.0.20.1, 10.0.30.1 (/24) avec le relais DHCP vers 10.0.99.10, et 10.0.99.1 pour le VLAN 99. Chaque poste reçoit alors son adresse du serveur, à travers le relais.",
+    "en": "SW1 port 24 and CORE port T1 become a **trunk** carrying VLANs 10,20,30. On CORE: port T2 (the server) as access VLAN 99; VLAN interfaces 10.0.10.1, 10.0.20.1, 10.0.30.1 (/24) with the DHCP relay to 10.0.99.10, and 10.0.99.1 for VLAN 99. Each computer then gets its address from the server, through the relay."
+   },
+   "check": {
+    "type": "net-dhcp",
+    "of": "pc",
+    "server": "SRV"
+   }
+  },
+  {
+   "title": {
+    "fr": "Routage entre VLAN",
+    "en": "Routing between VLANs"
+   },
+   "text": {
+    "fr": "Faites un ping de ADM1 vers ATL1, puis vers le serveur SRV : le paquet monte au cœur par le trunk, CORE le route du VLAN 10 vers le VLAN 20 ou le VLAN 99.",
+    "en": "Ping ATL1 from ADM1, then the server SRV: the packet goes up to the core over the trunk, CORE routes it from VLAN 10 to VLAN 20 or VLAN 99."
+   },
+   "check": {
+    "type": "net-ping",
+    "from": "ADM1",
+    "to": "SRV"
+   }
+  },
+  {
+   "title": {
+    "fr": "Traceroute",
+    "en": "Traceroute"
+   },
+   "text": {
+    "fr": "Outil **Traceroute** (touche R) de ADM1 vers INV1 : un seul routeur, CORE (10.0.10.1), puis la destination.",
+    "en": "**Traceroute** tool (R key) from ADM1 to INV1: one router, CORE (10.0.10.1), then the destination."
+   },
+   "check": {
+    "type": "net-trace",
+    "from": "ADM1",
+    "to": "INV1",
+    "via": [
+     "CORE"
+    ],
+    "hops": 2
+   }
+  },
+  {
+   "title": {
+    "fr": "La racine du Spanning Tree",
+    "en": "The Spanning Tree root"
+   },
+   "text": {
+    "fr": "La racine a été élue par défaut : c’est SW1 (adresse MAC la plus basse). Choisissez CORE et réglez sa priorité Spanning Tree à 4096.",
+    "en": "The root was elected by default: it is SW1 (lowest MAC address). Select CORE and set its Spanning Tree priority to 4096."
+   },
+   "check": {
+    "type": "net-stp",
+    "root": "CORE"
+   }
+  },
+  {
+   "title": {
+    "fr": "Plan sans faute",
+    "en": "A clean design"
+   },
+   "text": {
+    "fr": "Le panneau Problèmes ne doit plus rien signaler sur les VLAN, les trunks, le relais DHCP et le Spanning Tree.",
+    "en": "The Problems panel must report nothing more about VLANs, trunks, the DHCP relay and Spanning Tree."
+   },
+   "check": {
+    "type": "net-ok",
+    "codes": [
+     "J1216",
+     "J1217",
+     "J1218",
+     "J1219",
+     "J1225",
+     "J1227",
+     "J1233"
+    ]
+   }
+  }
+ ]
+}

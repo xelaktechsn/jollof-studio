@@ -1,0 +1,27 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Calque Wi-Fi du plan d'étage (ui/wifilayer.js) : barre, légende, réglages. Couleurs du thème uniquement. */
+.ntWfBar { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.ntWfBar select, .ntWfSet select, .ntWfSet input { background: var(--panel-2); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font: inherit; font-size: 12px; min-width: 0; }
+.ntWfBar button { display: inline-flex; align-items: center; gap: 5px; background: var(--raise); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 8px; font: inherit; font-size: 12px; cursor: pointer; }
+.ntWfBar button:hover { border-color: var(--accent); }
+.ntWfBar button svg { width: 14px; height: 14px; }
+.ntWfLeg { font-size: 12px; color: var(--fg); line-height: 1.35; max-width: 260px; }
+.ntWfLeg p { margin: 6px 0 0; }
+.ntWfLegT { font-weight: 600; margin-bottom: 4px; }
+.ntWfRamp { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.ntWfRamp li { display: flex; align-items: center; gap: 6px; }
+.ntWfRamp i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; opacity: 0.8; }
+.ntWfRamp i.ntWfNone { background: transparent; border: 1px dashed var(--line-2); }
+.ntWfMut { color: var(--muted); font-size: 11px; }
+.ntWfWarn { color: var(--warn-ink); font-size: 11px; margin: 4px 0 0; }
+.ntWfRooms { border-collapse: collapse; margin-top: 4px; width: 100%; }
+.ntWfRooms td { padding: 1px 4px; border-bottom: 1px solid var(--line); }
+.ntWfRooms td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.ntWfRooms tr.ntWfBad td { color: var(--danger-ink); }
+.ntWfSet { display: grid; gap: 6px; }
+.ntWfSet h4 { margin: 0; font-size: 12px; }
+.ntWfF { display: grid; grid-template-columns: minmax(0, 1fr) 130px; gap: 6px; align-items: center; font-size: 12px; }
+.ntWfF span { color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; }
+.ntWfRadio { border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; display: grid; gap: 4px; margin: 0; }
+.ntWfRadio legend { font-size: 12px; font-weight: 600; padding: 0 4px; }

@@ -82,7 +82,21 @@ import { installBusView } from './sim/busview.js';
 /** Projets du dossier exemples/, intégrés à l'application. */
 const EXAMPLES = Object.entries(import.meta.glob('../exemples/*.jollof', { query: '?raw', import: 'default', eager: true }))
   .sort(([a], [b]) => a.localeCompare(b))
-  .map(([path, text]) => ({ file: path.split('/').pop(), data: localizeExample(JSON.parse(text)) }));
+  .map(([path, text]) => ({ file: path.split('/').pop(), data: localizeExample(JSON.parse(text)) }))
+  .concat(lazyExamples());
+
+/**
+ * Grands exemples (exemples/pro : un bâtiment entier, plusieurs centaines de kilo-octets) : seule leur fiche (.meta.json,
+ * nom et description) est lue au démarrage ; le projet se charge à l'ouverture (load), pour garder le démarrage rapide.
+ */
+function lazyExamples() {
+  const meta = import.meta.glob('../exemples/pro/*.meta.json', { import: 'default', eager: true });
+  const files = import.meta.glob('../exemples/pro/*.jollof', { query: '?raw', import: 'default' });
+  return Object.keys(files).sort().map(path => {
+    const m = meta[path.replace(/\.jollof$/, '.meta.json')] || {};
+    return { file: path.split('/').pop(), load: files[path], data: localizeExample({ name: m.name || path.split('/').pop(), description: m.description || '', en: m.en, comps: [], wires: [], settings: { kind: m.kind || 'net' } }) };
+  });
+}
 
 /** Exemple dans la langue de l'interface : le fichier peut porter sa version anglaise (champ « en »). */
 function localizeExample(d) {
@@ -3340,7 +3354,7 @@ function openEx() {
 }
 function closeEx() { $('#exModal').hidden = true; }
 async function loadExample(i) {
-  const { data } = EXAMPLES[i];
+  const ex = EXAMPLES[i], data = ex.load ? localizeExample(JSON.parse(await ex.load())) : ex.data;
   closeEx();
   if (S.rec) return;
   if (S.anim) finishAnim();
