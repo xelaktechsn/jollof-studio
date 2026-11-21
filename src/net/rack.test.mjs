@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   MOUNT, U_MM, PANEL_MM, BTU_PER_W, PRESETS, cleanRacks, cleanRackPos, newRack, rackIndex, occupancy, facesOf, canPlace, findFree,
-  devicePower, upsRuntime, rackPower, removeRack, cableManagers, blanksNeeded, rackSummary, racksSummary, patchingSchedule, unracked, freePorts, vlanOf
+  devicePower, upsRuntime, rackPower, removeRack, canPlaceGroup, findGroupBase, freeFrontU, managerSlots, cableManagers, blanksNeeded, rackSummary, racksSummary, patchingSchedule, unracked, freePorts, vlanOf
 } from './rack.js';
 import { issues, CODES, SRC, LAB } from './checks/rack.js';
 import { RACK_DEVICES, RACK_GROUPS } from './rackdev.js';
@@ -269,4 +269,39 @@ test('removeRack : équipements hors baie, ou supprimés avec leurs câbles', ()
   assert.deepEqual(r.deleted.sort(), ['cm', 'p', 'pp', 'sw']); assert.equal(d.devices.length, n - 4);
   assert.equal(r.cables.length, 8); assert.equal(d.cables.length, 0);
   assert.deepEqual(removeRack(d, 'nope'), { rack: null, unracked: [], deleted: [], cables: [] });
+});
+
+test('groupes : déplacement, base libre, U libres, passe-câbles à ajouter', () => {
+  const r = rk({ u: 10 }), a = dev('a', 'patch24', 5), b = dev('b', 'switch48', 6), c = dev('c', 'ups', 1), d = data([a, b, c], [r]);
+  // Monter a et b d'un U ensemble : b quitte U6 et a le prend.
+  assert.equal(canPlaceGroup(d, r, [{ dev: a, u: 6, face: 'front' }, { dev: b, u: 7, face: 'front' }]).ok, true);
+  assert.deepEqual(canPlaceGroup(d, r, [{ dev: a, u: 2, face: 'front' }]), { ok: false, why: 'clash', dev: 'a', with: 'c' });
+  assert.equal(canPlaceGroup(d, r, [{ dev: b, u: 10, face: 'front' }, { dev: a, u: 11, face: 'front' }]).why, 'outside');
+  assert.equal(canPlaceGroup(d, r, [{ dev: a, u: 8, face: 'front' }, { dev: { ...b, id: 'b2' }, u: 8, face: 'front' }]).why, 'clash');
+  // Coller deux appareils (décalages 0 et 1) : première base libre près de 5.
+  const x = { id: 'x', type: 'patch24' }, y = { id: 'y', type: 'switch48' };
+  assert.equal(findGroupBase(d, r, [{ dev: x, du: 0, face: 'front' }, { dev: y, du: 1, face: 'front' }], 5), 3); // U3–4 et U7–8 aussi près de 5 : la plus basse
+  assert.equal(findGroupBase(d, rk({ u: 2 }), [{ dev: x, du: 0, face: 'front' }, { dev: y, du: 2, face: 'front' }]), 0);
+  // En bloc : U3–4 libres et contigus, mais pas U4–6 ; près de 7 → U7–8.
+  const d1 = data([dev('a', 'patch24', 5)], [r]), g2 = [{ dev: x, du: 0, face: 'front' }, { dev: y, du: 2, face: 'front' }];
+  assert.equal(findGroupBase(d1, r, g2, 4), 4, 'entrelacé autour de U5');
+  assert.equal(findGroupBase(d1, r, g2, 4, { block: true }), 2, 'en bloc : U2–4');
+  assert.deepEqual(freeFrontU(r, [a, b, c]), [3, 4, 7, 8, 9, 10]);
+  assert.deepEqual(managerSlots(r, [a, b, c]), [{ panel: 'a', u: 4, face: 'front' }]);
+  assert.deepEqual(managerSlots(r, [a, c]), [{ panel: 'a', u: 6, face: 'front' }]);
+});
+
+test('navigation : ce qui est relié à un port de panneau ou de switch (racks-nav.js)', async () => {
+  const { portLinks, onPlan, cableAt } = await import('./ui/racks-nav.js');
+  const d = patched(3);
+  let L = portLinks(d, 'pp', 'f1');
+  assert.equal(L.cord.id, 'k1'); assert.deepEqual(L.switchPort, ['sw', 'p1']); assert.equal(L.link.id, 'l1'); assert.deepEqual(L.outlet, ['o1', 'back']); assert.deepEqual(L.panelPort, ['pp', 'f1']);
+  L = portLinks(d, 'pp', 'b2'); // port arrière : même brassage que le port avant 2
+  assert.deepEqual(L.panelPort, ['pp', 'f2']); assert.deepEqual(L.outlet, ['o2', 'back']); assert.deepEqual(L.switchPort, ['sw', 'p2']);
+  L = portLinks(d, 'sw', 'p3');
+  assert.deepEqual(L.panelPort, ['pp', 'f3']); assert.deepEqual(L.outlet, ['o3', 'back']); assert.equal(L.link.id, 'l3');
+  L = portLinks(d, 'pp', 'f4'); assert.equal(L.cord, null); assert.deepEqual(L.outlet, ['o4', 'back']);
+  assert.deepEqual(portLinks(d, 'sw', 'p9'), { cord: null, switchPort: null, link: null, outlet: null, panelPort: null });
+  assert.equal(cableAt(d, 'o1', 'back').peer[0], 'pp');
+  assert.equal(onPlan(d, 'r1'), false); d.racks[0].floor = 'f1'; assert.equal(onPlan(d, 'r1'), true); assert.equal(onPlan(d, 'sw'), true); assert.equal(onPlan(d, 'o1'), false);
 });

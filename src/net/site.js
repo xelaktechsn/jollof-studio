@@ -77,6 +77,8 @@ const r3 = v => Math.round(v * 1000) / 1000;
 const C = 1e4; // coordonnées bornées à ±10 km
 const pt = p => (Array.isArray(p) && p.length >= 2 && Number.isFinite(+p[0]) && Number.isFinite(+p[1]) ? [r3(num(p[0], -C, C, 0)), r3(num(p[1], -C, C, 0))] : null);
 const txt = (v, n) => cleanText(String(v ?? ''), n).trim();
+/** Origine d'un objet créé par une conversion (« cad:<fond> ») : { src } ou {} ; sert à la refaire sans doublons. */
+export const srcOf = o => (o && typeof o.src === 'string' && /^[\w.:-]{1,60}$/.test(o.src) ? { src: o.src } : {});
 /** Identifiant libre et unique : id proposé s'il est propre, sinon préfixe + numéro. */
 export function uid(want, pre, used) {
   let id = typeof want === 'string' && /^[\w.:-]{1,40}$/.test(want) ? want : '';
@@ -100,13 +102,13 @@ function cleanFloor(raw, i, used, prevTop) {
   for (const w of (Array.isArray(f.walls) ? f.walls : []).slice(0, SITE_MAX.walls)) {
     const a = pt(w && w.a), b = pt(w && w.b); if (!a || !b || (a[0] === b[0] && a[1] === b[1])) continue;
     const mat = MATERIALS[w.mat] ? w.mat : 'block';
-    o.walls.push({ id: uid(w.id, 'w', used), a, b, t: r3(num(w.t, 0.01, 2, MATERIALS[mat].t)), mat });
+    o.walls.push({ id: uid(w.id, 'w', used), a, b, t: r3(num(w.t, 0.01, 2, MATERIALS[mat].t)), mat, ...srcOf(w) });
   }
   const wl = new Map(o.walls.map(w => [w.id, w]));
   for (const d of (Array.isArray(f.doors) ? f.doors : []).slice(0, SITE_MAX.doors)) {
     const w = d && wl.get(d.wall); if (!w) continue;
     const L = dist(w.a, w.b), dw = r3(num(d.w, 0.5, Math.max(0.5, L), 0.9));
-    o.doors.push({ id: uid(d.id, 'dr', used), wall: w.id, at: r3(num(d.at, dw / 2, Math.max(dw / 2, L - dw / 2), L / 2)), w: dw });
+    o.doors.push({ id: uid(d.id, 'dr', used), wall: w.id, at: r3(num(d.at, dw / 2, Math.max(dw / 2, L - dw / 2), L / 2)), w: dw, ...srcOf(d) });
   }
   for (const r of (Array.isArray(f.rooms) ? f.rooms : []).slice(0, SITE_MAX.rooms)) {
     const poly = (Array.isArray(r && r.poly) ? r.poly : []).slice(0, SITE_MAX.poly).map(pt).filter(Boolean);
@@ -115,6 +117,7 @@ function cleanFloor(raw, i, used, prevTop) {
     const holes = (Array.isArray(r.holes) ? r.holes : []).slice(0, SITE_MAX.holes).map(hh => (Array.isArray(hh) ? hh : []).slice(0, SITE_MAX.poly).map(pt).filter(Boolean)).filter(hh => hh.length >= 3 && polyArea(hh) >= 0.05 && inPoly(innerPoint(hh), poly));
     const room = { id: uid(r.id, 'rm', used), name: txt(r.name, 40), usage: USAGES[r.usage] ? r.usage : 'office', poly };
     if (holes.length) room.holes = holes;
+    Object.assign(room, srcOf(r));
     if (roomArea(room) < 0.05) { used.delete(room.id); continue; }
     o.rooms.push(room);
   }

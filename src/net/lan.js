@@ -39,11 +39,31 @@ const key = (n, p) => n + '|' + p;
 /** Longueur au-delà de laquelle le signal n'arrive plus du tout (modèle : 1,5 fois le canal normalisé). */
 const DEAD_M = 150;
 /** Carte de câblage d'un canal, gardée en mémoire (un grand plan a des milliers de canaux qui changent rarement). */
+/** Canal (câbles bout à bout d'un port actif à l'autre) ; segs (fiches de chaque câble, retournées ou non) n'est calculé
+ *  que quand on le lit (testeur, carte de câblage pas encore en mémoire). */
+class Chan {
+  constructor(o) { Object.assign(this, o); this._segs = null; }
+  get segs() { return this._segs || (this._segs = this.cables.map((c, i) => ({ ...c.wire, flip: this.flips[i] }))); }
+}
+/**
+ * Numéro du contenu des fiches d'un câble (clé de la mémoire des cartes de câblage). Gardé par objet : il reste valable tant
+ * que les fiches (a, b) et les conducteurs coupés (cut) sont les mêmes objets (les éditeurs les remplacent à chaque
+ * modification) ; sinon le contenu est relu.
+ */
+const WIRE_IDS = new WeakMap();
+function wireId(w) {
+  if (!w || typeof w !== 'object') return '-';
+  const m = WIRE_IDS.get(w); if (m && m.a === w.a && m.b === w.b && m.cut === w.cut) return m.id;
+  const j = JSON.stringify(w); let id = WIRES.get(j);
+  if (id == null) { if (WIRES.size > 20000) { WIRES.clear(); CHAINS.clear(); } id = String(WIRES.size); WIRES.set(j, id); }
+  WIRE_IDS.set(w, { a: w.a, b: w.b, cut: w.cut, id }); return id;
+}
+const TYPE_PORTS = new Map(); // type → Map(port → port) pour les types aux ports fixes
 const CAT_OF_RANK = Object.fromEntries(Object.keys(CATS).map(k => [CATS[k].rank, k]).reverse());
 const CHAINS = new Map(), WIRES = new Map(); // carte par suite de fiches ; numéro de chaque fiche (contenu → n°)
-function chainOf(segs, k) {
+function chainOf(segsOf, k) {
   let r = CHAINS.get(k);
-  if (!r) { r = analyzeChain(segs); if (CHAINS.size > 6000) CHAINS.clear(); CHAINS.set(k, r); }
+  if (!r) { r = analyzeChain(segsOf()); if (CHAINS.size > 6000) CHAINS.clear(); CHAINS.set(k, r); }
   return r;
 }
 /** Durée de vie d'un paquet (sauts de routeur au plus) : valeur du simulateur, pour arrêter une boucle de routage. */
@@ -71,7 +91,14 @@ export function createLan(src) {
   /* ---------- Nœuds ---------- */
   // Ports de chaque nœud, calculés une fois par nœud (les nœuds sont recopiés à chaque recalcul).
   const PM = new WeakMap();
-  const pmap = n => { let m = PM.get(n); if (!m) { m = new Map(portsOf(n).map(p => [p.id, p])); PM.set(n, m); } return m; };
+  // Types aux ports fixes (la plupart) : une seule table par type, gardée d'un recalcul à l'autre.
+  const pmap = n => {
+    let m = PM.get(n); if (m) return m;
+    const sp = specOf(n), fixed = sp && sp.ports.length === 0 && !n.ext;
+    if (fixed && TYPE_PORTS.has(n.type)) m = TYPE_PORTS.get(n.type);
+    else { m = new Map(portsOf(n).map(p => [p.id, p])); if (fixed) TYPE_PORTS.set(n.type, m); }
+    PM.set(n, m); return m;
+  };
   const portOf = (n, id) => (n ? pmap(n).get(id) || null : null);
   let WJ = new Map();
   function nodes() {
@@ -85,14 +112,13 @@ export function createLan(src) {
   /* ---------- 1. Canaux : câbles bout à bout à travers les prises passives ---------- */
   /** Canal depuis le port (n, p) : segments, câbles, longueur, catégorie, extrémité active, analyse. */
   function channelFrom(byId, byPort, n, p) {
-    const segs = [], cables = [], seen = new Set(), keys = [];
-    let cur = { n, p }, far = null, len = 0, rank = 9, perm = 0, dead = false;
+    const flips = [], cables = [], keys = [];
+    let cur = { n, p }, far = null, len = 0, rank = 9, perm = 0, dead = false, nf = 0;
     for (let guard = 0; guard < 16; guard++) {
-      const c = byPort.get(key(cur.n, cur.p)); if (!c || seen.has(c.id)) { dead = true; break; }
-      seen.add(c.id);
+      const c = byPort.get(key(cur.n, cur.p)); if (!c || cables.includes(c)) { dead = true; break; }
       const flip = !(c.a[0] === cur.n && c.a[1] === cur.p);
-      segs.push({ ...c.wire, flip }); cables.push(c);
-      let w = WJ.get(c.id); if (w == null) { const j = JSON.stringify(c.wire); w = WIRES.get(j); if (w == null) { if (WIRES.size > 20000) { WIRES.clear(); CHAINS.clear(); } w = String(WIRES.size); WIRES.set(j, w); } WJ.set(c.id, w); } keys.push(flip ? '~' + w : w);
+      flips.push(flip); cables.push(c); if (c.media === 'fibre') nf++;
+      let w = WJ.get(c.id); if (w == null) { w = wireId(c.wire); WJ.set(c.id, w); } keys.push(flip ? '~' + w : w);
       len += +c.len || 0; if (c.media !== 'fibre') rank = Math.min(rank, (CATS[c.cat] || CATS.cat5e).rank);
       const other = flip ? c.a : c.b, od = byId.get(other[0]);
       if (!od) { dead = true; break; }
@@ -107,15 +133,18 @@ export function createLan(src) {
       far = { n: other[0], p: other[1] }; break;
     }
     // Support : cuivre, fibre, ou mélange des deux (un câble fibre n'a pas de carte de câblage).
-    const nf = cables.filter(c => c.media === 'fibre').length, media = !nf ? 'copper' : nf === cables.length ? 'fibre' : 'mixed';
-    const an = segs.length && media === 'copper' ? chainOf(segs, keys.join('|')) : null;
-    return { segs, cables, far: dead ? null : far, len, rank: rank === 9 ? 0 : rank, cat: CAT_OF_RANK[rank] || null, perm, cords: len - perm, an, media, keys };
+    const media = !nf ? 'copper' : nf === cables.length ? 'fibre' : 'mixed';
+    const ch = new Chan({ cables, flips, far: dead ? null : far, len, rank: rank === 9 ? 0 : rank, cat: CAT_OF_RANK[rank] || null, perm, cords: len - perm, an: null, media, keys });
+    ch.an = cables.length && media === 'copper' ? chainOf(() => ch.segs, keys.join('|')) : null;
+    return ch;
   }
+
   /** Le même canal vu de l'autre bout (n, p) : câbles dans l'ordre inverse, chaque fiche retournée. */
   function reverseOf(ch, n, p) {
-    const segs = ch.segs.slice().reverse().map(s => ({ ...s, flip: !s.flip })), keys = ch.keys.slice().reverse().map(k => (k[0] === '~' ? k.slice(1) : '~' + k));
-    const an = segs.length && ch.media === 'copper' ? chainOf(segs, keys.join('|')) : null;
-    return { ...ch, segs, cables: ch.cables.slice().reverse(), far: { n, p }, an, keys };
+    const keys = ch.keys.slice().reverse().map(k => (k[0] === '~' ? k.slice(1) : '~' + k));
+    const r = new Chan({ cables: ch.cables.slice().reverse(), flips: ch.flips.slice().reverse().map(f => !f), far: { n, p }, len: ch.len, rank: ch.rank, cat: ch.cat, perm: ch.perm, cords: ch.cords, an: null, media: ch.media, keys });
+    r.an = r.cables.length && r.media === 'copper' ? chainOf(() => r.segs, keys.join('|')) : null;
+    return r;
   }
 
   /* ---------- Négociation du lien entre deux ports ---------- */

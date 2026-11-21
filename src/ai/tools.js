@@ -26,10 +26,24 @@ import * as J from '../library/jpart.js';
 import * as P from '../library/packages.js';
 import { DEFS as PNEU, props as pneuProps, portsOf as pneuPorts } from '../pneu/elements.js';
 import { cylOf } from '../pneu/physics.js';
+import { netOnly } from '../ui/kind.js';
 import { CATALOG as TWIN, TEMPLATES as TWIN_TEMPLATES, ENUMS as TWIN_ENUMS } from '../twin/model.js';
 
 /** Erreur montrée à l'IA (texte clair, sans pile). */
 export class ToolError extends Error {}
+
+/**
+ * Outils du montage (cartes, composants, fils, programmes, simulation des cartes, pneumatique) : un projet réseau seul
+ * (type « net ») n'en a pas. Ils ne sont pas listés pour lui (mcp.js, tools.visible) et refusent avec une explication.
+ */
+export const BENCH_TOOLS = new Set(['list_parts', 'get_part', 'add_part', 'remove_part', 'move_part', 'auto_wire', 'connect', 'disconnect', 'get_program', 'set_program',
+  'add_rule', 'add_variable', 'add_sequence', 'remove_rules', 'simulate', 'set_environment', 'set_part_input', 'read_simulation', 'serial_send', 'part_format', 'create_part',
+  'pneumatic_get', 'pneumatic_add', 'pneumatic_connect', 'pneumatic_remove', 'pneumatic_set', 'grafcet_get', 'grafcet_set', 'dcy', 'plc_get', 'plc_set', 'plc_from_grafcet',
+  'pneumatic_link_bench', 'grafcet_program', 'pneumatic_press', 'machine_get', 'machine_set']);
+/** L'outil name est-il utilisable dans un projet de ce type ? */
+export const toolFits = (name, kind) => !(BENCH_TOOLS.has(name) && netOnly(kind));
+/** Explication d'un refus (en anglais : lue par l'assistant). */
+export const benchRefusal = name => `${name} acts on the electronics bench (boards, parts, wires, programs, pneumatics), but this is a network project (kind "net"), which has none. Use the net_* tools (and the network design tools) here; to put a board on the network, create a project of kind "iot" with new_project.`;
 const fail = msg => { throw new ToolError(msg); };
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 const r1 = v => Math.round(v * 10) / 10;
@@ -908,7 +922,10 @@ export function createTools(H) {
       async run() { await H.undo(); return { parts: comps().length, wires: H.wires().length }; }
     }
   ];
-  const out = tools.map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' ') }));
+  const kind = () => (H.kind ? H.kind() : 'elec');
+  const out = tools.map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' '), ...(BENCH_TOOLS.has(t.name) ? { run: a => { if (!toolFits(t.name, kind())) fail(benchRefusal(t.name)); return t.run(a); } } : {}) }));
+  /** Outil montré à l'assistant pour le projet en cours (tools/list) : pas d'outil du montage dans un projet réseau seul. */
+  out.visible = t => toolFits(t.name, kind());
   /**
    * Outils de la conception réseau professionnelle (tools-net-*.js : plans, baies, VLAN, fibre, Wi-Fi, conception,
    * certification) : chargés à la première demande de la liste ou d'un appel (mcp.js), pas au démarrage. Rend la liste

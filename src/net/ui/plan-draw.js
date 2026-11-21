@@ -83,16 +83,28 @@ export function overSvg(data, f, st) {
   let h = '';
   // Étiquettes sans chevauchement : une étiquette qui en recouvrirait une autre déjà posée n'est pas écrite (on la voit
   // en zoomant ou en choisissant l'objet). Boîtes en pixels écran : [x0, y0, x1, y1].
-  const placed = [], fits = (cx, cy, w, hh) => { const b = [cx - w / 2 - 2, cy - hh / 2 - 1, cx + w / 2 + 2, cy + hh / 2 + 1]; if (placed.some(q => b[0] < q[2] && q[0] < b[2] && b[1] < q[3] && q[1] < b[3])) return false; placed.push(b); return true; };
-  const tw = t => String(t).length * 6.3;
+  // Ordre de priorité : symboles des équipements (réservés d'abord), noms des pièces (décalés autour de leur centre pour
+  // éviter les symboles), puis étiquettes des équipements (cachées si elles gêneraient ; visibles au survol).
+  const placed = [], hit = b => placed.some(q => b[0] < q[2] && q[0] < b[2] && b[1] < q[3] && q[1] < b[3]);
+  const box = (cx, cy, w, hh) => [cx - w / 2 - 2, cy - hh / 2 - 1, cx + w / 2 + 2, cy + hh / 2 + 1];
+  const fits = (cx, cy, w, hh) => { const b = box(cx, cy, w, hh); if (hit(b)) return false; placed.push(b); return true; };
+  const tw = (t, px = 7) => String(t).length * px;
   const vis = (sx, sy, m = 60) => sx > -m && sy > -m && sx < st.W + m && sy < st.H + m;
-  // Pièces : nom et surface au centre, si la pièce est assez grande à l'écran.
-  for (const r of f.rooms) {
-    const c = roomPoint(r), [sx, sy] = st.toS(c[0], c[1]); if (!vis(sx, sy, 120)) continue;
-    const A = roomArea(r); if (Math.sqrt(A) * st.k < 46) continue;
-    const nm = r.name || (USAGES[r.usage] ? USAGES[r.usage].name() : '');
-    if (!fits(sx, sy + 4, Math.max(tw(nm), 50), 28)) continue;
-    h += `<g class="ntPlRL${USAGES[r.usage] && USAGES[r.usage].tech ? ' tech' : ''}" transform="translate(${sx | 0} ${sy | 0})"><text y="-2">${esc(nm)}</text><text class="a" y="11">${fmtNum(A, 1, st.en)} m²</text></g>`;
+  const r = Math.max(7, Math.min(13, st.k * 0.35)), showL = st.k > 9;
+  // Équipements à l'écran : passifs (prises, panneaux) d'abord, actifs (points d'accès, caméras…) par-dessus, la
+  // sélection tout en haut : un point d'accès posé sur une prise se choisit d'un clic.
+  const rank = d => (st.sel.has('dev:' + d.id) ? 3 : /^(outlet|patch|fibrepanel)/.test(d.type) ? 0 : 1);
+  const on = (data.devices || []).filter(d => d.loc && d.loc.floor === f.id && vis(...st.toS(d.loc.x, d.loc.y), 40)).sort((a, b) => rank(a) - rank(b));
+  for (const d of on) { const [sx, sy] = st.toS(d.loc.x, d.loc.y); placed.push([sx - r - 1, sy - r - 1, sx + r + 1, sy + r + 1]); }
+  // Pièces : nom et surface près du centre, si la pièce est assez grande à l'écran.
+  for (const rm of f.rooms) {
+    const c = roomPoint(rm), [sx, sy] = st.toS(c[0], c[1]); if (!vis(sx, sy, 120)) continue;
+    const A = roomArea(rm); if (Math.sqrt(A) * st.k < 46) continue;
+    const nm = rm.name || (USAGES[rm.usage] ? USAGES[rm.usage].name() : ''), w = Math.max(tw(nm, 7.2), 50);
+    let dy = null; for (const o of [0, 26, -26, 44, -44, 62]) if (!hit(box(sx, sy + 4 + o, w, 28))) { dy = o; break; }
+    if (dy == null) { if (!st.allRooms) continue; dy = 0; } // trop de monde : le nom revient en zoomant (ou au survol de la pièce)
+    placed.push(box(sx, sy + 4 + dy, w, 28));
+    h += `<g class="ntPlRL${USAGES[rm.usage] && USAGES[rm.usage].tech ? ' tech' : ''}" transform="translate(${sx | 0} ${(sy + dy) | 0})"><text y="-2">${esc(nm)}</text><text class="a" y="11">${fmtNum(A, 1, st.en)} m²</text></g>`;
   }
   // Baies : nom.
   for (const r of data.racks || []) { if (r.floor !== f.id) continue; const [sx, sy] = st.toS(r.x, r.y); if (vis(sx, sy) && st.k > 14) h += `<text class="ntPlRkL" x="${sx | 0}" y="${(sy - ((r.d || 1000) / 2000) * st.k - 4) | 0}">${esc(r.name)}</text>`; }
@@ -113,22 +125,25 @@ export function overSvg(data, f, st) {
   // Équipements.
   // Étiquettes allégées : les prises (nombreuses) seulement de près, toutes les étiquettes seulement si l'écran n'est pas
   // trop chargé ; une étiquette cachée apparaît au survol de son équipement (et toujours pour la sélection).
-  const r = Math.max(7, Math.min(13, st.k * 0.35)), showL = st.k > 9;
-  const on = (data.devices || []).filter(d => d.loc && d.loc.floor === f.id && vis(...st.toS(d.loc.x, d.loc.y), 40));
   const dense = on.length > 140, outletsL = st.k >= 16 && on.length <= 90;
   for (const d of on) {
     const [sx, sy] = st.toS(d.loc.x, d.loc.y), s = st.sel.has('dev:' + d.id), nm = st.name(d);
-    const want = s || (showL && !dense && (outletsL || !/^outlet/.test(d.type)) && fits(sx, sy + r + 7, tw(nm), 12));
+    const want = s || (showL && !dense && (outletsL || !/^outlet/.test(d.type)) && fits(sx, sy + r + 9, tw(nm, 6.4), 12));
     h += `<g class="ntPlDev t-${d.type}${s ? ' sel' : ''}${st.bad.has(d.id) ? ' bad' : ''}" data-k="dev" data-id="${esc(d.id)}" transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)})"><circle r="${r}"/>${devIcon(d.type, r * 1.25)}<text${want ? '' : ' class="hov"'} y="${(r + 11).toFixed(0)}">${esc(nm)}</text></g>`;
   }
+  st.placed = placed; // (le calque Wi-Fi place ses étiquettes de canaux en évitant ces boîtes)
   // Poignées de l'objet choisi.
   for (const [sx, sy, key] of st.handles || []) if (vis(sx, sy)) h += `<rect class="ntPlH" data-h="${esc(key)}" x="${(sx - 5).toFixed(1)}" y="${(sy - 5).toFixed(1)}" width="10" height="10" rx="2"/>`;
+  // Repères d'alignement (même x ou même y qu'un sommet ou un équipement).
+  for (const [ax, ay, bx, by] of st.guides || []) { const [x1, y1] = st.toS(ax, ay), [x2, y2] = st.toS(bx, by); h += `<line class="ntPlGuide" x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`; }
   // Tracé en cours (mur, pièce, cheminement, mesure, étalonnage) : segments, longueur du dernier.
   const dr = st.draft;
   if (dr && dr.pts.length) {
     const P = [...dr.pts, ...(dr.cur ? [dr.cur] : [])].map(q => st.toS(q[0], q[1]));
     h += `<polyline class="ntPlDraft ${dr.kind}" points="${P.map(q => q.map(v => v.toFixed(1)).join(',')).join(' ')}"/>`;
     for (const q of P.slice(0, dr.pts.length)) h += `<circle class="ntPlDraftPt" cx="${q[0].toFixed(1)}" cy="${q[1].toFixed(1)}" r="3.5"/>`;
+    // Mesure : longueur de chaque tronçon posé, au milieu du tronçon.
+    if (dr.kind === 'measure') for (let i = 1; i < dr.pts.length; i++) { const L = dist(dr.pts[i - 1], dr.pts[i]), [x, y] = [(P[i - 1][0] + P[i][0]) / 2, (P[i - 1][1] + P[i][1]) / 2]; h += `<text class="ntPlMeasL" x="${x.toFixed(1)}" y="${(y - 6).toFixed(1)}">${fmtNum(L, 2, st.en)} m</text>`; }
     if (dr.cur) {
       const a = dr.pts[dr.pts.length - 1], L = dist(a, dr.cur), tot = dr.pts.reduce((s, q, i) => s + (i ? dist(dr.pts[i - 1], q) : 0), 0) + L;
       const [sx, sy] = P[P.length - 1];

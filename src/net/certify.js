@@ -246,10 +246,11 @@ export function certify(link, limitId, o = {}) {
   if (an.kind === 'crossover-full') faults.push({ type: 'crossed', pins: [1, 2, 3, 4, 5, 6, 7, 8] });
   const sl = scalarLimits(id), params = {};
   params.wiremap = { st: wmOk ? 'pass' : 'fail', faults: faults.map(f => ({ type: f.type, pins: f.pins })) };
-  // Longueur : la paire au délai le plus court ; marginal dans l'incertitude de NVP (+10 %).
-  const len = link.len * LAY[3], tol = L('CERT_NVP_TOL');
+  // Longueur : celle de la paire au délai le plus court, qui vaut la longueur du câble posé quand la NVP réglée est celle du
+  // câble (modèle) ; marginale dans l'incertitude de NVP (+10 %). Les autres paires, torsadées plus serré, ont plus de délai.
+  const len = link.len, tol = L('CERT_NVP_TOL');
   params.length = { v: +len.toFixed(1), lim: sl.length, margin: +(sl.length - len).toFixed(1), st: len <= sl.length ? 'pass' : len <= sl.length * (1 + tol) ? 'pass*' : 'fail' };
-  const nsm = L('CERT_NS_PER_M'), delays = LAY.map(k => +(link.len * nsm * k).toFixed(1));
+  const nsm = L('CERT_NS_PER_M'), delays = LAY.map(k => +(link.len * nsm * k / LAY[3]).toFixed(1));
   const dmax = Math.max(...delays), skew = +(dmax - Math.min(...delays)).toFixed(1);
   params.delay = { v: delays, lim: sl.delay, margin: +(sl.delay - dmax).toFixed(1), st: dmax <= sl.delay ? 'pass' : 'fail' };
   params.skew = { v: skew, lim: sl.skew, margin: +(sl.skew - skew).toFixed(1), st: skew <= sl.skew ? 'pass' : 'fail' };
@@ -427,7 +428,7 @@ const fmt = (v, d = 1) => (Number.isFinite(v) ? fmtNum(v, d) : '—');
  */
 export function chartSvg(res, param, o = {}) {
   const c = res && res.curves; if (!c) return '';
-  const W = o.w || 640, H = o.h || 300, pl = 46, pr = 14, pt = 12, pb = 34, S = seriesOf(res, param), lim = c.lim[param];
+  const W = o.w || 640, H = o.h || 300, pl = 46, pr = 14, pt = 12, pb = 40, S = seriesOf(res, param), lim = c.lim[param];
   const fmax = c.f[c.f.length - 1], X = f => pl + (lg(f) / lg(fmax)) * (W - pl - pr);
   let lo = Infinity, hi = -Infinity;
   for (const v of [lim, ...S.map(s => s.v)].flat()) if (Number.isFinite(v)) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
@@ -438,7 +439,7 @@ export function chartSvg(res, param, o = {}) {
   let g = '';
   for (let v = lo; v <= hi + 1e-9; v += step) g += `<line class="ntCeGrid" x1="${pl}" x2="${W - pr}" y1="${Y(v).toFixed(1)}" y2="${Y(v).toFixed(1)}"${o.print ? ' stroke="#e5e7eb"' : ''}/><text class="ntCeTick" x="${pl - 6}" y="${(Y(v) + 3.5).toFixed(1)}" text-anchor="end"${o.print ? ' fill="#555"' : ''}>${v}</text>`;
   for (const f of [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].filter(x => x <= fmax)) g += `<line class="ntCeGrid" x1="${X(f).toFixed(1)}" x2="${X(f).toFixed(1)}" y1="${pt}" y2="${H - pb}"${o.print ? ' stroke="#e5e7eb"' : ''}/><text class="ntCeTick" x="${X(f).toFixed(1)}" y="${H - pb + 14}" text-anchor="middle"${o.print ? ' fill="#555"' : ''}>${f}</text>`;
-  g += `<text class="ntCeTick" x="${W - pr}" y="${H - 4}" text-anchor="end"${o.print ? ' fill="#555"' : ''}>MHz</text><text class="ntCeTick" x="4" y="${pt + 8}"${o.print ? ' fill="#555"' : ''}>dB</text>`;
+  g += `<text class="ntCeTick" x="${(pl + W - pr) / 2}" y="${H - 8}" text-anchor="middle"${o.print ? ' fill="#555"' : ''}>${esc(tl('fréquence (MHz)'))}</text><text class="ntCeTick" x="4" y="${pt + 8}"${o.print ? ' fill="#555"' : ''}>dB</text>`;
   const lines = S.map((s, i) => `<path class="ntCeS ntCeS${i}${o.only != null && o.only !== i ? ' dim' : ''}" d="${path(s.v)}" fill="none"${col(i)}${o.print ? ' stroke-width="1.4"' : ''}/>`).join('');
   const limLine = `<path class="ntCeLim" d="${path(lim)}" fill="none"${o.print ? ' stroke="#dc2626" stroke-width="2.2" stroke-dasharray="7 4"' : ''}/>`;
   return `<svg class="ntCeChart" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="${esc(paramName(param))}"><rect x="${pl}" y="${pt}" width="${W - pl - pr}" height="${H - pt - pb}" class="ntCePlot"${o.print ? ' fill="#fff" stroke="#d1d5db"' : ''}/>${g}${lines}${limLine}</svg>`;

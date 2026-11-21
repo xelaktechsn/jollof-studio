@@ -74,8 +74,9 @@ export function netIssues(lan, data) {
   // Canaux (de port actif à port actif) : longueur, lien permanent, catégorie, lien absent.
   for (const [k, ch] of st.chans) {
     if (!ch.far || (ch.media && ch.media !== 'copper')) continue; // fibre : bilan optique (checks/fibre.js)
-    const pair = [k, ch.far.n + '|' + ch.far.p].sort().join('#'); if (done.has(pair)) continue; done.add(pair);
-    const [nid] = k.split('|'), l = st.links.get(k), who = tl('{0} ↔ {1}', name(nid), name(ch.far.n)), cid = ch.cables[0] && ch.cables[0].id;
+    const fk = ch.far.n + '|' + ch.far.p; if (fk < k && st.chans.has(fk)) continue; // une fois par liaison
+    const nid = k.slice(0, k.indexOf('|')), l = st.links.get(k), cid = ch.cables[0] && ch.cables[0].id;
+    let who0 = null; const who = { toString: () => who0 || (who0 = tl('{0} ↔ {1}', name(nid), name(ch.far.n))) }; // texte fait seulement si un défaut est signalé
     if (ch.len > NET.CHANNEL_M.v) item('J1203', cid, tl('Liaison {0} : {1} m de câble, au-delà des {2} m d’un canal.', who, Math.round(ch.len), NET.CHANNEL_M.v));
     else if (ch.perm > NET.PERMANENT_M.v) item('J1204', cid, tl('Liaison {0} : lien permanent de {1} m (au plus {2} m entre le panneau et la prise).', who, Math.round(ch.perm), NET.PERMANENT_M.v));
     else if (ch.perm > 0 && ch.cords > NET.CORDS_M.v) item('J1204', cid, tl('Liaison {0} : {1} m de cordons (au plus {2} m en tout).', who, Math.round(ch.cords), NET.CORDS_M.v));
@@ -167,7 +168,16 @@ function stormManaged(st) {
 const netStr = f => { const n = netOf(f.ip, f.prefix); return [n >>> 24, (n >>> 16) & 255, (n >>> 8) & 255, n & 255].join('.'); };
 const speedText = s => (s >= 10000 ? '10GBASE-T' : s >= 1000 ? '1000BASE-T' : s >= 100 ? '100BASE-TX' : '10BASE-T');
 function poeBudgetOf(st, id) { for (const info of st.poe.values()) if (info.ports.some(p => p.node === id)) return info.budget; return '?'; }
-const portOfSpec = (n, pid) => specOf(n).ports(n.p || {}).find(p => p.id === pid) || null;
+const PORT_IDX = new WeakMap(); // liste de ports (partagée par type) → Map(id → port)
+const portOfSpec = (n, pid) => {
+  const sp = specOf(n), list = sp.ports(n.p || {}); if (sp.ports.length) return list.find(p => p.id === pid) || null; // ports selon les réglages : liste neuve
+  let m = PORT_IDX.get(list); if (!m) { m = new Map(list.map(p => [p.id, p])); PORT_IDX.set(list, m); } return m.get(pid) || null;
+};
 /** Carte de câblage d'un câble seul, gardée en mémoire par le contenu de ses fiches (un grand plan en a des milliers). */
 const CABLES = new Map();
-const lanCable = c => { const k = JSON.stringify(c.wire || {}); let r = CABLES.get(k); if (!r) { r = analyzeCable(c.wire || {}); if (CABLES.size > 6000) CABLES.clear(); CABLES.set(k, r); } return r; };
+const CABLE_BY_WIRE = new WeakMap(); // même objet de fiches (a, b, cut inchangés) : même résultat, sans relire le contenu
+const lanCable = c => {
+  const w = c.wire || {}, m = CABLE_BY_WIRE.get(w); if (m && m.a === w.a && m.b === w.b && m.cut === w.cut) return m.r;
+  const k = JSON.stringify(w); let r = CABLES.get(k); if (!r) { r = analyzeCable(w); if (CABLES.size > 6000) CABLES.clear(); CABLES.set(k, r); }
+  if (c.wire) CABLE_BY_WIRE.set(w, { a: w.a, b: w.b, cut: w.cut, r }); return r;
+};

@@ -13,6 +13,8 @@ const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLow
 const readMru = () => { try { const v = JSON.parse(localStorage.getItem(MRU_KEY)); return Array.isArray(v) ? v : []; } catch (e) { return []; } };
 const writeMru = l => { try { localStorage.setItem(MRU_KEY, JSON.stringify(l.slice(0, 24))); } catch (e) { /* stockage indisponible */ } };
 
+/** Mots d'un libellé (espaces, tirets, ponctuation). */
+const wordsOf = t => t.split(/[\s\-–—:·,;()/.]+/).filter(Boolean);
 /** Sous-suite : chaque lettre de q apparaît dans t, dans l'ordre (« dht » dans « capteur DHT22 »). */
 function subseq(t, q) { let i = 0; for (const c of t) { if (c === q[i]) i++; if (i === q.length) return true; } return false; }
 
@@ -27,7 +29,7 @@ function score(item, words) {
     if (lab.startsWith(w)) s += 30;
     else if (lab.includes(' ' + w)) s += 20;
     else if (all.includes(w)) s += 12;
-    else if (w.length >= 2 && subseq(lab, w)) s += 3;
+    else if (w.length >= 2 && wordsOf(lab).some(x => x[0] === w[0] && subseq(x, w))) s += 3; // sous-suite dans un seul mot, depuis son début
     else return 0;
   }
   return s;
@@ -44,8 +46,9 @@ function highlight(label, words) {
 }
 
 /**
- * Palette de commandes. Une commande : { id, label, cat, icon, keys (raccourci affiché), run(), when() → visible }.
- * Rend { register(cmd | [cmds]), provide(fn → [cmds] | Promise), open(texte), close(), isOpen() }.
+ * Palette de commandes. Une commande : { id, label, cat, icon, keys (raccourci affiché), run(), when() → visible,
+ * supersedes ([ids] cachés quand elle est visible) }. Rend { register(cmd | [cmds]), provide(fn → [cmds] | Promise),
+ * get(id), run(id), open(texte), close(), isOpen() }.
  */
 export function createPalette() {
   const items = new Map(), providers = [];
@@ -83,7 +86,9 @@ export function createPalette() {
   function visible() {
     const out = [];
     for (const it of [...items.values(), ...dyn]) { try { if (!it.when || it.when()) out.push(it); } catch (e) { /* commande indisponible */ } }
-    return out;
+    // Une commande qui en remplace d'autres (supersedes : [ids], par exemple l'entrée d'un menu et celle d'une vue) les cache.
+    const gone = new Set(out.flatMap(it => it.supersedes || []));
+    return gone.size ? out.filter(it => !gone.has(it.id)) : out;
   }
   function render() {
     const q = norm(input.value).trim(), words = q ? q.split(/\s+/) : [];
@@ -131,6 +136,10 @@ export function createPalette() {
   return {
     register(c) { for (const it of Array.isArray(c) ? c : [c]) if (it && it.id && it.label && it.run) items.set(it.id, it); },
     unregister(id) { items.delete(id); },
+    /** Commande enregistrée (fixe), utilisable maintenant (when), ou null : les menus reprennent les commandes des modules. */
+    get(id) { const it = items.get(id); try { return it && (!it.when || it.when()) ? it : null; } catch (e) { return null; } },
+    /** Exécute une commande par son identifiant (comptée dans les dernières utilisées) ; rend false si elle est indisponible. */
+    run(id) { const it = this.get(id); if (!it) return false; mru = [it.id, ...mru.filter(x => x !== it.id)]; writeMru(mru); Promise.resolve().then(() => it.run()).catch(e => console.error(e)); return true; },
     provide(fn) { providers.push(fn); return () => { const i = providers.indexOf(fn); if (i >= 0) providers.splice(i, 1); }; },
     open: openPal, close, isOpen: () => open,
     toggle(prefill) { if (open) close(); else openPal(prefill); }

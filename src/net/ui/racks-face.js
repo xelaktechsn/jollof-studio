@@ -75,12 +75,12 @@ export function faceSvg(d, hmm, o = {}) {
   }
   if (m.pdu) {
     for (let k = 0; k < 16; k++) g += `<rect class="ntRkOutlet" x="${EAR + 80 + k * 21}" y="${n(hmm / 2 - 6)}" width="14" height="12" rx="2"/>`;
-    return g + label(EAR + 6, hmm / 2 + 2.5, 7);
+    return g + label(EAR + 6, hmm / 2, 7);
   }
   if (kind === 'server' || kind === 'nas') {
     const bays = kind === 'nas' ? 7 : 8, bw = kind === 'nas' ? 44 : 34, bh = kind === 'nas' ? hmm - 16 : hmm - 14;
     for (let k = 0; k < bays; k++) g += `<rect class="ntRkBay" x="${EAR + 70 + k * (bw + 4)}" y="${n((hmm - bh) / 2)}" width="${bw}" height="${n(bh)}" rx="1.5"/><circle class="ntRkLed g" cx="${EAR + 70 + k * (bw + 4) + bw - 5}" cy="${n((hmm - bh) / 2 + 4)}" r="1.4"/>`;
-    return g + label(EAR + 6, hmm / 2 + 2.5, 7.5);
+    return g + label(EAR + 6, hmm / 2, 7.5);
   }
   if (m.shelf) {
     // Appareil de bureau posé sur une tablette : un petit boîtier, pas une façade 19 pouces.
@@ -90,7 +90,7 @@ export function faceSvg(d, hmm, o = {}) {
     const sc = (bw - 20) / (W - 2 * EAR - 60), list = [...slots];
     list.forEach(([pid, p], k) => { const px = x + 8 + k * Math.min(15, (bw - 16) / list.length), l = lan ? lan.port(d.id, pid) : null; b += `<rect class="ntRkPort ${used.has(pid) ? 'used' : ''}" data-port="${esc(pid)}" x="${n(px)}" y="${n(y + bh / 2 - 4)}" width="${n(Math.min(11, (bw - 16) / list.length - 2))}" height="8" rx="1"/><circle class="ntRkLed ${ledCls(l)}" cx="${n(px + 2)}" cy="${n(y + bh / 2 - 6)}" r="1.1"/>`; void p; });
     void sc;
-    return b + `<text class="ntRkLbl" x="${n(x + bw + 6)}" y="${n(y + bh / 2 + 2.5)}" font-size="7">${esc(d.name)}</text>`;
+    return b + `<text class="ntRkLbl" x="${n(x + bw + 6)}" y="${n(y + bh / 2)}" font-size="7">${esc(d.name)}</text>`;
   }
   // Appareils à ports : switchs, routeurs, panneaux de brassage cuivre et fibre.
   const slots = portSlots(d, hmm);
@@ -102,7 +102,7 @@ export function faceSvg(d, hmm, o = {}) {
     if (l) g += `<circle class="ntRkLed ${ledCls(l)}" cx="${n(p.x + 2.2)}" cy="${n(p.y - 1.6)}" r="1.05"/>`;
     if (s.role === 'passive' && slots.size <= 48) g += `<text class="ntRkNum" x="${n(p.x + p.w / 2)}" y="${n(p.y + p.h + 4.6)}" font-size="3.6">${esc(String(pid).replace(/^f/, ''))}</text>`;
   }
-  return g + label(EAR + 5, hmm / 2 + 2.5, hmm > 50 ? 8 : 7);
+  return g + label(EAR + 5, hmm / 2, hmm > 50 ? 8 : 7);
 }
 
 /** PDU verticale (0U) vue de face : une barre de longueur len (mm) avec ses prises. */
@@ -110,7 +110,8 @@ export function pduStripSvg(d, len, outlets = 38) {
   const w = 52, k = Math.min(outlets, Math.floor((len - 120) / 30));
   let g = `<rect class="ntRkPdu" x="0" y="0" width="${w}" height="${n(len)}" rx="4"/><rect class="ntRkScreen" x="10" y="16" width="32" height="18" rx="2"/>`;
   for (let i = 0; i < k; i++) g += `<rect class="ntRkOutlet" x="15" y="${n(56 + i * ((len - 80) / k))}" width="22" height="16" rx="3"/>`;
-  return g + `<text class="ntRkLbl" x="${w / 2}" y="${n(len - 10)}" font-size="8" text-anchor="middle">${esc(d.name)}</text>`;
+  // Nom : le long du bord gauche de la barre, vertical, dans son cadre (sans déborder sur le rail).
+  return g + `<text class="ntRkLbl ntRkPduLbl" x="0" y="0" font-size="8" text-anchor="middle" transform="translate(8 ${n(len / 2)}) rotate(-90)">${esc(d.name)}</text>`;
 }
 
 /* ---------- Arrière des équipements, vu de derrière ----------
@@ -165,5 +166,5 @@ function backSvg(d, hmm, o) {
     else if (p.kind === 'conn') g += `<rect class="ntRkScreen" x="${p.x}" y="${p.y}" width="${p.w}" height="${p.h}" rx="2"/>`;
   }
   // Nom : à droite vu de derrière (il est à gauche vu de devant), texte lisible.
-  return g + `<text class="ntRkLbl" x="${n(PANEL_MM - EAR - 6)}" y="${n(hmm / 2 + 2.5)}" font-size="7" text-anchor="end">${esc(d.name)}</text>`;
+  return g + `<text class="ntRkLbl" x="${n(PANEL_MM - EAR - 6)}" y="${n(hmm / 2)}" font-size="7" text-anchor="end">${esc(d.name)}</text>`;
 }

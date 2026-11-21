@@ -52,9 +52,15 @@ function floorPane(ctx, V, f) {
   let h = head('floorPlan', f.name, `${b.name} · ${tl('niveau {0}', f.level)}`);
   h += `<section class="ntSec">${field(tl('Nom'), inp('f.name', f.name, 'maxlength="40"'))}${field(tl('Niveau'), numIn('f.level', f.level, -20, 200, 1))}${field(tl('Altitude du sol (m)'), numIn('f.elev', f.elev, -100, 1000, 0.05))}${field(tl('Hauteur d’étage (m)'), numIn('f.height', f.height, 2, 30, 0.05), tl('De sol à sol : sert aux colonnes montantes'))}${field(tl('Sous plafond (m)'), numIn('f.ceil', f.ceil, 2, 30, 0.05))}${field(tl('Faux plafond (m)'), numIn('f.plenum', f.plenum, 0, 5, 0.05))}${field(tl('Faux plancher (m)'), numIn('f.raised', f.raised, 0, 2, 0.05))}</section>`;
   h += `<section class="ntSec"><h4>${tl('Contenu')}</h4><p class="mut">${tl('{0} pièce(s) · {1} m² · {2} mur(s) · {3} équipement(s) · {4} cheminement(s)', f.rooms.length, n1(area, 1), f.walls.length, devs.length, (data.paths || []).filter(p => p.floor === f.id).length)}</p><div class="row">${btn('addFloor', 'plus', tl('Étage au-dessus'))}${btn('copyFloor', 'copy', tl('Dupliquer l’étage'))}${f.walls.length > 2 ? btn('detect', 'wand', tl('Détecter les pièces')) : ''}</div></section>`;
-  h += `<section class="ntSec"><h4>${tl('Plan importé')}</h4>`;
+  // Fond DXF/DWG de l'étage (plan-underlay.js) : visible, opacité, réglages, remplacement par une nouvelle révision.
+  const ul = data.underlays && data.underlays[f.id];
+  if (ul) {
+    const nOn = (ul.layers || []).filter(l => l.on !== false).length;
+    h += `<section class="ntSec"><h4>${tl('Fond DXF/DWG')}</h4><p><b>${esc(ul.name || (ul.source && ul.source.file) || '')}</b></p><p class="mut">${tl('{0} calque(s) affiché(s) sur {1} · {2} traits', nOn, (ul.layers || []).length, ((ul.stats && ul.stats.segs) || 0).toLocaleString(isEn ? 'en' : 'fr'))}</p>${chk('ul.on', ul.on !== false, tl('Fond affiché'))}${field(tl('Opacité'), `<input type="range" data-pl="ul.opacity" min="0.1" max="1" step="0.05" value="${ul.opacity ?? 0.85}">`)}<div class="row">${btn('cadcard', 'layers', tl('Calques et position…'), 'primary')}${btn('cad', 'upload', tl('Nouvelle révision…'))}</div></section>`;
+  }
+  h += `<section class="ntSec"><h4>${tl('Image du plan')}</h4>`;
   if (im) h += `${field(tl('Opacité'), `<input type="range" data-pl="im.opacity" min="0.05" max="1" step="0.05" value="${im.opacity}">`)}${chk('im.lock', im.lock, tl('Verrouillé (ne bouge plus)'))}<p class="mut">${tl('Échelle : {0} cm par pixel · {1} × {2} m', n1(im.scale * 100, 3), n1(im.iw * im.scale, 1), n1(im.ih * im.scale, 1))}</p><div class="row">${btn('calib', 'calibrate', tl('Étalonner'), 'primary')}${btn('image', 'image', tl('Remplacer'))}${btn('rmImage', 'trash', tl('Retirer'))}</div>`;
-  else h += `<p class="mut">${tl('Un plan scanné (PNG, JPG) sous le dessin : importez-le, puis étalonnez-le en cliquant deux points dont vous connaissez la distance.')}</p><div class="row">${btn('image', 'image', tl('Importer un plan'), 'primary')}</div>`;
+  else h += `<p class="mut">${tl('Un plan scanné (PNG, JPG) sous le dessin : importez-le, puis étalonnez-le en cliquant deux points dont vous connaissez la distance.')}</p><div class="row">${ul ? '' : btn('cad', 'upload', tl('Importer un plan DXF ou DWG…'), 'primary')}${btn('image', 'image', tl('Importer une image'))}</div>`;
   h += '</section>';
   h += `<section class="ntSec"><h4>${tl('Site')}</h4>${field(tl('Nom du site'), inp('s.name', data.site.name, 'maxlength="60"'))}${field(tl('Classe de ségrégation'), sel('s.seg', data.site.seg, SEG_CLASSES.map(c => [c, tl('classe {0}', c) + (c === 'b' ? ' · ' + tl('U/UTP courant') : c === 'c' ? ' · ' + tl('câble écranté') : '')])), tl('EN 50174-2 : distance aux câbles d’énergie selon le câble de données'))}${field(tl('Nord (°)'), numIn('s.north', data.site.north, -360, 360, 1))}${field(tl('Accès sans cheminement (m)'), numIn('s.access', data.site.access, 0.5, 100, 0.5), tl('Réglage de conception : au-delà, le câble doit être porté (crochets, goulotte)'))}<p class="mut">${tl('Mou de service compté dans les longueurs : {0} m au local technique, {1} m à la prise (réglages par défaut de la conception, modifiables).', n1(S.tr ?? PLAN_LIM.SLACK_TR_M.v), n1(S.wa ?? PLAN_LIM.SLACK_WA_M.v))}</p></section>`;
   h += issList(ctx, [f.id, ...devs.map(d => d.id), ...f.rooms.map(r => r.id)]);
@@ -148,6 +154,12 @@ export function paneEvent(ctx, V, e, s) {
     const lim = { level: [-20, 200], elev: [-100, 1000], height: [2, 30], ceil: [2, 30], plenum: [0, 5], raised: [0, 2] }[key];
     if (key === 'name') set(F, 'name', cleanText(v, 40).trim() || F.name);
     else if (lim) { const x = num(v, ...lim); set(F, key, key === 'level' && x != null ? Math.round(x) : x); }
+    return true;
+  }
+  if (o === 'ul') {
+    const u = data.underlays && f && data.underlays[f.id]; if (!u) return true;
+    if (key === 'on') { u.on = !!v; ctx.commit(); }
+    if (key === 'opacity') { u.opacity = num(v, 0.1, 1) ?? u.opacity; if (e.type === 'input') { V.paint(); return true; } ctx.commit(); }
     return true;
   }
   if (o === 'im') {

@@ -66,6 +66,7 @@ export function cleanPaths(raw) {
     if (kind === 'conduit') o.rad = Math.round(num(p.rad, 0, 5000, 0));
     if (kind === 'riser') o.top = okId(p.top) ? p.top : p.floor;
     if (kind === 'outdoor') { o.to = okId(p.to) ? p.to : p.floor; o.len = r3(num(p.len, 1, 100000, Math.max(1, dist(pts[0], pts[1])))); }
+    if (typeof p.src === 'string' && /^[\w.:-]{1,60}$/.test(p.src)) o.src = p.src;
     out.push(o);
   }
   return out;

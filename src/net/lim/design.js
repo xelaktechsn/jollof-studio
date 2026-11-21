@@ -18,5 +18,9 @@ export const DESIGN_LIM = {
   OVERSUB_CORE: { v: 4, src: 'ciscoCampusBp' },
   /** Marge pour l'avenir : 20 % de capacité de câble en réserve (guide de l'université du Michigan) ; la réserve de ports
    *  par défaut la reprend (valeur de conception modifiable). */
-  DESIGN_SPARE_GROWTH: { v: 20, src: 'umichDg272000' }
+  DESIGN_SPARE_GROWTH: { v: 20, src: 'umichDg272000' },
+  /** Calques AIA / NCS (convention publique qui les reprend) : discipline T, groupes JACK, EQPM, CABL, CABL-FIBR, CABL-TRAY, DATA ; A-AREA, A-WALL. */
+  DXF_NCS_LAYERS: { v: { jack: 'T-JACK', equipment: 'T-EQPM', cable: 'T-CABL', fibre: 'T-CABL-FIBR', tray: 'T-CABL-TRAY', data: 'T-DATA', area: 'A-AREA', wall: 'A-WALL' }, src: 'moFmdcCad' },
+  /** ISO 13567 : longueur des champs obligatoires d'un nom de calque (agent responsable, élément, présentation). */
+  ISO13567_FIELDS: { v: { agent: 2, element: 6, presentation: 2 }, src: 'iso13567Wiki' }
 };

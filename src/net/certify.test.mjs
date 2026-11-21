@@ -102,7 +102,7 @@ test('un lien bien posé réussit, de façon déterministe', () => {
   const data = floor([{ len: 45 }]);
   const l = plOf(data, 'h1'), r = certify(l);
   assert.equal(r.verdict, 'pass'); assert.ok(r.ok); assert.equal(r.limit, 'cat6-pl'); assert.ok(r.margin > 0.5 && r.margin < 5, `marge ${r.margin}`);
-  assert.equal(r.simulated, true); assert.equal(r.wiremap.ok, true); assert.equal(r.params.length.v, 43.4);
+  assert.equal(r.simulated, true); assert.equal(r.wiremap.ok, true); assert.equal(r.params.length.v, 45);
   assert.deepEqual(certify(l), r, 'même lien, même résultat');
   const c = certify(l, 'cat6-pl', { curves: true });
   assert.equal(c.curves.f.length, N_POINTS); assert.equal(c.curves.meas.next.length, 6); assert.equal(c.verdict, r.verdict, 'courbes : même verdict');
@@ -129,7 +129,7 @@ test('T568A d’un côté, T568B de l’autre : carte de câblage en échec (pai
 test('longueur : au-delà de 90 m marginal (incertitude de NVP), au-delà de 99 m échec', () => {
   const tol = NET.CERT_NVP_TOL.v;
   const r95 = certify(plOf(floor([{ len: 95 }]), 'h1'));
-  assert.equal(r95.params.length.st, 'pass*'); assert.ok(95 * 0.964 <= 90 * (1 + tol));
+  assert.equal(r95.params.length.st, 'pass*'); assert.ok(95 <= 90 * (1 + tol));
   const r104 = certify(plOf(floor([{ len: 104 }]), 'h1'));
   assert.equal(r104.params.length.st, 'fail'); assert.equal(r104.verdict, 'fail'); assert.ok(!r104.ok);
   assert.equal(r104.params.il.st === 'fail' || r104.params.il.st === 'fail*', true, 'l’affaiblissement dépasse aussi');

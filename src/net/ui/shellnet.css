@@ -1,0 +1,67 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Ossature d'un projet réseau : barre de menus de la barre d'application (menubar.js), barre d'état (shellnet.js). */
+
+/* ---------- Barre de menus ---------- */
+.ntMb { display: flex; align-items: center; gap: 1px; flex: 0 1 auto; min-width: 0; overflow: hidden; margin-left: 8px; padding-left: 8px; border-left: 1px solid var(--line); }
+.ntMb[hidden] { display: none; }
+.ntMbTop { appearance: none; flex: none; height: 30px; padding: 0 9px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: 500 13px var(--sans); white-space: nowrap; cursor: default; }
+.ntMbTop:hover, .ntMbTop[aria-expanded="true"] { background: var(--raise); color: var(--fg); }
+.ntMbTop:focus { outline: none; }
+.ntMbTop:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntMbAll { display: inline-flex; align-items: center; gap: 7px; padding: 0 10px 0 8px; }
+.ntMbAll .ic { width: 17px; height: 17px; }
+@media (max-width: 1100px) { .ntMbAll span { display: none; } }
+
+.ntMbPop { position: fixed; z-index: 72; min-width: 248px; max-width: 420px; padding: 5px; overflow-y: auto; border-radius: 10px; background: var(--menu); border: 1px solid var(--line-2); box-shadow: var(--shadow, 0 18px 50px #000b); animation: fadeIn .1s ease-out; }
+.ntMbItem { appearance: none; display: grid; grid-template-columns: 16px 16px minmax(0, 1fr) auto; align-items: center; gap: 8px; width: 100%; height: 30px; padding: 0 10px 0 6px; border: 0; border-radius: 6px; background: none; color: var(--fg-2); font: 500 13px var(--sans); text-align: left; cursor: default; }
+.ntMbItem:focus { outline: none; }
+.ntMbItem.on, .ntMbItem[aria-expanded="true"] { background: var(--raise); color: var(--fg); }
+.ntMbItem.on:focus-visible { box-shadow: inset 0 0 0 1px var(--accent); }
+.ntMbItem[aria-disabled="true"] { opacity: .42; }
+.ntMbItem[aria-disabled="true"].on { background: none; }
+.ntMbIc, .ntMbCk { display: inline-grid; place-items: center; width: 16px; height: 16px; }
+.ntMbIc .ic { width: 15px; height: 15px; color: var(--muted); }
+.ntMbItem.on .ntMbIc .ic { color: var(--accent-hi); }
+.ntMbCk .ic { width: 14px; height: 14px; color: var(--accent-hi); }
+.ntMbDot { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-hi); }
+.ntMbLab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntMbItem kbd { padding-left: 22px; font: 500 11.5px system-ui, -apple-system, sans-serif; letter-spacing: .03em; color: var(--muted); background: none; border: 0; }
+.ntMbItem kbd:empty { display: none; }
+.ntMbArrow { display: inline-grid; place-items: center; padding-left: 16px; }
+.ntMbArrow .ic { width: 13px; height: 13px; color: var(--muted); }
+.ntMbSep { height: 1px; margin: 5px 6px; background: var(--line); }
+@media (prefers-reduced-motion: reduce) { .ntMbPop { animation: none; } }
+
+/* ---------- Projet réseau seul : le type et le nom restent lisibles, la barre compacte cède la place aux menus ---------- */
+.app[data-kind="net"] .appbar .abDoc .projBtn { max-width: 200px; }
+
+/* ---------- Barre d'état ---------- */
+.ntSb { display: inline-flex; align-items: center; gap: 2px; min-width: 0; padding-left: 10px; border-left: 1px solid var(--line); }
+.ntSb[hidden] { display: none; }
+.ntSbBtn { appearance: none; display: inline-flex; align-items: center; gap: 5px; height: 22px; padding: 0 7px; border: 0; border-radius: 4px; background: none; color: var(--fg-2); font: 500 11.5px var(--sans); white-space: nowrap; cursor: pointer; }
+.ntSbBtn:hover { background: var(--raise); color: var(--fg); }
+.ntSbBtn:focus { outline: none; }
+.ntSbBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntSbBtn .ic { width: 13px; height: 13px; color: var(--accent-hi); }
+.ntSbBtn[data-sb="zoom"] { font-variant-numeric: tabular-nums; min-width: 46px; justify-content: center; }
+.ntSbCounts { padding: 0 6px; font: 500 11.5px var(--sans); font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Les comptes détaillés remplacent ceux du plan logique ; l'aide de la barre d'état cède la place (raccourcis : « ? »). */
+.app.netMode .statusbar #counts { display: none; }
+@media (max-width: 1600px) { .app.netMode .statusbar #hint { display: none; } }
+
+/* ---------- Section mise en évidence (menus → inspecteur, conception) ---------- */
+.ntFlash { animation: ntFlash 1.5s ease-out; }
+@keyframes ntFlash { 0%, 30% { box-shadow: 0 0 0 2px var(--accent), 0 0 0 6px var(--accent-soft); } 100% { box-shadow: 0 0 0 2px transparent, 0 0 0 6px transparent; } }
+@media (prefers-reduced-motion: reduce) { .ntFlash { animation: none; outline: 2px solid var(--accent); } }
+
+/* ---------- Mise en page des écrans moyens (≤ 1366 px, 1280 × 720) ---------- */
+/* Inspecteur plus étroit (la bibliothèque garde sa largeur : ses onglets Bibliothèque, Projet, Calques y tiennent) : le
+   plan de travail garde plus de la moitié de la largeur. La largeur choisie
+   à la poignée de l'inspecteur (--insUser) reste retenue ; Ctrl+B et Ctrl+Alt+B replient l'un ou l'autre. */
+@media (max-width: 1366px) {
+  .app.netMode:not(.wide) { --insDef: 288px; --insW: clamp(256px, var(--insUser, var(--insDef)), 34vw); }
+}
+/* Inspecteur replié (Affichage → Inspecteur, Ctrl+Alt+B ; vue Conception sur un écran moyen) : sa colonne disparaît. */
+.app.netMode.ntInsClosed { --insW: 0px; }
+.app.netMode.ntInsClosed > .panel.right, .app.netMode.ntInsClosed > .insGrip { display: none !important; }

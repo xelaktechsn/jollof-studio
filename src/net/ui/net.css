@@ -65,7 +65,7 @@
 .ntTag { font-size: 9.5px; text-anchor: middle; pointer-events: none; fill: var(--nt-err); }
 .ntIp.bad { fill: var(--nt-err); }
 .ntSsid { font-size: 9.5px; fill: var(--nt-c5e); text-anchor: middle; pointer-events: none; }
-.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-events: none; }
+text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-events: none; } /* étiquette de port (WAN) ; la vue Plans a aussi la classe .ntPl */
 .ntPort { cursor: crosshair; }
 .ntPort > rect:first-of-type { fill: var(--bg); stroke: var(--line-3); stroke-width: 1px; }
 .ntPort.used > rect:first-of-type { stroke: var(--fg-2); }

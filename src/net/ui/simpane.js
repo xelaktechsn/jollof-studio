@@ -56,7 +56,7 @@ function portsSec(ctx, n) {
     const vl = c.mode === 'access'
       ? inp(`type="number" min="1" max="4094" data-sport="${p.id}" data-f="vlan" aria-label="${tl('VLAN d’accès')}"`, c.vlan, `style="--vc:${vlanColor(data, c.vlan)}"`)
         + inp(`type="number" min="0" max="4094" data-sport="${p.id}" data-f="voice" aria-label="${tl('VLAN voix')}" data-tip="${tl('VLAN voix : un téléphone IP branché sur ce port y est placé (0 : aucun)')}" placeholder="${tl('voix')}"`, c.voice || '', 'class="inp ntSmIn tiny"')
-      : `${inp(`type="number" min="1" max="4094" data-sport="${p.id}" data-f="native" aria-label="${tl('VLAN natif')}" data-tip="${tl('VLAN natif (sans étiquette)')}"`, c.native)}${inp(`data-sport="${p.id}" data-f="allowed" aria-label="${tl('VLAN autorisés')}" data-tip="${tl('VLAN autorisés : all, none ou 10,20,30-40')}"`, c.allowed, 'class="inp ntSmIn wide"')}`;
+      : `${inp(`type="number" min="1" max="4094" data-sport="${p.id}" data-f="native" aria-label="${tl('VLAN natif')}" data-tip="${tl('VLAN natif (sans étiquette)')}"`, c.native)}${inp(`data-sport="${p.id}" data-f="allowed" aria-label="${tl('VLAN autorisés')}" data-tip="${tl('VLAN autorisés : toutes, aucune ou 10,20,30-40')}"`, c.allowed === 'all' ? tl('toutes') : c.allowed === 'none' ? tl('aucune') : c.allowed, 'class="inp ntSmIn wide"')}`;
     const link = !l ? `<span class="mut">${tl('libre')}</span>` : l.up ? `<b class="ok">${l.speed >= 1000 ? l.speed / 1000 + ' G' : l.speed + ' M'}</b>` : `<b class="bad" data-tip="${esc(whyText(l.why))}">${tl('sans lien')}</b>`;
     const role = r.role ? `<span class="ntSmRole ${r.fwd ? 'fwd' : 'blk'}">${esc(roleText(r.role))}${r.edge ? ' · ' + tl('bord') : ''}</span>` : !r.fwd && l && l.up ? `<span class="ntSmRole blk">${tl('port bloqué')}</span>` : '';
     // Deux lignes par port : nom, lien, rôle Spanning Tree, coupure ; puis mode, VLAN, agrégat.
@@ -312,47 +312,55 @@ export function autoArrange(data, lan) {
     for (const w of adj.get(u)) { const r = role(devs.find(x => x.id === w)); if (layer.has(w) || (r !== 'switch' && r !== 'ap')) continue; layer.set(w, layer.get(u) + 1); q.push(w); }
   }
   const byId = new Map(devs.map(d => [d.id, d])), maxL = Math.max(0, ...layer.values());
+  // Voisins par câble (tous appareils, passifs compris) : un passif va sous le premier switch atteint en suivant les câbles.
+  const cab = new Map(devs.map(d => [d.id, []]));
+  for (const c of data.cables) if (cab.has(c.a[0]) && cab.has(c.b[0])) { cab.get(c.a[0]).push(c.b[0]); cab.get(c.b[0]).push(c.a[0]); }
+  const nearest = id => {
+    const seen = new Set([id]), fifo = [id];
+    for (let i = 0; i < fifo.length && i < 400; i++) for (const w of cab.get(fifo[i]) || []) { if (seen.has(w)) continue; if (layer.has(w)) return w; seen.add(w); fifo.push(w); }
+    return null;
+  };
   // Les postes (et les switchs isolés) vont sous le switch auquel ils sont reliés.
   const under = new Map();
   for (const d of devs) {
     if (layer.has(d.id)) continue;
     let host = null;
-    if (role(d) === 'passive') {
-      // Prise, panneau : sous le switch au bout du câble (directement, ou au bout du canal de l'appareil d'en face).
-      for (const c of data.cables) {
-        const me = c.a[0] === d.id ? c.a : c.b[0] === d.id ? c.b : null; if (!me) continue;
-        const o = me === c.a ? c.b : c.a; if (layer.has(o[0])) { host = o[0]; break; }
-        const ch = lan.channel(o[0], o[1]); if (ch && ch.far && layer.has(ch.far.n)) { host = ch.far.n; break; }
-      }
-    } else {
+    if (role(d) !== 'passive') {
       const ch = portsOf(d).map(p => lan.channel(d.id, p.id)).find(c => c && c.far);
       host = ch && layer.has(ch.far.n) ? ch.far.n : [...adj.get(d.id)].find(x => layer.has(x)) || null;
     }
+    host = host || nearest(d.id);
     const k = host || '_'; if (!under.has(k)) under.set(k, []); under.get(k).push(d);
   }
   const rows = Array.from({ length: maxL + 1 }, () => []);
   for (const [id, l] of layer) rows[l].push(byId.get(id));
-  // Ordre des rangées : chaque switch sous son parent (barycentre), pour limiter les croisements.
-  const xOf = new Map(); let moved = 0;
-  const GAP = 40, ROW = 170;
+  // Rangées de 12 au plus ; largeur et hauteur réelles, pour qu'aucun bloc n'en chevauche un autre.
+  const PER = 12, GAP = 40, HG = 20, VG = 34;
+  const chunks = list => { const out = []; for (let i = 0; i < list.length; i += PER) out.push(list.slice(i, i + PER)); return out; };
+  const blockOf = kids => {
+    // Panneaux d'abord, puis prises, puis appareils ; une sorte par rangée.
+    const pas = kids.filter(d => role(d) === 'passive'), kinds = [...new Set(pas.map(d => d.type))].sort((a, b) => specOf(pas.find(d => d.type === b)).w - specOf(pas.find(d => d.type === a)).w);
+    const lines = [...kinds.flatMap(t => chunks(pas.filter(d => d.type === t))), ...chunks(kids.filter(d => role(d) !== 'passive'))];
+    const w = Math.max(0, ...lines.map(l => l.reduce((t, d) => t + specOf(d).w + HG, -HG)));
+    const h = lines.reduce((t, l) => t + Math.max(...l.map(d => specOf(d).h)) + VG, 0);
+    return { lines, w, h };
+  };
+  const placeBlock = (blk, x0, y0) => { let y = y0; for (const l of blk.lines) { let x = x0; for (const d of l) { d.x = Math.round(x); d.y = Math.round(y); x += specOf(d).w + HG; moved++; } y += Math.max(...l.map(d => specOf(d).h)) + VG; } return y; };
+  const xOf = new Map(); let moved = 0, y = 0;
+  function bary(d) { const ps = [...adj.get(d.id)].filter(x => xOf.has(x)); return ps.length ? ps.reduce((a, x) => a + xOf.get(x), 0) / ps.length : 0; }
   for (let l = 0; l <= maxL; l++) {
     const row = rows[l];
     if (l > 0) row.sort((a, b) => bary(a) - bary(b));
-    let x = 0;
+    let x = 0, bottom = y;
     for (const d of row) {
-      const s = specOf(d), kids = under.get(d.id) || [], kidW = kids.reduce((w, k) => w + specOf(k).w + 20, 0);
-      const w = Math.max(s.w, Math.min(kidW, 1400));
-      d.x = Math.round(x + (w - s.w) / 2); d.y = l * ROW; xOf.set(d.id, d.x + s.w / 2); x += w + GAP; moved++;
+      const s = specOf(d), blk = blockOf(under.get(d.id) || []), w = Math.max(s.w, blk.w);
+      d.x = Math.round(x + (w - s.w) / 2); d.y = y; xOf.set(d.id, d.x + s.w / 2); moved++;
+      bottom = Math.max(bottom, y + s.h, blk.lines.length ? placeBlock(blk, x, y + s.h + 60) : 0);
+      x += w + GAP;
     }
+    y = bottom + 90;
   }
-  function bary(d) { const ps = [...adj.get(d.id)].filter(x => xOf.has(x)); return ps.length ? ps.reduce((a, x) => a + xOf.get(x), 0) / ps.length : 0; }
-  // Postes : une rangée (ou plusieurs) sous leur switch ; les prises et panneaux sur une rangée intermédiaire.
-  for (const [k, kids] of under) {
-    const p = byId.get(k), y0 = p ? p.y + ROW : (maxL + 1) * ROW + ROW, px = p ? p.x : 0;
-    const passive = kids.filter(d => role(d) === 'passive'), act = kids.filter(d => role(d) !== 'passive');
-    const place = (list, y) => { let x = px, n = 0; for (const d of list) { const s = specOf(d); if (n && n % 12 === 0) { x = px; y += s.h + 40; } d.x = Math.round(x); d.y = Math.round(y); x += s.w + 20; n++; moved++; } return y; };
-    const y1 = passive.length ? place(passive, y0) + 90 : y0;
-    place(act, y1);
-  }
+  // Appareils reliés à rien de rangé : en bas.
+  if (under.has('_')) placeBlock(blockOf(under.get('_')), 0, y);
   return moved;
 }

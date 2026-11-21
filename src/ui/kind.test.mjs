@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { KINDS, KIND_IDS, spacesOf, inferKind } from './kind.js';
+import { KINDS, KIND_IDS, spacesOf, inferKind, hasElec, netOnly, hasProgram, exampleFits } from './kind.js';
 
 const read = f => JSON.parse(fs.readFileSync(new URL(f, import.meta.url), 'utf8'));
 test('seuls l’électropneumatique et les objets connectés réunissent deux plans de travail', () => {
@@ -34,4 +34,15 @@ test('exemple 08 et TP : électropneumatique avec une carte, pneumatique sans', 
   assert.equal(inferKind(read('../lab/pneu/pn05-porte-electropneumatique.json').start), 'epneu');
   assert.equal(inferKind(read('../lab/pneu/pn00-tutoriel-electropneumatique.json').start), 'epneu');
   assert.equal(inferKind(read('../lab/tp/tp01-led-bouton.json').start), 'elec');
+});
+
+test('réseau seul : aucune électronique ; objets connectés : les deux', () => {
+  assert.deepEqual(KIND_IDS.filter(netOnly), ['net']);
+  assert.deepEqual(KIND_IDS.filter(hasElec), ['elec', 'analog', 'epneu', 'iot']);
+  assert.equal(hasProgram('net'), false); assert.equal(hasProgram('iot'), true);
+  assert.equal(netOnly('inconnu'), false);
+  // Exemples : le projet réseau ne propose que des exemples de réseau ; les autres types gardent toute la liste.
+  assert.equal(exampleFits('net', 'net'), true);
+  for (const k of ['elec', 'iot', 'epneu', 'pneu', 'logic', 'analog', undefined, 'bidon']) assert.equal(exampleFits('net', k), false, String(k));
+  for (const k of ['elec', 'analog', 'pneu', 'epneu', 'logic', 'iot']) for (const e of ['elec', 'net', 'iot', 'pneu']) assert.equal(exampleFits(k, e), true, k + '/' + e);
 });

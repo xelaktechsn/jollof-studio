@@ -12,7 +12,27 @@
 .ntWfRamp { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .ntWfRamp li { display: flex; align-items: center; gap: 6px; }
 .ntWfRamp i { display: inline-block; width: 18px; height: 10px; border-radius: 2px; opacity: 0.8; }
-.ntWfRamp i.ntWfNone { background: transparent; border: 1px dashed var(--line-2); }
+.ntWfNone { display: inline-block; width: 18px; height: 10px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; border: 1px solid var(--muted);
+  background: repeating-linear-gradient(135deg, transparent 0 3px, var(--muted) 3px 4px); opacity: 0.9; }
+.ntWfRamp i.ntWfNone { opacity: 0.9; }
+/* Rampe continue : barre, repères (l'objectif souligné), légende « rien ». */
+.ntWfGradBox { margin: 2px 0 4px; }
+.ntWfGrad { height: 12px; border-radius: 3px; border: 1px solid var(--line-2); opacity: 0.9; }
+.ntWfTicks { position: relative; height: 16px; margin: 2px 8px 0; font-size: 11px; color: var(--fg-2); font-variant-numeric: tabular-nums; }
+.ntWfTicks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
+.ntWfTicks span.ntWfGoal { color: var(--fg); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.ntWfGradCap { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ntWfGradCap span { display: inline-flex; align-items: center; }
+/* Sections repliables du calque (couverture par pièce, réglages) : un vrai bouton de section, pas un petit triangle. */
+.ntWfMore { border: 1px solid var(--line); border-radius: 6px; margin-top: 8px; background: var(--panel-2); }
+.ntWfMore > summary { cursor: pointer; list-style: none; padding: 6px 10px; font-size: 12px; font-weight: 600; color: var(--fg); display: flex; align-items: center; gap: 6px; }
+.ntWfMore > summary::-webkit-details-marker { display: none; }
+.ntWfMore > summary::before { content: ''; width: 6px; height: 6px; border-right: 1.5px solid var(--fg-2); border-bottom: 1.5px solid var(--fg-2); transform: rotate(-45deg); transition: transform 0.12s; flex: none; }
+.ntWfMore[open] > summary::before { transform: rotate(45deg); }
+.ntWfMore > summary:hover { background: var(--raise); border-radius: 6px; }
+.ntWfMore > :not(summary) { margin: 0 10px 8px; }
+.ntWfMore .ntWfRooms { width: calc(100% - 20px); }
+.ntWfChk { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--fg-2); cursor: pointer; }
 .ntWfMut { color: var(--muted); font-size: 11px; }
 .ntWfWarn { color: var(--warn-ink); font-size: 11px; margin: 4px 0 0; }
 .ntWfRooms { border-collapse: collapse; margin-top: 4px; width: 100%; }

@@ -27,8 +27,8 @@ const STEPS = () => [
     points: [['check', tl('Tous les états essayés')], ['alert', tl('Fautes expliquées')], ['usb', tl('Puis la vraie carte')]] },
   { icon: 'pneu', title: tl('Pneumatique, GRAFCET et logique'), text: tl('Vérins, distributeurs et GRAFCET, commandés par une carte dans un projet électropneumatique, avec la machine en 3D. Et un plan de travail pour la logique numérique.'),
     points: [['split', tl('Électropneumatique')], ['workflow', tl('GRAFCET')], ['logic', tl('Logique numérique')]] },
-  { icon: 'network', title: tl('Réseaux et objets connectés'), text: tl('Sertissez des câbles RJ45 et testez-les, câblez switchs, box et Wi-Fi, réglez les adresses IP et faites des ping. Puis reliez une carte au réseau : page web, MQTT, Modbus TCP.'),
-    points: [['rj45', tl('Sertir et tester')], ['network', tl('Adresses, DHCP, ping')], ['iot', tl('Page web, MQTT')]] }
+  { icon: 'network', title: tl('Réseaux et objets connectés'), text: tl('Du câble RJ45 serti et testé au bâtiment entier : plan d’architecte importé, baies, VLAN et routage, couverture Wi-Fi, dimensionnement, certification et dossier imprimable. Puis une carte sur le réseau : page web, MQTT, Modbus TCP.'),
+    points: [['floorPlan', tl('Plans et baies')], ['network', tl('VLAN, routage, Wi-Fi')], ['certifier', tl('Certification, dossier')]] }
 ];
 
 /**

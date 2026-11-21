@@ -36,17 +36,24 @@ export function formatDiag(d, programs) {
   return out;
 }
 
-/** Dernière ligne : réussite prouvée, ou nombre d'erreurs comme « error: could not compile ». */
-export function summary(r) {
+/**
+ * Dernière ligne : réussite prouvée, ou nombre d'erreurs comme « error: could not compile ». o.net : projet réseau seul
+ * (pas de montage ni d'états de carte à explorer : le verdict parle du projet réseau).
+ */
+export function summary(r, o = {}) {
+  if (o.net) {
+    if (r.errors) return tl('erreur : le projet réseau ne passe pas la vérification ({0} erreur(s), {1} avertissement(s))', r.errors, r.warnings);
+    return r.warnings ? tl('✓ projet réseau vérifié : 0 erreur, {0} avertissement(s)', r.warnings) : tl('✓ projet réseau vérifié : 0 erreur, 0 avertissement');
+  }
   if (r.errors) return tl('erreur : le montage ne passe pas la vérification ({0} erreur(s), {1} avertissement(s))', r.errors, r.warnings);
   const how = r.proven ? tl('prouvé sûr dans les {0} états atteignables', fmtN(r.states)) : tl('vérifié sur {0} états sur {1} (partiel)', fmtN(r.states), fmtN(r.space));
   return r.warnings ? tl('✓ montage vérifié : 0 erreur, {0} avertissement(s) ; {1}', r.warnings, how) : tl('✓ montage vérifié : 0 erreur ; {0}', how);
 }
 
 /** Rapport complet en texte. */
-export function formatReport(r, programs) {
+export function formatReport(r, programs, o = {}) {
   const lines = [];
   for (const d of r.diags) lines.push(...formatDiag(d, programs), '');
-  lines.push(summary(r));
+  lines.push(summary(r, o));
   return lines.join('\n');
 }

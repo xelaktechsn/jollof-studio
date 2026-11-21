@@ -9,8 +9,31 @@
 .app[data-kind="epneu"] .wsSwitch [data-ws="logic"] { display: none; }
 /* Projet analogique : ni programme ni vidéo de câblage de carte. */
 .app[data-kind="analog"] #tab-prog { display: none; }
-/* Logique ou pneumatique seule : pas de composant électronique, donc pas de fiches (Documentation), ni de carte réelle. */
-.app:is([data-kind="logic"], [data-kind="pneu"]) #docBtn { display: none !important; }
+/* Logique, pneumatique ou réseau seuls : pas de composant électronique, donc pas de fiches (Documentation), ni de carte réelle. */
+.app:is([data-kind="logic"], [data-kind="pneu"], [data-kind="net"]) #docBtn { display: none !important; }
+/* Réseau seul : un seul plan de travail, dont les vues ont leur propre barre d'onglets (Logique, Plans, Baies, Conception). */
+.app[data-kind="net"] .edTabs { display: none; }
+/* Réseau seul : aucune interface d'électronique (montage 3D, composants, simulation des cartes, schéma, code, vidéo,
+   timeline), même avant que le plan réseau ne se charge (net.css) ou s'il ne se charge pas. Un sélecteur par élément
+   (identifiant en dernier) : rien à tester sur les autres éléments au démarrage. */
+.app[data-kind="net"] #libPanel,
+.app[data-kind="net"] #simBtn,
+.app[data-kind="net"] #simState,
+.app[data-kind="net"] #schBtn,
+.app[data-kind="net"] #exBtn,
+.app[data-kind="net"] #importBtn,
+.app[data-kind="net"] .abImportSep,
+.app[data-kind="net"] #cursorPos,
+.app[data-kind="net"] #counts,
+.app[data-kind="net"] .tlDock,
+.app[data-kind="net"] #selBox,
+.app[data-kind="net"] #tab-wiring,
+.app[data-kind="net"] #tab-prog,
+.app[data-kind="net"] #tab-sim,
+.app[data-kind="net"] #tab-video,
+.app[data-kind="net"] .stageBar,
+.app[data-kind="net"] .viewcube { display: none !important; }
+/* (Le reste de la scène 3D est caché par net.css : .app.netMode .stage > …, règle chargée avec le plan réseau.) */
 /* Le nom du type reste lisible quand la barre compacte réduit les autres boutons à leur icône (sa règle compte
    plusieurs identifiants : !important). Électropneumatique : le sélecteur à côté dit déjà les deux plans. */
 .app:not([data-kind="epneu"]) .appbar #kindBtn > span { display: inline !important; }

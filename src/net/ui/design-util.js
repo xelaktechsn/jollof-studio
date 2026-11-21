@@ -4,7 +4,7 @@
 // data.design (une modification = un pas d'annulation), enregistrement de fichiers.
 import { tl, isEn } from '../../i18n/index.js';
 import { cleanDesign } from '../dimension.js';
-import { toCsv } from '../docs.js';
+import { toCsv, csvOptions, csvTables } from '../docs.js';
 
 export const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /** Nombre écrit à la française (virgule) ou à l'anglaise. */
@@ -50,11 +50,18 @@ export const kpi = (label, value, o = {}) => `<div class="ntDsKpi${o.warn ? ' wa
 export async function saveText(ctx, text, name, type, ext) {
   try {
     const native = await import('../../native.js');
-    const path = await native.saveFile(new Blob([text], { type }), name, name, ext);
+    // Filtre de la boîte « Enregistrer sous » : le type du fichier (le nom proposé est déjà dans la boîte).
+    const label = { dxf: tl('Dessin DXF'), csv: tl('Tableau CSV'), svg: tl('Dessin SVG'), html: tl('Rapport HTML') }[ext] || ext.toUpperCase();
+    const path = await native.saveFile(new Blob([text], { type }), name, label, ext);
     if (path) ctx.status(tl('Fichier enregistré : {0}', path), 'ok');
   } catch (e) { ctx.status(tl('Enregistrement impossible : {0}', e.message || e), 'err'); }
 }
-/** Export CSV d'un tableau (séparateur ; en français, , en anglais). */
-export const saveCsv = (ctx, cols, rows, base) => saveText(ctx, toCsv(cols, rows, isEn ? ',' : ';'), `${fileBase(ctx)}-${base}.csv`, 'text/csv', 'csv');
+/** Export CSV d'un tableau : séparateur et virgule décimale réglés dans l'onglet Documents (UTF-8 avec BOM). */
+export const saveCsv = (ctx, cols, rows, base) => saveText(ctx, toCsv(cols, rows, csvOptions(ctx.data(), isEn)), `${fileBase(ctx)}-${base}.csv`, 'text/csv', 'csv');
+/** Tableau d'échange (docs.js csvTables : câbles, brassage, nomenclature, prises, plan d'adressage, étiquettes), en-têtes réglés. */
+export function saveTable(ctx, name, base) {
+  const o = csvOptions(ctx.data(), isEn), t = csvTables(ctx.data(), ctx.lan(), { headers: o.headers })[name];
+  return saveText(ctx, toCsv(t.cols, t.rows, o), `${fileBase(ctx)}-${base}.csv`, 'text/csv', 'csv');
+}
 /** Début des noms de fichiers : nom du site ou du projet. */
 export const fileBase = ctx => { const d = ctx.data(), p = (d.design && d.design.project) || {}; return (p.site || (d.site && d.site.name) || tl('reseau')).replace(/[\\/:*?"<>|\s]+/g, '-').slice(0, 40) || 'reseau'; };

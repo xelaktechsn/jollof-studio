@@ -15,7 +15,9 @@
   --nt-rk-ring: #6d7884; --nt-rk-led-off: #c9d0d7;
   --nt-rk-v0: #2563eb; --nt-rk-v1: #db2777; --nt-rk-v2: #059669; --nt-rk-v3: #d97706; --nt-rk-v4: #7c3aed; --nt-rk-v5: #dc2626; --nt-rk-v6: #0891b2; --nt-rk-v7: #65a30d;
 }
-.ntRk { background: var(--stage); display: flex; flex-direction: column; }
+.ntRk { background: var(--stage); display: flex; flex-direction: column; container-type: inline-size; container-name: ntrk; }
+.ntRk :focus:not(:focus-visible) { outline: none; }
+.ntRk :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .ntRkBar { position: relative; flex: none; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 64px 8px 12px; z-index: 6; }
 .ntRkBar .btn.glass { background: var(--glass); border: 1px solid var(--line); }
 .ntRkBar .btn[aria-pressed="true"] { border-color: var(--accent); color: var(--fg); }
@@ -28,7 +30,7 @@
 .ntRkCards { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
 .ntRkCard { appearance: none; text-align: left; font: inherit; color: var(--fg); display: grid; grid-template-columns: 56px 1fr; grid-template-rows: auto 1fr; gap: 10px 14px; padding: 12px 14px; border-radius: 12px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
 .ntRkCard:hover { border-color: var(--line-2); background: var(--panel-2); }
-.ntRkCard.sel { border-color: var(--accent); }
+.ntRkCard.isSel { border-color: var(--accent); }
 .ntRkCard header { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; min-width: 0; }
 .ntRkCard header .ic { width: 18px; height: 18px; color: var(--nt-c5e); flex: none; }
 .ntRkCard header b { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -56,33 +58,56 @@
 /* Élévation */
 .ntRkElev { position: relative; flex: 1; min-height: 0; }
 .ntRkElev[hidden], .ntRkOver[hidden] { display: none; }
-.ntRkSide { position: absolute; left: 12px; top: 0; bottom: 12px; width: 150px; overflow: auto; padding: 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); z-index: 5; }
-.ntRkSide h4 { margin: 2px 4px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.ntRkSide { position: absolute; left: 12px; top: 0; bottom: 12px; width: 164px; overflow: auto; padding: 6px 8px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); z-index: 5; }
+.ntRkSide header { display: flex; align-items: center; gap: 6px; margin: 0 0 6px 4px; }
+.ntRkSide h4 { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; color: var(--muted); }
+.ntRkSide header .tb { margin-left: auto; width: 24px; height: 24px; }
+.ntRkSide header .tb .ic { width: 14px; height: 14px; }
+.ntRkCount { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--raise); color: var(--fg-2); font-size: 10.5px; text-align: center; }
+.ntRkCount:empty { display: none; }
+.ntRkSideRail { display: none; appearance: none; border: 0; background: none; color: var(--muted); width: 100%; padding: 8px 0; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px; }
+.ntRkSideRail:hover { color: var(--fg); background: var(--raise); }
+.ntRkSideRail .ic { width: 16px; height: 16px; }
+.ntRk.sideOff .ntRkSide { width: 36px; padding: 4px; overflow: hidden; }
+.ntRk.sideOff .ntRkSide > header, .ntRk.sideOff .ntRkList { display: none; }
+.ntRk.sideOff .ntRkSideRail { display: flex; }
+.ntRk.sideOff .ntRkCanvas, .ntRk.sideOff .ntRkPatch { left: 54px; }
+.ntRk.sideOff .ntRkSum { left: 66px; }
 .ntRkSide .mut { font-size: 11.5px; margin: 4px; }
 .ntRkItem { appearance: none; width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg); font: inherit; font-size: 12px; cursor: grab; text-align: left; }
 .ntRkItem:hover { background: var(--raise); }
-.ntRkItem.sel { border-color: var(--accent); }
+.ntRkItem.isSel { border-color: var(--accent); }
 .ntRkItem .ic { width: 16px; height: 16px; color: var(--nt-c5e); flex: none; }
 .ntRkItem span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ntRkItem small { color: var(--muted); font-size: 10.5px; }
-.ntRkCanvas { position: absolute; left: 168px; right: 0; top: 0; bottom: 0; overflow: hidden; touch-action: none; }
-.ntRk.patchOn .ntRkCanvas { bottom: 210px; }
+.ntRkCanvas { position: absolute; left: 182px; right: 0; top: 0; bottom: 0; overflow: hidden; touch-action: none; }
+.ntRkHint { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); max-width: 340px; display: grid; justify-items: center; gap: 6px; padding: 16px 18px; text-align: center; border-radius: 12px; border: 1px dashed var(--line-2); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: var(--fg-2); font-size: 12.5px; pointer-events: none; }
+.ntRkHint[hidden] { display: none; }
+.ntRkHint .ic { width: 28px; height: 28px; color: var(--nt-c5e); }
+.ntRkHint span { color: var(--muted); font-size: 12px; }
+.ntRk.patchOn .ntRkCanvas { bottom: clamp(150px, 34%, 210px); }
 .ntRkSvg { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
-.ntRkSum { position: absolute; left: 180px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); font-size: 12px; color: var(--fg-2); max-width: calc(100% - 250px); z-index: 4; }
-.ntRk.patchOn .ntRkSum { bottom: 222px; }
+.ntRkSum { position: absolute; left: 194px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); font-size: 12px; color: var(--fg-2); max-width: calc(100% - 250px); z-index: 4; }
+.ntRk.patchOn .ntRkSum { bottom: calc(clamp(150px, 34%, 210px) + 12px); }
 .ntRkSum span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .ntRkSum .ic { width: 14px; height: 14px; color: var(--muted); }
 .ntRkSum .bad { color: var(--danger-ink, var(--nt-err)); }
-.ntRkSel { position: absolute; right: 68px; top: 4px; width: 250px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 24px #0004; z-index: 6; font-size: 12px; }
-.ntRkSel header { display: grid; grid-template-columns: 18px 1fr; column-gap: 8px; margin-bottom: 6px; }
+.ntRkSel { position: absolute; left: 194px; bottom: 56px; width: 260px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 24px #0004; z-index: 6; font-size: 12px; }
+.ntRkSel header { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; column-gap: 6px; align-items: center; }
+.ntRkSel.open header { margin-bottom: 6px; }
+.ntRkSel header b, .ntRkSel header small { grid-column: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntRkSel header .tb { grid-row: 1 / span 2; width: 24px; height: 24px; }
+.ntRkSel header [data-rksel="toggle"] { grid-column: 3; } .ntRkSel header [data-rksel="close"] { grid-column: 4; }
+.ntRkSel header .tb .ic { width: 14px; height: 14px; color: var(--muted); }
 .ntRkSel header .ic { width: 18px; height: 18px; color: var(--nt-c5e); grid-row: span 2; }
 .ntRkSel header small { color: var(--muted); }
 .ntRkSel .ntF { margin: 5px 0; grid-template-columns: 1fr 116px; gap: 6px; }
 .ntRkSel .ntF > span { font-size: 11.5px; line-height: 1.2; }
 .ntRkSel .mut { margin: 8px 0 0; font-size: 11px; }
-.ntRkPatch { position: absolute; left: 168px; right: 0; bottom: 0; height: 210px; display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); z-index: 5; }
+.ntRkPatch { position: absolute; left: 182px; right: 56px; bottom: 0; height: clamp(150px, 34%, 210px); border-right: 1px solid var(--line); display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); z-index: 5; }
 .ntRkPatch[hidden] { display: none; }
-.ntRkPatch header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 64px 2px 12px; font-size: 12.5px; }
+.ntRkPatch header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 12px 2px 12px; font-size: 12.5px; }
+.ntRkTipTxt { margin-left: auto; font-size: 11px; }
 .ntRkPatch header b { display: inline-flex; align-items: center; gap: 6px; }
 .ntRkPatch header .ic { width: 15px; height: 15px; color: var(--nt-c5e); }
 .ntRkPatchForm { display: flex; align-items: center; gap: 6px; padding: 2px 64px 6px 12px; flex-wrap: nowrap; font-size: 12px; }
@@ -97,7 +122,7 @@
 .ntRkPatchScroll tr[data-rkcable] { cursor: pointer; }
 .ntRkPatchScroll .tb { width: 22px; height: 22px; min-width: 0; padding: 0; }
 .ntRkPatchScroll .tb .ic { width: 13px; height: 13px; }
-.ntRkPatchScroll tr.sel td { background: var(--raise); }
+.ntRkPatchScroll tr.isSel td { background: var(--raise); }
 .ntRkPatchScroll .led { width: 8px; height: 8px; border-radius: 50%; display: inline-block; background: var(--nt-down); }
 .ntRkPatchScroll .led.g { background: var(--nt-g); }
 .ntRkTot td { white-space: normal; }
@@ -106,15 +131,18 @@
 td.bad { color: var(--nt-err); }
 
 /* Dessin de la baie (unités : mm) */
-.ntRkCab { fill: var(--nt-rk-cab); stroke: var(--nt-rk-line); stroke-width: 2px; }
-.ntRkCab.sel { stroke: var(--accent); stroke-width: 4px; }
+.ntRkCab { fill: var(--nt-rk-cab); stroke: var(--nt-rk-line); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ntRkCab.isSel { stroke: var(--accent); stroke-width: 2.5px; }
 .ntRkInner { fill: var(--nt-rk-inner); }
-.ntRkSlot { fill: transparent; stroke: var(--nt-rk-slot); stroke-width: .6px; }
-.ntRkU { font-size: 11px; fill: var(--muted); text-anchor: end; font-variant-numeric: tabular-nums; pointer-events: none; }
+.ntRkSlot { fill: transparent; stroke: var(--nt-rk-slot); stroke-width: .75px; vector-effect: non-scaling-stroke; }
+.ntRkU { font-size: 11px; fill: var(--muted); text-anchor: end; dominant-baseline: central; font-variant-numeric: tabular-nums; pointer-events: none; }
+.ntRkU.r { text-anchor: start; }
 .ntRkRail { fill: var(--nt-rk-rail); opacity: .55; pointer-events: none; }
-.ntRkTitle { font-size: 24px; font-weight: 600; fill: var(--fg); pointer-events: none; }
+.ntRkTitle { font-size: 24px; fill: var(--fg); pointer-events: none; }
+.ntRkTitleN { font-weight: 700; } .ntRkTitleF { fill: var(--muted); font-weight: 500; }
+.ntRkFoot { font-size: 15px; fill: var(--muted); pointer-events: none; }
 .ntRkEar { fill: var(--nt-rk-ear); }
-.ntRkBody { fill: var(--nt-rk-dev); stroke: var(--nt-rk-line); stroke-width: .7px; }
+.ntRkBody { fill: var(--nt-rk-dev); stroke: var(--nt-rk-line); stroke-width: .8px; vector-effect: non-scaling-stroke; }
 .ntRkBody.back { fill: var(--nt-rk-back); stroke-dasharray: 4 3; }
 .ntRkScrew { fill: var(--nt-rk-hole); }
 .ntRkPort { fill: var(--nt-rk-port); stroke: var(--nt-rk-port-edge); stroke-width: .5px; }
@@ -140,17 +168,87 @@ td.bad { color: var(--nt-err); }
 .ntRkFanB { stroke: var(--nt-rk-line); stroke-width: 1px; }
 .ntRkHit { fill: transparent; stroke: none; }
 .ntRkDev { cursor: grab; }
+.ntRkHit { vector-effect: non-scaling-stroke; }
 .ntRkDev:hover .ntRkHit { stroke: var(--line-2); stroke-width: 1.5px; }
-.ntRkDev.sel .ntRkHit, .ntRkZero.sel .ntRkPdu { stroke: var(--accent); stroke-width: 3px; }
-.ntRkDev.bad .ntRkHit { stroke: var(--nt-err); stroke-width: 2.5px; stroke-dasharray: 8 5; }
+.ntRkDev.isSel .ntRkHit, .ntRkZero.isSel .ntRkPdu { stroke: var(--accent); stroke-width: 2.5px; fill: color-mix(in srgb, var(--accent) 10%, transparent); }
+.ntRkDev.bad .ntRkHit { stroke: var(--nt-err); stroke-width: 2px; stroke-dasharray: 6 4; }
 .ntRkDev.moving { opacity: .4; }
-.ntRkGhost { stroke-width: 2.5px; pointer-events: none; }
+.ntRkGhost { stroke-width: 2px; pointer-events: none; vector-effect: non-scaling-stroke; }
+.ntRkClash { fill: none; stroke: var(--nt-err); stroke-width: 3px; vector-effect: non-scaling-stroke; pointer-events: none; animation: ntRkPulse .8s ease-in-out infinite alternate; }
+@keyframes ntRkPulse { from { opacity: .45; } to { opacity: 1; } }
+.ntRkBand { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent); stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+.ntRkSvg.dragging, .ntRkSvg.dragging .ntRkDev { cursor: grabbing; }
 .ntRkGhost.ok { fill: color-mix(in srgb, var(--accent) 22%, transparent); stroke: var(--accent); }
 .ntRkGhost.bad { fill: color-mix(in srgb, var(--nt-err) 22%, transparent); stroke: var(--nt-err); }
 .ntRkGhostT { font-size: 16px; font-weight: 600; pointer-events: none; }
-.ntRkGhostT.ok { fill: var(--accent); } .ntRkGhostT.bad { fill: var(--nt-err); }
+.ntRkGhostT rect { fill: var(--panel); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ntRkGhostT.ok rect { stroke: var(--accent); } .ntRkGhostT.bad rect { stroke: var(--nt-err); }
+.ntRkGhostT.ok text { fill: var(--accent); } .ntRkGhostT.bad text { fill: var(--nt-err); }
 .ntRkCord { fill: none; stroke: var(--nt-c6); stroke-width: 2.4px; stroke-linecap: round; opacity: .92; cursor: pointer; }
 .ntRkCord.cat5e { stroke: var(--nt-c5e); } .ntRkCord.cat6a { stroke: var(--nt-c6a); }
 .ntRkCord.v0 { stroke: var(--nt-rk-v0); } .ntRkCord.v1 { stroke: var(--nt-rk-v1); } .ntRkCord.v2 { stroke: var(--nt-rk-v2); } .ntRkCord.v3 { stroke: var(--nt-rk-v3); }
 .ntRkCord.v4 { stroke: var(--nt-rk-v4); } .ntRkCord.v5 { stroke: var(--nt-rk-v5); } .ntRkCord.v6 { stroke: var(--nt-rk-v6); } .ntRkCord.v7 { stroke: var(--nt-rk-v7); }
-.ntRkCord:hover, .ntRkCord.sel { stroke-width: 4px; opacity: 1; }
+.ntRkCord:hover, .ntRkCord.isSel { stroke-width: 4px; opacity: 1; }
+
+/* Carte « ajouter une baie », fantôme du glisser depuis la liste */
+.ntRkAddCard { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 150px; border-style: dashed; color: var(--muted); }
+.ntRkAddCard:hover { color: var(--fg); border-color: var(--accent); }
+.ntRkAddCard .ic { width: 18px; height: 18px; }
+.ntRkDragGhost { width: auto; height: 34px; margin: -17px 0 0 -17px; padding: 0 12px 0 8px; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--fg); }
+.ntRkDragGhost .ic { width: 18px; height: 18px; }
+.ntRkMs { color: var(--accent); font-weight: 600; }
+
+/* Niveau de détail : de loin, les ports s'effacent et les noms grossissent (taille à l'écran à peu près constante) */
+.ntRkSvg .ntRkLbl { dominant-baseline: central; paint-order: stroke; stroke: var(--nt-rk-dev); stroke-width: 2.5px; stroke-linejoin: round; }
+.ntRkSvg .ntRkLbl { font-size: var(--rkf, 8px); }
+.ntRkSvg.lodLo .ntRkPort, .ntRkSvg.lodLo .ntRkCage, .ntRkSvg.lodLo .ntRkLed, .ntRkSvg.lodLo .ntRkNum, .ntRkSvg.lodLo .ntRkScrew,
+.ntRkSvg.lodLo .ntRkLcSplit, .ntRkSvg.lodLo .ntRkOutlet, .ntRkSvg.lodLo .ntRkBtn { display: none; }
+.ntRkSvg.lodLo .ntRkLbl { font-size: var(--rkf); }
+.ntRkSvg.lodLo .ntRkU, .ntRkSvg.lodMid .ntRkU { font-size: var(--rku); }
+.ntRkSvg.lodLo .ntRkU:not(.m5) { display: none; }
+.ntRkSvg.lodLo .ntRkTitle, .ntRkSvg.lodMid .ntRkTitle { font-size: var(--rkt); }
+.ntRkSvg.lodLo .ntRkCord { stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+
+/* Petites largeurs (1280 × 720, panneaux ouverts) : barre sur une ligne, libellés en infobulle */
+@container ntrk (max-width: 760px) {
+  .ntRkBar .segBtn[data-rkmode] span, .ntRkBar .btn span { display: none; }
+  .ntRkBar .btn { padding: 0 8px; }
+  .ntRkPick .sel { min-width: 104px; max-width: 140px; }
+  .ntRk:not(.sideOff) .ntRkCanvas, .ntRk:not(.sideOff) .ntRkPatch { left: 150px; }
+  .ntRk:not(.sideOff) .ntRkSum { left: 162px; }
+  .ntRkPatchScroll .c-perm, .ntRkPatchScroll .c-cord, .ntRkTipTxt { display: none; }
+  .ntRkPatchForm { flex-wrap: wrap; } .ntRkPatchForm .sel { min-width: 118px; }
+  .ntRkSum { font-size: 11.5px; gap: 2px 10px; }
+}
+@container ntrk (max-width: 600px) {
+  .ntRkFaces .segBtn { padding: 0 7px; }
+}
+
+/* Puce de l'équipement choisi (barre du bas) et carte de place dépliée au-dessus */
+.ntRkChip { appearance: none; display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 6px 0 8px; border-radius: 6px; border: 1px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--fg); font: inherit; font-size: 11.5px; cursor: pointer; max-width: 260px; }
+.ntRkChip b, .ntRkChip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntRkChip span { color: var(--fg-2); }
+.ntRkChip .ic { width: 13px; height: 13px; color: var(--accent); flex: none; }
+.ntRk.sideOff .ntRkSel { left: 66px; }
+.ntRk.patchOn .ntRkSel { bottom: calc(clamp(150px, 34%, 210px) + 56px); }
+@container ntrk (max-width: 760px) { .ntRk:not(.sideOff) .ntRkSel { left: 162px; } .ntRkSide { width: 132px; } .ntRkSide header .ntRkCount { display: none; } .ntRkSide h4 { letter-spacing: .02em; font-size: 10.5px; } }
+
+/* Brassage : barre fine au bas de l'élévation (le tableau est dans le panneau du bas) */
+.ntRkPatch.slim { left: 194px; right: 68px; bottom: 56px; height: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 6px 20px #0004; }
+.ntRkPatch.slim .ntRkPatchForm { padding: 6px 8px; flex-wrap: nowrap; }
+.ntRkPatch.slim .ntRkPatchForm .btn.subtle { margin-left: auto; white-space: nowrap; }
+.ntRkPatchT { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+.ntRkPatchT .ic { width: 14px; height: 14px; color: var(--nt-c5e); }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkCanvas { bottom: 0; }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSum { bottom: 12px; }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSel { bottom: 104px; }
+.ntRk.sideOff .ntRkPatch.slim { left: 66px; }
+.ntRkBar .segBtn:disabled, .ntRkBar .btn:disabled { opacity: .45; cursor: default; }
+/* Cartouche lisible à toute échelle */
+.ntRkSvg .ntRkTitle { font-size: var(--rkt, 24px); }
+.ntRkSvg .ntRkFoot { font-size: var(--rkc, 15px); }
+@container ntrk (max-width: 760px) {
+  .ntRk:not(.sideOff) .ntRkPatch.slim { left: 162px; }
+  .ntRkPatch.slim .ntRkPatchT span, .ntRkPatch.slim .ntRkPatchForm .btn.subtle span { display: none; }
+  .ntRkPatch.slim .ntRkPatchForm .sel { min-width: 0; max-width: 130px; }
+}

@@ -7,14 +7,14 @@ import { tl, isEn } from '../../i18n/index.js';
 import { labelTable, labelIssues, labelFormats, cableSchedule, patchingRows, patchColName, PATCH_KEYS, bom, money, kindName } from '../docs.js';
 import { LABEL_PRESETS, CURRENCIES } from '../dimension.js';
 import * as RACK from '../rack.js';
-import { esc, fmt, design, selField, txtField, table, kpi, saveCsv, setDesign } from './design-util.js';
+import { esc, fmt, design, selField, txtField, table, kpi, saveCsv, saveTable, setDesign } from './design-util.js';
 
 const MAX_ROWS = 1500;
 const match = (q, ...v) => !q || v.join(' ').toLowerCase().includes(q.toLowerCase());
 const tools = (ctx, inner, csv) => `<div class="ntDsTools">${inner}<span class="ntDsSp"></span><button type="button" class="btn small" data-act="${csv}">${ctx.icon('download')}<span>CSV</span></button></div>`;
 const search = (state, ph) => `<input class="inp ntDsSearch" type="search" data-filter="q" value="${esc(state.q)}" placeholder="${esc(ph)}" aria-label="${esc(ph)}">`;
 const more = n => (n > MAX_ROWS ? `<p class="ntDsNote">${esc(tl('{0} lignes : seules les {1} premières sont affichées (l’export CSV les contient toutes).', n, MAX_ROWS))}</p>` : '');
-const PRESET_NAME = { auto: () => tl('Automatique (TIA-606, campus si plusieurs bâtiments)'), tia: () => tl('TIA-606 : local-panneau port (1A-B04)'), campus: () => tl('Campus : bâtiment devant (B1-1A-B04)'), rack: () => tl('Position en baie : baie-unité:port (1A.R01-42:04)'), custom: () => tl('Personnalisé') };
+const PRESET_NAME = { auto: () => tl('Automatique'), tia: () => tl('TIA-606 : local-panneau port (1A-B04)'), campus: () => tl('Campus : bâtiment devant (B1-1A-B04)'), rack: () => tl('Position en baie : baie-unité:port (1A.R01-42:04)'), custom: () => tl('Personnalisé') };
 const KIND_NAME = { horizontal: () => tl('Lien permanent'), cord: () => tl('Cordon'), backbone: () => tl('Rocade'), other: () => tl('Autre') };
 
 /** Lignes et colonnes de chaque tableau (aussi pour l'export CSV). */
@@ -24,12 +24,12 @@ function labelData(ctx, state) {
 }
 function cableData(ctx, state) {
   const rows = cableSchedule(ctx.data()).filter(r => (!state.kind || r.kind === state.kind) && match(state.q, r.label, r.from, r.to, r.type));
-  return { rows, cols: [{ key: 'label', name: tl('Étiquette') }, { key: r => KIND_NAME[r.kind](), name: tl('Genre') }, { key: 'from', name: tl('De') }, { key: 'to', name: tl('Vers') }, { key: 'type', name: tl('Type') }, { key: 'len', name: tl('Longueur (m)'), num: 1 }, { key: r => (r.mode === 'auto' ? (r.fallback ? tl('automatique, en équerre') : tl('automatique')) : r.mode === 'manual' ? tl('manuel') : '—'), name: tl('Tracé') }, { key: r => r.paths.join(' > '), name: tl('Cheminements') }] };
+  return { rows, cols: [{ key: 'label', name: tl('Étiquette') }, { key: r => KIND_NAME[r.kind](), name: tl('Genre') }, { key: 'from', name: tl('De'), cls: 'w' }, { key: 'to', name: tl('Vers'), cls: 'w' }, { key: 'type', name: tl('Type') }, { key: r => fmt(r.len, 1), name: tl('Longueur (m)'), num: 1 }, { key: r => (r.mode === 'auto' ? (r.fallback ? tl('automatique, en équerre') : tl('automatique')) : r.mode === 'manual' ? tl('manuel') : '—'), name: tl('Tracé'), cls: 'w' }, { key: r => r.paths.join(' > '), name: tl('Cheminements'), cls: 'w' }] };
 }
 /** Tableau de brassage : celui de rack.js (partie baies) mis à nos colonnes, sinon le nôtre (docs.js). */
 function patchData(ctx, state) {
   const rows = patchingRows(ctx.data(), ctx.lan()).filter(r => match(state.q, ...Object.values(r)));
-  return { rows, cols: PATCH_KEYS.map(k => ({ key: r => r[k] ?? '', name: patchColName(k), num: /Len$/.test(k) })) };
+  return { rows, cols: PATCH_KEYS.map(k => ({ key: r => (/Len$/.test(k) && typeof r[k] === 'number' ? fmt(r[k], 1) : r[k] ?? ''), name: patchColName(k), num: /Len$/.test(k), cls: /^(outlet|device|panel)$/.test(k) ? 'w' : '' })) };
 }
 
 /** Rend l'onglet (labels, cables, patch, bom). */
@@ -40,12 +40,12 @@ export function renderTab(ctx, tab, state) {
     const tot = k => all.filter(r => r.kind === k).reduce((a, r) => a + r.len, 0);
     return `<div class="ntDsPage"><div class="ntDsKpis">${kpi(tl('Câbles'), fmt(all.length))}${kpi(tl('Liens permanents'), fmt(all.filter(r => r.kind === 'horizontal').length), { sub: fmt(tot('horizontal')) + ' m' })}${kpi(tl('Cordons'), fmt(all.filter(r => r.kind === 'cord').length))}${kpi(tl('Rocades'), fmt(all.filter(r => r.kind === 'backbone').length), { sub: fmt(tot('backbone')) + ' m' })}</div>
       ${tools(ctx, `${search(state, tl('Rechercher une étiquette, un équipement…'))}<select class="sel ntDsKind" data-filter="kind" aria-label="${esc(tl('Genre'))}"><option value="">${esc(tl('Tous les câbles'))}</option>${Object.keys(KIND_NAME).map(k => `<option value="${k}"${state.kind === k ? ' selected' : ''}>${esc(KIND_NAME[k]())}</option>`).join('')}</select>`, 'csv-cables')}
-      ${table([{ ...cols[0], key: r => `<button type="button" class="ntDsLink" data-act="reveal" data-id="${esc(r.id)}">${esc(r.label)}</button>`, html: 1 }, ...cols.slice(1)], rows.slice(0, MAX_ROWS), { empty: tl('Aucun câble.') })}${more(rows.length)}</div>`;
+      ${table([{ ...cols[0], key: r => `<button type="button" class="ntDsLink" data-act="reveal" data-id="${esc(r.id)}">${esc(r.label)}</button>`, html: 1 }, ...cols.slice(1)], rows.slice(0, MAX_ROWS), { empty: tl('Aucun câble.'), cls: 'ntDsFit' })}${more(rows.length)}</div>`;
   }
   if (tab === 'patch') {
     const { rows, cols } = patchData(ctx, state);
     return `<div class="ntDsPage">${tools(ctx, search(state, tl('Rechercher un port, un équipement…')), 'csv-patch')}
-      ${table(cols, rows.slice(0, MAX_ROWS), { empty: tl('Aucun cordon de brassage : posez des panneaux et des switchs dans les baies (ou lancez le générateur).') })}${more(rows.length)}
+      ${table(cols, rows.slice(0, MAX_ROWS), { cls: 'ntDsFit', empty: tl('Aucun cordon de brassage : posez des panneaux et des switchs dans les baies (ou lancez le générateur).') })}${more(rows.length)}
       <p class="ntDsNote">${esc(typeof RACK.patchingSchedule === 'function' ? tl('Tableau fourni par la vue Baies.') : tl('Cordons entre l’avant des panneaux et les ports des équipements, avec la prise au bout du lien permanent.'))}</p></div>`;
   }
   if (tab === 'bom') return renderBom(ctx);
@@ -59,7 +59,7 @@ function renderLabels(ctx, state) {
   const dupList = li.dups.slice(0, 20).map(g => `<li><b>${esc(g.label)}</b> : ${g.items.map(i => `<button type="button" class="ntDsLink" data-act="reveal" data-id="${esc(i.id)}">${esc(kindName(i.kind))}</button>`).join(', ')}</li>`).join('');
   return `<div class="ntDsGrid"><aside class="ntDsSide">
     <section><h3>${esc(tl('Format des identifiants'))}</h3>
-      ${selField(tl('Préréglage'), 'labels.preset', D.labels.preset, LABEL_PRESETS.map(k => [k, PRESET_NAME[k]()]))}
+      ${selField(tl('Préréglage'), 'labels.preset', D.labels.preset, LABEL_PRESETS.map(k => [k, PRESET_NAME[k]()]), { hint: tl('Automatique : TIA-606 (1A-B04), avec le bâtiment devant (B1-1A-B04) dès qu’il y en a plusieurs.') })}
       ${txtField(tl('Local technique'), 'labels.space', F.space, { disabled: !custom, max: 60 })}
       ${txtField(tl('Port de panneau et prise (lien horizontal)'), 'labels.link', F.link, { disabled: !custom, max: 60 })}
       ${txtField(tl('Panneau'), 'labels.panel', F.panel, { disabled: !custom, max: 60 })}
@@ -106,10 +106,12 @@ function renderBom(ctx) {
 /** Boutons des onglets (data-act). */
 export function onAction(ctx, act, b, state, rerender) {
   const data = ctx.data();
-  if (act === 'csv-labels') { const { rows, cols } = labelData(ctx, { q: '', lkind: '' }); return saveCsv(ctx, cols, rows, tl('etiquettes')); }
-  if (act === 'csv-cables') { const { rows, cols } = cableData(ctx, { q: '', kind: '' }); return saveCsv(ctx, cols, rows, tl('cables')); }
-  if (act === 'csv-patch') { const { rows, cols } = patchData(ctx, { q: '' }); return saveCsv(ctx, cols, rows, tl('brassage')); }
-  if (act === 'csv-bom') { const bb = bom(data); return saveCsv(ctx, [{ key: 'name', name: tl('Désignation') }, { key: 'qty', name: tl('Quantité') }, { key: 'unit', name: tl('Unité') }, { key: 'price', name: tl('Prix unitaire') }, { key: 'total', name: tl('Total') }, { key: () => bb.currency, name: tl('Devise') }, { key: 'note', name: tl('Remarque') }], bb.lines, tl('nomenclature')); }
+  if (act === 'csv-labels') return saveTable(ctx, 'labels', tl('etiquettes'));
+  if (act === 'csv-cables') return saveTable(ctx, 'cables', tl('cables'));
+  if (act === 'csv-patch') return saveTable(ctx, 'patching', tl('brassage'));
+  if (act === 'csv-bom') return saveTable(ctx, 'bom', tl('nomenclature'));
+  if (act === 'csv-outlets') return saveTable(ctx, 'outlets', tl('prises'));
+  if (act === 'csv-ipplan') return saveTable(ctx, 'ipplan', tl('adressage'));
   if (act === 'custom-labels') { const F = labelFormats(data); const L = design(ctx).labels; Object.assign(L, { space: F.space, link: F.link, panel: F.panel, rack: F.rack }); return setDesign(ctx, 'labels.preset', 'custom'); }
   if (act === 'add-labour') return setDesign(ctx, 'labour', [...design(ctx).labour, { name: tl('Pose et raccordement des prises'), qty: 1, unit: tl('u.'), price: 0 }]);
   if (act === 'del-labour') { const l = design(ctx).labour.slice(); l.splice(+b.dataset.i, 1); return setDesign(ctx, 'labour', l); }

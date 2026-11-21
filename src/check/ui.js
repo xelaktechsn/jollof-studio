@@ -23,7 +23,9 @@ export function installCheck(app) {
   const { esc, icon } = app;
   const chip = document.createElement('button');
   chip.type = 'button'; chip.className = 'tb label checkChip'; chip.id = 'checkChip';
-  chip.dataset.tip = tl('Vérifier le montage et le programme dans tous leurs états · F7');
+  // Projet réseau seul (app.scope() === 'net') : ni montage ni programme, les textes parlent du projet réseau.
+  const net = () => !!(app.scope && app.scope() === 'net');
+  chip.dataset.tip = net() ? tl('Vérifier le projet réseau · F7') : tl('Vérifier le montage et le programme dans tous leurs états · F7');
   app.anchor.before(chip);
   const modal = document.createElement('div');
   modal.className = 'modal'; modal.id = 'checkModal'; modal.hidden = true;
@@ -95,13 +97,14 @@ export function installCheck(app) {
   }
 
   function paintChip() {
-    chip.classList.remove('ok', 'err', 'warn', 'busy');
+    chip.classList.remove('ok', 'err', 'warn', 'busy', 'idle');
     if (!last) { chip.classList.add('busy'); chip.innerHTML = `${icon('rotate')}<span>${tl('Vérification…')}</span>`; return; }
     const r = last;
     if (r.errors) { chip.classList.add('err'); chip.innerHTML = `${icon('x')}<span>${tl('{0} erreur{1}', r.errors, r.errors > 1 ? 's' : '')}</span>`; }
     else if (r.warnings) { chip.classList.add('warn'); chip.innerHTML = `${icon('alert')}<span>${tl('Vérifié · {0} avert.', r.warnings)}</span>`; }
+    else if (app.empty && app.empty()) { chip.classList.add('idle'); chip.innerHTML = `${icon('check')}<span>${tl('Rien à vérifier')}</span>`; } // projet vide : rien n'est encore prouvé
     else { chip.classList.add('ok'); chip.innerHTML = `${icon('check')}<span>${tl('Vérifié')}</span>`; }
-    chip.dataset.tip = summary(r) + ' · F7';
+    chip.dataset.tip = summary(r, { net: net() }) + ' · F7';
   }
 
   /** Lance la vérification (la précédente, si elle tourne encore, est abandonnée). Rend le résultat. */
@@ -175,12 +178,13 @@ export function installCheck(app) {
     const r = last;
     if (!r) { q('sum').textContent = tl('Vérification…'); q('list').innerHTML = ''; return; }
     q('sum').className = 'jsum ' + (r.errors ? 'err' : r.warnings ? 'warn' : 'ok');
-    q('sum').textContent = summary(r) + (r.dynamic ? tl(' · broches calculées dans le programme : vérification prudente') : '') + tl(' · {0} ms', r.ms);
+    q('sum').textContent = summary(r, { net: net() }) + (r.dynamic ? tl(' · broches calculées dans le programme : vérification prudente') : '') + tl(' · {0} ms', r.ms);
     let html = '', fam = null;
     r.diags.forEach((d, i) => { const f = familyOf(d.code); if (f !== fam) { fam = f; html += `<h3 class="jfam">${esc(f)}</h3>`; } html += card(d, i); });
-    q('list').innerHTML = html || `<p class="jnone">${icon('check')}${tl('Aucune faute : chaque composant reste dans ses limites dans tous les états atteignables.')}</p>`;
+    q('list').innerHTML = html || `<p class="jnone">${icon('check')}${net() ? tl('Aucun problème dans le projet réseau.') : tl('Aucune faute : chaque composant reste dans ses limites dans tous les états atteignables.')}</p>`;
     const ex = explain('J0301');
-    q('model').textContent = ex ? ex.model : '';
+    q('model').textContent = ex && !net() ? ex.model : ''; // la garantie du modèle électrique ne concerne pas le réseau
+    const h = modal.querySelector('#checkTitle'); if (h) h.innerHTML = `${icon('check')}${net() ? tl('Vérification du projet réseau') : tl('Vérification du montage et du programme')}`;
     const f = q('list').querySelector('.jaccept input'); if (f) f.focus();
   }
   q('list').addEventListener('click', e => {
@@ -207,10 +211,9 @@ export function installCheck(app) {
   chip.onclick = open;
   q('close').onclick = close; q('rerun').onclick = () => run();
   modal.addEventListener('click', e => { if (e.target === modal) close(); });
-  addEventListener('keydown', e => {
-    if (e.key === 'F7') { e.preventDefault(); open(); }
-    else if (e.key === 'Escape' && !modal.hidden && !accepting) close();
-  });
+  // F7 en capture : les plans de travail (réseau, logique…) arrêtent les touches qu'ils reçoivent, F7 passe avant eux.
+  addEventListener('keydown', e => { if (e.key === 'F7' && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); open(); } }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !modal.hidden && !accepting) close(); });
   paintChip();
   return {
     schedule, run, open, close,

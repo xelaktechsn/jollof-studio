@@ -15,7 +15,7 @@
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from './icons.js';
 import { shortcut } from './appbar.js';
-import { spacesOf, hasProgram } from './kind.js';
+import { spacesOf, hasProgram, netOnly } from './kind.js';
 import { isLight, toggleTheme } from './theme.js';
 import { where, summary } from '../check/format.js';
 import { familyOf } from '../check/codes.js';
@@ -34,6 +34,8 @@ const labelOf = b => { const s = b.querySelector('span:not(.tbBadge)'); return (
 /** Bouton caché par son attribut ou par une règle qui le vise (ses parents ne comptent pas : les groupes repris sont cachés). */
 const cssHidden = b => b.hidden || getComputedStyle(b).display === 'none';
 const el = (tag, cls, html = '') => { const e = document.createElement(tag); e.className = cls; e.innerHTML = html; return e; };
+/** Projet réseau seul (data-kind de .app) : les textes parlent d'équipements et du projet réseau, pas du montage. */
+const netKind = () => { const a = document.querySelector('.app'); return !!a && netOnly(a.dataset.kind); };
 
 /**
  * Bouton qui en reprend un autre : même icône, libellé en infobulle (o.text : aussi en texte), mêmes états
@@ -65,6 +67,8 @@ export function installShell(host) {
   const tabs = installEditorTabs(host);
   installKeys(host, dock);
   releaseTabFocus();
+  // Infobulles des boutons de la barre d'application : raccourcis à la façon du système (⌘Z sur Mac, Ctrl+Z ailleurs).
+  for (const [id, lab, k, sh] of [['#undoBtn', 'Annuler', 'Z'], ['#redoBtn', 'Rétablir', 'Z', true], ['#saveBtn', 'Enregistrer', 'S']]) { const b = $(id); if (b) b.dataset.tip = `${tl(lab)} · ${shortcut(k, !!sh)}`; }
   return { act, tabs, dock };
 }
 
@@ -90,6 +94,7 @@ function installActivityBar(host, dock) {
   const sep = () => el('span', 'actSep');
   const libBtn = act('box', `${tl('Bibliothèque')} · ${shortcut('B')}`, () => host.setLibOpen(!host.libOpen()));
   const searchBtn = act('search', tl('Rechercher un composant'), () => { host.setLibOpen(true); focusSearch(); });
+  const paintSearch = () => { const t = netKind() ? tl('Rechercher un équipement') : tl('Rechercher un composant'); if (searchBtn.dataset.tip !== t) { searchBtn.dataset.tip = t; searchBtn.setAttribute('aria-label', t); } };
   const sepA = sep(), sepB = sep();
   const probBtn = act('alert', `${tl('Problèmes')} · ${shortcut('M', true)}`, () => dock.toggle('problems'));
   const grow = el('span', 'grow');
@@ -124,6 +129,7 @@ function installActivityBar(host, dock) {
     badge.hidden = !n; badge.textContent = n > 99 ? '99+' : String(n); badge.className = 'actBadge ' + (c.errors ? 'err' : c.warnings ? 'warn' : '');
   }
   function sync() {
+    paintSearch();
     libBtn.setAttribute('aria-pressed', String(host.libOpen()));
     probBtn.setAttribute('aria-pressed', String(dock.tab() === 'problems'));
     mirrors.forEach(m => m.sync()); if (homeM) homeM.sync();
@@ -225,7 +231,7 @@ function createDock() {
       <button type="button" class="tb" data-dka="close" data-tip="${tl('Fermer le panneau')} · ${shortcut('J')}" aria-label="${tl('Fermer le panneau')}">${icon('x')}</button>
     </div>
     <div class="dkBody dkProblems" role="tabpanel" aria-label="${tl('Problèmes')}"></div>
-    <div class="dkBody dkOutput" role="tabpanel" aria-label="${OUTPUT}" hidden><div class="dkLog" data-empty="${tl('Rien pour l’instant : les messages d’état et le journal du téléversement s’afficheront ici.')}"></div></div>`;
+    <div class="dkBody dkOutput" role="tabpanel" aria-label="${OUTPUT}" hidden><div class="dkLog" data-empty="${tl('Rien pour l’instant : les messages d’état et le journal du téléversement s’afficheront ici.')}" data-empty-net="${tl('Rien pour l’instant : les messages d’état, les ping et les échanges du réseau simulé s’afficheront ici.')}"></div></div>`;
   const q = s => root.querySelector(s), probBox = q('.dkProblems'), out = q('.dkOutput'), logEl = q('.dkLog');
 
   /* Hauteur : poignée au bord haut, retenue d'une session à l'autre. */
@@ -275,7 +281,7 @@ function createDock() {
   /* Problèmes : les diagnostics du vérificateur, par famille, comme dans le rapport. */
   function renderProblems() {
     if (!last) { probBox.innerHTML = `<p class="dkEmpty busy">${icon('rotate')}${tl('Vérification…')}</p>`; return; }
-    if (!last.diags.length) { probBox.innerHTML = `<p class="dkEmpty">${icon('check')}${tl('Aucun problème : le montage et le programme passent la vérification.')}</p>`; return; }
+    if (!last.diags.length) { probBox.innerHTML = `<p class="dkEmpty">${icon('check')}${netKind() ? tl('Aucun problème : le projet réseau passe la vérification.') : tl('Aucun problème : le montage et le programme passent la vérification.')}</p>`; return; }
     let html = '', fam = null;
     last.diags.forEach((d, i) => {
       const f = familyOf(d.code); if (f !== fam) { fam = f; html += `<div class="dkFam">${esc(f)}</div>`; }
@@ -294,7 +300,7 @@ function createDock() {
   function setProblems(r) {
     last = r || null; counts();
     if (tab === 'problems') renderProblems();
-    if (r) { const s = summary(r); if (s !== lastSummary) { lastSummary = s; log(s, r.errors ? 'err' : r.warnings ? 'warn' : 'ok'); } }
+    if (r) { const s = summary(r, { net: netKind() }); if (s !== lastSummary) { lastSummary = s; log(s, r.errors ? 'err' : r.warnings ? 'warn' : 'ok'); } }
   }
 
   /* Sortie : une ligne horodatée par message ; un message répété ne fait que compter. */
@@ -361,10 +367,17 @@ function createDock() {
 }
 
 /* ---------- Clavier : avant les plans de travail (écoute en capture, posée au démarrage de l'interface) ---------- */
+const FIRST = new Set();
+/**
+ * Touches vues avant les plans de travail (menus ouverts, F10 : un module chargé plus tard passe quand même en
+ * premier) : fn(e) → true si la touche est prise (elle ne va pas plus loin). Rend de quoi l'enlever.
+ */
+export function onKeyFirst(fn) { FIRST.add(fn); return () => FIRST.delete(fn); }
 function installKeys(host, dock) {
   addEventListener('keydown', e => {
     const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     const take = () => { e.preventDefault(); e.stopImmediatePropagation(); };
+    for (const f of FIRST) { let r = false; try { r = f(e); } catch (err) { console.error(err); } if (r) { take(); return; } }
     if (e.key === 'F1' || (mod && e.shiftKey && !e.altKey && k === 'p')) { take(); host.togglePalette(); return; }
     if (host.paletteOpen()) return; // la palette gère ses touches
     if (!mod || e.altKey) return;

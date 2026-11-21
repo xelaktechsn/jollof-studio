@@ -116,7 +116,7 @@ export function computeL2(x) {
   };
   for (const [k, l] of links) {
     if (!l.up || !l.peer) continue;
-    const [n, p] = k.split('|'); if (n > l.peer.n || (n === l.peer.n && p > l.peer.p)) continue;
+    const i = k.indexOf('|'), n = k.slice(0, i), p = k.slice(i + 1); if (n > l.peer.n || (n === l.peer.n && p > l.peer.p)) continue;
     if (!usable(n, p) || !usable(l.peer.n, l.peer.p)) continue;
     physical.push({ a: { n, p }, b: { n: l.peer.n, p: l.peer.p }, link: l });
   }
@@ -165,8 +165,8 @@ export function computeL2(x) {
   const prioOf = (b, inst) => { const S = byB.get(b).p.stp; return inst && S.mode !== 'rstp' && S.vlans && S.vlans[inst] != null ? S.vlans[inst] : S.prio | 0; };
   /** Une instance RSTP : racine (priorité puis MAC), coûts, port racine, ports désignés, alternatifs, de secours. */
   function runStp(inst, entries) {
-    const bid = b => [prioOf(b, inst), macOf(b)];
-    const cmpBid = (a, b) => { const x = bid(a), y = bid(b); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0); };
+    const BID = new Map(), bid = b => { let x = BID.get(b); if (!x) { x = [prioOf(b, inst), macOf(b)]; BID.set(b, x); } return x; };
+    const cmpBid = (a, b) => { if (a === b) return 0; const x = bid(a), y = bid(b); return x[0] - y[0] || (x[1] < y[1] ? -1 : x[1] > y[1] ? 1 : 0); };
     const bports = new Map(), segPorts = new Map();
     for (const e of entries) {
       if (!bports.has(e.b)) bports.set(e.b, []); bports.get(e.b).push(e);
@@ -263,7 +263,7 @@ export function computeL2(x) {
     if (k === 'clear') return [{ tag: 0, v: 'wan:' + n }]; // WAN d'une box
     if (k === 'l3') return ((d.p || {}).ifs || []).filter(f => f.port === p).map(f => ({ tag: f.vlan, v: `r:${n}:${p}:${f.vlan}` }));
     if (k === 'managed') {
-      return portVlans(d, p).filter(x => fwd(n, p, x.vlan)).map(x => ({ tag: x.tag, v: `m:${n}:${x.vlan}` }));
+      return portVlans(d, p).filter(x => fwd(n, p, x.vlan)).map(x => ({ tag: x.tag, v: `m:${n}:${x.vlan}`, vlan: x.vlan }));
     }
     return [];
   }
@@ -274,7 +274,7 @@ export function computeL2(x) {
     const seg = segOf.get(k), list = sideMap(s.n, s.p); attach.set(k, list);
     for (const x of list) {
       verts.add(x.v); union(x.v, segV(seg, x.tag)); edges.push(x.v);
-      if (kinds.get(s.n) === 'managed') { const m = /^m:.*:(\d+)$/.exec(x.v); if (m) vlanUp.add(key(s.n, +m[1])); }
+      if (x.vlan != null) vlanUp.add(key(s.n, x.vlan));
     }
   }
   // Équipements transparents : leur sommet (sans étiquette) est celui de leur segment (LAN de la box : 'n:box').
@@ -297,8 +297,14 @@ export function computeL2(x) {
   /* ---------- Chemins de niveau 2 ---------- */
   // Domaines portés par chaque lien physique : un lien interne à un segment porte toutes ses étiquettes ; un lien vers un
   // port d'attache porte les domaines de ce port.
-  const adj = new Map(), linked = new Set();
-  const add = (u, w, out, inn, link, doms) => { if (!adj.has(u)) adj.set(u, []); adj.get(u).push({ to: w, out, in: inn, link, doms }); };
+  // Construits à la première demande d'un chemin (ping, traceroute, tables MAC) : un recalcul qui n'en demande pas s'en passe.
+  const linked = new Set();
+  for (const e of physical) for (const s of [e.a, e.b]) if (kinds.get(s.n) === 'host') linked.add(s.n);
+  let adj0 = null;
+  const adjOf = () => {
+    if (adj0) return adj0;
+    const adj = adj0 = new Map();
+    const add = (u, w, out, inn, link, doms) => { if (!adj.has(u)) adj.set(u, []); adj.get(u).push({ to: w, out, in: inn, link, doms }); };
   for (const e of physical) {
     const doms = new Set();
     for (const s of [e.a, e.b]) {
@@ -307,9 +313,10 @@ export function computeL2(x) {
     }
     if (!attach.has(key(e.a.n, e.a.p)) && !attach.has(key(e.b.n, e.b.p))) { const seg = segOf.get(key(e.a.n, e.a.p)); for (const t of segTags.get(seg) || [0]) doms.add(find(segV(seg, t))); doms.add(find('seg:' + seg + ':0')); }
     add(e.a.n, e.b.n, e.a, e.b, e.link, doms); add(e.b.n, e.a.n, e.b, e.a, e.link, doms);
-    for (const s of [e.a, e.b]) if (kinds.get(s.n) === 'host') linked.add(s.n);
   }
-  return { find, storm, segOf, loopSegs, stp, stpI, stpOf, single, lags, member, fwd, blocked, portVlans, vlanUp, adj, linked, attach, kinds, physical, hostPort };
+    return adj;
+  };
+  return { find, storm, segOf, loopSegs, stp, stpI, stpOf, single, lags, member, fwd, blocked, portVlans, vlanUp, get adj() { return adjOf(); }, linked, attach, kinds, physical, hostPort };
 }
 
 /** Nœud d'un sommet de domaine ('n:x', 'n:x#t', 'm:x:v', 'r:x:p:t', 'wan:x') ou null. */

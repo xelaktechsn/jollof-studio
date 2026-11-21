@@ -123,9 +123,10 @@ export const cableLabel = (data, c) => labeler(data).cable(c);
 
 /** Tableau des étiquettes : locaux, baies, panneaux, ports de prise, câbles ({ kind, id, port, label, where }). */
 export function labelTable(data, o = {}) {
-  const L = labeler(data), rows = [];
-  for (const sp of spacesOf(data)) rows.push({ kind: 'space', id: sp.key, label: L.space(sp.key), where: sp.floor });
-  for (const r of data.racks || []) rows.push({ kind: 'rack', id: r.id, label: L.rack(r.id), where: r.floor });
+  const L = labeler(data), rows = [], fl = floorsOf(data), many = new Set(fl.map(x => x.b.id)).size > 1;
+  const fname = id => { const F = fl.find(x => x.f.id === id); return F ? (many ? (F.b.name || F.b.id) + ' · ' : '') + (F.f.name || F.f.id) : id || ''; };
+  for (const sp of spacesOf(data)) { const r0 = sp.room && fl.flatMap(x => x.f.rooms || []).find(r => r.id === sp.room); rows.push({ kind: 'space', id: sp.key, label: L.space(sp.key), where: fname(sp.floor) + (r0 ? ' · ' + (r0.name || r0.id) : '') }); }
+  for (const r of data.racks || []) rows.push({ kind: 'rack', id: r.id, label: L.rack(r.id), where: fname(r.floor) });
   for (const d of data.devices || []) {
     if (isPanel(d)) rows.push({ kind: 'panel', id: d.id, label: L.of(d.id), where: d.rack ? L.rack(d.rack.id) : '' });
     if (isOutlet(d)) { const room = roomOfDev(data, d); for (const p of L.ports(d).filter(x => x.punch)) rows.push({ kind: 'outlet', id: d.id, port: p.id, label: L.of(d.id, p.id), where: room ? room.name || room.id : '' }); }
@@ -261,11 +262,88 @@ export function money(v, cur, en) {
 }
 
 /* ---------- Exports ---------- */
-/** CSV : cols [{ key, name }], rows d'objets ; sep ';' (tableurs en français) ou ','. Champs entre guillemets si besoin. */
-export function toCsv(cols, rows, sep = ';') {
-  const q = v => { const s = Array.isArray(v) ? v.join(' > ') : String(v ?? ''); return /[";\n,]/.test(s) || s !== s.trim() ? '"' + s.replace(/"/g, '""') + '"' : s; };
-  return '﻿' + [cols.map(c => q(c.name)).join(sep), ...rows.map(r => cols.map(c => q(typeof c.key === 'function' ? c.key(r) : r[c.key])).join(sep))].join('\r\n') + '\r\n';
+/**
+ * CSV (RFC 4180 : champs entre guillemets si besoin, guillemets doublés, fins de ligne CRLF), UTF-8 avec BOM pour Excel.
+ * cols [{ key, name, num? }], rows d'objets ; o : séparateur (';', ',', '\t') ou { sep, decimal: '.'|',' } — les colonnes
+ * num s'écrivent avec ce séparateur décimal (virgule pour un tableur réglé en français).
+ */
+export function toCsv(cols, rows, o = ';') {
+  const opt = typeof o === 'string' ? { sep: o } : o || {}, sep = opt.sep || ';', dec = opt.decimal || '.';
+  const q = v => { const s = Array.isArray(v) ? v.join(' > ') : String(v ?? ''); return s.includes(sep) || /["\r\n]/.test(s) || s !== s.trim() ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  const val = (c, r) => { const v = typeof c.key === 'function' ? c.key(r) : r[c.key]; return c.num && typeof v === 'number' && dec !== '.' ? String(v).replace('.', dec) : v; };
+  return '﻿' + [cols.map(c => q(c.name)).join(sep), ...rows.map(r => cols.map(c => q(val(c, r))).join(sep))].join('\r\n') + '\r\n';
 }
+/** Réglages d'export CSV du projet → { sep, decimal, headers } (auto : point-virgule et virgule en français). */
+export function csvOptions(data, en) {
+  const E = designOf(data).exports, SEP = { semicolon: ';', comma: ',', tab: '\t' };
+  const sep = E.csvSep === 'auto' ? (en ? ',' : ';') : SEP[E.csvSep], decimal = E.csvDecimal === 'auto' ? (sep === ';' ? ',' : '.') : E.csvDecimal === 'comma' ? ',' : '.';
+  return { sep, decimal, headers: E.csvHeaders };
+}
+/** Fabricant et référence d'un type, d'après la fiche qui a servi au modèle (rack.js MOUNT.ref). */
+const MAKERS = ['Tripp Lite', 'TP-Link', 'UniFi', 'Ubiquiti', 'Cisco', 'Belden', 'Leviton', 'Eaton', 'Dell', 'Pulsar', 'Panduit', 'APC', 'Axis', 'HPE', 'Aruba'];
+export function makerOf(type) {
+  const ref = RACK.MOUNT && RACK.MOUNT[type] && RACK.MOUNT[type].ref; if (!ref) return { maker: '', part: '' };
+  const m = MAKERS.find(x => ref.startsWith(x + ' ')); return m ? { maker: m, part: ref.slice(m.length + 1) } : { maker: '', part: ref };
+}
+/**
+ * Tableaux d'échange (outils de gestion de câblage, tableurs) : câbles, brassage, nomenclature, prises, plan d'adressage,
+ * étiquettes. headers 'standard' : en-têtes anglais fixes, ceux des outils courants (« Cable ID, From Device, From Port… »,
+ * « Item, Description, Manufacturer, Part Number… ») ; 'local' : dans la langue de l'interface.
+ * Rend { [nom]: { cols: [{ key, name, num? }], rows } }.
+ */
+export function csvTables(data, lan, o = {}) {
+  const std = o.headers !== 'local', H = (en, fr) => (std ? en : tl(fr)), L = labeler(data), devs = new Map((data.devices || []).map(d => [d.id, d]));
+  const cs = cableSchedule(data), at = new Map();
+  for (const c of data.cables || []) { at.set(c.a.join('|'), c); at.set(c.b.join('|'), c); }
+  const pname = (d, pid) => { if (!d) return pid; const p = L.ports(d).find(x => x.id === pid); return p ? p.label || pid : pid; };
+  const cables = { cols: [
+    { key: 'label', name: H('Cable ID', 'Étiquette') }, { key: r => r.c.a[0] && (devs.get(r.c.a[0]) || {}).name, name: H('From Device', 'De') }, { key: r => pname(devs.get(r.c.a[0]), r.c.a[1]), name: H('From Port', 'Port') },
+    { key: r => (devs.get(r.c.b[0]) || {}).name, name: H('To Device', 'Vers') }, { key: r => pname(devs.get(r.c.b[0]), r.c.b[1]), name: H('To Port', 'Port') },
+    { key: r => (r.media === 'fibre' ? 'Fiber' : 'Copper'), name: H('Type', 'Support') }, { key: 'type', name: H('Category', 'Catégorie') }, { key: 'len', name: H('Length (m)', 'Longueur (m)'), num: 1 },
+    { key: r => KINDS_EN[r.kind] || r.kind, name: H('Function', 'Genre') }, { key: r => (r.mode === 'auto' ? 'auto' : r.mode || ''), name: H('Routing', 'Tracé') }, { key: r => r.paths.join(' > '), name: H('Pathways', 'Cheminements') }
+  ], rows: cs.map(r => ({ ...r, c: (data.cables || []).find(x => x.id === r.id) })) };
+  const pr = patchingRows(data, lan);
+  const patching = { cols: [
+    { key: 'rack', name: H('Rack', 'Baie') }, { key: 'panel', name: H('Patch Panel', 'Panneau') }, { key: 'port', name: H('Panel Port ID', 'Identifiant') },
+    { key: 'device', name: H('Switch', 'Équipement') }, { key: 'dport', name: H('Switch Port', 'Port') }, { key: 'vlan', name: H('VLAN', 'VLAN') },
+    { key: 'outlet', name: H('Outlet', 'Prise') }, { key: 'oport', name: H('Outlet Port', 'Port de prise') }, { key: 'permLen', name: H('Permanent Link (m)', 'Lien permanent (m)'), num: 1 }, { key: 'cordLen', name: H('Patch Cord (m)', 'Cordon (m)'), num: 1 }
+  ], rows: pr };
+  const b = bom(data);
+  const bomT = { cols: [
+    { key: (r, i) => r.i, name: H('Item', 'Ligne') }, { key: 'name', name: H('Description', 'Désignation') }, { key: 'maker', name: H('Manufacturer', 'Fabricant') }, { key: 'part', name: H('Part Number', 'Référence') },
+    { key: 'qty', name: H('Quantity', 'Quantité'), num: 1 }, { key: 'unit', name: H('Unit', 'Unité') }, { key: r => (r.price ? r.price : ''), name: H('Unit Price', 'Prix unitaire'), num: 1 },
+    { key: r => (r.price ? r.total : ''), name: H('Total', 'Total'), num: 1 }, { key: () => b.currency, name: H('Currency', 'Devise') }, { key: 'note', name: H('Notes', 'Remarque') }
+  ], rows: b.lines.map((l, i) => ({ ...l, i: i + 1, ...(DEVICE_KEYS.has(l.key) ? makerOf(l.key) : { maker: '', part: '' }) })) };
+  // Liste des prises : un port par ligne, du mur au switch.
+  const orows = [], floors = new Map(floorsOf(data).map(x => [x.f.id, x]));
+  for (const d of data.devices || []) {
+    if (!isOutlet(d)) continue;
+    const room = roomOfDev(data, d), F = d.loc && floors.get(d.loc.floor);
+    for (const bp of L.ports(d).filter(p => p.punch)) {
+      const link = at.get(d.id + '|' + bp.id), far = link ? (link.a[0] === d.id ? link.b : link.a) : null, P = far && devs.get(far[0]);
+      const front = P && isPanel(P) ? at.get(P.id + '|f' + portNum(far[1])) : null, sw = front ? (front.a[0] === P.id ? front.b : front.a) : null, S = sw && devs.get(sw[0]);
+      const cfg = S && S.p && S.p.ports ? S.p.ports[sw[1]] : null;
+      orows.push({ id: L.of(d.id, bp.id), dev: d.name, port: bp.label || bp.id, room: room ? room.name || room.id : '', floor: F ? F.f.name || F.f.id : '', building: F ? F.b.name || F.b.id : '',
+        panel: P ? L.of(P.id) : '', pport: far ? portNum(far[1]) : '', sw: S ? S.name : '', swport: S ? pname(S, sw[1]) : '', vlan: cfg ? cfg.vlan ?? '' : '', voice: cfg && cfg.voice ? cfg.voice : '',
+        len: link ? +(+link.len || 0).toFixed(1) : '', x: d.loc ? d.loc.x : '', y: d.loc ? d.loc.y : '', h: d.loc ? d.loc.h : '' });
+    }
+  }
+  const outlets = { cols: [
+    { key: 'id', name: H('Outlet ID', 'Identifiant') }, { key: 'dev', name: H('Faceplate', 'Prise') }, { key: 'port', name: H('Port', 'Port') }, { key: 'room', name: H('Room', 'Nom de la pièce') }, { key: 'floor', name: H('Floor', 'Étage') }, { key: 'building', name: H('Building', 'Bâtiment') },
+    { key: 'panel', name: H('Patch Panel', 'Panneau') }, { key: 'pport', name: H('Panel Port', 'Port du panneau') }, { key: 'sw', name: H('Switch', 'Switch') }, { key: 'swport', name: H('Switch Port', 'Port du switch') },
+    { key: 'vlan', name: H('Data VLAN', 'VLAN de données') }, { key: 'voice', name: H('Voice VLAN', 'VLAN voix') }, { key: 'len', name: H('Link Length (m)', 'Longueur du lien (m)'), num: 1 },
+    { key: 'x', name: H('X (m)', 'X (m)'), num: 1 }, { key: 'y', name: H('Y (m)', 'Y (m)'), num: 1 }, { key: 'h', name: H('Height (m)', 'Hauteur (m)'), num: 1 }
+  ], rows: orows };
+  const iprows = (data.vlans || []).map(v => { const m = /^(\d+\.\d+\.\d+\.\d+)\/(\d+)$/.exec(v.net || ''); const n = m ? +m[2] : null, size = n != null ? 2 ** (32 - n) : 0; const base = m ? m[1].split('.').reduce((a, x) => a * 256 + +x, 0) : 0; const ip = k => [24, 16, 8, 0].map(s2 => Math.floor(k / 2 ** s2) % 256).join('.'); return { id: v.id, name: v.name, net: m ? m[1] : '', prefix: n ?? '', mask: n != null ? ip(2 ** 32 - size) : '', gw: v.gw || '', first: m && n < 31 ? ip(base + 1) : '', last: m && n < 31 ? ip(base + size - 2) : '', bcast: m ? ip(base + size - 1) : '', hosts: v.hosts ?? '' }; });
+  const ipplan = { cols: [
+    { key: 'id', name: H('VLAN ID', 'VLAN') }, { key: 'name', name: H('Name', 'Nom') }, { key: 'net', name: H('Network', 'Réseau') }, { key: 'prefix', name: H('Prefix', 'Préfixe') }, { key: 'mask', name: H('Subnet Mask', 'Masque') },
+    { key: 'gw', name: H('Gateway', 'Passerelle') }, { key: 'first', name: H('First Host', 'Première adresse') }, { key: 'last', name: H('Last Host', 'Dernière adresse') }, { key: 'bcast', name: H('Broadcast', 'Diffusion') }, { key: 'hosts', name: H('Planned Hosts', 'Hôtes prévus') }
+  ], rows: iprows };
+  const labels = { cols: [{ key: r => (std ? r.kind : kindName(r.kind)), name: H('Object', 'Objet') }, { key: 'label', name: H('Label', 'Étiquette') }, { key: 'where', name: H('Location', 'Emplacement') }], rows: labelTable(data, { cables: false }) };
+  return { cables, patching, bom: bomT, outlets, ipplan, labels };
+}
+const KINDS_EN = { horizontal: 'Permanent link', cord: 'Patch cord', backbone: 'Backbone', other: 'Other' };
+const DEVICE_KEYS = new Set(Object.keys(DEVICES));
 /**
  * Plan d'étage en SVG (modèle simplifié, pour l'impression) : pièces avec leur nom, murs, baies, prises avec leur
  * identifiant, points d'accès. Coordonnées en mètres ; échelle graphique. Rend '' si l'étage n'existe pas.

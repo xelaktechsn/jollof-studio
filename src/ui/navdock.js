@@ -19,11 +19,17 @@ const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* s
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 const TOOLS = {
-  select: { ic: 'pointer', key: 'v', tip: () => tl('Sélection · V : cliquer pour choisir, glisser dans le vide pour encadrer'), name: () => tl('Sélection') },
+  select: { ic: 'pointer', key: 'v', tip: () => tl('Sélection · V : cliquer pour choisir, glisser dans le vide pour encadrer'), name: () => tl('Choisir') },
   orbit: { ic: 'orbit', key: 'o', tip: () => tl('Orbite · O : glisser pour tourner autour du montage'), name: () => tl('Orbite') },
   pan: { ic: 'hand', key: 'h', tip: () => tl('Main · H : glisser pour déplacer la vue (ou Espace maintenu)'), name: () => tl('Main : déplacer la vue') },
   zoom: { ic: 'zoomArea', key: 'z', tip: () => tl('Loupe · Z : tracer la zone à agrandir (clic : zoomer, Alt + clic : dézoomer)'), name: () => tl('Loupe : tracer la zone à agrandir') }
 };
+
+const HELP = new Set(), PAINTS = new Set();
+/** Section de plus dans l'aide des raccourcis (?) de tous les plans : fn(adaptateur) → { title, rows: [[touches, action]] } ou null. */
+export function addHelpSection(fn) { HELP.add(fn); return () => HELP.delete(fn); }
+/** Après chaque mise à jour d'une barre affichée : fn({ host, zoom (pourcentage ou null), title }) (barre d'état). */
+export function onNavPaint(fn) { PAINTS.add(fn); return () => PAINTS.delete(fn); }
 
 /** Touches d'un raccourci, à la façon du système : « Shift+F|Shift+2 » → ⇧F ou ⇧2 sur Mac, Maj+F ou Maj+2 ailleurs. */
 export function keysHtml(s) {
@@ -33,7 +39,7 @@ export function keysHtml(s) {
   };
   // Sur Mac, ⇧ ⌘ ⌥ se collent à la touche (⇧F, ⌘A) ; un mot (Espace, glisser) garde « + ».
   const sym = t => MAC && ['Shift', 'Mod', 'Alt'].includes(t);
-  const combo = alt => alt.split('+').map((t, i, a) => esc(word[t] || t) + (i < a.length - 1 ? (sym(t) && a[i + 1].length === 1 ? '' : ' + ') : '')).join('');
+  const combo = alt => alt.split('+').map((t, i, a) => esc(word[t] || t) + (i < a.length - 1 ? (sym(t) && (a[i + 1].length === 1 || sym(a[i + 1])) ? '' : ' + ') : '')).join('');
   return s.split('|').map(alt => `<kbd>${combo(alt)}</kbd>`).join(`<span class="ndOr">${tl('ou')}</span>`);
 }
 
@@ -208,10 +214,11 @@ export function createNavDock(host, A) {
       ['?', tl('Afficher ou masquer cette aide')]
     ];
     const own = A.shortcuts ? A.shortcuts() : [];
+    const more = [...HELP].map(f => { try { return f(A); } catch (e) { return null; } }).filter(x => x && x.rows && x.rows.length);
     help = document.createElement('div'); help.className = 'ndHelp';
     help.setAttribute('role', 'dialog'); help.setAttribute('aria-label', tl('Raccourcis du plan de travail'));
     help.innerHTML = `<div class="ndHelpCard"><header><b>${icon('keyboard')}${tl('Raccourcis du plan de travail')}</b><button type="button" class="ndB" data-close aria-label="${esc(tl('Fermer'))}">${icon('x')}</button></header>
-      <div class="ndCols"><section><h4>${tl('Navigation')}</h4>${nav.map(row).join('')}</section>${own.length ? `<section><h4>${esc(A.title || tl('Édition'))}</h4>${own.map(row).join('')}</section>` : ''}</div></div>`;
+      <div class="ndCols"><section><h4>${tl('Navigation')}</h4>${nav.map(row).join('')}</section>${own.length ? `<section><h4>${esc(A.title || tl('Édition'))}</h4>${own.map(row).join('')}</section>` : ''}${more.map(x => `<section><h4>${esc(x.title)}</h4>${x.rows.map(row).join('')}</section>`).join('')}</div></div>`;
     document.body.appendChild(help); // fenêtre entière : lisible même dans un plan étroit (vue partagée)
     help.addEventListener('click', e => { if (e.target === help || e.target.closest('[data-close]')) toggleHelp(false); });
   }
@@ -274,6 +281,7 @@ export function createNavDock(host, A) {
     const sb = dock.querySelector('[data-nd="sel"]'); if (sb) sb.disabled = !(A.hasSel && A.hasSel());
     dock.querySelectorAll('[data-nd^="tool:"]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.nd.slice(5) === tool)));
     paintCursor(); drawMini();
+    for (const f of PAINTS) { try { f({ host, zoom: p, title: A.title || '' }); } catch (e) { console.error(e); } }
   }
   /** À appeler quand la vue, le contenu ou la sélection changent (regroupé à l'image suivante). */
   function update() { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; paint(); }); }

@@ -128,3 +128,19 @@ test('un assistant à plusieurs connexions : une seule demande, une seule ligne,
   assert.deepEqual(m.prune(500, later).sort(), ['a', 'b', 'c']);
   assert.deepEqual(m.connected(), []);
 });
+
+test('projet réseau seul : outils du montage ni listés ni utilisables, outils du réseau gardés', async () => {
+  const { BENCH_TOOLS, toolFits } = await import('./tools.js');
+  let kind = 'net';
+  const m = createMcp({ tools: createTools({ ...host, kind: () => kind }), info: { name: 'jollof-studio', version: '0' } });
+  const call = (id, method, params) => m.handle({ jsonrpc: '2.0', id, method, params });
+  const names = async () => (await call(1, 'tools/list')).result.tools.map(t => t.name);
+  const net = await names();
+  for (const n of BENCH_TOOLS) assert.ok(!net.includes(n), n);
+  for (const n of ['get_project', 'check_circuit', 'net_get', 'net_add', 'net_ping', 'screenshot', 'new_project', 'undo']) assert.ok(net.includes(n), n);
+  const r = await call(2, 'tools/call', { name: 'add_part', arguments: { type: 'uno' } });
+  assert.equal(r.result.isError, true); assert.match(r.result.content[0].text, /network project \(kind "net"\).*iot/s);
+  // Objets connectés, électronique, pneumatique : rien de caché.
+  for (kind of ['iot', 'elec', 'epneu', 'pneu', 'logic']) { const l = await names(); for (const n of ['add_part', 'auto_wire', 'set_program']) assert.ok(l.includes(n), kind + ' ' + n); }
+  assert.equal(toolFits('net_ping', 'net'), true); assert.equal(toolFits('add_part', 'net'), false); assert.equal(toolFits('add_part', 'iot'), true);
+});

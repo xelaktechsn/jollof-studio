@@ -5,7 +5,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { cleanDesign, applyDesign, horizontalLinks } from './dimension.js';
-import { labelOf, cableLabel, labelTable, labelIssues, cableSchedule, patchRows, bom, toCsv, floorSvg, rackSvg, reportHtml, fill, labeler, money } from './docs.js';
+import { csvTables, csvOptions, makerOf, labelOf, cableLabel, labelTable, labelIssues, cableSchedule, patchRows, bom, toCsv, floorSvg, rackSvg, reportHtml, fill, labeler, money } from './docs.js';
 import { issues, LAB, CODES } from './checks/design.js';
 import { fixture, bigFixture } from './dimension.fixture.mjs';
 // Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
@@ -138,4 +138,27 @@ test('taille réelle : étiquettes, vérifications et nomenclature d’un campus
   const db = best(() => { bom(d); cableSchedule(d); }); assert.ok(db < 100, note('nomenclature', db, 100));
   assert.equal(labelIssues(d).dups.length, 0, 'auto : campus (bâtiment devant chaque identifiant)');
   d.design.labels.preset = 'tia'; assert.ok(labelIssues(d).dups.length > 0, 'TIA-606 d’un seul bâtiment sur un campus : doublons');
+});
+
+test('échanges CSV : en-têtes standard des outils courants, séparateur, virgule décimale, BOM, RFC 4180', () => {
+  const d = built({ prices: { switch24: 1150.5 } }), T = csvTables(d, null, { headers: 'standard' });
+  assert.deepEqual(T.cables.cols.slice(0, 8).map(c => c.name), ['Cable ID', 'From Device', 'From Port', 'To Device', 'To Port', 'Type', 'Category', 'Length (m)']);
+  assert.deepEqual(T.bom.cols.slice(0, 8).map(c => c.name), ['Item', 'Description', 'Manufacturer', 'Part Number', 'Quantity', 'Unit', 'Unit Price', 'Total']);
+  assert.deepEqual(T.outlets.cols.slice(0, 3).map(c => c.name), ['Outlet ID', 'Faceplate', 'Port']);
+  assert.deepEqual(T.ipplan.cols.slice(0, 6).map(c => c.name), ['VLAN ID', 'Name', 'Network', 'Prefix', 'Subnet Mask', 'Gateway']);
+  assert.equal(T.cables.rows.length, d.cables.length); assert.equal(T.outlets.rows.length, 106);
+  const sw = T.bom.rows.find(r => r.key === 'switch24' || r.key === 'switch48'); assert.ok(sw && sw.maker === 'Cisco' && /C1000/.test(sw.part), JSON.stringify(sw));
+  assert.deepEqual(makerOf('cablemgr'), { maker: 'Tripp Lite', part: 'SRCABLERING1U' });
+  const o = T.outlets.rows[0]; assert.match(o.id, /^0A-A0\d$/); assert.equal(o.vlan, 10); assert.ok(o.sw && o.swport);
+  // séparateur ; et virgule décimale (tableur en français) ; virgule et point (outils, anglais) ; BOM UTF-8
+  d.design.exports.csvSep = 'auto';
+  const fr = csvOptions(d, false), en = csvOptions(d, true);
+  assert.deepEqual([fr.sep, fr.decimal, en.sep, en.decimal], [';', ',', ',', '.']);
+  const a = toCsv(T.cables.cols, T.cables.rows.slice(0, 1), fr), b = toCsv(T.cables.cols, T.cables.rows.slice(0, 1), en);
+  assert.ok(a.startsWith('\ufeffCable ID;From Device;') && b.startsWith('\ufeffCable ID,From Device,'));
+  assert.match(a.split('\r\n')[1], /;\d+,\d;|;\d+;/, 'longueur avec virgule décimale');
+  assert.match(b.split('\r\n')[1], /,\d+(\.\d)?,/);
+  assert.equal(toCsv([{ key: 'a', name: 'A' }], [{ a: 'x;y' }], { sep: ';' }), '\ufeffA\r\n"x;y"\r\n');
+  assert.equal(toCsv([{ key: 'a', name: 'A' }], [{ a: 'x;y' }], { sep: ',' }), '\ufeffA\r\nx;y\r\n', 'pas de guillemets inutiles');
+  const L = csvTables(d, null, { headers: 'local' }); assert.equal(L.cables.cols[0].name === 'Cable ID', false);
 });

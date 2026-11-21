@@ -36,7 +36,13 @@ export function createDesignView(ctx) {
   ctx.host.appendChild(el);
   const body = el.querySelector('.ntDsBody');
   let sub = null, subTab = null, shown = false; // onglet fourni par un autre module (Adressage, Tests) : { render, destroy }
-  const paintTabs = () => el.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab)));
+  // Onglets : icône et libellé ; s'ils débordent, libellés sans icônes ; s'ils débordent encore, icônes seules pour les
+  // onglets non choisis (bulle d'aide).
+  const nav = el.querySelector('.ntDsTabs');
+  const over = () => nav.scrollWidth > nav.clientWidth + 2;
+  const fitTabs = () => { nav.classList.remove('compact', 'noicons'); if (over()) nav.classList.add('noicons'); if (over()) { nav.classList.remove('noicons'); nav.classList.add('compact'); } };
+  const paintTabs = () => { el.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab))); fitTabs(); };
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => fitTabs()).observe(nav);
   el.querySelector('.ntDsTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; try { localStorage.setItem(PREF, tab); } catch (x) { /* rien */ } render('tab'); });
   bindSettings(ctx, body);
 
@@ -121,7 +127,11 @@ export function createDesignView(ctx) {
     reveal(id) { void id; return false; },
     pane: () => null,
     paneEvent: () => false,
-    drop() { ctx.status(tl('Posez les équipements dans la vue Plans, Baies ou Logique.'), 'warn'); }
+    drop() { ctx.status(tl('Posez les équipements dans la vue Plans, Baies ou Logique.'), 'warn'); },
+    /** Onglet montré (menus de l'application) : tab() le rend, tab(id) l'ouvre ('dim', 'labels', 'cables', 'patch', 'bom', 'ip', 'tests', 'docs'). */
+    tab(id) { if (id && TABS.some(x => x.id === id) && id !== tab) { tab = id; try { localStorage.setItem(PREF, tab); } catch (x) { /* rien */ } render('tab'); } return tab; },
+    /** Élément de l'onglet courant (mise en évidence d'une carte par les menus). */
+    body: () => body
   };
 }
 

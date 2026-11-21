@@ -15,20 +15,37 @@ const BAND_LABEL = { b24: () => dec('2,4') + ' GHz', b5: () => '5 GHz', b6: () =
 const ENV_NAME = { walls: () => tl('Murs du plan'), office: () => tl('Bureaux (P.1238)'), residential: () => tl('Logement (P.1238)') };
 const ENV_NOTE = { walls: () => tl('N = 20 et chaque mur dessiné compté (UIT-R P.2040).'), office: () => tl('N de l’UIT-R P.1238 pour des bureaux, murs déjà compris : les murs dessinés ne sont pas recomptés.'), residential: () => tl('N de l’UIT-R P.1238 pour un logement, murs déjà compris : les murs dessinés ne sont pas recomptés.') };
 // Rampes de couleur (données, pas thème) : du meilleur au moins bon ; en dessous du dernier seuil, rien n'est peint.
+// Signal, SNR, SINR : rampe continue (interpolée entre les seuils) dont le haut (objectif + 15 dB, bleu-vert) montre la
+// marge au-dessus de l'objectif, au lieu d'un aplat vert dès que tout dépasse l'objectif.
 const RAMP = ['#16a34a', '#84cc16', '#eab308', '#f97316', '#dc2626'];
+const TOP = '#0e7490', MARGIN = 15;
+/** Seuil le plus haut de la rampe continue : objectif + MARGIN. */
+const contStops = (t, unit) => [[t + MARGIN, TOP, `${t + MARGIN}`], [t, RAMP[0], `${t}`], [t - 3, RAMP[1], `${t - 3}`], [t - 8, RAMP[2], `${t - 8}`], [t - 13, RAMP[3], `${t - 13}`], [t - 18, RAMP[4], `${t - 18}`]].map(([v, color, label]) => ({ v, color, label, unit }));
+/** Couleur d'une valeur sur une rampe continue (seuils décroissants) : [r, g, b] ou null sous le dernier seuil. */
+function rampColor(st, v) {
+  if (!(v >= st[st.length - 1].v)) return null;
+  if (v >= st[0].v) return st[0].rgb;
+  for (let i = 0; i < st.length - 1; i++) {
+    const a = st[i], b = st[i + 1];
+    if (v >= b.v) { const f = (v - b.v) / (a.v - b.v); return [0, 1, 2].map(k => Math.round(b.rgb[k] + (a.rgb[k] - b.rgb[k]) * f)); }
+  }
+  return st[st.length - 1].rgb;
+}
 const HUES = [210, 25, 130, 280, 50, 330, 170, 0, 90, 250, 300, 190];
 const isLight = () => typeof document !== 'undefined' && document.documentElement.dataset.theme === 'light';
 const css = (name, d) => { try { return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || d; } catch { return d; } };
 const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
 const fmt = v => dec(String(Math.round(v * 10) / 10));
+/** Zoom (px par mètre) à partir duquel les étiquettes de canaux de tous les points d'accès tiennent sur le plan. */
+const TAG_K = 22;
 const BN = { b24: () => dec('2,4') + ' GHz', b5: () => '5 GHz', b6: () => '6 GHz' };
 
 /** Seuils d'une carte : [{ v, color, label }] du meilleur au moins bon. */
 function stops(mode, set) {
   const t = set.target;
-  if (mode === 'signal') return [[t, `≥ ${t} dBm`], [t - 3, `${t - 3} dBm`], [t - 8, `${t - 8} dBm`], [t - 13, `${t - 13} dBm`], [t - 18, `${t - 18} dBm`]].map(([v, label], i) => ({ v, color: RAMP[i], label }));
-  if (mode === 'snr') return [[set.snr, `≥ ${set.snr} dB`], [set.snr - 5, `${set.snr - 5} dB`], [set.snr - 10, `${set.snr - 10} dB`], [set.snr - 15, `${set.snr - 15} dB`], [set.snr - 20, `${set.snr - 20} dB`]].map(([v, label], i) => ({ v, color: RAMP[i], label }));
-  if (mode === 'sinr') return [[set.sinr, `≥ ${set.sinr} dB`], [set.sinr - 5, `${set.sinr - 5} dB`], [set.sinr - 10, `${set.sinr - 10} dB`], [set.sinr - 15, `${set.sinr - 15} dB`], [set.sinr - 20, `${set.sinr - 20} dB`]].map(([v, label], i) => ({ v, color: RAMP[i], label }));
+  if (mode === 'signal') return contStops(t, 'dBm');
+  if (mode === 'snr') return contStops(set.snr, 'dB');
+  if (mode === 'sinr') return contStops(set.sinr, 'dB');
   if (mode === 'overlap') return [{ v: 0, color: RAMP[0], label: tl('aucun autre') }, { v: 1, color: RAMP[2], label: tl('1 autre') }, { v: 2, color: RAMP[3], label: tl('2 autres') }, { v: 3, color: RAMP[4], label: tl('3 ou plus') }];
   return [];
 }
@@ -42,9 +59,9 @@ function imageOf(res, mode) {
   const heard = set.noise + 4;
   for (let c = 0; c < res.best.length; c++) {
     const b = res.best[c]; let rgb = null, al = a;
-    if (mode === 'signal') { for (const s of st) if (b >= s.v) { rgb = s.rgb; break; } }
-    else if (mode === 'snr') { const v = b - set.noise; for (const s of st) if (v >= s.v) { rgb = s.rgb; break; } }
-    else if (mode === 'sinr') { const v = res.sinr ? res.sinr[c] : -Infinity; for (const s of st) if (v >= s.v) { rgb = s.rgb; break; } }
+    if (mode === 'signal') rgb = rampColor(st, b);
+    else if (mode === 'snr') rgb = rampColor(st, b - set.noise);
+    else if (mode === 'sinr') rgb = rampColor(st, res.sinr ? res.sinr[c] : -Infinity);
     else if (mode === 'overlap') { if (b >= heard) { const n = res.cci[c]; rgb = st[Math.min(3, n)].rgb; } }
     else if (mode === 'cells' && res.srv[c] >= 0 && b >= set.target - 13) {
       const h = HUES[res.srv[c] % HUES.length], l = isLight() ? 45 : 55; rgb = hsl(h, 70, l); al = b >= set.target ? a : a * 0.45;
@@ -77,7 +94,7 @@ function reduced(data, floorId, lan) {
 /** Rend { paint(canvas, { floor, view, data }), legend() → html, toolbar() → html, handle(e) → bool, … }. */
 export function createWifiLayer(ctx) {
   // Bande affichée : celle des statistiques du projet (par défaut la meilleure des deux, comme le vérificateur).
-  let mode = 'signal', band = (() => { try { return WF.wifiSettings(ctx && ctx.data ? ctx.data() : null).band; } catch { return 'any'; } })(), last = null, worker = null, seq = 0, waiting = null, workerOk = typeof Worker !== 'undefined';
+  let mode = 'signal', tagsAll = false, band = (() => { try { return WF.wifiSettings(ctx && ctx.data ? ctx.data() : null).band; } catch { return 'any'; } })(), last = null, worker = null, seq = 0, waiting = null, workerOk = typeof Worker !== 'undefined';
   const cache = new Map(), imgs = new Map(), ready = new Set();
   const esc = ctx && ctx.esc ? ctx.esc : s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
   const notify = () => {
@@ -125,26 +142,71 @@ export function createWifiLayer(ctx) {
     g.save();
     g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
     g.drawImage(entry.cv, (res.x0 - v.x) * v.k, (res.y0 - v.y) * v.k, res.nx * res.step * v.k, res.ny * res.step * v.k);
-    // Canaux des points d'accès de l'étage, près de chacun.
-    const fg = css('--fg', '#e6edf3'), bg = css('--panel', '#1b222b'), line = css('--line-2', '#3a4552');
-    g.font = `600 ${Math.max(10, Math.min(13, 11 * Math.sqrt(v.k / 20)))}px system-ui, sans-serif`; g.textBaseline = 'middle';
+    // Étiquettes de canaux : celles du point d'accès choisi, et toutes dès que le zoom laisse la place (ou sur demande).
+    const sel = ctx && ctx.selection ? ctx.selection() : null, selId = o.sel || (sel && sel.kind === 'dev' ? sel.id : null);
+    const showAll = tagsAll || mode === 'cells' || v.k >= TAG_K;
+    if (res.aps.some(a => a.same && (showAll || a.id === selId))) drawTags(g, res, v, data, floorId, selId, showAll, Array.isArray(o.avoid) ? o.avoid : null);
+    g.restore();
+  }
+  /**
+   * Étiquettes de canaux près des points d'accès, placées sans recouvrir les noms des pièces, les symboles des
+   * équipements, les autres étiquettes ni (autant que possible) les murs : 8 positions essayées autour du point
+   * d'accès, la moins gênante gagne ; un trait la relie au point d'accès quand elle s'en écarte.
+   */
+  function drawTags(g, res, v, data, floorId, selId, showAll, avoid) {
+    const fg = css('--fg', '#e6edf3'), bg = css('--panel', '#1b222b'), line = css('--line-3', css('--line-2', '#3a4552')), acc = css('--accent', '#3b82f6');
+    const fs = Math.max(11, Math.min(13, 11 * Math.sqrt(v.k / 20))), h = fs + 8;
+    g.font = `600 ${fs}px system-ui, sans-serif`; g.textBaseline = 'middle';
+    const at = WF.findFloor(data, floorId), floor = at ? at.floor : { rooms: [], walls: [] };
+    const X = wx => (wx - v.x) * v.k, Y = wy => (wy - v.y) * v.k;
+    // Obstacles à l'écran : boîtes déjà posées par la vue Plans (symboles, noms des pièces, étiquettes : [x0, y0, x1, y1]),
+    // sinon une estimation (noms centrés sur les pièces, symboles des équipements de l'étage).
+    const boxes = avoid ? avoid.filter(b => Array.isArray(b) && b.length >= 4).map(b => [b[0], b[1], b[2] - b[0], b[3] - b[1], 6]) : [];
+    if (!avoid) for (const r of floor.rooms || []) {
+      if (!r || !Array.isArray(r.poly) || r.poly.length < 3) continue;
+      const cx = r.poly.reduce((t, q) => t + q[0], 0) / r.poly.length, cy = r.poly.reduce((t, q) => t + q[1], 0) / r.poly.length, w = g.measureText(r.name || '').width + 12;
+      boxes.push([X(cx) - w / 2, Y(cy) - 16, w, 32, 6]);
+    }
+    if (!avoid) for (const d of data.devices || []) if (d.loc && d.loc.floor === floorId) boxes.push([X(+d.loc.x) - 12, Y(+d.loc.y) - 12, 24, 24, 6]);
+    const walls = (floor.walls || []).filter(w => w && w.a && w.b).map(w => [X(+w.a[0]), Y(+w.a[1]), X(+w.b[0]), Y(+w.b[1])]);
+    const hit = (r, q, m = 0) => r[0] - m < q[0] + q[2] && q[0] < r[0] + r[2] + m && r[1] - m < q[1] + q[3] && q[1] < r[1] + r[3] + m;
+    const cuts = (r, [x1, y1, x2, y2]) => {
+      if (Math.max(x1, x2) < r[0] || Math.min(x1, x2) > r[0] + r[2] || Math.max(y1, y2) < r[1] || Math.min(y1, y2) > r[1] + r[3]) return false;
+      const side = (x, y) => Math.sign((x2 - x1) * (y - y1) - (y2 - y1) * (x - x1));
+      const s4 = [side(r[0], r[1]), side(r[0] + r[2], r[1]), side(r[0], r[1] + r[3]), side(r[0] + r[2], r[1] + r[3])];
+      return !(s4.every(z => z > 0) || s4.every(z => z < 0));
+    };
     const placed = [];
     res.aps.forEach((a, i) => {
-      if (!a.same) return;
-      const sx = (a.x - v.x) * v.k, sy = (a.y - v.y) * v.k, parts = [];
+      if (!a.same || !(showAll || a.id === selId)) return;
+      const parts = [];
       for (const b of WF.BANDS) {
         const x = WF.radio(a.r, b); if (!x.on || (res.band !== 'any' && res.band !== b)) continue;
-        parts.push(`${b === 'b24' ? dec('2,4') : b === 'b5' ? '5' : '6'} : ${x.ch}${b !== 'b24' && x.w > 20 ? '/' + x.w : ''}`);
+        parts.push(`${b === 'b24' ? dec('2,4') : b === 'b5' ? '5' : '6'} GHz ${x.ch}${b !== 'b24' && x.w > 20 ? '/' + x.w : ''}`);
       }
-      const t = a.off ? tl('éteint (sans courant)') : parts.join(' · ') || tl('radio coupée'), w = g.measureText(t).width + 10, h = 18, x = sx + 13;
-      // Étiquettes qui se chevauchent (points d'accès proches) : décalées vers le bas.
-      let y = sy - h - 8; for (let k = 0; k < 12 && placed.some(q => x < q[0] + q[2] && q[0] < x + w && y < q[1] + h + 2 && q[1] < y + h + 2); k++) y += h + 3;
-      placed.push([x, y, w]);
-      g.fillStyle = bg; g.globalAlpha = 0.92; g.fillRect(x, y, w, h); g.globalAlpha = 1;
-      g.strokeStyle = mode === 'cells' ? `rgb(${hsl(HUES[i % HUES.length], 70, isLight() ? 45 : 55).join(',')})` : line; g.lineWidth = mode === 'cells' ? 2 : 1; g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
-      g.fillStyle = fg; g.fillText(t, x + 5, y + h / 2 + 0.5);
+      const t = a.off ? tl('éteint (sans courant)') : parts.join(' · ') || tl('radio coupée'), w = g.measureText(t).width + 12;
+      const sx = X(a.x), sy = Y(a.y), gap = 16;
+      const cand = [[gap, -h - 4], [gap, 4], [-w - gap, -h - 4], [-w - gap, 4], [-w / 2, -h - gap - 6], [-w / 2, gap + 6], [gap, -h / 2], [-w - gap, -h / 2],
+        [gap, -2 * h - 10], [gap, h + 10], [-w - gap, -2 * h - 10], [-w - gap, h + 10], [-w / 2, -2 * h - gap - 8], [-w / 2, h + gap + 8]];
+      let best = null;
+      for (const [dx, dy] of cand) {
+        const r = [sx + dx, sy + dy, w, h];
+        let cost = 0;
+        for (const q of placed) if (hit(r, q, 4)) cost += 100;
+        for (const q of boxes) if (hit(r, q)) cost += q[4] * 8;
+        for (const wl of walls) if (cuts(r, wl)) cost += 1;
+        cost += Math.hypot(dx + w / 2, dy + h / 2) / 12; // à gêne égale, la plus proche du point d'accès
+        if (!best || cost < best.cost) best = { r, cost };
+      }
+      const r = best.r; placed.push(r);
+      // Trait vers le point d'accès (du bord le plus proche de l'étiquette).
+      const ex = Math.max(r[0], Math.min(sx, r[0] + r[2])), ey = Math.max(r[1], Math.min(sy, r[1] + r[3]));
+      if (Math.hypot(ex - sx, ey - sy) > 13) { g.strokeStyle = fg; g.globalAlpha = 0.7; g.lineWidth = 1.2; g.beginPath(); g.moveTo(sx, sy); g.lineTo(ex, ey); g.stroke(); g.globalAlpha = 1; }
+      g.fillStyle = bg; g.globalAlpha = 0.95; g.fillRect(r[0], r[1], r[2], r[3]); g.globalAlpha = 1;
+      g.strokeStyle = mode === 'cells' ? `rgb(${hsl(HUES[i % HUES.length], 70, isLight() ? 45 : 55).join(',')})` : a.id === selId ? acc : line;
+      g.lineWidth = mode === 'cells' || a.id === selId ? 2 : 1; g.strokeRect(r[0] + 0.5, r[1] + 0.5, r[2] - 1, r[3] - 1);
+      g.fillStyle = fg; g.fillText(t, r[0] + 6, r[1] + h / 2 + 0.5);
     });
-    g.restore();
   }
   /** Légende (HTML) : rampe du mode, réglages, couverture de l'étage affiché, mention « modèle simplifié ». */
   function legend() {
@@ -152,12 +214,20 @@ export function createWifiLayer(ctx) {
     const st = stops(mode, set);
     let h = `<div class="ntWfLeg"><div class="ntWfLegT">${esc(MODE_NAME[mode]())} · ${esc(BAND_LABEL[band]())}</div>`;
     if (mode === 'cells') h += `<p class="ntWfMut">${esc(tl('Une couleur par point d’accès (le plus fort reçu) ; teinte pâle : sous {0} dBm.', set.target))}</p>`;
-    else h += `<ul class="ntWfRamp">${st.map(s => `<li><i style="background:${s.color}"></i>${esc(s.label)}</li>`).join('')}<li><i class="ntWfNone"></i>${esc(tl('rien'))}</li></ul>`;
+    else if (mode === 'overlap') h += `<ul class="ntWfRamp">${st.map(s => `<li><i style="background:${s.color}"></i>${esc(s.label)}</li>`).join('')}<li><i class="ntWfNone"></i>${esc(tl('rien'))}</li></ul>`;
+    else {
+      // Barre continue, du moins bon (à gauche) au meilleur ; repères aux seuils, objectif souligné ; « rien » à part.
+      const lo = st[st.length - 1].v, hi = st[0].v, pos = v => ((v - lo) / (hi - lo)) * 100, goal = st[1].v;
+      h += `<div class="ntWfGradBox"><div class="ntWfGrad" style="background:linear-gradient(to right, ${[...st].reverse().map(x => `${x.color} ${pos(x.v).toFixed(1)}%`).join(', ')})"></div>`
+        + `<div class="ntWfTicks">${[...st].reverse().filter(x => x.v === goal || Math.abs(pos(x.v) - pos(goal)) >= 12).map(x => `<span class="${x.v === goal ? 'ntWfGoal' : ''}" style="left:${pos(x.v).toFixed(1)}%">${esc(x.label)}</span>`).join('')}</div>`
+        + `<p class="ntWfMut">${esc(tl('En {0} ; objectif {1} (souligné), au-delà : marge.', st[0].unit, goal))}</p><div class="ntWfGradCap"><span><i class="ntWfNone"></i>${esc(tl('rien'))}</span></div></div>`;
+    }
     if (mode === 'sinr') h += `<p class="ntWfMut">${esc(tl('SINR : signal du plus fort contre bruit + autres points d’accès de la bande, comptés au prorata du spectre commun ; tous émettent en même temps (pire cas). Objectif {0} dB (modifiable).', set.sinr))}</p>`;
     if (mode === 'overlap') h += `<p class="ntWfMut">${esc(tl('Points d’accès entendus sur un canal qui chevauche celui du plus fort (au-dessus de {0} dBm).', set.noise + 4))}</p>`;
     if (res) {
       const at = ctx && ctx.data ? WF.findFloor(ctx.data(), res.floor) : null;
       h += mode === 'sinr' && res.sinr ? `<p><b>${Math.round(WF.floorPct(res, at && at.floor, set.sinr, 'sinr'))} %</b> ${esc(tl('de l’étage à un SINR de {0} dB ou plus', set.sinr))}</p>`
+        : mode === 'snr' ? `<p><b>${Math.round(WF.floorPct(res, at && at.floor, set.noise + set.snr))} %</b> ${esc(tl('de l’étage à un SNR de {0} dB ou plus', set.snr))}</p>`
         : `<p><b>${Math.round(WF.floorPct(res, at && at.floor, set.target))} %</b> ${esc(tl('de l’étage à {0} dBm ou plus', set.target))}</p>`;
       const rows = at ? (at.floor.rooms || []).filter(WF.needsWifi).map(r => { const cells = WF.cellsIn(res, r.poly, r.holes); return { r, pct: cells.length ? WF.pctAbove(res, set.target, cells) : 0 }; }).sort((a, b) => a.pct - b.pct).slice(0, 8) : [];
       // Pièces les moins bien couvertes : repliées (la carte ne doit pas cacher l'étage), dépliées d'office s'il y a un trou.
@@ -174,6 +244,7 @@ export function createWifiLayer(ctx) {
     const ic = ctx && ctx.icon ? ctx.icon('wifi') : '';
     return `<div class="ntWfBar"><select data-ntwf="mode" aria-label="${esc(tl('Carte Wi-Fi'))}">${opt(MODES, mode, MODE_NAME)}</select>`
       + `<select data-ntwf="band" aria-label="${esc(tl('Bande'))}">${opt(['b5', 'b24', ...(hasB6() ? ['b6'] : []), 'any'], band, BAND_LABEL)}</select>`
+      + `<label class="ntWfChk"><input type="checkbox" data-ntwf="tags"${tagsAll ? ' checked' : ''}> ${esc(tl('Canaux de tous les points d’accès'))}</label>`
       + `<button type="button" data-ntwf="auto" title="${esc(tl('Donne aux points d’accès voisins des canaux qui ne se chevauchent pas (annulable).'))}">${ic}<span>${esc(tl('Plan de canaux auto'))}</span></button></div>`;
   }
   /** Réglages Wi-Fi du projet (valeurs par défaut modifiables). */
@@ -228,6 +299,7 @@ export function createWifiLayer(ctx) {
     if (t.dataset.ntwf === 'auto') { if (e.type === 'click') autoPlan(); return true; }
     if (e.type !== 'change') return t.dataset.ntwf !== undefined;
     if (t.dataset.ntwf === 'mode' && MODES.includes(t.value)) { mode = t.value; notify(); return true; }
+    if (t.dataset.ntwf === 'tags') { tagsAll = !!t.checked; notify(); return true; }
     if (t.dataset.ntwf === 'band' && WF.VIEW_BANDS.includes(t.value)) { band = t.value; notify(); return true; }
     const d = ctx.data();
     if (t.dataset.ntwfSet) { d.wifi = WF.cleanWifi({ ...WF.wifiSettings(d), [t.dataset.ntwfSet]: t.type === 'number' ? +t.value : t.value }); ctx.commit(); return true; }

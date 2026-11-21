@@ -16,9 +16,9 @@ function floorsOf(data) {
   for (const b of (data.site && data.site.buildings) || []) for (const f of b.floors || []) out.push([f.id, `${b.name ? b.name + ' · ' : ''}${f.name || f.id}`]);
   return out;
 }
-const issuesHtml = (ctx, list) => (list.length
+const issuesHtml = (ctx, list, none) => (list.length
   ? `<ul class="ntIss">${list.slice(0, 14).map(i => `<li class="${i.kind}" data-rkiss="${ctx.esc(i.id || '')}"><code>${i.code}</code> ${ctx.esc(i.text)}</li>`).join('')}</ul>`
-  : `<p class="ntOk">${ctx.icon('check')}${ctx.tl('Aucun problème dans cette baie.')}</p>`);
+  : `<p class="ntOk">${ctx.icon('check')}${none || ctx.tl('Aucun problème dans cette baie.')}</p>`);
 
 /** Inspecteur d'une baie. s : rackSummary ; list : problèmes de la baie et de ses équipements. */
 export function rackPane(ctx, r, s, list) {
@@ -93,6 +93,6 @@ export function summaryPane(ctx, sums, list) {
   let h = `<div class="ntHead">${icon('rack')}<div><b>${tl('Baies')}</b><small>${tl('{0} baie(s)', sums.length)}</small></div></div>`;
   h += `<p class="ntDoc">${tl('Cliquez une baie ou un équipement pour voir ses réglages. Glissez les équipements de la bibliothèque ou de la liste « Hors baie » dans les U libres.')}</p>`;
   if (sums.length) h += `<section class="ntSec"><table class="ntTable"><tr><th>${tl('Baie')}</th><th>U</th><th>W</th><th>kg</th></tr>${sums.map(s => `<tr data-rkgo="${esc(s.id)}"><td>${esc(s.name)}</td><td>${s.usedU}/${s.u}</td><td>${f1(s.w, isEn)}</td><td>${f1(s.kg, isEn)}</td></tr>`).join('')}</table></section>`;
-  h += `<section class="ntSec"><h4>${tl('Problèmes des baies')}</h4>${issuesHtml(ctx, list)}</section>`;
+  if (sums.length) h += `<section class="ntSec"><h4>${tl('Problèmes des baies')}</h4>${issuesHtml(ctx, list, tl('Aucun problème dans les baies.'))}</section>`;
   return h;
 }

@@ -77,5 +77,64 @@
 .ntSmNb li.ok::before { content: '● '; color: var(--nt-g); } .ntSmNb li.bad::before { content: '● '; color: var(--nt-err); }
 .ntSmVl .ntSmIn.tiny { width: 50px; flex: none; }
 .ntPortS { fill: var(--nt-down); stroke: none; }
-.ntPortS.g { fill: var(--nt-g); } .ntPortS.f { fill: var(--nt-f); } .ntPortS.e { fill: var(--nt-e); } .ntPortS.err, .ntPortS.down { fill: var(--nt-err); } .ntPortS.pass { fill: var(--line-3); }
+.ntPortS.g { fill: var(--nt-g); } .ntPortS.f { fill: var(--nt-f); } .ntPortS.e { fill: var(--nt-e); } .ntPortS.err { fill: var(--nt-err); } .ntPortS.down { fill: var(--nt-down); } .ntPortS.pass { fill: var(--line-3); }
 .ntSmRt .ntSmIn.tiny { width: 44px; }
+.ntMarq { fill: color-mix(in srgb, var(--accent) 12%, transparent); stroke: var(--accent); stroke-width: 1px; stroke-dasharray: 4 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+.ntGuide { stroke: var(--accent); stroke-width: 1px; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; pointer-events: none; }
+
+/* ---------- Vue logique : barre d'outils compacte, état vide, accessibilité ---------- */
+.ntLogic { container-type: inline-size; container-name: ntlogic; }
+/* Les réglages du câble neuf n'apparaissent qu'avec l'outil Câble (la barre reste sur une ligne). */
+.ntHost:not(.toolCable) .ntLogic .ntDef { display: none; }
+/* Étroit : d'abord les libellés de l'affichage et l'aide, puis ceux des outils, enfin la légende (infobulles gardées). */
+/* Les trois bascules d'affichage gardent leur libellé (leur état se lit) ; les outils passent en icônes d'abord. */
+@container ntlogic (max-width: 1180px) { .ntLogic .ntHint { display: none; } }
+@container ntlogic (max-width: 1000px) { .ntLogic .ntTools .segBtn > span { display: none; } }
+@container ntlogic (max-width: 560px) { .ntLogic .ntSimBar .segBtn > span { display: none; } }
+@container ntlogic (max-width: 560px) { .ntLogic .ntLegend { display: none; } }
+.ntHost:not(.toolCable) .ntLogic .ntBar.top { flex-wrap: nowrap; }
+.ntEmptyGo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 4px; }
+.ntEmptyAct { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); text-align: left; cursor: pointer; font: inherit; }
+.ntEmptyAct:hover { border-color: var(--accent); }
+.ntEmptyAct .ic { width: 20px; height: 20px; color: var(--accent); }
+.ntEmptyAct b { font-size: 12.5px; }
+.ntEmptyAct small { color: var(--muted); font-size: 11px; line-height: 1.35; }
+.ntEmptyCard { max-width: 560px; }
+.ntEmptyKeys { font-size: 11px !important; color: var(--muted) !important; }
+/* La carte de départ laisse la place de la barre de navigation à droite ; étroite : actions sur une ligne, sans détails. */
+.ntLogic .ntEmpty { padding: 56px 72px 56px 16px; }
+@container ntlogic (max-width: 700px) {
+  .ntEmptyAct small, .ntEmptyCard > p:not(.ntEmptyKeys) { display: none; }
+  .ntEmptyAct { align-items: center; text-align: center; padding: 10px 8px; }
+  .ntEmptyCard { padding: 18px; gap: 8px; }
+}
+.ntSmFold > summary { cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
+.ntSmFold > summary .ic { width: 14px; height: 14px; }
+.ntSmFold[open] > summary { margin-bottom: 6px; }
+/* Anneau de focus au clavier seulement. */
+.ntLogic :focus:not(:focus-visible), #pane-nprop :focus:not(:focus-visible), .ntEmptyAct:focus:not(:focus-visible) { outline: none; }
+.ntEmptyAct:focus-visible, .ntSm .ntSmIn:focus-visible, .ntSmDel:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ntSmArr { align-items: center; gap: 4px !important; }
+.ntSmSep { width: 1px; height: 18px; background: var(--line); margin: 0 4px; }
+.ntSec .btn kbd { font-size: 10px; color: var(--muted); margin-left: 4px; font-family: var(--mono); }
+.ntLogic .ntLegend { flex-wrap: wrap; row-gap: 4px; max-width: 100%; }
+.ntLogic .ntLegend span { white-space: nowrap; }
+
+/* ---------- Zoom sémantique (vue d'ensemble) ---------- */
+.ntNameZ { paint-order: stroke; stroke: var(--stage); stroke-width: 3px; stroke-linejoin: round; }
+.ntTrunk { fill: none; stroke: var(--nt-c6); opacity: .85; vector-effect: non-scaling-stroke; }
+.ntGroup { cursor: zoom-in; }
+.ntGroup rect { fill: color-mix(in srgb, var(--accent) 10%, var(--panel)); stroke: color-mix(in srgb, var(--accent) 55%, transparent); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.ntGroup text { fill: var(--fg); font-weight: 600; text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.ntGroup text.sub { fill: var(--fg-2); font-weight: 400; }
+.ntGroup:hover rect { stroke: var(--accent); }
+
+/* Bascules d'affichage : état visible (fond plein quand actif). */
+.ntSimBar .segBtn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 18%, transparent); color: var(--accent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent); }
+/* Légende repliable. */
+.ntLogic .ntLegend { cursor: pointer; }
+.ntLogic .ntLegend.mini { padding: 4px 8px; gap: 6px; align-items: center; }
+.ntLogic .ntLegend.mini .ic { width: 14px; height: 14px; }
+/* Description de l'appareil : deux lignes, un clic pour tout lire. */
+#pane-nprop .ntDocClamp { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; cursor: pointer; }
+#pane-nprop .ntDocClamp.open { display: block; }

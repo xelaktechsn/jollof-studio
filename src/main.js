@@ -21,10 +21,10 @@ import { installLogic } from './logic/index.js';
 import { installPneu } from './pneu/index.js';
 import { installNet } from './net/ui/install.js'; // plan réseau : chargé à la demande (src/net/ui/workspace.js)
 import { Q, LIGHT, LEVEL, CHOICE, stdMat, setQuality, autoLevel } from './quality.js';
-import { menu as popMenu, confirm as confirmDlg, download as downloadText } from './school/ui.js';
+import { menu as popMenu, confirm as confirmDlg, dialog as dialogDlg, download as downloadText } from './school/ui.js';
 import { createNavDock, dragRect } from './ui/navdock.js';
 import './ui/selection.css';
-import { KINDS, spacesOf, inferKind, hasProgram } from './ui/kind.js';
+import { KINDS, spacesOf, inferKind, hasProgram, hasElec, netOnly, exampleFits } from './ui/kind.js';
 import { chooseKind, installKind } from './ui/kindui.js';
 import { createHome, resumeInfo, onboarded } from './ui/home.js';
 import { installSupervision } from './supervision/index.js';
@@ -65,7 +65,7 @@ import { installShell } from './ui/shell.js'; // ossature à la manière d'un é
 import { createPalette } from './ui/commands.js'; // palette de commandes (Ctrl+Maj+P, F1)
 import { theme as uiTheme, themeMode, setTheme } from './ui/theme.js'; // thème clair ou sombre
 import { toSvg, toPdf, Draw, textWidth } from './schematic/draw.js';
-import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale, dec } from './i18n/index.js';
+import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale, dec, CANCEL } from './i18n/index.js';
 import { creditsHtml } from './library/credits.js';
 import * as parts from './library/parteditor.js'; // composants en paquet (.jpart) : éditeur, import, bibliothèque
 import { installAi } from './ai/panel.js'; // assistants IA : pont MCP (application de bureau) et copier-coller
@@ -1640,6 +1640,10 @@ function installChecker() {
     auto: () => new Set(boards().filter(b => prog.isAuto(b)).map(b => b.id)),
     firmware: () => new Set(boards().filter(b => prog.isFirmware(b)).map(b => b.id)),
     allow: () => S.checkAllow || [],
+    /** Projet réseau seul : les textes du vérificateur parlent du projet réseau, pas du montage. */
+    scope: () => (netOnly(S.kind) ? 'net' : ''),
+    /** Projet vide (aucun composant, élément, équipement) : la pastille dit « Rien à vérifier » plutôt que « Vérifié ». */
+    empty: () => !S.comps.length && !(moduleApi.pneu && moduleApi.pneu.circuit().elements.length) && !(moduleApi.logic && moduleApi.logic.circuit().elements.length) && !(moduleApi.net && moduleApi.net.hasContent()),
     setAllow(list) { S.checkAllow = list; S.dirty = true; $('#projectName').classList.add('dirty'); clearTimeout(changed.t); changed.t = setTimeout(autosave, 400); },
     dist: (a, b) => pinWorld(a).distanceTo(pinWorld(b)),
     // Plans pneumatique et logique : leurs fautes rejoignent le rapport quand le projet les montre.
@@ -3357,7 +3361,7 @@ async function loadExample(i) {
   const ex = EXAMPLES[i], data = ex.load ? localizeExample(JSON.parse(await ex.load())) : ex.data;
   closeEx();
   if (S.rec) return;
-  if (S.anim) finishAnim();
+  if (!(await closeCurrent())) return;
   await restore(data);
   setProjectName(data.name, null); S.projectPath = null;
   S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); frameAll();
@@ -3822,6 +3826,27 @@ async function askKind(k) {
   if (S.simOn) setSim(false);
   setKind(k); status(tl('Projet {0}.', KINDS[k].name().toLowerCase()), 'ok');
 }
+/**
+ * Avant de créer ou d'ouvrir un projet, celui en cours se ferme (src/ui/closeproject.js) : enregistrement proposé s'il a
+ * des modifications, animation et simulation arrêtées, fenêtres des plans de travail fermées. Rend false si l'on annule.
+ */
+async function closeCurrent() {
+  // Séance en cours (TP, devoir, copie) : elle se termine d'abord (son projet est rendu, le projet personnel revient).
+  if (moduleApi.sessions && moduleApi.sessions.current && !(await moduleApi.sessions.end())) return false;
+  const C = await import('./ui/closeproject.js');
+  return C.closeProject({ dirty: S.dirty, homeGuard: S.homeGuard, anim: !!S.anim, simOn: S.simOn }, {
+    ask: () => dialogDlg({
+      title: tl('Projet non enregistré'),
+      body: `<p class="dlgText">${esc(tl('« {0} » a des modifications non enregistrées. Les enregistrer avant de fermer ce projet ?', S.projectName))}</p>`,
+      actions: [{ label: CANCEL, value: null }, { label: tl('Ne pas enregistrer'), value: 'discard', kind: 'danger' }, { label: tl('Enregistrer'), value: 'save', kind: 'primary' }]
+    }),
+    save: () => saveProjectFile(false),
+    finishAnim: () => finishAnim(),
+    stopSim: () => setSim(false),
+    closeModules: () => S.modules.forEach(m => { if (m.close) { try { m.close(); } catch (e) { console.error(e); } } }),
+    log: () => moduleApi.log(tl('— Projet fermé : {0} —', S.projectName), 'cmd')
+  });
+}
 /** Nouveau projet. Sans type donné, on le demande (annuler garde le projet en cours). Rend false si rien n'a changé. */
 async function newProject(kind) {
   if (!KINDS[kind]) {
@@ -3829,12 +3854,13 @@ async function newProject(kind) {
     if (kind === 'tutorial') { if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); return false; }
     if (!kind) return false;
   }
-  if (S.simOn) setSim(false);
+  if (!(await closeCurrent())) return false;
   closeHome();
   clearProject(); prog.load(null); loadModules(null); setKind(kind, true);
   // Nouveau projet : plans, noms de nœuds et timeline repartent de zéro.
   S.shots = []; S.netNames = {}; S.checkAllow = []; S.timeline = TL.buildAuto('seq', [], +$('#dur').value); renderShots(); syncTimeline(); if (S.simOn) restartPrograms(); renderWires(); renderBlocks(); setProjectName(tl('Sans titre'), null); S.projectPath = null; if (chk) chk.schedule();
   S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); resetHistory(); status(tl('Nouveau projet {0}.', KINDS[kind].name().toLowerCase()));
+  if (moduleApi.net && moduleApi.net.started) moduleApi.net.started(kind); // projet réseau : modèles, visite guidée
   return true;
 }
 /* ---------- Accueil ---------- */
@@ -3864,6 +3890,7 @@ function showHome(o = {}) {
 async function openProjectFile() {
   try {
     const f = await native.openProject(); if (!f) return;
+    if (!(await closeCurrent())) return;
     await openProjectText(f);
   } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
 }
@@ -3878,7 +3905,7 @@ async function openProjectText(f) {
 /** Projet reçu du système pendant que l'application tourne (double-clic sur un .jollof, deuxième lancement). */
 async function openLaunchedFile() {
   const f = await native.takeLaunchFile(); if (!f) return;
-  try { if (S.simOn) setSim(false); await openProjectText(f); } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
+  try { if (!(await closeCurrent())) return; await openProjectText(f); } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); }
 }
 /** Projet Wokwi (diagram.json et sketch.ino, ou le .zip téléchargé) : converti, ouvert, compte rendu affiché. */
 async function importWokwiFiles(list) {
@@ -3889,7 +3916,7 @@ async function importWokwiFiles(list) {
     if (!files['diagram.json']) throw new Error(tl('diagram.json introuvable : choisissez le diagram.json du projet (avec sketch.ino) ou le .zip téléchargé depuis Wokwi'));
     const zip = list.find(f => /\.zip$/i.test(f.name)), base = (zip ? zip.name.replace(/\.zip$/i, '') : 'wokwi').replace(/[\\/:*?"<>|]+/g, '-');
     const { project, report } = W.importWokwi(files, base);
-    if (S.anim) finishAnim();
+    if (!(await closeCurrent())) return;
     await restore(project); setProjectName(base, null); S.projectPath = null;
     S.dirty = true; $('#projectName').classList.add('dirty'); autosave(); frameAll(); resetHistory();
     const li = a => a.map(x => `<li>${esc(x)}</li>`).join('');
@@ -3906,10 +3933,11 @@ async function saveProjectFile(saveAs) {
   try {
     const name = /\.jollof$/i.test(S.projectName) ? S.projectName : `${S.projectName === tl('Sans titre') ? 'circuit' : S.projectName}.jollof`;
     const res = await native.saveProject(JSON.stringify(serialize(), null, 1), saveAs ? null : S.projectPath, name);
-    if (!res) return;
+    if (!res) return false;
     setProjectName(res.name, res.path); S.dirty = false; $('#projectName').classList.remove('dirty'); autosave();
     status(res.path ? tl('Projet enregistré : {0}', res.path) : tl('Projet téléchargé.'));
-  } catch (e) { status(tl('Enregistrement impossible : ') + (e.message || e)); }
+    return true;
+  } catch (e) { status(tl('Enregistrement impossible : ') + (e.message || e)); return false; }
 }
 
 /* ---------- Liaisons de l'interface ---------- */
@@ -4428,6 +4456,7 @@ function bindUI() {
     if (document.activeElement && document.activeElement.closest && document.activeElement.closest('.visualHost, .ProseMirror')) return; // blocs de code, texte enrichi : leurs propres raccourcis
     if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
     if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (netOnly(S.kind)) return; // projet réseau seul : aucun raccourci du montage (sélection, blocs, timeline, vue 3D, Suppr…)
     if (codeCenter() || (codeHost && codeHost.contains(document.activeElement))) return; // code au centre, ou focus dans le code : pas de raccourci de la scène 3D (S, F, R, Suppr, flèches)
     if (k === 'escape' && S.flyCat) { closeFlyout(); return; }
     if (mod && k === 'a') { e.preventDefault(); if (S.comps.length) setMulti(S.comps.slice()); return; }
@@ -4459,7 +4488,9 @@ function bindUI() {
 function registerCommands() {
   const click = sel => { const b = $(sel); if (b) b.click(); };
   const shown = sel => { const b = $(sel); return !!b && !b.hidden && getComputedStyle(b).display !== 'none'; };
-  const elecOn = () => !document.body.classList.contains('logicOpen') && !document.body.classList.contains('pneuOpen') && !document.body.classList.contains('netOpen');
+  // Montage montré : un type de projet sans électronique (réseau seul, pneumatique, logique) n'en propose rien.
+  const elecOn = () => hasElec(S.kind) && !document.body.classList.contains('logicOpen') && !document.body.classList.contains('pneuOpen') && !document.body.classList.contains('netOpen');
+  const noNet = () => !netOnly(S.kind);
   const has = sp => spacesOf(S.kind).includes(sp);
   const CATS = { proj: tl('Projet'), view: isEn ? 'View' : 'Vue', ins: tl('Inspecteur'), sim: tl('Simulation'), edit: isEn ? 'Edit' : 'Édition', res: tl('Ressources') };
   const C = (cat, list) => list.map(([id, label, ic, run, extra]) => ({ id: `${cat}:${id}`, cat: CATS[cat], label, icon: ic, run, ...(extra || {}) }));
@@ -4470,7 +4501,7 @@ function registerCommands() {
       ['open', tl('Ouvrir…'), 'folder', () => openProjectFile(), { keys: shortcut('O') }],
       ['save', tl('Enregistrer'), 'save', () => saveProjectFile(false), { keys: shortcut('S') }],
       ['saveAs', tl('Enregistrer sous…'), 'save', () => saveProjectFile(true), { keys: shortcut('S', true) }],
-      ['import', tl('Importer un projet Wokwi…'), 'upload', () => click('#importBtn'), { when: () => shown('#importBtn') }],
+      ['import', tl('Importer un projet Wokwi…'), 'upload', () => click('#importBtn'), { when: () => noNet() && shown('#importBtn') }],
       ['synoptic', tl('Synoptique : le montage en blocs reliés'), 'blockFrame', () => openSynoptic(), { when: () => elecOn() && S.comps.length > 0 }],
       ['still', tl('Exporter une image PNG de la vue (jusqu’en 4K, fond transparent)'), 'frame', () => exportStill(), { when: () => elecOn() }],
       ['present', tl('Mode présentation (montage seul à l’écran)'), 'eye', () => setPresenting(!$('.app').classList.contains('presenting')), { when: () => elecOn() }],
@@ -4478,6 +4509,7 @@ function registerCommands() {
       ['autoShots', tl('Vidéo : plans de caméra automatiques'), 'wand', () => setAutoShots(true), { when: () => elecOn() && S.wires.length > 0 }],
       ['replace', tl('Remplacer le composant sélectionné…'), 'swap', () => openReplace(S.sel), { when: () => elecOn() && !!S.sel && !S.simOn }],
       ['kind', tl('Changer le type de projet…'), 'swap', () => click('#kindBtn')],
+      ['checkNet', tl('Vérifier le projet réseau'), 'check', () => { if (chk) chk.open(); }, { keys: 'F7', when: () => !noNet() }],
       ['update', tl('Rechercher les mises à jour…'), 'download', () => click('#updBtn'), { when: () => shown('#updBtn') }],
       ['logs', tl('Ouvrir le dossier des journaux'), 'folder', () => click('#logBtn'), { when: () => shown('#logBtn') }]
     ]),
@@ -4493,9 +4525,9 @@ function registerCommands() {
       ['serial', tl('Moniteur série'), 'terminal', () => shell.dock.show('serial'), { when: () => hasProgram(S.kind) }],
       ['tabLogic', isEn ? 'Logic' : 'Logique', 'logic', () => shell.tabs.go('logic'), { when: () => has('logic') }],
       ['tabPneu', tl('Pneumatique'), 'pneu', () => shell.tabs.go('pneu'), { when: () => has('pneu') }],
-      ['tabNet', tl('Réseau'), 'network', () => shell.tabs.go('net'), { when: () => has('net') }],
+      ['tabNet', tl('Réseau'), 'network', () => shell.tabs.go('net'), { when: () => has('net') && noNet() }],
       ['split', tl('Vue partagée'), 'split', () => click('.pnSplitBtn'), { when: () => shown('.pnSplitBtn') }],
-      ['frame', tl('Tout voir'), 'frame', () => click('#frameBtn'), { keys: 'F' }],
+      ['frame', tl('Tout voir'), 'frame', () => click('#frameBtn'), { keys: 'F', when: noNet }],
       ['simple', tl('Rendu simple'), 'shapes', () => click('#renderSimple'), { when: elecOn }],
       ['real', tl('Rendu réaliste'), 'cube', () => click('#renderReal'), { when: elecOn }],
       ['quality', tl('Performances…'), 'zap', () => click('#qualityBtn'), { when: elecOn }],
@@ -4509,15 +4541,15 @@ function registerCommands() {
       ['autoTheme', tl('Thème : suivre le système'), 'monitor', () => setTheme('auto')]
     ]),
     ...C('ins', [
-      ['wiring', tl('Câblage'), 'cable', () => setTab('wiring'), { when: () => shown('#tab-wiring') }],
-      ['prog', tl('Code'), 'code', () => setTab('prog'), { when: () => shown('#tab-prog') }],
-      ['sim', tl('Simulation'), 'zap', () => setTab('sim'), { when: () => shown('#tab-sim') }],
-      ['video', tl('Vidéo'), 'film', () => setTab('video'), { when: () => shown('#tab-video') }]
+      ['wiring', tl('Câblage'), 'cable', () => setTab('wiring'), { when: () => noNet() && shown('#tab-wiring') }],
+      ['prog', tl('Code'), 'code', () => setTab('prog'), { when: () => noNet() && shown('#tab-prog') }],
+      ['sim', tl('Simulation'), 'zap', () => setTab('sim'), { when: () => noNet() && shown('#tab-sim') }],
+      ['video', tl('Vidéo'), 'film', () => setTab('video'), { when: () => noNet() && shown('#tab-video') }]
     ]),
     ...C('sim', [
-      ['start', tl('Lancer la simulation'), 'play', () => setSim(true), { when: () => !S.simOn && shown('#simBtn') }],
+      ['start', tl('Lancer la simulation'), 'play', () => setSim(true), { when: () => noNet() && !S.simOn && shown('#simBtn') }],
       ['stop', tl('Arrêter la simulation'), 'stop', () => setSim(false), { when: () => S.simOn }],
-      ['check', tl('Vérifier le montage et le programme'), 'check', () => { if (chk) chk.open(); }, { keys: 'F7' }],
+      ['check', tl('Vérifier le montage et le programme'), 'check', () => { if (chk) chk.open(); }, { keys: 'F7', when: noNet }],
       ['upload', tl('Téléverser sur la carte'), 'upload', () => click('#progRun'), { keys: shortcut(isEn ? 'Enter' : 'Entrée'), when: () => !!prog.current() }],
       ['debug', tl('Déboguer (démarrer en pause)'), 'bug', () => click('#dbgRun'), { keys: 'F8', when: () => !!prog.current() }]
     ]),
@@ -4535,15 +4567,15 @@ function registerCommands() {
       ['sch', tl('Schéma électrique à imprimer'), 'schematic', () => click('#schBtn'), { when: () => shown('#schBtn') }],
       ['labs', tl('TP'), 'checklist', () => click('#labBtn'), { when: () => shown('#labBtn') }],
       ['hub', tl('Classe'), 'school', () => click('#hubBtn'), { when: () => shown('#hubBtn') }],
-      ['tuto', tl('Tutoriel électropneumatique pas à pas'), 'graduation', () => { if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); }]
+      ['tuto', tl('Tutoriel électropneumatique pas à pas'), 'graduation', () => { if (moduleApi.openTutorial) moduleApi.openTutorial('pn00-tutoriel-electropneumatique'); }, { when: noNet }]
     ])
   ]);
   // Entrées calculées à l'ouverture : « Exemple : Feu tricolore », « Ajouter : DHT22 » (plan électronique) ; les TP viennent de src/lab.
-  palette.provide(() => EXAMPLES.map((e, i) => ({
+  // Exemples du type du projet : un projet réseau seul ne propose que des exemples de réseau (kind.js, exampleFits).
+  palette.provide(() => EXAMPLES.map((e, i) => [e, i]).filter(([e]) => exampleFits(S.kind, inferKind(e.data))).map(([e, i]) => ({
     id: 'ex:' + e.file, cat: tl('Exemple'), icon: 'layers', label: e.data.name,
     async run() {
-      if (S.dirty && !(await confirmDlg(tl('Exemples'), tl('Le projet en cours n’est pas enregistré : ouvrir un exemple le remplace. Continuer ?'), tl('Ouvrir l’exemple')))) return;
-      closeHome(); loadExample(i);
+      closeHome(); loadExample(i); // loadExample propose d'enregistrer le projet en cours (closeCurrent)
     }
   })));
   palette.provide(() => (elecOn() ? LIBRARY.filter(e => libCats('').includes(e.cat)).map(e => ({
@@ -4622,6 +4654,7 @@ const moduleApi = {
     setProjectName(name || data.name || tl('Sans titre'), o.path || null); S.projectPath = o.path || null;
     S.dirty = !!o.dirty; $('#projectName').classList.toggle('dirty', !!o.dirty); autosave(); frameAll();
     S.faultKeys = new Set(); resetHistory(); invalidate(500);
+    status(tl('Projet ouvert : {0}', name || data.name || tl('Sans titre')), 'ok'); // plus de « Nouveau projet… » resté d'avant
     return true;
   },
   onChange(fn) { S.changeHooks.push(fn); return () => { S.changeHooks = S.changeHooks.filter(f => f !== fn); }; },
@@ -4638,10 +4671,10 @@ const moduleApi = {
   setLibOpen: on => setLibOpen(on), libOpen: () => libIsOpen(),
   /** Panneau Sortie : une ligne de journal (kind : info, ok, warn, err, cmd). */
   log(t, kind) { if (shell) shell.dock.log(t, kind); },
-  /** Panneau du bas : show('problems' | 'output'), toggle(). */
-  dock: { show: t => shell && shell.dock.show(t), toggle: t => shell && shell.dock.toggle(t) },
-  /** Palette de commandes : register(commande | [commandes]), provide(fn → [commandes]) (src/ui/commands.js). */
-  commands: { register: c => palette && palette.register(c), provide: f => palette && palette.provide(f) },
+  /** Panneau du bas : show('problems' | 'output' | onglet ajouté), toggle(), tab(), addTab({ id, label, el, onShow, when }). */
+  dock: { show: t => shell && shell.dock.show(t), toggle: t => shell && shell.dock.toggle(t), tab: () => (shell ? shell.dock.tab() : ''), addTab: o => shell && shell.dock.addTab(o) },
+  /** Palette de commandes : register(commande | [commandes]), provide(fn → [commandes]), get(id), run(id), open(texte) (src/ui/commands.js). */
+  commands: { register: c => palette && palette.register(c), provide: f => palette && palette.provide(f), get: id => (palette ? palette.get(id) : null), run: id => !!palette && palette.run(id), open: q => palette && palette.open(q) },
   /** Thème : get() → 'dark' | 'light' affiché ; mode() → réglage ('dark', 'light', 'auto') ; set(mode). Événement window « jollof:theme ». */
   theme: { get: () => uiTheme(), mode: () => themeMode(), set: m => setTheme(m) },
   codeBar(html) { $('#progRun').insertAdjacentHTML('beforebegin', html); const el = $('#progRun').previousElementSibling; hydrateIcons(el.parentElement); return el; },

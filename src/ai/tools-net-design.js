@@ -100,19 +100,20 @@ export function tools(h) {
     },
     {
       name: 'ip_plan',
-      description: 'IPv4 VLSM address plan for the project VLANs: from a parent block (default the project setting, e.g. "10.10.0.0/16") and each VLAN\'s planned host count (hosts: { "10": 200, "20": 80 } sets them), allocates aligned subnets largest first (RFC 4632), gateway at the first or last usable address, optional growth %, reports utilisation, VLANs that do not fit and overlaps of the networks already set. apply: true writes net, gw (and hosts) to the VLAN entries and configures the core L3 switch: one SVI per addressed VLAN at the gateway address, routing on, DHCP relay to the project DHCP server (static-IP server serving DHCP) with the missing scopes added there, otherwise DHCP scopes on the core (management VLAN 99 excluded). Undoable and idempotent.',
-      inputSchema: { type: 'object', properties: { block: { type: 'string' }, gw: { type: 'string', enum: ['first', 'last'] }, growth: { type: 'number' }, hosts: { type: 'object' }, apply: { type: 'boolean' } } },
-      async run({ block, gw, growth, hosts, apply }) {
+      description: 'IPv4 VLSM address plan for the project VLANs: from a parent block (default the project setting, e.g. "10.10.0.0/16") and each VLAN\'s planned host count (hosts: { "10": 200, "20": 80 } sets them), keeps the networks already in place when they are aligned, large enough (hosts + growth, at least the project minimum size) and do not overlap (keep: false re-splits everything), allocates the others in aligned free slots largest first (RFC 4632), gateway at the first or last usable address, optional growth %, reports utilisation, VLANs that do not fit and overlaps of the networks already set. Each subnet has a status kept|new|changed|nofit and `changes` counts the VLANs whose network or gateway would change; call first without apply to show the user the changes. apply: true writes net, gw (and hosts) of the changed VLANs only and configures the core L3 switch: one SVI per addressed VLAN at the gateway address, routing on, DHCP relay to the project DHCP server (static-IP server serving DHCP) with the missing scopes added there, otherwise DHCP scopes on the core (management VLAN 99 excluded). Undoable and idempotent.',
+      inputSchema: { type: 'object', properties: { block: { type: 'string' }, gw: { type: 'string', enum: ['first', 'last'] }, growth: { type: 'number' }, hosts: { type: 'object' }, keep: { type: 'boolean' }, apply: { type: 'boolean' } } },
+      async run({ block, gw, growth, hosts, keep, apply }) {
         const W = await h.netWs(), [D] = await mods(), S = await import('../net/subnet.js'), data = W.data(), vl = data.vlans || [];
         if (!vl.length) h.fail('the project has no VLAN: create them first (design_apply creates DATA, VOICE, WIFI, MGMT)');
         const d = D.cleanDesign(data.design), ip = { ...d.ip, ...(block ? { block } : {}), ...(gw ? { gw } : {}), ...(growth != null ? { growth } : {}) };
         if (block && !S.parseCidr(block)) h.fail(`"${block}" is not an IPv4 block like 10.10.0.0/16`);
         const want = new Map(Object.entries(hosts || {}).map(([k, v]) => [String(k), Math.max(0, Math.round(+v || 0))]));
-        const plan = S.planVlsm(ip.block, vl.map(v => ({ id: v.id, name: v.name, hosts: want.has(String(v.id)) ? want.get(String(v.id)) : v.hosts ?? 0 })), { gw: ip.gw, growth: ip.growth });
+        let counted = null; try { const U = await import('../net/ui/ipplan.js'); counted = v => U.hostsFor(data, v).n; } catch (e) { counted = v => v.hosts ?? 0; }
+        const plan = S.planKeep(ip.block, vl.map(v => ({ id: v.id, name: v.name, hosts: want.has(String(v.id)) ? want.get(String(v.id)) : counted(v), net: v.net, gw: v.gw })), { gw: ip.gw, growth: ip.growth, minHosts: ip.minHosts, keep: keep !== false && ip.keep });
         const existing = S.overlaps(vl.filter(v => v.net).map(v => ({ id: v.id, net: v.net })));
         let l3 = null;
         if (apply) {
-          for (const v of vl) { if (want.has(String(v.id))) v.hosts = want.get(String(v.id)); const s = plan.subnets.find(x => x.id === v.id && x.fit); if (s) { v.net = s.cidr; v.gw = s.gw; } }
+          for (const v of vl) { if (want.has(String(v.id))) v.hosts = want.get(String(v.id)); const s = plan.subnets.find(x => x.id === v.id && x.fit); if (s && (s.cidr !== v.net || s.gw !== v.gw)) { v.net = s.cidr; v.gw = s.gw; } }
           data.design = D.cleanDesign({ ...d, ip }); l3 = D.applyL3(data); W.commit();
         }
         return { applied: !!apply, ...plan, overlaps_before: existing, core_l3: apply ? l3 || null : null };

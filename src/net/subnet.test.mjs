@@ -3,7 +3,7 @@
 // Tests du plan d'adressage VLSM (src/net/subnet.js) : node --test src/net/subnet.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { parseCidr, prefixFor, usableOf, planVlsm, overlaps, contains, describe, isPrivate } from './subnet.js';
+import { parseCidr, prefixFor, usableOf, planVlsm, planKeep, overlaps, contains, describe, isPrivate } from './subnet.js';
 import { ipNum } from './ip.js';
 // Temps : temps CPU du processus (src/net/perf.mjs), seuils tenus même dans la suite complète.
 import { once, note } from './perf.mjs';
@@ -58,4 +58,20 @@ test('VLSM : 300 VLAN en quelques millisecondes', () => {
   const o = once(() => planVlsm('10.0.0.0/8', reqs)), r = o.value, dt = o.ms;
   assert.equal(r.ok, true); assert.equal(overlaps(r.subnets.map(s => ({ id: s.id, net: s.cidr }))).length, 0);
   assert.ok(dt < 50, note('VLSM 300 VLAN', dt, 50));
+});
+
+test('plan qui garde les réseaux en place : rien ne change quand ils conviennent, seuls les autres sont placés', () => {
+  const inPlace = [{ id: 10, hosts: 0, net: '10.10.10.0/24', gw: '10.10.10.1' }, { id: 20, hosts: 120, net: '10.10.20.0/24', gw: '10.10.20.1' }, { id: 99, hosts: 4, net: '10.10.99.0/24', gw: '10.10.99.1' }];
+  const k = planKeep('10.10.0.0/16', inPlace, { minHosts: 14, growth: 20 });
+  assert.equal(k.changes, 0, 'des /24 qui suffisent ne bougent pas (pas de /30 proposés)'); assert.ok(k.subnets.every(x => x.status === 'kept'));
+  const g = planKeep('10.10.0.0/16', [...inPlace.slice(0, 1), { id: 20, hosts: 300, net: '10.10.20.0/24', gw: '10.10.20.1' }, { id: 30, hosts: 0 }], { minHosts: 14, growth: 20 });
+  const s = id => g.subnets.find(x => x.id === id);
+  assert.equal(s(10).status, 'kept'); assert.equal(s(20).status, 'changed'); assert.equal(s(20).prefix, 23); assert.equal(s(30).status, 'new'); assert.equal(s(30).prefix, 27, 'taille minimale : 14 hôtes et la passerelle');
+  assert.equal(g.changes, 2);
+  assert.equal(overlaps(g.subnets.map(x => ({ id: x.id, net: x.cidr }))).length, 0, 'les nouveaux évitent ceux qui restent');
+  // chevauchement en place : le second est déplacé ; keep: false redécoupe tout
+  const o = planKeep('10.0.0.0/16', [{ id: 1, hosts: 10, net: '10.0.0.0/24', gw: '10.0.0.1' }, { id: 2, hosts: 10, net: '10.0.0.128/25', gw: '10.0.0.129' }], { minHosts: 1 });
+  assert.equal(o.subnets[0].status, 'kept'); assert.equal(o.subnets[1].status, 'changed');
+  assert.ok(planKeep('10.10.0.0/16', inPlace, { keep: false, minHosts: 14 }).changes > 0);
+  assert.equal(planKeep('x', inPlace).error, 'block');
 });

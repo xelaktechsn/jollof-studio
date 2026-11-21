@@ -56,9 +56,9 @@ const vid = (v, d = 1) => (vlanOk(v) ? +v : d);
 /** « 10,20,30-40 » | 'all' | 'none' → { all, set } (set : VLAN listés). */
 export function parseVlanList(s) {
   const t = String(s ?? 'all').trim().toLowerCase();
-  if (t === '' || t === 'all' || t === 'tous') return { all: true, set: new Set() };
+  if (t === '' || t === 'all' || t === 'tous' || t === 'toutes' || t === 'tout') return { all: true, set: new Set() };
   const set = new Set();
-  if (t === 'none' || t === 'aucun') return { all: false, set };
+  if (t === 'none' || t === 'aucun' || t === 'aucune') return { all: false, set };
   for (const part of t.split(/[,; ]+/)) {
     const m = /^(\d{1,4})(?:-(\d{1,4}))?$/.exec(part); if (!m) continue;
     const a = +m[1], b = m[2] ? +m[2] : a;
@@ -225,7 +225,7 @@ export function vlansInUse(data) {
   const s = new Set([1]);
   for (const v of (data && data.vlans) || []) s.add(v.id);
   for (const d of (data && data.devices) || []) {
-    const P = d.p || {};
+    const P = d.p; if (!P || (!P.ports && !P.svis && !P.ifs)) continue;
     for (const c of Object.values(P.ports || {})) { s.add(c.vlan); s.add(c.native); if (c.voice) s.add(c.voice); if (c.mode === 'trunk') { const l = parseVlanList(c.allowed); if (!l.all) for (const v of l.set) if (s.size < 4094) s.add(v); } }
     for (const x of P.svis || []) s.add(x.vlan);
     for (const x of P.ifs || []) if (x.vlan) s.add(x.vlan);

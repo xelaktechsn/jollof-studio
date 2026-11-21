@@ -54,22 +54,21 @@ export function simIssues(lan, data, h) {
 
   // VLAN de chaque domaine (switch administrable qui le porte), postes et interfaces de chaque domaine.
   const domVlan = new Map();
-  for (const [k, list] of st.l2.attach) {
-    if (!st.byId.get(k.split('|')[0]) || !specOf(st.byId.get(k.split('|')[0])).managed) continue;
-    for (const x of list) { const m = /^m:.*:(\d+)$/.exec(x.v); if (m && !domVlan.has(st.find(x.v))) domVlan.set(st.find(x.v), +m[1]); }
-  }
+  for (const list of st.l2.attach.values()) for (const x of list) if (x.vlan != null) { const d = st.find(x.v); if (!domVlan.has(d)) domVlan.set(d, x.vlan); }
   for (const n of managed) for (const s of (n.p || {}).svis || []) { const d = st.find(`m:${n.id}:${s.vlan}`); if (!domVlan.has(d)) domVlan.set(d, s.vlan); }
   const hostsOf = new Map(), gwsOf = new Map();
   const push = (m, d, x) => { if (!m.has(d)) m.set(d, []); m.get(d).push(x); };
   for (const f of st.ifaces) { const d = st.find(f.v); if (f.role === 'host') push(hostsOf, d, f); else if (f.ip && f.up !== false) push(gwsOf, d, f); }
 
   /* ---------- Liens entre switchs : VLAN d'accès, trunks, VLAN natif ---------- */
-  const seen = new Set();
   for (const [k, l] of st.links) {
     if (!l.up || !l.peer) continue;
-    const [n, p] = k.split('|'), kk = [k, l.peer.n + '|' + l.peer.p].sort().join('#'); if (seen.has(kk)) continue; seen.add(kk);
+    const fk = l.peer.n + '|' + l.peer.p; if (fk < k && st.links.has(fk)) continue; // une fois par lien
+    const i = k.indexOf('|'), n = k.slice(0, i), p = k.slice(i + 1);
     const A = st.byId.get(n), B = st.byId.get(l.peer.n); if (!A || !B) continue;
-    const sa = specOf(A), sb = specOf(B), who = tl('{0} ↔ {1}', name(A.id), name(B.id));
+    const sa = specOf(A), sb = specOf(B);
+    if (!sa.managed && !sb.managed) continue; // rien à vérifier entre deux équipements non administrables
+    const who = tl('{0} ↔ {1}', name(A.id), name(B.id));
     for (const [X, px, Y, py] of [[A, p, B, l.peer.p], [B, l.peer.p, A, p]]) {
       const sx = specOf(X), sy = specOf(Y);
       if (sx.managed && sy.role === 'host' && portCfg(X, px).mode === 'trunk') add('J1234', X.id, tl('{0}, port {1} : trunk vers {2}, un poste qui ne lit pas les étiquettes 802.1Q (seul le VLAN natif {3} lui arrive).', name(X.id), px, name(Y.id), portCfg(X, px).native));

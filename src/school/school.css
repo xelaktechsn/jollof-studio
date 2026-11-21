@@ -125,8 +125,12 @@ select.sInput { appearance: auto; }
 .sDialogWrap { position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 20px; background: #04060999; -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); animation: fadeIn .15s; }
 .sDialogWrap.out { animation: hubOut .15s forwards; }
 .sDialog { width: min(var(--w), 100%); max-height: calc(100vh - 40px); display: flex; flex-direction: column; background: linear-gradient(180deg, #171e25, var(--panel)); border: 1px solid var(--line-2); border-radius: 16px; box-shadow: 0 30px 80px #000c; animation: sheetIn .2s cubic-bezier(.2,.8,.2,1); }
+/* Thème clair : le dégradé sombre de la boîte rendait son titre illisible. */
+:root[data-theme="light"] .sDialog { background: linear-gradient(180deg, var(--panel-2), var(--panel)); box-shadow: 0 30px 80px #0f172a33; }
 .sDialog > header { display: flex; align-items: center; gap: 10px; padding: 16px 18px 8px; }
 .sDialog > header h3 { flex: 1; font-size: 16px; font-weight: 600; }
+/* Icône en tête du titre (« {0}Nouveau projet ») : un espace entre elle et le texte. */
+.sDialog > header h3 > .ic:first-child { margin-right: 8px; vertical-align: -3px; color: var(--accent-hi); }
 .sDialog .sBody { padding: 8px 18px; overflow: auto; }
 .sDialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; }
 .dlgText { margin: 0 0 12px; line-height: 1.55; color: var(--fg-2); }

@@ -3,7 +3,12 @@
 // Adresses IPv4 et adresses MAC : lecture, écriture, sous-réseaux (masque ou préfixe /24, RFC 950 et RFC 4632).
 
 /** « 192.168.1.10 » → entier non signé, ou null. */
+const IPS = new Map(); // mémoire des adresses lues (le vérificateur et le routage relisent les mêmes)
 export function ipNum(s) {
+  if (typeof s === 'string') { const c = IPS.get(s); if (c !== undefined) return c; const v = ipNum0(s); if (IPS.size > 50000) IPS.clear(); IPS.set(s, v); return v; }
+  return ipNum0(s);
+}
+function ipNum0(s) {
   const m = /^\s*(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})\s*$/.exec(String(s ?? ''));
   if (!m) return null;
   const b = m.slice(1).map(Number); if (b.some(x => x > 255)) return null;

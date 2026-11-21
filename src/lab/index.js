@@ -12,6 +12,7 @@ import './lab.css';
 import { tl, LANG, DEC, isEn } from '../i18n/index.js';
 import { icon, esc, toast, dialog, ask } from '../school/ui.js';
 import { hydrateIcons } from '../ui/icons.js';
+import { netOnly, spacesOf } from '../ui/kind.js';
 import { compile } from '../prog/lang.js';
 import { checkWire, checkCode, checkWatch, checkMeasure, checkQuiz, checkPneuTube, checkPneuSeq, checkParts, checkWired, checkPneuParts, checkGrafcet, checkLadder, checkUiState, checkScene, sceneNeedText, AUTO_CHECKS, allNets, loadNetCheck, NET_LIVE, isNetCheck } from './engine.js';
 import { DEFS as PNEU_DEFS } from '../pneu/elements.js';
@@ -122,13 +123,20 @@ export function installLab(app) {
   /** Ouvre un TP ou un tutoriel par son identifiant (bouton « Tutoriel » du plan pneumatique…). */
   app.openTutorial = async id => { await loadTps(); const tp = TPS.find(t => t.id === id); if (tp) run(tp); else toast(tl('Tutoriel introuvable.'), 'err'); };
   // Palette de commandes : « TP : Feu tricolore » ouvre le TP (le contenu des TP se charge à la première ouverture de la palette).
-  if (app.commands) app.commands.provide(async () => { await loadTps(); return TPS.map(tp => ({ id: 'tp:' + tp.id, cat: tl('TP'), icon: 'checklist', label: L(tp.title), run: () => run(tp) })); });
+  // Projet réseau seul : seulement les TP de réseau (kind.js netOnly) ; les autres types : tous les TP.
+  if (app.commands) app.commands.provide(async () => { await loadTps(); return TPS.filter(tp => !(app.kind && netOnly(app.kind())) || tp.domain === 'net').map(tp => ({ id: 'tp:' + tp.id, cat: tl('TP'), icon: 'checklist', label: L(tp.title), run: () => run(tp) })); });
 
   /* ---------- Bibliothèque ---------- */
   async function openLibrary(domain = null) {
     await loadTps();
     let tab = domain; if (!tab) { try { tab = localStorage.getItem(TAB_KEY); } catch (e) { tab = null; } }
-    if (!DOMAINS.some(d => d.id === tab)) tab = 'elec';
+    // Projet avec un plan réseau (Réseau, Objets connectés) : ses domaines d'abord (Réseau en tête), les autres derrière
+    // « Autres domaines » ; un TP d'un autre domaine ne se présente pas comme un égal du réseau.
+    const k = app.kind ? app.kind() : 'elec', netFirst = spacesOf(k).includes('net');
+    const primary = netFirst ? DOMAINS.filter(d => d.id === 'net' || spacesOf(k).includes(d.id)).sort((a, b) => (b.id === 'net') - (a.id === 'net')) : DOMAINS;
+    let others = false;
+    if (!DOMAINS.some(d => d.id === tab) || (netFirst && !domain && !primary.some(d => d.id === tab))) tab = netFirst ? 'net' : 'elec';
+    if (!primary.some(d => d.id === tab)) others = true;
     let level = 'all', q = '';
     const card = tp => {
       const st = load(tp.id), done = st ? st.done.filter(Boolean).length : 0, n = tp.steps.length, s = status(st);
@@ -149,10 +157,12 @@ export function installLab(app) {
       list.forEach(tp => { if (!by.has(tp.level)) by.set(tp.level, []); by.get(tp.level).push(tp); });
       const doneN = D.list.filter(t => status(load(t.id)) === 'done').length, resume = D.list.filter(t => status(load(t.id)) === 'doing');
       const levels = ['all', ...['college', 'lycee', 'pro'].filter(l => D.list.some(t => t.level === l))];
-      body.innerHTML = `<div class="tpTabs" role="tablist">${DOMAINS.map(d => {
+      const tabsOf = list => list.map(d => {
         const dn = d.list.filter(t => status(load(t.id)) === 'done').length;
         return `<button type="button" role="tab" class="tpTab ${d.id}" data-tab="${d.id}" aria-selected="${d.id === tab}">${icon(d.icon)}<span class="tpTabName">${d.name()}</span><span class="tpTabMeta">${tl('{0} TP', d.list.length)}${dn ? ` · ${tl('{0} terminé(s)', dn)}` : ''}</span></button>`;
-      }).join('')}</div>
+      }).join('');
+      const rest = DOMAINS.filter(d => !primary.includes(d));
+      body.innerHTML = `<div class="tpTabs" role="tablist">${tabsOf(primary)}${rest.length ? (others ? tabsOf(rest) : `<button type="button" class="tpTab tpMore" data-more>${icon('chevDown')}<span class="tpTabName">${tl('Autres domaines')}</span><span class="tpTabMeta">${tl('{0} TP', rest.reduce((a, d) => a + d.list.length, 0))}</span></button>`) : ''}</div>
         <p class="dlgText">${D.intro()} ${tl('Votre projet est mis de côté pendant le TP.')}</p>
         <div class="tpTools"><div class="seg mini" role="group" aria-label="${tl('Niveau')}">${levels.map(l => `<button type="button" class="segBtn" data-level="${l}" aria-pressed="${l === level}">${l === 'all' ? tl('Tous') : LEVELS[l]()}</button>`).join('')}</div>
           <div class="search tpSearch">${icon('search')}<input type="search" value="${esc(q)}" placeholder="${tl('Rechercher un TP…')}" aria-label="${tl('Rechercher un TP')}"></div>
@@ -169,6 +179,7 @@ export function installLab(app) {
       title: tl('{0}Travaux pratiques', icon('checklist')), width: 1040, cls: 'tpLib', body,
       actions: [{ label: tl('Fermer'), value: null }],
       onOpen: (el, close) => (el.onclick = e => {
+        if (e.target.closest('[data-more]')) { others = true; render(); return; }
         const t = e.target.closest('[data-tab]');
         if (t) { tab = t.dataset.tab; level = 'all'; try { localStorage.setItem(TAB_KEY, tab); } catch (err) { /* rien */ } render(); return; }
         const lv = e.target.closest('[data-level]'); if (lv) { level = lv.dataset.level; render(); return; }

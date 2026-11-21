@@ -16,7 +16,7 @@ export const KINDS = {
   pneu: { icon: 'pneu', spaces: ['pneu'], name: () => tl('Pneumatique'), text: () => tl('L’air comprimé seul : distributeurs, vérins, fins de course à galet, GRAFCET ou automate en Ladder. Aucun montage électronique.') },
   epneu: { icon: 'split', spaces: ['elec', 'pneu'], name: () => tl('Électropneumatique'), text: () => tl('Une carte commande une machine pneumatique : électrovannes 24 V, capteurs de vérin, les deux plans de travail côte à côte.') },
   logic: { icon: 'logic', spaces: ['logic'], name: () => (isEn ? 'Logic' : 'Logique'), text: () => tl('Portes, bascules, compteurs : tables de vérité, chronogrammes, équations.') },
-  net: { icon: 'network', spaces: ['net'], name: () => tl('Réseau'), text: () => tl('PC, switchs, box, Wi-Fi : on sertit les câbles RJ45, on les teste, on adresse et on fait des ping.') },
+  net: { icon: 'network', spaces: ['net'], name: () => tl('Réseau'), text: () => tl('Du câble RJ45 serti au bâtiment entier : plans d’étage et import DWG, baies, VLAN et routage, Wi-Fi, dimensionnement, certification.') },
   iot: { icon: 'iot', spaces: ['elec', 'net'], name: () => tl('Objets connectés'), text: () => tl('Une carte et son module Ethernet ou son Wi-Fi sur un vrai réseau : page web, MQTT, Modbus TCP, les deux plans de travail.') }
 };
 export const KIND_IDS = Object.keys(KINDS);
@@ -26,6 +26,15 @@ export const spacesOf = k => (KINDS[k] || KINDS.elec).spaces;
  * (sans carte), logique et pneumatique seule n'en ont pas : l'interface ne montre pas ce qu'ils ne peuvent pas utiliser.
  */
 export const hasProgram = k => k === 'elec' || k === 'epneu' || k === 'iot' || !KINDS[k];
+/** Le projet montre l'électronique : montage 3D, schéma, bibliothèque de composants, simulation des cartes. */
+export const hasElec = k => spacesOf(k).includes('elec');
+/**
+ * Réseau seul : aucune interface d'électronique nulle part (montage, breadboard, schéma, code, moniteur série,
+ * composants, simulation des cartes, outils d'IA du montage). Objets connectés garde les deux.
+ */
+export const netOnly = k => spacesOf(k).includes('net') && !hasElec(k);
+/** Exemple proposé dans un projet de ce type : un projet réseau seul ne propose que des exemples de réseau seul. */
+export const exampleFits = (k, exKind) => !netOnly(k) || netOnly(KINDS[exKind] ? exKind : 'elec');
 /** Type d'un projet enregistré : celui qu'il déclare, sinon d'après son contenu (projets d'avant les types). */
 export function inferKind(data) {
   const set = (data && data.settings) || {};

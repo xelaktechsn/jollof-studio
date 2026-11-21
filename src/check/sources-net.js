@@ -847,6 +847,18 @@ export const NET_SOURCES = {
   },
   /* ---------- Réseau, conception professionnelle : dimensionnement, étiquetage (src/net/lim/design.js, src/net/checks/design.js) ---------- */
   // @design
+  moFmdcCad: {
+    title: 'Computer Aided Design Guidelines and Drawing Submittals (revised 09/2012)',
+    publisher: 'State of Missouri, Office of Administration, Facilities Management, Design and Construction',
+    url: 'https://oa.mo.gov/sites/default/files/CAD_Guidelines.pdf',
+    section: 'Convention de calques publique qui suit les AIA CAD Layer Guidelines (United States National CAD Standard, payante) : § 5.4 E, « FMDC follows AIA CAD Layering Guidelines » ; p. 7, modificateurs communs « *-TEXT Text », « *-IDEN Identification tags », « *-SHBD-TTLB Project Title block » ; p. 8, « A-AREA Area Calculation », « A-WALL Walls » ; p. 21-22, calques des télécommunications (discipline T) : « T-EQPM Equipment », « T-JACK Jacks », « T-CABL Cable system », « T-CABL-FIBR Cable system: fiber optic cable », « T-CABL-TRAY Cable system: cable tray and wireway », « T-DATA Data / LAN system ».'
+  },
+  iso13567Wiki: {
+    title: 'ISO 13567 (article)',
+    publisher: 'Wikipedia',
+    url: 'https://en.wikipedia.org/wiki/ISO_13567',
+    section: 'Résumé public de la norme ISO 13567 (payante) : champs obligatoires de longueur fixe « Agent responsible » (2 caractères), « Element » (6 caractères, classification CI/SfB ou Uniclass), « Presentation » (2 caractères : E- élément, T- texte, H- hachures, D- cotes), champ facultatif « Status » (1 caractère) ; exemple « A-G25---D-R ».'
+  },
   nsTpwCabling: {
     title: 'Structured Cabling Guideline (DC350 Design Requirements Manual), revised 2004',
     publisher: 'Nova Scotia Transportation and Public Works',

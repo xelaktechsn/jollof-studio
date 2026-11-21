@@ -388,10 +388,14 @@ mod tests {
 
     #[test]
     fn a_real_client_reads_and_presses_over_tcp() {
-        let rt = tokio::runtime::Builder::new_multi_thread()
-            .enable_all()
-            .build()
-            .unwrap();
+        // Moteur gardé jusqu'à la fin du programme de test : il devient celui de Tauri pour tous les tests (un moteur
+        // détruit ici annulerait les tâches des tests lancés ensuite, ex. tests::runtime_helpers).
+        let rt: &'static tokio::runtime::Runtime = Box::leak(Box::new(
+            tokio::runtime::Builder::new_multi_thread()
+                .enable_all()
+                .build()
+                .unwrap(),
+        ));
         tauri::async_runtime::set(rt.handle().clone());
         rt.block_on(async {
             let writes = Arc::new(Mutex::new(Vec::new()));

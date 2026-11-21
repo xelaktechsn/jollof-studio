@@ -1,0 +1,173 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Organisation du projet réseau (ia.js) : onglets du panneau de gauche, arbre du projet, calques, fil d'Ariane,
+   recherche, modification groupée, onglets du panneau du bas. Classes nt… seulement. */
+
+/* ---------- Panneau de gauche : onglets ---------- */
+.ntLib.ntIaOn > .phead { padding: 8px 10px 6px 8px; gap: 6px; }
+.ntLib.ntIaOn > .phead > h2, .ntLib.ntIaOn > .phead > .count { display: none; }
+.ntLibTabs { display: flex; gap: 2px; flex: 1; min-width: 0; }
+.ntLibTab { all: unset; box-sizing: border-box; flex: 0 1 auto; min-width: 0; height: 28px; padding: 0 9px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--fg-2); cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ntLibTab:hover { background: var(--raise); color: var(--fg); }
+.ntLibTab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntLibTab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.ntLib > .ntBr, .ntLib > .ntLy { display: none; }
+.ntLib[data-tab="project"] > .ntBr { display: flex; }
+.ntLib[data-tab="layers"] > .ntLy { display: flex; }
+.ntLib[data-tab="project"] > .search, .ntLib[data-tab="project"] > .libScroll, .ntLib[data-tab="project"] > .pfoot,
+.ntLib[data-tab="layers"] > .search, .ntLib[data-tab="layers"] > .libScroll, .ntLib[data-tab="layers"] > .pfoot { display: none; }
+.app.libClosed .ntLib > .ntBr, .app.libClosed .ntLib > .ntLy { display: none !important; }
+
+/* ---------- Projet ---------- */
+.ntBr { flex: 1 1 auto; min-height: 0; flex-direction: column; }
+.ntBrBar { display: flex; align-items: center; gap: 4px; padding: 2px 10px 6px; }
+.ntBrBar .ntKSearch { flex: 1; }
+.ntBrBar .tb { height: 28px; min-width: 28px; padding: 0; }
+.ntBrTree { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.ntBrTree .ntKTree { padding: 4px 0; }
+.ntBrFoot { flex: none; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 11.5px; color: var(--muted); }
+
+/* ---------- Calques ---------- */
+.ntLy { flex: 1 1 auto; min-height: 0; flex-direction: column; overflow: auto; padding: 0 8px 10px; font-size: 12.5px; }
+.ntLyHead { padding: 4px 6px 6px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.ntLyHead b { font-size: 12px; color: var(--fg-2); }
+.ntLyHead p { margin: 0; color: var(--muted); line-height: 1.45; font-size: 12px; }
+.ntLyList h3 { display: flex; align-items: center; gap: 6px; margin: 10px 6px 4px; font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ntLyList h3 small { text-transform: none; letter-spacing: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntLyList h3 .grow { flex: 1; }
+.ntLyList h3 .tb { height: 22px; min-width: 22px; padding: 0; }
+.ntLyList h3 .tb .ic { width: 14px; height: 14px; }
+.ntLyRow { display: flex; align-items: center; gap: 4px; height: 28px; padding: 0 4px; border-radius: 6px; color: var(--fg-2); }
+.ntLyRow:hover { background: var(--nt-k-hover); }
+.ntLyRow.off .ntLyName, .ntLyRow.off .ntLyIc, .ntLyRow.off .ntLySw { opacity: .45; }
+.ntLyEye, .ntLyLock { all: unset; box-sizing: border-box; flex: none; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: var(--muted); cursor: pointer; }
+.ntLyEye:hover, .ntLyLock:hover { background: var(--raise-2); color: var(--fg); }
+.ntLyEye:focus-visible, .ntLyLock:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntLyEye .ic, .ntLyLock .ic { width: 15px; height: 15px; }
+.ntLyEye[aria-pressed="true"] { color: var(--fg-2); }
+.ntLyLock[aria-pressed="false"] .ic { opacity: .75; }
+.ntLyCols { display: flex; align-items: center; gap: 4px; height: 22px; padding: 0 4px; color: var(--muted); font-size: 10.5px; }
+.ntLyCols > span { flex: none; width: 24px; display: grid; place-items: center; }
+.ntLyCols > span .ic { width: 13px; height: 13px; }
+.ntLyCols > b { font-weight: 500; margin-left: 4px; }
+.ntLyLock[aria-pressed="true"] { color: var(--warn-ink); }
+span.ntLyLock { cursor: default; }
+.ntLyIc { flex: none; width: 15px; height: 15px; color: var(--muted); margin: 0 2px; }
+.ntLySw { flex: none; width: 11px; height: 11px; border-radius: 3px; margin: 0 4px; box-shadow: inset 0 0 0 1px var(--hi-2); }
+.ntLyName { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntLyN { font: 500 10.5px var(--mono); color: var(--muted); }
+.ntLyNote { margin: 2px 6px; color: var(--muted); font-size: 12px; }
+.ntLyFoot { padding: 12px 4px 0; }
+/* Calques appliqués à la vue Plans (le dessin n'est pas refait) : masqués, ou verrouillés (pas de clic). */
+.ntPl.ntLyOff-rooms .ntPlRoom, .ntPl.ntLyOff-roomLabels .ntPlRL, .ntPl.ntLyOff-walls .ntPlWall, .ntPl.ntLyOff-doors .ntPlDoor,
+.ntPl.ntLyOff-paths .ntPlPath, .ntPl.ntLyOff-pathLabels .ntPlPL, .ntPl.ntLyOff-racks .ntPlRack, .ntPl.ntLyOff-racks .ntPlRkL,
+.ntPl.ntLyOff-outlets .ntPlDev[class*=" t-outlet"], .ntPl.ntLyOff-aps .ntPlDev[class*=" t-ap"],
+.ntPl.ntLyOff-devices .ntPlDev:not([class*=" t-outlet"]):not([class*=" t-ap"]), .ntPl.ntLyOff-devLabels .ntPlDev text { display: none; }
+.ntPl.ntLyLock-rooms .ntPlRoom, .ntPl.ntLyLock-walls .ntPlWall, .ntPl.ntLyLock-doors .ntPlDoor, .ntPl.ntLyLock-paths .ntPlPath,
+.ntPl.ntLyLock-racks .ntPlRack, .ntPl.ntLyLock-outlets .ntPlDev[class*=" t-outlet"], .ntPl.ntLyLock-aps .ntPlDev[class*=" t-ap"],
+.ntPl.ntLyLock-devices .ntPlDev:not([class*=" t-outlet"]):not([class*=" t-ap"]) { pointer-events: none; }
+
+/* ---------- Fil d'Ariane (barre des vues) ---------- */
+.ntCrumbs { margin-left: auto; min-width: 0; flex: 1 1 auto; display: flex; align-items: center; gap: 0; padding-left: 12px; overflow: hidden; font-size: 12px; }
+.ntCrumbs[hidden] { display: none; }
+.ntCr, .ntCrSep { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; height: 24px; border-radius: 5px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.ntCr { padding: 0 5px; min-width: 0; flex: 0 1 auto; }
+.ntCr span { overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.ntCr.last { color: var(--fg); font-weight: 600; flex-shrink: 0; }
+.ntCr .ic { width: 14px; height: 14px; flex: none; }
+.ntCr.last .ic { color: var(--accent); }
+.ntCrSep { width: 16px; justify-content: center; flex: none; }
+.ntCrSep .ic { width: 12px; height: 12px; }
+.ntCr:hover, .ntCrSep:hover { background: var(--raise); color: var(--fg); }
+.ntCr:focus-visible, .ntCrSep:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntCrMulti { flex: none; margin-left: 6px; padding: 1px 7px; border-radius: 10px; background: var(--accent-soft); color: var(--accent-hi); font-size: 11px; font-weight: 600; }
+@media (max-width: 1360px) { .ntCr:not(.last):not(:first-child) span { max-width: 90px; } }
+
+/* ---------- Rechercher, aller à ---------- */
+.ntFind { position: absolute; z-index: 30; top: 46px; left: 50%; transform: translateX(-50%); width: min(620px, calc(100% - 96px)); display: flex; flex-direction: column; background: var(--menu); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+.ntFind[hidden] { display: none; }
+.ntFindBox { padding: 10px; border-bottom: 1px solid var(--line); }
+.ntFindBox .ntKSearch input { height: 34px; font-size: 13.5px; }
+.ntFindList { max-height: min(420px, 52vh); overflow: auto; padding: 4px; }
+.ntFindRow { display: grid; grid-template-columns: 18px minmax(0, auto) minmax(0, 1fr) auto; align-items: center; gap: 9px; height: 30px; padding: 0 8px; border-radius: 7px; color: var(--fg-2); cursor: pointer; font-size: 12.5px; }
+.ntFindRow .ic { width: 16px; height: 16px; color: var(--muted); }
+.ntFindRow.act { background: var(--nt-k-sel); color: var(--fg); }
+.ntFindRow.act .ic { color: var(--accent); }
+.ntFindLb { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.ntFindLb mark { background: none; color: var(--accent-hi); font-weight: 700; }
+.ntFindSub { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-size: 11.5px; }
+.ntFindWh { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; color: var(--muted); font-size: 11px; }
+.ntFindNone { margin: 10px 8px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.ntFindFoot { display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-top: 1px solid var(--line); font-size: 11px; color: var(--muted); }
+.ntFindFoot:empty { display: none; }
+.ntFindFoot .grow { flex: 1; }
+.ntFindFoot kbd { font: 500 10.5px var(--mono); padding: 1px 5px; border-radius: 4px; border: 1px solid var(--line-2); background: var(--panel-2); color: var(--fg-2); }
+
+/* ---------- Modification groupée (au-dessus de l'inspecteur) ---------- */
+.ntBulk { flex: 0 0 auto; max-height: 48%; overflow: auto; padding: 10px 12px 10px; border-bottom: 1px solid var(--line-2); background: var(--panel-2); }
+.ntBulk[hidden] { display: none; }
+.app:not(.netMode) .ntBulk { display: none; }
+.ntBulkHead { display: flex; align-items: center; gap: 9px; margin-bottom: 6px; }
+.ntBulkHead > .ic { width: 18px; height: 18px; color: var(--accent); flex: none; }
+.ntBulkHead div { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ntBulkHead b { font-size: 13px; }
+.ntBulkHead small { color: var(--muted); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntBulkHead .tb { height: 26px; min-width: 26px; padding: 0; }
+.ntBulkNone { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+/* ---------- Panneau du bas ---------- */
+.ntDk { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.ntDk .ntKTbar .tb { height: 26px; font-size: 12px; }
+.ntDk .ntKTbar .tb .ic { width: 14px; height: 14px; }
+.ntDkUp { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; background: var(--nt-down); vertical-align: 1px; }
+.ntDkUp.on { background: var(--nt-g); }
+.dkBody.dk-netPatch, .dkBody.dk-netCables, .dkBody.dk-netTests { overflow: hidden; display: flex; flex-direction: column; }
+.dkBody.dk-netPatch > .ntDk, .dkBody.dk-netCables > .ntDk, .dkBody.dk-netTests > .ntDk { flex: 1 1 auto; height: auto; }
+.ntCr.root { padding: 0 4px; }
+.ntCrMore { padding: 0 6px; font-weight: 600; }
+.ntCrumbs .ntCr.last { flex-shrink: 1; min-width: 48px; }
+.ntCrumbs .ntCr.last span { max-width: 220px; }
+
+/* ---------- « Lié à » (ia-nav.js) ---------- */
+.ntRel { flex: 0 0 auto; padding: 8px 12px 8px; border-bottom: 1px solid var(--line); background: var(--panel); }
+.ntRel[hidden] { display: none; }
+.app:not(.netMode) .ntRel { display: none; }
+.ntRelHead { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.ntRelHead b { font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ntRelAll { all: unset; margin-left: auto; display: inline-flex; align-items: center; gap: 3px; padding: 2px 6px; border-radius: 5px; font-size: 11.5px; color: var(--accent-hi); cursor: pointer; }
+.ntRelAll .ic { width: 12px; height: 12px; }
+.ntRelAll:hover { background: var(--raise); }
+.ntRelAll:focus-visible { outline: 2px solid var(--accent); }
+.ntRelChips { display: flex; flex-wrap: wrap; gap: 5px; max-height: 88px; overflow: hidden; }
+.ntRelChip { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 5px; max-width: 100%; height: 26px; padding: 0 8px; border-radius: 13px; border: 1px solid var(--line-2); background: var(--panel-2); font-size: 11.5px; color: var(--fg-2); cursor: pointer; }
+.ntRelChip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+.ntRelChip .ic { width: 13px; height: 13px; color: var(--muted); flex: none; }
+.ntRelChip kbd { font: 600 9.5px var(--mono); padding: 0 4px; border-radius: 3px; background: var(--hi-1); color: var(--muted); text-transform: uppercase; }
+.ntRelChip:hover, .ntRelChip:focus-visible { border-color: var(--accent); color: var(--fg); background: var(--accent-soft); }
+.ntRelChip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ntRelChip.g-test .ic { color: var(--ok-ink); }
+.ntRelChip.g-addressing .ic { color: var(--accent-hi); }
+/* Surlignage de ce que désigne un élément « Lié à » survolé, dans la vue montrée. */
+.ntRelHi { filter: drop-shadow(0 0 2px var(--accent)) drop-shadow(0 0 6px var(--accent)); }
+.ntRelHi > * { stroke-width: 2.5px; }
+.ntPane section.ntFlash { animation: ntFlash 1.5s ease-out; }
+@keyframes ntFlash { 0%, 35% { box-shadow: inset 3px 0 0 var(--accent); background: var(--accent-soft); } 100% { box-shadow: none; background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ntPane section.ntFlash { animation-duration: .01s; } }
+
+/* ---------- Historique (barre des vues) ---------- */
+.ntHist { margin-left: 10px; display: flex; gap: 1px; flex: none; padding-left: 8px; border-left: 1px solid var(--line); }
+.ntHist + .ntCrumbs { margin-left: 0; }
+.ntHistBtn { all: unset; box-sizing: border-box; width: 24px; height: 24px; display: grid; place-items: center; border-radius: 5px; color: var(--fg-2); cursor: pointer; }
+.ntHistBtn .ic { width: 14px; height: 14px; }
+.ntHistBtn:hover:not(:disabled) { background: var(--raise); color: var(--fg); }
+.ntHistBtn:disabled { opacity: .3; cursor: default; }
+.ntHistBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---------- Panneau de gauche : selon la vue, étroit ---------- */
+.ntLibList [hidden] { display: none !important; }
+.ntLibNote { margin: 8px 8px 2px; font-size: 11.5px; color: var(--muted); }
+.ntLibTab .ic { display: none; width: 16px; height: 16px; }
+.ntLib.ntLibNarrow .ntLibTab { padding: 0 8px; }
+.ntLib.ntLibNarrow .ntLibTab .ic { display: block; }
+.ntLib.ntLibNarrow .ntLibTab span { display: none; }
+.ntLibTab { display: inline-flex; align-items: center; justify-content: center; }

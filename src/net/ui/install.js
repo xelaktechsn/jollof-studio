@@ -12,7 +12,7 @@ const hasContent = d => !!d && typeof d === 'object' && ((Array.isArray(d.device
 
 export function installNet(app) {
   const $ = s => document.querySelector(s);
-  let raw = null, ws = null, loading = null, wantOn = false;
+  let raw = null, ws = null, loading = null, wantOn = false, shell = null;
   const ui = { tester: false, crimp: false, browser: false, ping: false };
   const sw = $('.wsSwitch');
   sw.insertAdjacentHTML('beforeend', `<button type="button" class="segBtn" data-ws="net" aria-pressed="false" data-tip="${tl('Réseau : PC, switchs, box, câbles RJ45, adresses IP')}">${icon('network')}<span>${tl('Réseau')}</span></button>`);
@@ -30,6 +30,8 @@ export function installNet(app) {
       loading = import('./workspace.js').then(m => {
         ws = m.createNetWorkspace(app, ui, raw);
         if (wantOn) ws.setMode(true);
+        // Menus, barre d'état, modèles et visite du projet réseau (shellnet.js), chargés avec le plan.
+        shell = import('./shellnet.js').then(s => s.installNetShell(app, api, ws)).catch(e => { console.error(e); return null; });
         return ws;
       }).catch(e => { console.error(e); loading = null; throw e; });
     }
@@ -41,7 +43,9 @@ export function installNet(app) {
       if (ws) ws.load(raw);
       else if (hasContent(raw) || spacesOf(app.kind ? app.kind() : 'elec').includes('net')) { wantOn = !!raw && raw.view === 'net'; ready(); }
     },
-    save() { return ws ? ws.save() : raw || undefined; }
+    save() { return ws ? ws.save() : raw || undefined; },
+    /** Projet fermé (main.js, closeCurrent) : fenêtres du plan réseau fermées, sélection oubliée. */
+    close() { if (ws) ws.closeWindows(); }
   });
   const api = {
     loaded: () => !!ws, ready,
@@ -54,6 +58,8 @@ export function installNet(app) {
     },
     /** Le type du projet a changé : un projet Réseau ou Objets connectés charge son plan d'avance. */
     kindChanged() { if (spacesOf(app.kind()).includes('net')) ready(); },
+    /** Nouveau projet de ce type (main.js) : modèles et visite guidée d'un projet réseau. */
+    started(kind) { if (kind === 'net') ready().then(() => shell).then(sh => sh && sh.welcome(kind)).catch(() => {}); },
     /** Plan du projet ({ devices, cables, ext }) et réseau simulé (null tant que le plan n'est pas chargé). */
     data: () => (ws ? ws.data() : raw),
     lan: () => (ws ? ws.lan() : null),

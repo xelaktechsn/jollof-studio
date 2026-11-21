@@ -15,7 +15,9 @@
 //     (% de chutes), cord (m par cordon de brassage), slack: { tr, wa } (m de mou côté baie et côté prise : route.js les
 //     lit), rackU, upsMargin (%), labels: { preset, space, link, panel, rack, pad } (docs.js ; preset 'auto' | 'tia' | 'campus' | 'rack' | 'custom'), prices: { [ligne]: prix },
 //     currency, labour: [{ name, qty, unit, price }], project: { client, site, author, date, rev }, rooms: { [pièce]:
-//     { tr (baie qui la dessert), outlets (nombre imposé) } }, ip: { block, gw: 'first'|'last', growth } (subnet.js) }
+//     { tr (baie qui la dessert), outlets (nombre imposé) } }, ip: { block, gw: 'first'|'last', growth } (subnet.js),
+//     exports: { csvHeaders: 'standard'|'local', csvSep: 'auto'|'semicolon'|'comma'|'tab', csvDecimal: 'auto'|'point'|'comma',
+//     dxfScheme (schéma de nommage des calques du DXF, dxfexport.js) } }
 //
 // Chiffres « de la norme » : 10 m² par poste de travail et 2 prises par poste (TIA-569 et TIA-568, normes payantes,
 // lus dans un guide public : clés de lim/design.js) ; 305 m par touret (fiche Leviton) ; 20:1 de surréservation entre
@@ -72,7 +74,7 @@ const RX_TOKEN = /^[^<>"'`]*$/;
 
 /** Paramètres de conception propres et bornés (fichier, IA, anciens projets). Idempotent. */
 export function cleanDesign(raw) {
-  const r = obj(raw), u = obj(r.usage), poe = obj(r.poe), sl = obj(r.slack), lb = obj(r.labels), pr = obj(r.prices), pj = obj(r.project), ip = obj(r.ip);
+  const r = obj(raw), u = obj(r.usage), poe = obj(r.poe), sl = obj(r.slack), lb = obj(r.labels), pr = obj(r.prices), pj = obj(r.project), ip = obj(r.ip), ex = obj(r.exports);
   const usage = {};
   for (const k of USAGE_IDS) {
     const d = USAGES[k], o = obj(u[k]);
@@ -105,7 +107,8 @@ export function cleanDesign(raw) {
     labour: (Array.isArray(r.labour) ? r.labour : []).slice(0, 50).map(l => obj(l)).map(l => ({ name: txt(l.name, 80), qty: num(l.qty, 0, 1e6, 1), unit: txt(l.unit, 12), price: num(l.price, 0, 1e9, 0) })).filter(l => l.name),
     project: { client: txt(pj.client, 80), site: txt(pj.site, 80), author: txt(pj.author, 80), date: /^\d{4}-\d{2}-\d{2}$/.test(pj.date || '') ? pj.date : '', rev: txt(pj.rev, 12) },
     rooms,
-    ip: { block: txt(ip.block, 20) || '10.10.0.0/16', gw: ip.gw === 'last' ? 'last' : 'first', growth: num(ip.growth, 0, 400, 20) }
+    ip: { block: txt(ip.block, 20) || '10.10.0.0/16', gw: ip.gw === 'last' ? 'last' : 'first', growth: num(ip.growth, 0, 400, 20), keep: ip.keep !== false && ip.keep !== 'no', minHosts: int(ip.minHosts, 1, 65534, 14) },
+    exports: { csvHeaders: ex.csvHeaders === 'local' ? 'local' : 'standard', csvSep: ['auto', 'semicolon', 'comma', 'tab'].includes(ex.csvSep) ? ex.csvSep : 'auto', csvDecimal: ['auto', 'point', 'comma'].includes(ex.csvDecimal) ? ex.csvDecimal : 'auto', dxfScheme: typeof ex.dxfScheme === 'string' && /^[\w-]{1,24}$/.test(ex.dxfScheme) ? ex.dxfScheme : 'standard' }
   };
 }
 
@@ -445,6 +448,9 @@ export function applyDesign(data, opts = {}) {
   if (!T.outlet || !T.panel || !T.sw48) return { created, skipped, notes: ['types'] };
   const usedPorts = new Set(); for (const c of data.cables) { usedPorts.add(c.a.join('|')); usedPorts.add(c.b.join('|')); }
   const fid = p => { let i = 1; while (ids.has(p + i)) i++; ids.add(p + i); return p + i; };
+  // Noms des équipements posés : préfixe du type (localisé : OBT/BLK, PASS/CM, OND/UPS…), noms de pièces coupés sur un mot.
+  const pre = t => (DEVICES[t] && DEVICES[t].prefix) || 'N';
+  const short = (s, n) => { s = String(s || ''); if (s.length <= n) return s; const c = s.slice(0, n + 1), k = Math.max(c.lastIndexOf(' '), c.lastIndexOf('-')); return (k >= 3 ? c.slice(0, k) : s.slice(0, n)).trim().replace(/(\s+\S{1,2})+$/, ''); };
   const fname = n => { let s = n.slice(0, 24), i = 2; while (names.has(s)) s = (n.slice(0, 20) + '-' + i++).slice(0, 24); names.add(s); return s; };
   const cid = () => { let i = data.cables.length + 1; while (cids.has('c' + i)) i++; cids.add('c' + i); return 'c' + i; };
   // Schéma logique : à droite de ce qui existe déjà.
@@ -501,7 +507,7 @@ export function applyDesign(data, opts = {}) {
   /** Cœur de réseau : celui déjà monté dans le local principal, sinon créé au premier besoin. */
   const coreDev = () => {
     if (core.dev || !multi || !T.core || !mainSp) return core.dev;
-    core.dev = data.devices.find(d => d.type === T.core && d.rack && mainSp.rackObjs.some(r => r.id === d.rack.id)) || addDev(T.core, 'CORE-' + mainSp.label, { x: x0 + 200, y: y0 }, { rack: mount(mainSp, T.core) });
+    core.dev = data.devices.find(d => d.type === T.core && d.rack && mainSp.rackObjs.some(r => r.id === d.rack.id)) || addDev(T.core, pre(T.core) + '-' + mainSp.label, { x: x0 + 200, y: y0 }, { rack: mount(mainSp, T.core) });
     core.ports = switchPorts(core.dev.type).up.concat(switchPorts(core.dev.type).acc).map(p => p.id);
     // Le cœur doit être la racine du Spanning Tree : priorité basse (vlan.js : par pas de 4096).
     if (core.dev.p && core.dev.p.stp && core.dev.p.stp.prio > 4096) core.dev.p.stp = { ...core.dev.p.stp, on: true, prio: 4096 };
@@ -528,7 +534,7 @@ export function applyDesign(data, opts = {}) {
     const cageP = portsOfType(d.type).find(p => p.id === port && p.sfp);
     if (cageP && d.p && d.p.sfp && typeof d.p.sfp === 'object') d.p.sfp[port] = fibre === 'os2' ? '10GBASE-LR' : '10GBASE-SR';
   };
-  const addFp = (sp, at) => { const d = addDev(T.fpanel, 'FO-' + sp.label, at, { rack: mount(sp, T.fpanel) }); if (T.mgr) addDev(T.mgr, 'PC-FO-' + sp.label, at, { rack: mount(sp, T.mgr) }); return { dev: d, next: 1 }; };
+  const addFp = (sp, at) => { const d = addDev(T.fpanel, pre(T.fpanel) + '-' + sp.label, at, { rack: mount(sp, T.fpanel) }); if (T.mgr) addDev(T.mgr, pre(T.mgr) + '-' + pre(T.fpanel) + '-' + sp.label, at, { rack: mount(sp, T.mgr) }); return { dev: d, next: 1 }; };
   /** Panneau optique du local principal : un déjà monté qui a des traversées libres, sinon un nouveau. */
   const mainFp = () => {
     if (!T.fpanel || !mainSp) return null;
@@ -551,13 +557,13 @@ export function applyDesign(data, opts = {}) {
     const y1 = y0 + 200, colW = Math.max(460, Math.min(12, outlets) * 56);
     // Panneaux et switchs, en alternance (panneaux, passe-câbles, switch) pour des cordons courts.
     const panels = [], switches = [];
-    const addPanel = () => { const L = letters(panels.length); panels.push(addDev(T.panel, 'PB-' + sp.label + '-' + L, { x: colX + 200 + (panels.length % 2) * 210, y: y1 + 200 + Math.floor(panels.length / 2) * 60 }, { rack: mount(sp, T.panel) })); };
-    const addMgr = () => { if (T.mgr) addDev(T.mgr, 'PC-' + sp.label + '-' + (panels.length + switches.length), { x: colX, y: y1 }, { rack: mount(sp, T.mgr) }); };
+    const addPanel = () => { const L = letters(panels.length); panels.push(addDev(T.panel, pre(T.panel) + '-' + sp.label + '-' + L, { x: colX + 200 + (panels.length % 2) * 210, y: y1 + 200 + Math.floor(panels.length / 2) * 60 }, { rack: mount(sp, T.panel) })); };
+    const addMgr = () => { if (T.mgr) addDev(T.mgr, pre(T.mgr) + '-' + sp.label + '-' + (panels.length + switches.length), { x: colX, y: y1 }, { rack: mount(sp, T.mgr) }); };
     // Un passe-câbles contre chaque panneau : panneau, passe-câbles, panneau, puis le switch qu'ils servent.
     const group = n => { for (let j = 0; j < n && panels.length < nPanels; j++) { addPanel(); if (j === 0) addMgr(); } };
     for (const s of sws) for (let k = 0; k < s.n; k++) {
       group(Math.max(1, Math.round(s.ports / pp)));
-      switches.push(addDev(s.type, 'SW-' + sp.label + '-' + (switches.length + 1), { x: colX + (switches.length % 2) * 210, y: y1 + Math.floor(switches.length / 2) * 60 }, { rack: mount(sp, s.type) }));
+      switches.push(addDev(s.type, pre(s.type) + '-' + sp.label + '-' + (switches.length + 1), { x: colX + (switches.length % 2) * 210, y: y1 + Math.floor(switches.length / 2) * 60 }, { rack: mount(sp, s.type) }));
     }
     while (panels.length < nPanels) group(2);
     created.panels += panels.length; created.switches += switches.length;
@@ -568,7 +574,7 @@ export function applyDesign(data, opts = {}) {
       const ceiling = r.aps + r.cams, wall = Math.max(0, r.outlets - ceiling), per = (T.outlet === 'outlet2' ? 2 : 1), plates = Math.ceil(wall / per);
       const pts = room ? alongWalls(room.poly, plates, 0.3) : [];
       for (let i = 0; i < plates; i++) {
-        const o = addDev(T.outlet, 'PR-' + (r.name || r.id).slice(0, 12) + '-' + (i + 1), { x: colX + (k % 12) * 56, y: y1 + 260 + Math.ceil(nPanels / 2) * 60 + Math.floor(k / 12) * 70 }, pts[i] ? { loc: { floor: r.floor, x: pts[i][0], y: pts[i][1], h: 0.3 } } : {});
+        const o = addDev(T.outlet, pre(T.outlet) + '-' + short(r.name || r.id, 14) + '-' + (i + 1), { x: colX + (k % 12) * 56, y: y1 + 260 + Math.ceil(nPanels / 2) * 60 + Math.floor(k / 12) * 70 }, pts[i] ? { loc: { floor: r.floor, x: pts[i][0], y: pts[i][1], h: 0.3 } } : {});
         k++; created.outlets++;
         const bk = portsOfType(T.outlet).filter(p => p.punch);
         for (let j = 0; j < Math.min(per, wall - i * per); j++) slots.push({ dev: o, port: bk[j].id, room: r, phone: i < r.phones, j });
@@ -578,7 +584,7 @@ export function applyDesign(data, opts = {}) {
         // Point d'accès déjà posé (plan Wi-Fi) : sa prise au plafond à côté de lui, et le cordon qui le relie.
         const ap = i < r.aps && r.apIds[i] ? data.devices.find(d => d.id === r.apIds[i]) : null;
         const at = ap && ap.loc ? { floor: ap.loc.floor, x: +(ap.loc.x + 0.3).toFixed(2), y: +ap.loc.y.toFixed(2), h: +Math.max(2.2, h - 0.3).toFixed(2) } : c ? { floor: r.floor, x: +(c[0] + (i % 2 ? 0.8 : -0.8) * Math.ceil(i / 2)).toFixed(2), y: +c[1].toFixed(2), h: +Math.max(2.2, h - 0.3).toFixed(2) } : null;
-        const t1 = T.single || T.outlet, o = addDev(t1, (i < r.aps ? 'PR-AP-' : 'PR-CAM-') + (r.name || r.id).slice(0, 10), { x: colX + (k % 12) * 56, y: y1 + 260 + Math.ceil(nPanels / 2) * 60 + Math.floor(k / 12) * 70 }, at ? { loc: at } : {});
+        const t1 = T.single || T.outlet, o = addDev(t1, pre(t1) + (i < r.aps ? '-AP-' : '-CAM-') + short(r.name || r.id, 12), { x: colX + (k % 12) * 56, y: y1 + 260 + Math.ceil(nPanels / 2) * 60 + Math.floor(k / 12) * 70 }, at ? { loc: at } : {});
         k++; created.outlets++;
         if (ap) { const pd = portsOfType(ap.type).find(p => !p.passive), fr = portsOfType(t1).find(p => p.passive && !p.punch); if (pd && fr) { addCable([ap.id, pd.id], [o.id, fr.id], { len: 1 }); ap.x = o.x; ap.y = o.y + 70; } }
         slots.push({ dev: o, port: portsOfType(t1).find(p => p.punch).id, room: r, ap: i < r.aps });
@@ -620,13 +626,13 @@ export function applyDesign(data, opts = {}) {
   // switchs et le PoE prévu, avec la marge), obturateurs sur les U libres en façade (bonne pratique de refroidissement).
   for (const [rid, sp] of touched) {
     const rk = data.racks.find(r => r.id === rid), devs = data.devices.filter(d => d.rack && d.rack.id === rid), lbl = rk.name;
-    if (T.pdu && !devs.some(d => /^pdu/.test(d.type))) addDev(T.pdu, 'PDU-' + lbl, { x: 0, y: 0 }, { rack: { id: rid, u: 1, face: 'rear' } });
+    if (T.pdu && !devs.some(d => /^pdu/.test(d.type))) addDev(T.pdu, pre(T.pdu) + '-' + lbl, { x: 0, y: 0 }, { rack: { id: rid, u: 1, face: 'rear' } });
     if (T.ups.length && !devs.some(d => RACK.MOUNT[d.type] && RACK.MOUNT[d.type].ups)) {
       const share = sp.rackObjs.length || 1, load = devs.reduce((a, d) => a + mountOf(d.type).w, 0) + (sp.poe ? sp.poe.need / share : 0);
       const t = pickUps(T, load * (1 + D.upsMargin / 100)), at = t && mountLow(rk, t);
-      if (at) addDev(t, 'UPS-' + lbl, { x: 0, y: 0 }, { rack: at });
+      if (at) addDev(t, pre(t) + '-' + lbl, { x: 0, y: 0 }, { rack: at });
     }
-    if (opts.blanks !== false && T.blank) { const o = occ(rk); for (let u = 1; u <= (+rk.u || D.rackU); u++) if (!o.has(u)) { o.set(u, { type: 'blank' }); addDev(T.blank, 'OBT-' + lbl + '-' + u, { x: 0, y: 0 }, { rack: { id: rid, u, face: 'front' } }); } }
+    if (opts.blanks !== false && T.blank) { const o = occ(rk); for (let u = 1; u <= (+rk.u || D.rackU); u++) if (!o.has(u)) { o.set(u, { type: 'blank' }); addDev(T.blank, pre(T.blank) + '-' + lbl + '-' + u, { x: 0, y: 0 }, { rack: { id: rid, u, face: 'front' } }); } }
   }
   // VLAN de base (base des VLAN de vlan.js) : seulement ceux qui manquent.
   if (opts.vlans !== false) {

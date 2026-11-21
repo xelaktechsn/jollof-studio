@@ -17,6 +17,7 @@ import { icon } from '../ui/icons.js';
 import { createTools } from './tools.js';
 import { createMcp, clientKey } from './mcp.js';
 import './ai.css';
+import { netOnly } from '../ui/kind.js';
 
 const KEY = 'jollof-ai', ALLOWED = 'jollof-ai-allowed';
 const store = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } } };
@@ -26,6 +27,8 @@ const QUIET = new Set(['get_project', 'list_parts', 'get_part', 'check_circuit',
 const nameOf = c => (c && (c.title || c.name)) || tl('assistant');
 
 export function installAi(H) {
+  // Projet réseau seul : l'assistant dessine et configure le réseau ; il ne pose aucun composant électronique.
+  const netProj = () => !!(H.kind && netOnly(H.kind()));
   const desk = isTauri();
   const log = []; // { t, who, tool, ok, text }
   let info = null, lastAct = 0, logEl = null, repaint = null;
@@ -45,7 +48,7 @@ export function installAi(H) {
     await focus();
     const v = await dialog({
       title: tl('Autoriser cet assistant ?'),
-      body: `<p class="dlgText">${tl('« {0} » demande à piloter Jollof Studio : poser et câbler des composants, écrire le programme, simuler, créer des composants. Chaque action s’annule avec Ctrl+Z.', esc(nameOf(client)))}</p><p class="dlgText aiNote">${tl('Jollof Studio s’en souviendra : l’accès se retire à tout moment dans le panneau IA.')}</p>`,
+      body: `<p class="dlgText">${netProj() ? tl('« {0} » demande à piloter Jollof Studio : dessiner les plans, poser les équipements et les baies, câbler, adresser, dimensionner et certifier le réseau. Chaque action s’annule avec Ctrl+Z.', esc(nameOf(client))) : tl('« {0} » demande à piloter Jollof Studio : poser et câbler des composants, écrire le programme, simuler, créer des composants. Chaque action s’annule avec Ctrl+Z.', esc(nameOf(client)))}</p><p class="dlgText aiNote">${tl('Jollof Studio s’en souviendra : l’accès se retire à tout moment dans le panneau IA.')}</p>`,
       actions: [{ label: tl('Refuser'), value: false }, { label: tl('Autoriser'), value: true, kind: 'primary' }]
     });
     if (v) setAllowed([...allowed(), { name: clientKey(client), title: nameOf(client) }]);
@@ -114,20 +117,20 @@ export function installAi(H) {
     const body = document.createElement('div');
     body.className = 'aiPanel';
     if (!desk) {
-      body.innerHTML = `<p class="aiLead">${tl('Votre assistant IA (Claude, Cursor, VS Code…) peut piloter Jollof Studio : poser et câbler des composants, écrire le programme, simuler, créer des composants, sans copier-coller.')}</p>
+      body.innerHTML = `<p class="aiLead">${netProj() ? tl('Votre assistant IA (Claude, Cursor, VS Code…) peut piloter Jollof Studio : dessiner les plans, poser les équipements et les baies, câbler, adresser et certifier le réseau, sans copier-coller.') : tl('Votre assistant IA (Claude, Cursor, VS Code…) peut piloter Jollof Studio : poser et câbler des composants, écrire le programme, simuler, créer des composants, sans copier-coller.')}</p>
         <p class="aiNote">${tl('Cette fonction est dans l’application de bureau Jollof Studio (Mac, Windows, Linux) : un navigateur ne peut pas recevoir les commandes d’un assistant.')}</p>`;
       dialog({ title: tl('Assistants IA'), body, width: 560, cls: 'aiDialog' });
       return;
     }
     body.innerHTML = `
-      <p class="aiLead">${tl('Votre assistant IA pilote Jollof Studio : il pose et câble les composants, écrit le programme, lance la simulation, lit les mesures et crée de nouveaux composants. Chaque action s’annule avec Ctrl+Z.')}</p>
+      <p class="aiLead">${netProj() ? tl('Votre assistant IA pilote Jollof Studio : il dessine les plans d’étage, pose les équipements et les baies, câble, règle les VLAN et les adresses, dimensionne, certifie les liens et lit les problèmes du vérificateur. Chaque action s’annule avec Ctrl+Z.') : tl('Votre assistant IA pilote Jollof Studio : il pose et câble les composants, écrit le programme, lance la simulation, lit les mesures et crée de nouveaux composants. Chaque action s’annule avec Ctrl+Z.')}</p>
       <section class="aiSec">
         <label class="aiSwitch"><input type="checkbox" id="aiOn"><span>${tl('Autoriser les assistants IA sur cet ordinateur')}</span></label>
         <p class="aiState" id="aiState"></p>
       </section>
       <section class="aiSec" id="aiClientsSec">
         <h4>${tl('Vos assistants')}</h4>
-        <p class="aiNote">${tl('« Relier » ajoute Jollof Studio à la configuration de l’assistant ; ensuite, il suffit de lui parler (« fais-moi une station météo sur un ESP32 »).')}</p>
+        <p class="aiNote">${netProj() ? tl('« Relier » ajoute Jollof Studio à la configuration de l’assistant ; ensuite, il suffit de lui parler (« dessine le réseau d’un étage de bureaux de vingt postes »).') : tl('« Relier » ajoute Jollof Studio à la configuration de l’assistant ; ensuite, il suffit de lui parler (« fais-moi une station météo sur un ESP32 »).')}</p>
         <ul class="aiClients" id="aiClients"></ul>
         <details class="aiOther"><summary>${tl('Autre assistant compatible MCP')}</summary><p class="aiNote">${tl('Déclarez un serveur MCP « stdio » qui lance cette commande :')}</p><code class="aiCmd" id="aiCmd"></code></details>
       </section>

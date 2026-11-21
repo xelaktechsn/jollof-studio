@@ -24,7 +24,11 @@
 /* Infobulles à droite de la colonne. */
 .actBar [data-tip]:hover::after, .actBar [data-tip]:focus-visible::after { left: calc(100% + 10px); top: 50%; transform: translateY(-50%); animation-name: fadeIn; }
 /* Les boutons repris par la barre d'activité et par les onglets restent dans la page (leurs actions y sont branchées), cachés. */
-.appbar .abTools, .appbar .abSpaces, .appbar #libToggle, .appbar .wsSwitch, .appbar .pnSplitBtn, #stageView { display: none !important; }
+/* Boutons repris par la barre d'activité : rendus hors de l'écran plutôt que display: none, sinon WebKit ne recalcule pas
+   leur style quand le plan de travail change (une règle « .app.netMode #schBtn { display: none } » restait sans effet
+   pour getComputedStyle, et leur reflet restait visible). */
+.appbar .abTools, .appbar .abSpaces { position: fixed !important; left: -10000px !important; top: 0 !important; visibility: hidden !important; pointer-events: none !important; }
+.appbar #libToggle, .appbar .wsSwitch, .appbar .pnSplitBtn, #stageView { display: none !important; }
 .abEnd > .abRun { margin-left: 0; padding-left: 0; }
 .abEnd > .abRun::before { content: none; }
 
@@ -94,6 +98,7 @@
 .dkLine.cmd span { color: var(--accent-hi); }
 .dkLine b.n { flex: none; color: var(--muted); font-weight: 500; }
 .dkLog:empty::before { content: attr(data-empty); color: var(--muted); }
+.app[data-kind="net"] .dkLog:empty::before { content: attr(data-empty-net); }
 
 /* ---------- Barre d'état : compteur de problèmes, message cliquable ---------- */
 .sbProblems { appearance: none; display: inline-flex; align-items: center; gap: 5px; height: 100%; margin: 0 2px 0 -8px; padding: 0 8px; border: 0; background: none; color: var(--muted); font: 500 11px var(--mono); cursor: pointer; }

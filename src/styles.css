@@ -1168,6 +1168,10 @@ canvas.picking { cursor: crosshair !important; }
 .checkChip.ok { color: var(--ok); }
 .checkChip.err { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); background: color-mix(in srgb, var(--danger) 12%, transparent); }
 .checkChip.warn { color: var(--warn); }
+.checkChip.idle { color: var(--muted); }
+/* Thème clair : texte de la pastille foncé (contraste d'au moins 4,5:1 sur son fond pâle). */
+:root[data-theme="light"] .checkChip.ok { color: var(--ok-ink); }
+:root[data-theme="light"] .checkChip.warn { color: var(--warn-ink); }
 .checkChip.busy .ic { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .checkSheet { width: min(980px, 100%); max-height: calc(100vh - 48px); overflow: hidden; }

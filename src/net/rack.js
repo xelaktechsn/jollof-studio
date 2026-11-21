@@ -21,6 +21,8 @@
 //   rackIndex(data) → Map(id de baie → équipements), facesOf(d, rack), spanOf(d)
 //   occupancy(rack, devs) → { front, rear (tableaux [U] → id), collisions, outside, freeFront, usedU }
 //   canPlace(data, rack, dev, u, face) → { ok, why?: 'type' | 'outside' | 'clash', with? }, findFree(data, rack, dev, face, near)
+//   canPlaceGroup(data, rack, [{ dev, u, face }]), findGroupBase(data, rack, [{ dev, du, face }], near, { block }), freeFrontU(rack, devs),
+//   managerSlots(rack, devs) → [{ panel, u, face }]
 //   devicePower(d, lan, basis), upsRuntime(ups, loadW, ebm), rackPower(rack, devs, lan)
 //   cableManagers(rack, devs), blanksNeeded(rack, devs, occ), rackSummary(data, rack, lan, idx), racksSummary(data, lan)
 //   patchingSchedule(data, lan, { rack?, all? }) → lignes { rack, rackId, panel, panelId, port, portId, outlet, outletId,
@@ -172,6 +174,65 @@ export function findFree(data, rack, dev, face = 'front', near = 1) {
   order.sort((a, b) => Math.abs(a - near) - Math.abs(b - near) || a - b);
   for (const k of order) if (canPlace(data, rack, dev, k, face).ok) return k;
   return 0;
+}
+
+/**
+ * Plusieurs équipements placés ensemble (déplacement groupé, collage) : moves = [{ dev, u, face }] ; les autres
+ * équipements de la baie restent où ils sont. Rend { ok, why?: 'type' | 'outside' | 'clash', dev?, with? }.
+ */
+export function canPlaceGroup(data, rack, moves) {
+  const moved = new Set(moves.map(x => x.dev.id));
+  const others = (data.devices || []).filter(x => x.rack && x.rack.id === rack.id && !moved.has(x.id));
+  const front = new Array(rack.u + 2).fill(null), rear = new Array(rack.u + 2).fill(null);
+  const mark = (d, u, face, check) => {
+    const m = MOUNT[d.type]; if (!m || !m.u) return null;
+    for (const f of facesOf({ ...d, rack: { id: rack.id, u, face } }, rack, face)) {
+      const arr = f === 'front' ? front : rear;
+      for (let k = Math.max(1, u); k <= Math.min(rack.u, u + m.u - 1); k++) { if (arr[k] && check) return arr[k]; arr[k] = d.id; }
+    }
+    return null;
+  };
+  for (const o of others) mark(o, o.rack.u, o.rack.face, false);
+  for (const { dev, u, face } of moves) {
+    const m = MOUNT[dev.type]; if (!m) return { ok: false, why: 'type', dev: dev.id };
+    if (m.u && (u < 1 || u + m.u - 1 > rack.u)) return { ok: false, why: 'outside', dev: dev.id };
+    const w = mark(dev, u, face, true); if (w) return { ok: false, why: 'clash', dev: dev.id, with: w };
+  }
+  return { ok: true };
+}
+/**
+ * U de base où poser un groupe (collage, duplication) : items = [{ dev, du (décalage depuis la base, en U), face }] ; on
+ * essaie d'abord near, puis les U les plus proches. Rend la base (U du bas du groupe) ou 0 s'il n'y a pas la place.
+ */
+export function findGroupBase(data, rack, items, near = 1, o = {}) {
+  const top = Math.max(0, ...items.map(it => it.du + ((MOUNT[it.dev.type] || {}).u || 1) - 1));
+  const order = []; for (let b = 1; b + top <= rack.u; b++) order.push(b);
+  order.sort((a, b) => Math.abs(a - near) - Math.abs(b - near) || a - b);
+  // o.block : le groupe garde un seul bloc d'U (rien d'autre entre ses équipements, en façade).
+  const ids = new Set(items.map(it => it.dev.id));
+  const occ = o.block ? occupancy(rack, (data.devices || []).filter(x => x.rack && x.rack.id === rack.id && !ids.has(x.id))) : null;
+  for (const b of order) {
+    if (occ) { let busy = false; for (let k = b; k <= b + top; k++) if (occ.front[k]) { busy = true; break; } if (busy) continue; }
+    if (canPlaceGroup(data, rack, items.map(it => ({ dev: it.dev, u: b + it.du, face: it.face }))).ok) return b;
+  }
+  return 0;
+}
+/** U libres en façade (pour les obturateurs) : ni l'avant ni un équipement profond ne les occupent. */
+export function freeFrontU(rack, devs) {
+  const occ = occupancy(rack, devs), out = [];
+  for (let k = 1; k <= rack.u; k++) if (!occ.front[k]) out.push(k);
+  return out;
+}
+/** Passe-câbles à ajouter : pour chaque panneau sans passe-câbles, un U libre juste au-dessus (sinon au-dessous). */
+export function managerSlots(rack, devs) {
+  const occ = occupancy(rack, devs), out = [], taken = new Set();
+  for (const id of cableManagers(rack, devs).missing) {
+    const p = devs.find(d => d.id === id), s = spanOf(p); if (!s) continue;
+    const face = p.rack.face === 'rear' ? 'rear' : 'front', arr = face === 'front' ? occ.front : occ.rear;
+    const u = [s[1] + 1, s[0] - 1].find(k => k >= 1 && k <= rack.u && !arr[k] && !taken.has(face + k));
+    if (u) { taken.add(face + u); out.push({ panel: id, u, face }); }
+  }
+  return out;
 }
 
 /* ---------- Puissance, chaleur, PDU, onduleurs ---------- */

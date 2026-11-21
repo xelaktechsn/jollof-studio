@@ -1019,6 +1019,8 @@ export function installPneu(app) {
 
   /* ---------- Données du projet ---------- */
   app.register('pneu', {
+    /** Projet fermé (main.js, closeCurrent) : machine 3D et construction de la machine refermées. */
+    close() { closeBuild(); close3d(); },
     save: () => { const c = ed.circuit(); return c.elements.length || (c.grafcet && c.grafcet.steps.length > 1) || (c.plc && c.plc.rungs.length) ? { circuit: JSON.parse(JSON.stringify(c)) } : null; },
     load(d) {
       ed.setCircuit(clean(d && d.circuit)); resetRun(); fitted = false; syncGrafcet(); syncPlc(); sync3d();

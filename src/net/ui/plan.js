@@ -17,6 +17,7 @@ import { PATH_KINDS, cleanPaths, routeCable } from '../route.js';
 import { worldSvg, overSvg, fmtNum, wallQuad, rackQuad, devIconName } from './plan-draw.js';
 import { paneHtml, paneEvent } from './plan-pane.js';
 import { addDemoFloor, freePort, addDetectedRooms, removeRackFrom } from './plan-demo.js';
+import { copySel, pasteClip, alignSel, moveToFloor, jumpsFor } from './plan-edit.js';
 import * as RK from '../rack.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -36,6 +37,8 @@ const KEY_TOOL = Object.fromEntries(TOOLS.map(t => [t[2].toLowerCase(), t[0]]));
 /** Hauteur de pose proposée (m) selon le genre d'équipement : réglage modifiable dans la carte de l'équipement. */
 const defaultH = (type, f) => (/^(ap|camera)/.test(type) ? f.ceil || 2.7 : /^outlet/.test(type) ? 0.3 : /^(pc|laptop|phone|printer)/.test(type) ? 0.75 : 1.5);
 
+/** Presse-papiers des plans (partagé par les étages et les bâtiments du projet ouvert). */
+const CLIP = { c: null };
 /** ctx : voir workspace.js (contrat des vues). Rend { el, show, hide, render, key, keyup, fit, reveal, pane, paneEvent, drop }. */
 export function createPlanView(ctx) {
   const el = document.createElement('div'); el.className = 'ntVw ntPl'; el.hidden = true;
@@ -50,12 +53,14 @@ export function createPlanView(ctx) {
         <button type="button" class="segBtn" data-layer="image" data-tip="${tl('Plan importé sous le dessin')}">${icon('image')}</button>
         <button type="button" class="segBtn" data-layer="routes" data-tip="${tl('Tracé des câbles de l’équipement choisi')}">${icon('route')}</button>
         <button type="button" class="segBtn" data-layer="wifi" data-tip="${tl('Calque Wi-Fi : couverture des points d’accès')}">${icon('wifi')}<span>Wi-Fi</span></button>
+        <button type="button" class="segBtn" data-layer="cad" data-tip="${tl('Fond de plan DXF : calques, opacité, position')}">${icon('layers')}</button>
       </div>
     </div>
     <div class="ntBar bottom ntPlBottom"><div class="glass ntPlScale"><i></i><span></span></div><div class="glass ntPlInfo" hidden></div><span class="grow"></span><span class="ntHint glass ntPlHint"></span></div>
     <div class="glass ntPlWifi" hidden></div>
     <form class="glass ntPlCalib" hidden><b>${icon('calibrate')}${tl('Étalonner le plan importé')}</b><label>${tl('Distance réelle entre les deux points (m)')}<input class="inp" name="d" type="number" min="0.01" step="0.01" required></label><div class="row"><button type="button" class="btn small subtle" data-calib="no">${tl('Fermer')}</button><button class="btn small primary">${tl('Appliquer')}</button></div></form>
-    <div class="ntPlEmpty" hidden><div class="ntEmptyCard">${icon('floorPlan')}<b>${tl('Plans d’étage')}</b><p>${tl('Dessinez le bâtiment à l’échelle : murs, pièces, local technique, chemins de câbles. Les prises et les points d’accès posés ici donnent aux câbles leur longueur réelle.')}</p><div class="row"><button type="button" class="btn primary" data-pla="newBuilding">${icon('plus')}<span>${tl('Nouveau bâtiment')}</span></button><button type="button" class="btn" data-pla="demo">${icon('floorPlan')}<span>${tl('Étage d’exemple')}</span></button></div></div></div>
+    <div class="ntPlStart" hidden><b>${tl('Cet étage est vide')}</b><p>${tl('Commencez par le bâtiment : importez le plan de l’architecte, ou dessinez les murs et les pièces. Les prises et les points d’accès se glissent ensuite depuis la bibliothèque.')}</p><div class="row"><button type="button" class="btn primary" data-pla="cad">${icon('upload')}<span>${tl('Importer un plan DXF ou DWG…')}</span></button><button type="button" class="btn" data-pltool="wall">${icon('wall')}<span>${tl('Dessiner les murs')}</span><kbd>W</kbd></button><button type="button" class="btn" data-pla="image">${icon('image')}<span>${tl('Image du plan')}</span></button><button type="button" class="btn subtle" data-pla="demo">${icon('floorPlan')}<span>${tl('Étage d’exemple')}</span></button></div></div>
+    <div class="ntPlEmpty" hidden><div class="ntEmptyCard">${icon('floorPlan')}<b>${tl('Plans d’étage')}</b><p>${tl('Dessinez le bâtiment à l’échelle : murs, pièces, local technique, chemins de câbles. Les prises et les points d’accès posés ici donnent aux câbles leur longueur réelle.')}</p><div class="row"><button type="button" class="btn primary" data-pla="newBuilding">${icon('plus')}<span>${tl('Nouveau bâtiment')}</span></button><button type="button" class="btn" data-pla="demo">${icon('floorPlan')}<span>${tl('Étage d’exemple')}</span></button><button type="button" class="btn" data-pla="cad">${icon('upload')}<span>${tl('Importer un plan DXF ou DWG…')}</span></button></div></div></div>
     <input class="ntPlFile" type="file" accept="image/png,image/jpeg,image/webp" hidden>`;
   ctx.host.appendChild(el);
   const $ = s => el.querySelector(s);
@@ -63,6 +68,14 @@ export function createPlanView(ctx) {
   const V = { x: -2, y: -2, k: 24 };
   const S = { floor: null, tool: 'select', pathKind: 'tray', wallMat: 'block', usage: 'office', draft: null, rect: null, link: null, multi: [], layers: { image: true, routes: true, wifi: false }, seen: new Set(), views: new Map() };
   let wifi = null, labeler = null, raf = 0, rafW = 0;
+  // Fond DXF/DWG (plan-underlay.js, à la demande) : chargé quand l'étage montré en a un, ou à l'ouverture de sa carte.
+  let cad = null, cadP = null;
+  const cadHas = f => !!(f && ctx.data().underlays && ctx.data().underlays[f.id]);
+  function cadLoad() {
+    if (!cadP) cadP = import('./plan-underlay.js').then(m => { cad = m.createUnderlayLayer(ctx, { el, stage, svg, view: () => V, floor, repaint: () => paint(), hidden: () => el.hidden, cardChanged: on => { S.layers.cad = on; paintTools(); }, act: a => (a === 'wall' || a === 'path' ? setTool(a) : null) }); if (cadHas(floor())) requestAnimationFrame(fit); paintOver(); return cad; }).catch(e => { console.error(e); cadP = null; return null; });
+    return cadP;
+  }
+  const cadImport = () => import('./cadimport.js').then(m => m.openCadImport(ctx, null, { floor: S.floor })).catch(e => { console.error(e); ctx.status(tl('L’import DXF n’a pas pu se charger.'), 'err'); });
   import('../docs.js').then(m => { if (typeof m.labeler === 'function') { labeler = m.labeler; paintOver(); } }).catch(() => {});
 
   /* ---------- Modèle courant ---------- */
@@ -104,6 +117,7 @@ export function createPlanView(ctx) {
     for (const x of d.devices) if (x.loc && x.loc.floor === f.id) P.push([x.loc.x, x.loc.y]);
     for (const r of d.racks || []) if (r.floor === f.id) P.push([r.x, r.y]);
     if (f.image && S.layers.image) { const im = f.image; P.push([im.x, im.y], [im.x + im.iw * im.scale, im.y + im.ih * im.scale]); }
+    const ub = cad && cad.bounds(f); if (ub) P.push([ub[0], ub[1]], [ub[2], ub[3]]);
     return P.length ? bbox(P) : null;
   }
   function fitTo(b) {
@@ -153,6 +167,7 @@ export function createPlanView(ctx) {
   function paintWorld() {
     const f = floor(), d = data();
     el.querySelector('.ntPlEmpty').hidden = !!f;
+    el.querySelector('.ntPlStart').hidden = !f || S.tool !== 'select' || !!(f.walls.length || f.rooms.length || f.image || cadHas(f) || d.devices.some(x => x.loc && x.loc.floor === f.id) || (d.paths || []).some(p => p.floor === f.id));
     if (!f) { gW.innerHTML = ''; return; }
     const im = f.image && S.layers.image ? d.images[f.image.id] : null;
     gW.innerHTML = worldSvg(d, f, { sel: selKeys(), img: im, legs, bad, k: V.k });
@@ -160,7 +175,8 @@ export function createPlanView(ctx) {
   function paintOverNow() {
     raf = 0; const f = floor(); if (!f) { gO.innerHTML = ''; return; }
     const r = rect();
-    gO.innerHTML = overSvg(data(), f, { toS, W: r.width, H: r.height, k: V.k, sel: selKeys(), en: isEn, name: devName, draft: S.draft, rect: S.rect, link: S.link, handles: handles(f), bad });
+    const so = { toS, W: r.width, H: r.height, k: V.k, sel: selKeys(), en: isEn, name: devName, draft: S.draft, rect: S.rect, link: S.link, handles: handles(f), bad, guides: S.guides };
+    gO.innerHTML = overSvg(data(), f, so); S.placed = so.placed || [];
     paintCanvas();
   }
   function paintOver() { if (!raf) raf = requestAnimationFrame(paintOverNow); }
@@ -168,11 +184,12 @@ export function createPlanView(ctx) {
   function paint() { computeLegs(); paintWorld(); paintFloors(); paintTools(); paintInfo(); paintWifi(); applyView(); }
   function paintSoon() { if (!rafW) rafW = requestAnimationFrame(() => { rafW = 0; paintWorld(); paintOverNow(); }); }
   function paintCanvas() {
+    if (cad) cad.paint(); else if (cadHas(floor())) cadLoad();
     const w = stage.clientWidth, h = stage.clientHeight;
     if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
     const g = cv.getContext('2d'); g.clearRect(0, 0, w, h);
     const f = floor();
-    if (S.layers.wifi && wifi && f) { try { wifi.paint(cv, { floor: f, view: { x: V.x, y: V.y, k: V.k }, data: data() }); } catch (e) { console.error(e); } }
+    if (S.layers.wifi && wifi && f) { try { wifi.paint(cv, { floor: f, view: { x: V.x, y: V.y, k: V.k }, data: data(), avoid: S.placed || [], sel: (ctx.selection() || {}).id }); } catch (e) { console.error(e); } }
   }
   /** Poignées de l'objet choisi seul (sommets), en pixels. */
   function handles(f) {
@@ -186,14 +203,29 @@ export function createPlanView(ctx) {
   function paintFloors() {
     const d = data(), b = building(), f = floor(), bs = d.site.buildings;
     let h = '';
+    // Vue étroite (1280 × 720, panneaux ouverts) : un seul menu bâtiment · étage, les outils restent sur une ligne.
+    const narrow = stage.clientWidth && stage.clientWidth < 860;
+    if (b && narrow) {
+      h += `<select class="sel ntPlFSel" data-plfsel aria-label="${tl('Étage')}" data-tip="${tl('Bâtiment et étage')}">${bs.map(x => `<optgroup label="${esc(x.name)}">${x.floors.map(y => `<option value="${esc(y.id)}"${f && y.id === f.id ? ' selected' : ''}>${esc(bs.length > 1 ? x.name + ' · ' + y.name : y.name)}</option>`).join('')}</optgroup>`).join('')}</select>`;
+      h += `<button type="button" class="tb" data-plmenu data-tip="${tl('Étages et bâtiments')}" aria-label="${tl('Étages et bâtiments')}">${icon('plus')}</button>`;
+      $('.ntPlFloors').innerHTML = h; $('.ntPlFloors').hidden = false; S.narrow = true; return;
+    }
+    S.narrow = false;
     if (bs.length > 1) h += `<select class="sel ntPlBld" data-plb aria-label="${tl('Bâtiment')}">${bs.map(x => `<option value="${esc(x.id)}"${b && x.id === b.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`;
     else if (b) h += `<button type="button" class="ntPlBName" data-plbsel data-tip="${tl('Réglages du bâtiment')}">${icon('building')}<span>${esc(b.name)}</span></button>`;
     if (b) h += b.floors.map(x => `<button type="button" role="tab" class="ntPlFTab" data-plf="${esc(x.id)}" aria-selected="${f && x.id === f.id}" data-tip="${esc(tl('Niveau {0} · altitude {1} m', x.level, fmtNum(x.elev, 2, isEn)))}">${esc(x.name)}</button>`).join('');
     h += `<button type="button" class="tb" data-plmenu data-tip="${tl('Étages et bâtiments')}" aria-label="${tl('Étages et bâtiments')}">${icon('plus')}</button>`;
-    $('.ntPlFloors').innerHTML = h;
+    $('.ntPlFloors').innerHTML = h; $('.ntPlFloors').hidden = !b;
   }
   function paintTools() {
-    el.querySelectorAll('[data-pltool]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.pltool === S.tool)));
+    const none = !floor();
+    el.querySelectorAll('.ntPlTools [data-pltool]').forEach(b => {
+      b.setAttribute('aria-pressed', String(b.dataset.pltool === S.tool));
+      // Pas encore de bâtiment : les outils de dessin attendent (la carte vide propose d'en créer un).
+      const off = none && b.dataset.pltool !== 'select'; b.disabled = off;
+      if (!b.dataset.tip0) b.dataset.tip0 = b.dataset.tip || '';
+      b.dataset.tip = off ? tl('Créez d’abord un bâtiment') : b.dataset.tip0;
+    });
     el.querySelectorAll('[data-layer]').forEach(b => b.setAttribute('aria-pressed', String(!!S.layers[b.dataset.layer])));
     const sub = $('.ntPlSub');
     if (S.tool === 'path') sub.innerHTML = `<label><span>${tl('Genre')}</span><select class="sel" data-plsub="pathKind">${Object.entries(PATH_KINDS).map(([k, x]) => `<option value="${k}"${k === S.pathKind ? ' selected' : ''}>${esc(x.name())}</option>`).join('')}</select></label>`;
@@ -202,6 +234,8 @@ export function createPlanView(ctx) {
     else sub.innerHTML = '';
     sub.hidden = !sub.innerHTML;
     const t = TOOLS.find(x => x[0] === S.tool);
+    // Bulle d'aide de l'outil : quelques secondes après le changement d'outil, puis elle s'efface (l'infobulle reste).
+    const hint = $('.ntPlHint'); if (S.hintTool !== S.tool) { S.hintTool = S.tool; hint.classList.remove('out'); clearTimeout(S.hintT); S.hintT = setTimeout(() => hint.classList.add('out'), 6000); }
     $('.ntPlHint').textContent = S.tool === 'calib' ? tl('Étalonnage : cliquez deux points du plan importé dont vous connaissez la distance.') : t ? t[4]() : '';
   }
   /** Carte d'information en bas : équipement choisi (hauteur de pose, pièce) ou tracé d'un câble. */
@@ -239,7 +273,13 @@ export function createPlanView(ctx) {
   function paintWifi() {
     const ap = S.layers.wifi && wifi ? selAp() : null;
     wcard.hidden = !ap;
-    if (ap) wcard.innerHTML = wifiHtml(ap);
+    if (!ap) return;
+    // Réglages radio seuls, repliables, rangés en haut à droite (ou à gauche si le point d'accès est dessous).
+    let h = ''; try { h = wifi.apPane ? wifi.apPane(ap) : ''; } catch (e) { console.error(e); }
+    const open = wcard.dataset.open !== '0';
+    wcard.innerHTML = `<details class="ntPlWfAp"${open ? ' open' : ''}><summary>${icon('wifi')}${esc(tl('Radio de {0}', devName(ap)))}</summary>${h}</details>`;
+    const [sx, sy] = ap.loc ? toS(ap.loc.x, ap.loc.y) : [0, 0], W = stage.clientWidth;
+    wcard.classList.toggle('left', sx > W - 360 && sy < 420);
   }
   const wifiPane = () => (S.layers.wifi && wifi && !selAp() ? `<section class="ntSec ntPlWifiPane"><h4>${tl('Calque Wi-Fi')}</h4>${wifiHtml(null)}</section>` : '');
 
@@ -257,10 +297,28 @@ export function createPlanView(ctx) {
     let best = null, bd = 10 / V.k;
     for (const q of vertices(f)) { const d = Math.hypot(q[0] - w[0], q[1] - w[1]); if (d < bd) { bd = d; best = q; } }
     if (best) { if (S.draft) S.draft.snap = best; return [best[0], best[1]]; }
+    const cs = cad && cad.snap(w, 10 / V.k); if (cs) { if (S.draft) S.draft.snap = cs; return cs; } // bouts et croisements du fond DXF
     const s = snapStep(), g = v => Math.round(v / s) * s;
     let lockX = false, lockY = false;
     if (from && !(e && e.shiftKey)) { const dx = w[0] - from[0], dy = w[1] - from[1], a = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI) % 90; if (a < 8 || a > 82) { if (Math.abs(dx) > Math.abs(dy)) lockY = true; else lockX = true; } }
-    return [r3(lockX ? from[0] : g(w[0])), r3(lockY ? from[1] : g(w[1]))];
+    // Repères d'alignement : même x ou même y qu'un sommet ou un équipement de l'étage (8 px), ligne tracée jusqu'à lui.
+    const al = alignTo(w, lockX ? null : 'x', lockY ? null : 'y');
+    return [r3(lockX ? from[0] : al.x != null ? al.x : g(w[0])), r3(lockY ? from[1] : al.y != null ? al.y : g(w[1]))];
+  }
+
+  /** Alignement sur les sommets et les équipements de l'étage : { x?, y? } et les repères à tracer (S.guides). */
+  function alignTo(w, ax = 'x', ay = 'y', skip = null) {
+    const f = floor(), out = {}; S.guides = []; if (!f) return out;
+    const P = vertices(f); for (const d of data().devices) if (d.loc && d.loc.floor === f.id && d !== skip) P.push([d.loc.x, d.loc.y]);
+    const tol = 8 / V.k; let bx = null, by = null;
+    for (const q of P) {
+      if (ax && Math.abs(q[0] - w[0]) < tol && (!bx || Math.abs(q[0] - w[0]) < Math.abs(bx[0] - w[0]))) bx = q;
+      if (ay && Math.abs(q[1] - w[1]) < tol && (!by || Math.abs(q[1] - w[1]) < Math.abs(by[1] - w[1]))) by = q;
+    }
+    if (bx) out.x = bx[0]; if (by) out.y = by[1];
+    const X = out.x ?? w[0], Y = out.y ?? w[1];
+    if (bx) S.guides.push([bx[0], bx[1], X, Y]); if (by) S.guides.push([by[0], by[1], X, Y]);
+    return out;
   }
 
   /* ---------- Outils ---------- */
@@ -268,6 +326,7 @@ export function createPlanView(ctx) {
     S.tool = t; S.draft = null; S.rect = null; S.link = null;
     if (t !== 'select') { S.multi = []; }
     svg.dataset.tool = t; paintTools(); paintOver(); if (nav) nav.update();
+    if (t !== 'select') el.querySelector('.ntPlStart').hidden = true;
   }
   const used = () => siteIds(data().site);
   const newPathId = () => { const ids = new Set((data().paths || []).map(p => p.id)); let i = 1; while (ids.has('pa' + i)) i++; return 'pa' + i; };
@@ -352,6 +411,14 @@ export function createPlanView(ctx) {
       if (dbl && editVertex(h, w)) return;
       if (e.altKey && f.image && !f.image.lock && !h.kind) { drag = { image: f.image, w, v: [f.image.x, f.image.y] }; svg.setPointerCapture(e.pointerId); return; }
       if (h.handle) { const [kind, id, i] = h.handle.split(':'); drag = { vertex: { kind, id, i: +i }, w, moved: false }; svg.setPointerCapture(e.pointerId); return; }
+      // Objets superposés sous le pointeur (point d'accès sur une prise…) : Alt+clic passe au suivant.
+      const stack = h.kind === 'dev' ? [...new Set(document.elementsFromPoint(e.clientX, e.clientY).map(x => x.closest && x.closest('[data-k="dev"]')).filter(Boolean).map(x => x.dataset.id))] : [];
+      if (e.altKey && stack.length > 1) {
+        const cur = ctx.selection(), i = cur && cur.kind === 'dev' ? stack.indexOf(cur.id) : -1, id = stack[(i + 1) % stack.length];
+        S.multi = [{ kind: 'dev', id }]; ctx.select({ kind: 'dev', id }); paint();
+        ctx.status(tl('{0} objets superposés ici : Alt+clic pour passer au suivant.', stack.length)); return;
+      }
+      if (stack.length > 1) ctx.status(tl('{0} objets superposés ici : Alt+clic pour passer au suivant.', stack.length));
       if (h.kind) {
         choose({ kind: h.kind, id: h.id }, e.shiftKey);
         if (e.shiftKey) return;
@@ -411,7 +478,10 @@ export function createPlanView(ctx) {
       if (drag.door) { const f = floor(), x = f.walls.find(z => z.id === drag.door.wall); if (x) { const L = dist(x.a, x.b), p = project(w, x.a, x.b); drag.door.at = r3(Math.max(drag.door.w / 2, Math.min(L - drag.door.w / 2, p.t * L))); drag.moved = true; paintSoon(); } return; }
       if (drag.g && drag.g.length) {
         if (!drag.moved && Math.hypot(dx, dy) * V.k < 3) return;
-        const s = e.altKey ? 0.001 : snapStep(); moveGrab(drag.g, Math.round(dx / s) * s, Math.round(dy / s) * s); drag.moved = true; paintSoon();
+        const s = e.altKey ? 0.001 : snapStep(); let mx = Math.round(dx / s) * s, my = Math.round(dy / s) * s;
+        // Un seul équipement ou une baie : aligné sur les sommets et les autres équipements (repères affichés).
+        if (!e.altKey && drag.g.length === 1 && drag.g[0].o) { const v = drag.g[0].v, skip = data().devices.find(z => z.loc === drag.g[0].o), al = alignTo([v[0] + dx, v[1] + dy], 'x', 'y', skip); if (al.x != null) mx = al.x - v[0]; if (al.y != null) my = al.y - v[1]; }
+        moveGrab(drag.g, mx, my); drag.moved = true; paintSoon();
       }
       return;
     }
@@ -421,6 +491,7 @@ export function createPlanView(ctx) {
     } else if (S.link) { S.link[1] = w; paintOver(); }
   });
   svg.addEventListener('pointerup', e => {
+    if (S.guides && S.guides.length && !S.draft) { S.guides = []; paintOver(); }
     if (!drag) return;
     const d = drag; drag = null;
     if (d.rect) {
@@ -429,7 +500,89 @@ export function createPlanView(ctx) {
     }
     if (d.moved) ctx.commit();
   });
-  svg.addEventListener('contextmenu', e => { if (S.draft && S.draft.pts.length) { e.preventDefault(); finishDraft(); } });
+  svg.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (S.draft && S.draft.pts.length) { finishDraft(); return; }
+    if (!floor()) return;
+    const h = hitOf(e), w = toW(e.clientX, e.clientY);
+    if (h.kind && !S.multi.some(m => m.kind === h.kind && m.id === h.id)) choose({ kind: h.kind, id: h.id }, false);
+    openMenu(e, h.kind ? 'obj' : 'canvas', w);
+  });
+  /* ---------- Presse-papiers, alignement, menus contextuels ---------- */
+  const selList = () => (S.multi.length ? S.multi : ctx.selection() ? [ctx.selection()] : []);
+  function copy(cut) {
+    const f = floor(), c = f && copySel(data(), f, selList());
+    if (!c) { ctx.status(tl('Rien à copier : choisissez des équipements, pièces, murs ou cheminements.'), 'warn'); return false; }
+    CLIP.c = c; ctx.status(cut ? tl('{0} objet(s) coupé(s).', countClip(c)) : tl('{0} objet(s) copié(s) : Ctrl+V pour coller (sur cet étage ou un autre).', countClip(c)));
+    if (cut) removeSel();
+    return true;
+  }
+  const countClip = c => Object.values(c.items).reduce((s, a) => s + a.length, 0) - c.items.doors.length;
+  /** Colle : à la place d'origine sur un autre étage, décalé de 50 cm sur le même ; at : point visé (menu contextuel). */
+  function paste(at) {
+    const f = floor(), c = CLIP.c; if (!f || !c) return;
+    let dx = c.from === f.id ? 0.5 : 0, dy = dx;
+    if (at) { dx = r3(at[0] - c.box[0]); dy = r3(at[1] - c.box[1]); }
+    const sel = pasteClip(data(), f, c, dx, dy, (type, p) => ctx.newDevice(type, p));
+    if (!sel.length) return;
+    S.multi = sel; ctx.select(sel[0]); ctx.commit(); paint();
+    ctx.status(tl('{0} objet(s) collé(s) : nouveaux identifiants, aucun câble recopié.', sel.length), 'ok');
+  }
+  function duplicate() { const keep = CLIP.c; if (copy(false)) paste(null); CLIP.c = keep || CLIP.c; }
+  function align(how) { const n = alignSel(data(), floor(), selList(), how); if (n) { ctx.commit(); paint(); } }
+  function toFloor(id) {
+    const f = floor(), g = floorOf(data().site, id); if (!f || !g) return;
+    const n = moveToFloor(data(), f, g.f, selList()); if (!n) return;
+    ctx.commit(); setFloor(g.f.id); ctx.status(tl('{0} objet(s) déplacé(s) vers {1}.', n, g.f.name), 'ok');
+  }
+  async function openMenu(e, kind, w) {
+    const kit = await import('./kit/menu.js').catch(() => null);
+    const show = items => (kit && kit.ctxMenu ? kit.ctxMenu(e, items) : popMenu({ getBoundingClientRect: () => ({ left: e.clientX, right: e.clientX, top: e.clientY, bottom: e.clientY }) }, items.filter(x => x === '-' || (!x.header && !x.items && !x.disabled))));
+    const b = building(), list = selList(), many = list.length > 1, s = ctx.selection();
+    if (kind === 'canvas') {
+      await show([
+        { label: tl('Coller ici'), icon: 'copy', keys: 'Ctrl+V', disabled: !CLIP.c, run: () => paste(w) },
+        { label: tl('Tout choisir sur l’étage'), icon: 'pointer', keys: 'Ctrl+A', run: selectAll }, '-',
+        { label: tl('Mur'), icon: 'wall', keys: 'W', run: () => setTool('wall') }, { label: tl('Salle'), icon: 'room', keys: 'R', run: () => setTool('room') },
+        { label: tl('Cheminement'), icon: 'cableTray', keys: 'K', run: () => setTool('path') }, { label: tl('Détecter les pièces'), icon: 'wand', disabled: !(floor().walls.length > 2), run: detectHere }, '-',
+        { label: tl('Importer un plan DXF ou DWG…'), icon: 'upload', run: () => cadImport() }, { label: tl('Tout voir'), icon: 'fitAll', keys: 'F', run: fit }
+      ]);
+      return;
+    }
+    const others = b ? b.floors.filter(x => x.id !== S.floor) : [];
+    const moveTo = others.length ? [{ label: tl('Déplacer vers l’étage'), icon: 'layers', items: others.map(x => ({ label: x.name, run: () => toFloor(x.id) })) }] : [];
+    // Un seul objet : le menu commun des vues (mêmes entrées et même ordre partout), avec les verbes du plan.
+    if (!many && s && ctx.objectMenu && ctx.ctxMenu) {
+      const items = ctx.objectMenu(s, {
+        clipboard: [{ label: tl('Couper'), icon: 'scissors', keys: 'Ctrl+X', run: () => copy(true) }, { label: tl('Copier'), icon: 'copy', keys: 'Ctrl+C', run: () => copy(false) }, { label: tl('Coller'), icon: 'copy', keys: 'Ctrl+V', disabled: !CLIP.c, run: () => paste(null) }, ...(s.kind !== 'dev' ? [{ label: tl('Dupliquer'), icon: 'copy', keys: 'Ctrl+D', run: duplicate }] : [])],
+        duplicate, remove: s.kind === 'rack' || s.kind === 'dev' || findSiteObj(data().site, s.id) || (data().paths || []).some(p => p.id === s.id) ? removeSel : null,
+        extra: [...moveTo, ...(s.kind === 'dev' || s.kind === 'cable' ? [{ label: tl('Câblage et brassage'), icon: 'cable', items: jumpsFor(ctx, s, id => view.reveal(id)) }] : [])]
+      });
+      if (items && items.length) { await ctx.ctxMenu(e, [{ header: objName(s) }, ...items]); return; }
+    }
+    const jumps = !many && s ? jumpsFor(ctx, s, id => view.reveal(id)) : [];
+    await show([
+      { header: many ? tl('{0} objets choisis', list.length) : objName(s) },
+      { label: tl('Couper'), icon: 'scissors', keys: 'Ctrl+X', run: () => copy(true) }, { label: tl('Copier'), icon: 'copy', keys: 'Ctrl+C', run: () => copy(false) },
+      { label: tl('Coller'), icon: 'copy', keys: 'Ctrl+V', disabled: !CLIP.c, run: () => paste(null) }, { label: tl('Dupliquer'), icon: 'copy', keys: 'Ctrl+D', run: duplicate },
+      { label: tl('Retirer'), icon: 'trash', keys: 'Del', danger: true, run: removeSel }, '-',
+      ...(many ? [{ label: tl('Aligner'), items: [['left', tl('À gauche')], ['hcenter', tl('Centres (verticalement)')], ['right', tl('À droite')], ['top', tl('En haut')], ['vcenter', tl('Centres (horizontalement)')], ['bottom', tl('En bas')]].map(([k, l]) => ({ label: l, run: () => align(k) })) },
+        { label: tl('Répartir'), disabled: list.length < 3, items: [{ label: tl('Horizontalement'), run: () => align('hdist') }, { label: tl('Verticalement'), run: () => align('vdist') }] }] : []),
+      ...moveTo,
+      ...(jumps.length ? ['-', { label: tl('Aller à'), icon: 'chevRight', items: jumps }] : []), '-',
+      { label: tl('Propriétés'), icon: 'sliders', run: () => { if (ctx.app.setTab) ctx.app.setTab('nprop'); ctx.renderPane(); const p = document.querySelector('#pane-nprop input, #pane-nprop select'); if (p) p.focus(); } }
+    ]);
+  }
+  function objName(s) {
+    if (!s) return '';
+    const d = data();
+    if (s.kind === 'dev') { const x = d.devices.find(z => z.id === s.id); return x ? devName(x) : s.id; }
+    if (s.kind === 'path') { const p = (d.paths || []).find(z => z.id === s.id); return p ? p.name || PATH_KINDS[p.kind].name() : s.id; }
+    if (s.kind === 'rack') { const r = (d.racks || []).find(z => z.id === s.id); return r ? r.name : s.id; }
+    const o = findSiteObj(d.site, s.id); if (!o) return s.id;
+    return o.kind === 'room' ? o.o.name || USAGES[o.o.usage].name() : o.kind === 'wall' ? tl('Mur') : o.kind === 'door' ? tl('Porte') : o.o.name || s.id;
+  }
+
   /** Double-clic en sélection : retirer un sommet (poignée) ou en ajouter un sur un tronçon. */
   function editVertex(h, w) {
     const d = data(), f = floor();
@@ -580,6 +733,8 @@ export function createPlanView(ctx) {
     else if (a === 'detect') detectHere();
     else if (a === 'image') { if (!f) newBuilding(); file.click(); }
     else if (a === 'rmImage') { if (f && f.image) { delete d.images[f.image.id]; delete f.image; ctx.commit(); } }
+    else if (a === 'cad') cadImport();
+    else if (a === 'cadcard') { const c = await cadLoad(); if (c && c.toggleCard) c.toggleCard(true); }
     else if (a === 'calib') { if (f && f.image) { setTool('calib'); ctx.status(tl('Cliquez deux points du plan importé dont vous connaissez la distance.')); } }
     else if (a === 'del') {
       if (s && (s.kind === 'floor' || (so && so.kind === 'floor'))) deleteFloor(s.id);
@@ -604,8 +759,8 @@ export function createPlanView(ctx) {
       { label: tl('Nouvel étage au-dessus'), icon: 'plus', value: 'addFloor' }, { label: tl('Nouvel étage en dessous'), icon: 'plus', value: 'addFloorBelow' },
       { label: tl('Dupliquer l’étage'), icon: 'copy', value: 'copyFloor' }, '-',
       { label: tl('Nouveau bâtiment'), icon: 'building', value: 'newBuilding' }, { label: tl('Étage d’exemple (bureaux)'), icon: 'floorPlan', value: 'demo' },
-      { label: tl('Importer un plan (image)'), icon: 'image', value: 'image' }
-    ].filter(it => it === '-' || b || ['newBuilding', 'demo', 'image'].includes(it.value));
+      { label: tl('Importer un plan (image)'), icon: 'image', value: 'image' }, { label: tl('Importer un plan DXF ou DWG…'), icon: 'upload', value: 'cad' }
+    ].filter(it => it === '-' || b || ['newBuilding', 'demo', 'image', 'cad'].includes(it.value));
     const v = await popMenu(anchor, items); if (v) action(v, null);
   }
 
@@ -621,11 +776,14 @@ export function createPlanView(ctx) {
   });
   $('.ntPlTop').addEventListener('change', e => {
     const t = e.target;
+    if (t.dataset.plfsel != null) { setFloor(t.value, !S.seen.has(t.value)); return; }
     if (t.dataset.plb != null) { const b = data().site.buildings.find(x => x.id === t.value); if (b && b.floors[0]) setFloor(b.floors[0].id, !S.seen.has(b.floors[0].id)); }
     if (t.dataset.plsub) { S[t.dataset.plsub] = t.value; paintTools(); }
   });
   el.querySelector('.ntPlEmpty').addEventListener('click', e => { const b = e.target.closest('[data-pla]'); if (b) action(b.dataset.pla, null); });
+  el.querySelector('.ntPlStart').addEventListener('click', e => { const b = e.target.closest('[data-pla]'), t = e.target.closest('[data-pltool]'); if (b) action(b.dataset.pla, null); else if (t) { setTool(t.dataset.pltool); paintWorld(); } });
   async function toggleLayer(l) {
+    if (l === 'cad') { const c = await cadLoad(); if (c) c.toggleCard(); return; }
     S.layers[l] = !S.layers[l];
     if (l === 'wifi' && S.layers.wifi && !wifi) {
       try { const m = await import('./wifilayer.js'); wifi = m.createWifiLayer(ctx); if (wifi && wifi.onReady) wifi.onReady(() => { paintCanvas(); paintWifi(); ctx.renderPane(); }); }
@@ -634,6 +792,7 @@ export function createPlanView(ctx) {
     paint();
     if (l === 'wifi') ctx.renderPane();
   }
+  wcard.addEventListener('toggle', e => { if (e.target.matches && e.target.matches('details.ntPlWfAp')) wcard.dataset.open = e.target.open ? '1' : '0'; }, true);
   const wifiEvent = e => { if (!wifi || !wifi.handle) return; const s = ctx.selection(), x = s && s.kind === 'dev' ? data().devices.find(z => z.id === s.id) : null; try { if (wifi.handle(e, x)) { paintCanvas(); if (e.type === 'change') { paintWifi(); ctx.renderPane(); } return true; } } catch (err) { console.error(err); } };
   wcard.addEventListener('click', wifiEvent); wcard.addEventListener('change', wifiEvent);
   info.addEventListener('change', e => {
@@ -653,12 +812,14 @@ export function createPlanView(ctx) {
       ctx.app.commands.register({ id: 'net.plan.building', cat: tl('Réseau'), icon: 'building', label: tl('Plans : nouveau bâtiment'), when, run: () => newBuilding() });
       ctx.app.commands.register({ id: 'net.plan.floor', cat: tl('Réseau'), icon: 'plus', label: tl('Plans : nouvel étage au-dessus'), when: () => when() && !!building(), run: () => addFloor(building()) });
       ctx.app.commands.register({ id: 'net.plan.image', cat: tl('Réseau'), icon: 'image', label: tl('Plans : importer un plan (image)'), when, run: () => action('image') });
+      ctx.app.commands.register({ id: 'net.plan.cad', cat: tl('Réseau'), icon: 'upload', label: tl('Plans : importer un plan DXF/DWG'), when: () => ctx.isOn(), run: () => ctx.openView('plan').then(() => cadImport()) });
+      ctx.app.commands.register({ id: 'net.plan.cadLayers', cat: tl('Réseau'), icon: 'layers', label: tl('Plans : calques du fond DXF'), when: () => when() && cadHas(floor()), run: () => toggleLayer('cad') });
       ctx.app.commands.register({ id: 'net.plan.wifi', cat: tl('Réseau'), icon: 'wifi', label: tl('Plans : afficher ou masquer le calque Wi-Fi'), when, run: () => toggleLayer('wifi') });
       ctx.app.commands.register({ id: 'net.plan.detect', cat: tl('Réseau'), icon: 'wand', label: tl('Plans : détecter les pièces fermées par les murs'), when: () => when() && !!floor(), run: () => detectHere() });
       ctx.app.commands.register({ id: 'net.plan.demo', cat: tl('Réseau'), icon: 'floorPlan', label: tl('Plans : ajouter un étage d’exemple'), when, run: () => action('demo') });
     } catch (e) { console.error(e); }
   }
-  new ResizeObserver(() => { if (!el.hidden) { paintOver(); } }).observe(stage);
+  new ResizeObserver(() => { if (!el.hidden) { paintOver(); if (!!(stage.clientWidth && stage.clientWidth < 860) !== !!S.narrow) paintFloors(); } }).observe(stage);
 
   /* ---------- Contrat des vues ---------- */
   const view = {
@@ -667,7 +828,7 @@ export function createPlanView(ctx) {
     hide() { el.hidden = true; calib.hidden = true; nav.update(); },
     render(why) {
       if (el.hidden) return;
-      if (why === 'load') { S.multi = []; S.draft = null; S.seen.clear(); S.views.clear(); S.floor = null; }
+      if (why === 'load') { S.multi = []; S.draft = null; S.seen.clear(); S.views.clear(); S.floor = null; if (cad) cad.reset(); }
       // La sélection partagée a pu changer ailleurs (annuler, autre vue) : la sélection multiple suit.
       const s = ctx.selection(); if (S.multi.length && (!s || !S.multi.some(m => m.kind === s.kind && m.id === s.id))) S.multi = s ? [s] : [];
       bad = issueIds(); const f = floor(); paint();
@@ -676,9 +837,17 @@ export function createPlanView(ctx) {
     key(e) {
       if (e.type !== 'keydown') return false;
       const mod = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
-      if (mod) { if (k === 'a') { selectAll(); return true; } return false; }
+      if (mod) {
+        if (k === 'a') { selectAll(); return true; }
+        if (k === 'c' && !e.shiftKey) return copy(false), true;
+        if (k === 'x') return copy(true), true;
+        if (k === 'v') { paste(null); return true; }
+        if (k === 'd') { duplicate(); return true; }
+        return false;
+      }
       if (!calib.hidden) return false;
       if (k === 'v' && !e.altKey) { setTool('select'); nav.setTool('select'); return true; }
+      if (cad && cad.key(e)) return true;
       if (nav.key(e)) return true;
       if (e.altKey) return false;
       if (KEY_TOOL[k] && !e.shiftKey) { setTool(KEY_TOOL[k]); return true; }
@@ -697,6 +866,16 @@ export function createPlanView(ctx) {
     },
     keyup(e) { nav.key(e); },
     fit,
+    /** Sélection multiple (navigateur du projet) : les objets de l'étage montré, ou de l'étage du dernier objet. */
+    multi: () => S.multi,
+    selectMany(list) {
+      const d = data(), at = m => { if (m.kind === 'dev') { const x = d.devices.find(z => z.id === m.id); return x && x.loc ? x.loc.floor : null; } if (m.kind === 'rack') { const r = (d.racks || []).find(z => z.id === m.id); return r ? r.floor : null; } if (m.kind === 'path') { const p = (d.paths || []).find(z => z.id === m.id); return p ? p.floor : null; } const o = findSiteObj(d.site, m.id); return o && o.f && ['room', 'wall', 'door'].includes(o.kind) ? o.f.id : null; };
+      const fl = list.map(at), last = [...fl].reverse().find(Boolean) || null;
+      if (last && last !== S.floor && !fl.includes(S.floor)) { S.floor = last; S.seen.add(last); }
+      S.multi = list.filter((m, i) => fl[i] === S.floor); paint();
+    },
+    /** Étage montré (id) : calques, fil d'Ariane. */
+    floor: () => (floor() ? floor().id : null),
     reveal(id) {
       const d = data(); let fid = null, sel = null, b = null;
       const dv = d.devices.find(x => x.id === id);
@@ -734,5 +913,7 @@ export function createPlanView(ctx) {
     }
   };
   const viewApi = { floor, building, multi, setFloor, action, paint, removeSel };
+  /** Menus de l'application (shellnet.js) : outil, calques, actions des étages, tout choisir, étage montré. */
+  view.cmd = { tool: t => setTool(t), layer: l => toggleLayer(l), layers: () => ({ ...S.layers }), action: a => action(a, null), selectAll: () => selectAll(), floor: () => floor() };
   return view;
 }

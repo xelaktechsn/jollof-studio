@@ -12,6 +12,40 @@ const baseName = p => p.split(/[\\/]/).pop();
 const pickSave = (name, label, extensions) => invoke('pick_save', { name, label, extensions });
 const pickOpen = (label, extensions) => invoke('pick_open', { label, extensions });
 
+/*
+ * Fichiers choisis par l'utilisateur, lus et écrits par Rust (src-tauri/src/files.rs) : jusqu'à BIG octets en un
+ * appel (écriture atomique) ; au-delà (projet avec fonds de plan, export DXF de plusieurs dizaines de Mo) par
+ * morceaux de CHUNK octets, dans un fichier temporaire du même dossier renommé sur la cible à la fin : un échec
+ * laisse l'ancien fichier intact.
+ */
+const BIG = 4 << 20, CHUNK = 8 << 20;
+async function writeBlob(path, blob) {
+  if (blob.size <= BIG) { await invoke('save_bytes', new Uint8Array(await blob.arrayBuffer()), { headers: { 'x-path': encodeURIComponent(path) } }); return; }
+  const id = await invoke('file_write_begin', { path });
+  try {
+    for (let pos = 0; pos < blob.size; pos += CHUNK) {
+      const part = new Uint8Array(await blob.slice(pos, Math.min(blob.size, pos + CHUNK)).arrayBuffer());
+      await invoke('file_write_chunk', part, { headers: { 'x-id': String(id), 'x-pos': String(pos) } });
+    }
+    await invoke('file_write_commit', { id, size: blob.size });
+  } catch (e) { invoke('file_write_abort', { id }).catch(() => {}); throw e; }
+}
+/** Texte UTF-8 d'un fichier autorisé ; un gros fichier arrive par morceaux (pas de limite de taille d'un seul appel). */
+async function readTextFile(path) {
+  const size = await invoke('file_size', { path });
+  if (size <= BIG) return invoke('read_text', { path });
+  const dec = new TextDecoder('utf-8'), parts = [];
+  for (let off = 0; off < size;) {
+    const r = await invoke('file_read_chunk', { path, offset: off, len: CHUNK });
+    const b = r instanceof ArrayBuffer ? new Uint8Array(r) : ArrayBuffer.isView(r) ? new Uint8Array(r.buffer, r.byteOffset, r.byteLength) : Uint8Array.from(r || []);
+    if (!b.length) break;
+    parts.push(dec.decode(b, { stream: true })); off += b.length;
+  }
+  parts.push(dec.decode());
+  return parts.join('');
+}
+const notAllowed = e => /non autorisé/.test(String((e && e.message) || e));
+
 function browserDownload(data, name) {
   const url = URL.createObjectURL(data instanceof Blob ? data : new Blob([data]));
   const a = document.createElement('a');
@@ -33,18 +67,19 @@ function browserPick(accept) {
 /** Enregistre un projet. Renvoie le chemin choisi, ou null si l'utilisateur annule. */
 export async function saveProject(json, currentPath, suggested) {
   if (!isTauri()) { browserDownload(new Blob([json], { type: 'application/json' }), suggested); return { path: null, name: suggested }; }
+  const blob = new Blob([json], { type: 'application/json' });
   let path = currentPath;
-  if (path) { try { await invoke('save_text', { path, contents: json }); return { path, name: baseName(path) }; } catch (e) { path = null; } } // emplacement plus autorisé : on redemande
+  if (path) { try { await writeBlob(path, blob); return { path, name: baseName(path) }; } catch (e) { if (!notAllowed(e)) throw e; path = null; } } // emplacement plus autorisé : on redemande
   path = await pickSave(suggested, tl('Projet Jollof Studio'), ['jollof']);
   if (!path) return null;
-  await invoke('save_text', { path, contents: json });
+  await writeBlob(path, blob);
   return { path, name: baseName(path) };
 }
 export async function openProject() {
   if (!isTauri()) return browserPick('.jollof,.json');
   const path = await pickOpen(tl('Projet Jollof Studio'), ['jollof', 'json']);
   if (!path) return null;
-  return { path, name: baseName(path), text: await invoke('read_text', { path }) };
+  return { path, name: baseName(path), text: await readTextFile(path) };
 }
 
 /**
@@ -57,8 +92,7 @@ export async function saveVideo(video, suggested) {
   const path = await pickSave(suggested, tl('Vidéo'), [ext]);
   if (!path) return null;
   if (video.file) { await invoke('render_save', { path }); return path; }
-  const bytes = new Uint8Array(await video.blob.arrayBuffer());
-  await invoke('save_bytes', bytes, { headers: { 'x-path': encodeURIComponent(path) } });
+  await writeBlob(path, video.blob);
   return path;
 }
 
@@ -81,13 +115,13 @@ export async function renderSink() {
   };
 }
 
-/** Enregistre un fichier binaire (PDF…) par la boîte de dialogue du système. */
+/** Enregistre un fichier (PDF, DXF, CSV, SVG, HTML…) par la boîte « Enregistrer sous » du système (nom proposé, filtre
+ * de l'extension) ; téléchargement dans un navigateur. Rend le chemin, ou null si l'utilisateur annule. */
 export async function saveFile(blob, suggested, label, ext) {
   if (!isTauri()) { browserDownload(blob, suggested); return suggested; }
   const path = await pickSave(suggested, label, [ext]);
   if (!path) return null;
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  await invoke('save_bytes', bytes, { headers: { 'x-path': encodeURIComponent(path) } });
+  await writeBlob(path, blob);
   return path;
 }
 
@@ -252,7 +286,7 @@ export async function takeLaunchFile() {
   if (!isTauri()) return null;
   try {
     const path = await invoke('take_launch_file'); if (!path) return null;
-    return { path, name: baseName(path), text: await invoke('read_text', { path }) };
+    return { path, name: baseName(path), text: await readTextFile(path) };
   } catch (e) { console.warn(e); return null; }
 }
 /** fn() à chaque projet reçu pendant que l'application tourne (deuxième lancement, Finder) ; il se prend par takeLaunchFile. */

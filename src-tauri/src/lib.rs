@@ -10,8 +10,10 @@
 //! (`blocking`) : la boucle d'événements de la fenêtre n'attend jamais une lecture ou une écriture.
 
 pub mod ai;
+mod cad;
 mod espflash_cmd;
 mod ffmpeg;
+mod files;
 mod modbus;
 mod plcopen;
 mod qemu;
@@ -223,7 +225,8 @@ async fn pick_open(
     Ok(Some(path.to_string_lossy().into_owned()))
 }
 
-/// Écrit des octets bruts (vidéo, PDF) à un emplacement choisi par l'utilisateur.
+/// Écrit des octets bruts (vidéo, PDF) à un emplacement choisi par l'utilisateur, d'un coup (petits fichiers ; les
+/// gros passent par files.rs, par morceaux).
 /// Le chemin arrive dans l'en-tête `x-path`, encodé façon URL ; le corps est binaire,
 /// ce qui évite de sérialiser des dizaines de mégaoctets en JSON.
 #[tauri::command]
@@ -250,8 +253,8 @@ async fn save_bytes(
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Le corps de la requête doit être binaire".into());
     };
-    blocking_in_place(|| fs::write(&path, bytes))
-        .map_err(|e| format!("Écriture impossible : {e}"))?;
+    // Atomique : un arrêt brutal ou un disque plein laissent l'ancien fichier intact.
+    blocking_in_place(|| write_atomic(&path, bytes)).map_err(|e| files::io_msg(&e))?;
     Ok(bytes.len() as u64)
 }
 
@@ -266,8 +269,7 @@ async fn save_text(
     if !can_write(&app, &state, &p) {
         return Err("Emplacement non autorisé : choisissez-le dans la boîte de dialogue".into());
     }
-    blocking(move || fs::write(&p, contents).map_err(|e| format!("Écriture impossible : {e}")))
-        .await
+    blocking(move || write_atomic(&p, contents.as_bytes()).map_err(|e| files::io_msg(&e))).await
 }
 
 #[tauri::command]
@@ -932,6 +934,8 @@ pub fn run() {
         .manage(modbus::Modbus::default())
         .manage(render::Render::default())
         .manage(ffmpeg::Ffmpeg::default())
+        .manage(cad::Cad::default())
+        .manage(files::Writes::default())
         .setup(|app| {
             log_panics();
             log::info!(
@@ -1004,7 +1008,20 @@ pub fn run() {
             modbus::modbus_image,
             plcopen::plc_export_xml,
             espflash_cmd::esp_detect,
-            espflash_cmd::esp_flash
+            espflash_cmd::esp_flash,
+            cad::cad_converters,
+            cad::cad_begin,
+            cad::cad_upload_write,
+            cad::cad_convert_dwg,
+            cad::cad_read,
+            cad::cad_cancel,
+            cad::cad_cleanup,
+            files::file_write_begin,
+            files::file_write_chunk,
+            files::file_write_commit,
+            files::file_write_abort,
+            files::file_size,
+            files::file_read_chunk
         ])
         .build(tauri::generate_context!())
         .expect("Impossible de démarrer Jollof Studio")
@@ -1015,6 +1032,9 @@ pub fn run() {
                 app.state::<modbus::Modbus>().stop();
                 app.state::<ffmpeg::Ffmpeg>().kill();
                 render::cleanup(app);
+                app.state::<cad::Cad>().kill_all();
+                cad::cleanup(app);
+                app.state::<files::Writes>().abort_all();
                 log::info!("fermeture");
             }
             // macOS : un .jollof ouvert depuis le Finder (au lancement ou ensuite) arrive par cet évènement.

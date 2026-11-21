@@ -40,6 +40,7 @@ const P = {
   x: 'M6 6l12 12 M18 6 6 18',
   frame: 'M4 9V5a1 1 0 0 1 1-1h4 M15 4h4a1 1 0 0 1 1 1v4 M20 15v4a1 1 0 0 1-1 1h-4 M9 20H5a1 1 0 0 1-1-1v-4 M12 9v6 M9 12h6',
   eye: 'M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  eyeOff: 'M3 3l18 18 M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1 M6.6 6.6C3.9 8.4 2 12 2 12s3.6 7 10 7a9.7 9.7 0 0 0 5.4-1.6 M9.9 9.9a3 3 0 0 0 4.2 4.2',
   wrench: 'M14.7 6.3a4 4 0 0 0-5.3 5.3L3.5 17.5a1.4 1.4 0 0 0 2 2l5.9-5.9a4 4 0 0 0 5.3-5.3l-2.5 2.5-2.1-.4-.4-2.1z',
   swap: 'M7 4 3 8l4 4 M3 8h14 M17 20l4-4-4-4 M21 16H7',
   scissors: 'M6 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M8.1 7.6 20 17 M8.1 16.4 20 7',
@@ -208,7 +209,11 @@ const P = {
   outlet2: 'M5 2h14v20H5z M8 5h8v5h-2v1.5h-4V10H8z M8 13h8v5h-2v1.5h-4V18H8z',
   traceroute: 'M3 19a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M10.5 12a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M18 5a1.5 1.5 0 1 0 3 0 1.5 1.5 0 1 0-3 0 M5.6 17.6l5.2-4.4 M13.3 10.6l5-4.2',
   treeLayout: 'M10 3h4v3h-4z M5 10.5h4v3H5z M15 10.5h4v3h-4z M3 18h4v3H3z M10 18h4v3h-4z M17 18h4v3h-4z',
-  vlanTag: 'M3 4h18v4H3z M3 10h18v4H3z M3 16h18v4H3z M7 4v4 M12 10v4 M17 16v4'
+  vlanTag: 'M3 4h18v4H3z M3 10h18v4H3z M3 16h18v4H3z M7 4v4 M12 10v4 M17 16v4',
+  // Barre de menus repliée (menus de l'application en un seul bouton).
+  menuBars: 'M4 6h16 M4 12h16 M4 18h16',
+  // Calque atténué (fond DXF) : cercle à moitié hachuré, pas le soleil du thème clair.
+  dimLayer: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z M12 3v18 M12 7.5h5.6 M12 12h8.9 M12 16.5h5.6'
 };
 
 export function icon(name, cls = '') {

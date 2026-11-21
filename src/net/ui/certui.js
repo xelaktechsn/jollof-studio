@@ -22,6 +22,8 @@ const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '
 const num = (v, d = 1) => (v !== '' && v != null && Number.isFinite(+v) ? fmtNum(v, d) : '—');
 const VCLS = { pass: 'ok', 'pass*': 'mg', 'fail*': 'mgbad', fail: 'bad' };
 const chip = v => (v ? `<span class="ntCeV ${VCLS[v] || ''}">${verdictText(v)}</span>` : `<span class="ntCeV none">${tl('non testé')}</span>`);
+/** Sens de l'astérisque (ANSI/TIA-1152) : légende de l'onglet Tests. */
+const STAR_TIP = () => tl('PASS* / FAIL* : marge plus petite que la précision du testeur. PASS* reste conforme, FAIL* compte comme un échec.');
 const kindText = k => (k === 'pl' ? tl('lien permanent') : tl('canal'));
 const dateText = at => (at ? String(at).slice(0, 16).replace('T', ' ') : '');
 
@@ -136,7 +138,10 @@ export function openCert(ctx, opts = {}) {
   const tests = data().tests;
   const S = { link: pick(), limit: opts.limit && limitInfo(opts.limit) ? opts.limit : 'auto', band: tests ? tests.band : BAND_DEFAULT, res: null, tab: 'next', only: null, busy: false, batch: null, scope: 'pl', summary: null };
   if (S.link && !links.some(l => l.kind === 'pl')) S.scope = 'ch';
-  const O = overlay(ctx.host, { label: tl('Testeur de certification'), cls: 'ntCeOv' });
+  // Fenêtre modale centrée sur toute la fenêtre de l'application (pas seulement la colonne centrale) : les panneaux
+  // latéraux sont recouverts par le voile, le graphique garde sa hauteur même sur un petit écran.
+  const hostEl = document.createElement('div'); hostEl.className = 'ntCeHost'; document.body.appendChild(hostEl);
+  const O = overlay(hostEl, { label: tl('Testeur de certification'), cls: 'ntCeOv' });
   const { dlg } = O;
   dlg.classList.add('ntCeDlg');
   dlg.innerHTML = `<div class="nt-hd">${icon('certifier')}<div class="nt-ttl"><b>${tl('Testeur de certification')}</b><span>${tl('Valeurs simulées par un modèle à partir du plan : ce n’est pas une mesure')}</span></div><button type="button" class="nt-x" data-a="close" aria-label="${tl('Fermer')}" data-tip="${tl('Fermer · Échap')}">${icon('x')}</button></div>
@@ -147,7 +152,7 @@ export function openCert(ctx, opts = {}) {
         <label class="ntCeFld"><span>${tl('Précision du testeur (dB)')}</span><input class="inp" type="number" min="0" max="3" step="0.1" data-k="band"><small>${tl('Réglage : un résultat plus proche de la limite est marqué d’un astérisque (PASS*, FAIL*).')}</small></label>
         <button type="button" class="btn primary ntCeGo" data-a="test">${icon('play')}<span>${tl('Autotest')}</span><kbd class="nt-kbd">↵</kbd></button>
         <div class="ntCeSep"></div>
-        <label class="ntCeFld"><span>${tl('Tester tout')}</span><select class="sel" data-k="scope"><option value="pl">${tl('Liens permanents')}</option><option value="ch">${tl('Canaux')}</option><option value="all">${tl('Tous les liens')}</option></select></label>
+        <label class="ntCeFld"><span>${tl('Lot à tester')}</span><select class="sel" data-k="scope"><option value="pl">${tl('Liens permanents')}</option><option value="ch">${tl('Canaux')}</option><option value="all">${tl('Tous les liens')}</option></select></label>
         <button type="button" class="btn" data-a="all">${icon('certifier')}<span>${tl('Tester tout')}</span></button>
         <div class="ntCeProg" hidden><div class="ntCeBar"><i></i></div><span></span><button type="button" class="btn small subtle" data-a="stop">${tl('Arrêter')}</button></div>
         <p class="ntCeNote">${esc(modelNote())} ${esc(limitsNote())}</p>
@@ -279,7 +284,7 @@ export function openCert(ctx, opts = {}) {
     if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); return; }
     if (e.key === 'Enter' && !/^(SELECT|INPUT|BUTTON|TEXTAREA)$/.test(e.target.tagName)) { e.preventDefault(); autotest(); }
   });
-  function close() { if (S.batch) S.batch.stop(); O.close(); if (open === api) open = null; }
+  function close() { if (S.batch) S.batch.stop(); O.close(); hostEl.remove(); if (open === api) open = null; }
   const api = { close, autotest, batch, state: () => S };
   open = api;
   paint();
@@ -301,8 +306,8 @@ export function renderCertTab(ctx, el) {
     const n = v => rows.filter(r => r.stored && r.stored.verdict === v).length;
     const untested = rows.filter(r => !r.stored).length, stale = rows.filter(r => r.stale).length;
     const shown = rows.filter(r => S.filter === 'all' || (S.filter === 'bad' ? r.stored && /fail/.test(r.stored.verdict) : S.filter === 'todo' ? !r.stored || r.stale : true));
-    const counts = ex ? `<span class="ntCeStat"><b>${rows.length - untested}</b>${tl('testés')}</span><span class="ntCeStat warn">${icon('lock')}${tl('Mode examen')}</span>` : `<span class="ntCeStat ok"><b>${n('pass')}</b>PASS</span><span class="ntCeStat mg"><b>${n('pass*')}</b>PASS*</span>
-        <span class="ntCeStat mgbad"><b>${n('fail*')}</b>FAIL*</span><span class="ntCeStat bad"><b>${n('fail')}</b>FAIL</span>`;
+    const counts = ex ? `<span class="ntCeStat"><b>${rows.length - untested}</b>${tl('testés')}</span><span class="ntCeStat warn">${icon('lock')}${tl('Mode examen')}</span>` : `<span class="ntCeStat ok"><b>${n('pass')}</b>PASS</span><span class="ntCeStat mg" data-tip="${esc(STAR_TIP())}"><b>${n('pass*')}</b>PASS*</span>
+        <span class="ntCeStat mgbad" data-tip="${esc(STAR_TIP())}"><b>${n('fail*')}</b>FAIL*</span><span class="ntCeStat bad"><b>${n('fail')}</b>FAIL</span>`;
     const head = `<div class="ntCeTabHead"><div class="ntCeStats">
         <span class="ntCeStat"><b>${rows.length}</b>${tl('liens')}</span>${counts}<span class="ntCeStat"><b>${untested}</b>${tl('non testés')}</span>${stale ? `<span class="ntCeStat warn"><b>${stale}</b>${tl('périmés')}</span>` : ''}</div>
       <div class="ntCeTools"><select class="sel" data-k="scope" aria-label="${tl('Liens affichés')}"><option value="all">${tl('Tous les liens')}</option><option value="pl">${tl('Liens permanents')}</option><option value="ch">${tl('Canaux')}</option></select>
@@ -310,6 +315,7 @@ export function renderCertTab(ctx, el) {
         <button type="button" class="btn primary" data-a="all">${icon('certifier')}<span>${tl('Tester tout')}</span></button><button type="button" class="btn" data-a="open">${icon('cableTester')}<span>${tl('Testeur')}</span></button>
         <button type="button" class="btn" data-a="csv">${icon('download')}<span>CSV</span></button><button type="button" class="btn" data-a="report">${icon('clipboard')}<span>${tl('Rapport imprimable')}</span></button></div></div>
       <div class="ntCeProg" hidden><div class="ntCeBar"><i></i></div><span></span><button type="button" class="btn small subtle" data-a="stop">${tl('Arrêter')}</button></div>
+      ${ex ? '' : `<p class="ntCeKey">${esc(STAR_TIP())}</p>`}
       <p class="ntCeNote">${tl('Certification simulée : les résultats viennent du modèle (catégorie, longueur, sertissage, connexions du plan), pas d’un appareil de mesure.')} ${esc(limitsNote())}${data.tests && data.tests.at ? ' ' + tl('Dernier lot : {0}.', esc(dateText(data.tests.at))) : ''}</p>`;
     const body = !rows.length
       ? `<div class="ntCeEmpty">${icon('certifier')}<b>${tl('Aucun lien en cuivre à certifier')}</b><span>${tl('Posez un panneau de brassage et des prises murales, reliez le dos de chaque prise au dos du panneau : chaque câble est un lien permanent.')}</span></div>`

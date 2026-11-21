@@ -14,6 +14,7 @@ import { cleanVlans } from './vlan.js';
 import { cleanMedia } from './fibre.js';
 import { cleanDesign } from './dimension.js';
 import { cleanTests } from './certify.js';
+import { cleanUnderlays, cleanBlobs } from './cad/store.js';
 
 /** Plafonds d'un plan (un bâtiment de plusieurs étages : des centaines de prises, de câbles et d'équipements). */
 export const MAX = { devices: 3000, cables: 6000, ext: 100 };
@@ -50,7 +51,7 @@ function cleanProps(type, p) {
 }
 /**
  * Plan propre (ids uniques, câbles entre ports existants, un câble par port) :
- *   { devices, cables, ext, view, site, paths, racks, vlans, design, tests, images }
+ *   { devices, cables, ext, view, site, paths, racks, vlans, design, tests, images, underlays, blobs }
  * devices[i] : { id, type, x, y (schéma logique), name, p (réglages), loc? (place sur un plan d'étage, mètres), rack? (place
  *   dans une baie), tag? (étiquette imposée) } ; cables[i] : { id, a, b, cat, len, wire, route? (tracé), tag?, + champs du
  *   support (fibre.js) }. Les câbles au tracé automatique reçoivent leur longueur réelle (route.js, applyRoutes).
@@ -63,6 +64,7 @@ export function cleanNet(raw) {
     const o = { id, type: d.type, x: num(d.x, -1e5, 1e5, 0), y: num(d.y, -1e5, 1e5, 0), name: txt(d.name, 24) || id, p: cleanProps(d.type, d.p) };
     const loc = cleanLoc(d.loc), rk = cleanRackPos(d.rack), tag = txt(d.tag, 40);
     if (loc) o.loc = loc; if (rk) o.rack = rk; if (tag) o.tag = tag;
+    if (typeof d.src === 'string' && /^[\w.:-]{1,60}$/.test(d.src)) o.src = d.src; // créé par une conversion DAO (cad/convert.js)
     devices.push(o);
   }
   const ext = {};
@@ -85,6 +87,9 @@ export function cleanNet(raw) {
     site: cleanSite(r.site), paths: cleanPaths(r.paths), racks: cleanRacks(r.racks), vlans: cleanVlans(r.vlans),
     design: cleanDesign(r.design), tests: cleanTests(r.tests), images: cleanImages(r.images), wifi: cleanWifi(r.wifi)
   };
+  // Fonds de plan vectoriels (DXF/DWG) : un par étage existant ; leurs données binaires, hors historique (cad/store.js).
+  out.underlays = cleanUnderlays(r.underlays, out.site.buildings.flatMap(b => b.floors.map(f => f.id)));
+  out.blobs = cleanBlobs(r.blobs, out.underlays);
   // Mode examen (réglé par l'enseignant, ou par le TP « exam ») : verdicts cachés (sertissage, testeur, inspecteur).
   if (r.exam === true) { out.exam = true; const lk = cleanLock(r.examLock); if (lk) out.examLock = lk; }
   return applyRoutes(out);

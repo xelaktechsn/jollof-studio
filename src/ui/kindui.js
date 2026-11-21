@@ -32,7 +32,10 @@ export function installKind(host) {
   const btn = host.anchor.nextElementSibling;
   btn.onclick = async () => {
     const cur = host.get();
+    // L'infobulle du bouton ne reste pas derrière le menu ouvert.
+    const tip = btn.dataset.tip; delete btn.dataset.tip;
     const v = await popMenu(btn, KIND_IDS.map(k => ({ label: `${KINDS[k].name()}${k === cur ? ' ✓' : ''}`, icon: KINDS[k].icon, value: k })));
+    if (tip && btn.dataset.tip == null) btn.dataset.tip = tip;
     if (v && v !== cur) host.set(v);
   };
   function paint() {
