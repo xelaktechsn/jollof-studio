@@ -3,6 +3,8 @@
 // Site d'aide : recherche dans l'index (search-index.js, window.AIDE_INDEX : { u: adresse, p: page, t: titre, x: texte }),
 // sans accents ni majuscules, tous les mots demandés ; sommaire repliable sur petit écran. Aucun service extérieur.
 (() => {
+  // Thème choisi sur la page d'accueil (sinon : celui du système).
+  try { const t = localStorage.getItem('jollof-site-theme'); if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t; } catch (e) { /* stockage indisponible */ }
   const $ = s => document.querySelector(s);
   const q = $('#q'), results = $('#results'), toc = $('#toc'), side = $('#side'), sideBtn = $('#sideBtn');
   const fold = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[’']/g, ' ');

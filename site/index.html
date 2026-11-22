@@ -9,6 +9,7 @@
   <title>Jollof Studio : concevoir, simuler, vérifier, sans labo</title>
   <meta name="description" content="Jollof Studio : application de bureau gratuite et open source pour concevoir, simuler et vérifier des montages électroniques, des circuits pneumatiques, de la logique et des réseaux de bâtiment. 156 composants, 10 cartes, 82 TP guidés. Windows et Linux.">
   <meta name="theme-color" content="#ffffff">
+  <script>try{var t=localStorage.getItem("jollof-site-theme");if(t==="dark"||t==="light")document.documentElement.dataset.theme=t}catch(e){}</script>
   <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="fr" href="https://xelaktechsn.github.io/jollof-studio/?lang=fr">
   <link rel="alternate" hreflang="en" href="https://xelaktechsn.github.io/jollof-studio/?lang=en">
@@ -21,10 +22,10 @@
   <link rel="preload" href="assets/fonts/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
-<body class="home">
+<body class="home" id="top">
   <a class="skip" href="#main" data-i18n="skip">Aller au contenu</a>
 
-  <header class="nav solid" id="top">
+  <header class="nav solid">
     <div class="wrap navIn">
       <a class="brand" href="#top" aria-label="Jollof Studio">
         <img src="assets/img/icon.svg" alt="" width="30" height="30">
@@ -44,6 +45,7 @@
           <button type="button" data-lang="fr" aria-pressed="true">FR</button>
           <button type="button" data-lang="en" aria-pressed="false">EN</button>
         </div>
+        <button type="button" class="themeBtn" id="themeBtn" aria-pressed="false" aria-label="Thème sombre" data-i18n-label="theme.label"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true"><circle cx="10" cy="10" r="7.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M10 2.75a7.25 7.25 0 0 1 0 14.5z" fill="currentColor"/></svg></button>
         <button type="button" class="menu" aria-controls="links" aria-expanded="false" aria-label="Menu"><span></span><span></span></button>
       </div>
     </div>
@@ -64,7 +66,7 @@
           <p class="fine" data-i18n="hero.tryNote">Version 0.4 pour Windows et Linux, sous licence AGPL-3.0. La version navigateur câble, simule, vérifie et ouvre les TP ; le téléversement, la compilation C++ et le DWG demandent l’application.</p>
         </div>
         <figure class="heroFig">
-          <img src="assets/img/atelier.webp" width="957" height="992" alt="Illustration : un enfant assis à un bureau câble une carte à microcontrôleur sur une plaque d’essai, avec un multimètre, des fils et un ordinateur portable." data-i18n-alt="hero.alt" fetchpriority="high">
+          <div class="heroArt" id="heroArt"><span class="heroShadow" aria-hidden="true"></span><img src="assets/img/atelier.webp" width="957" height="992" alt="Illustration : un enfant assis à un bureau câble une carte à microcontrôleur sur une plaque d’essai, avec un multimètre, des fils et un ordinateur portable." data-i18n-alt="hero.alt" fetchpriority="high"></div>
           <figcaption><b data-i18n="hero.capb">Illustration.</b> <span data-i18n="hero.cap">La paillasse que beaucoup d’élèves n’ont pas : une carte, un multimètre, des fils, du temps pour se tromper.</span></figcaption>
         </figure>
       </div>
@@ -492,6 +494,7 @@ npm run tauri build    <span class="c" data-i18n="start.c2"># installateurs</spa
     <div class="wrap legal"><span>© 2026 Mamadou Sarr, Xelaktech, Dakar</span><a href="#top" data-i18n="foot.top">Haut de page</a></div>
   </footer>
 
+  <button type="button" class="toTop" id="toTop" hidden aria-label="Haut de page" data-i18n-label="foot.top"><svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><path d="M10 15.5V5M5 9.5l5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
   <script src="i18n.js"></script>
   <script src="main.js"></script>
 </body>

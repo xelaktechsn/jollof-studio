@@ -183,5 +183,6 @@ window.JOLLOF_EN = {
   'open.c': 'Contribute', 'open.i': 'Report an issue', 'open.help': 'Read the help', 'built.k': 'Built with',
 
   'foot.t': 'A full lab, minus the lab.', 'foot.p': 'Project', 'foot.r': 'Releases', 'foot.i': 'Issues', 'foot.d': 'Documentation', 'foot.help': 'Online help',
-  'foot.readme': 'Readme', 'foot.proven': 'What the checker proves', 'foot.arch': 'Architecture', 'foot.l': 'Licence', 'foot.com': 'Commercial licence', 'foot.third': 'Third-party software', 'foot.top': 'Back to top'
+  'foot.readme': 'Readme', 'foot.proven': 'What the checker proves', 'foot.arch': 'Architecture', 'foot.l': 'Licence', 'foot.com': 'Commercial licence', 'foot.third': 'Third-party software', 'theme.label': 'Dark theme',
+  'foot.top': 'Back to top'
 };

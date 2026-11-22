@@ -53,6 +53,8 @@ p, dl, dd, ol, ul, figure { margin: 0; }
 .menu span { display: block; width: 18px; height: 2px; background: var(--text); margin: 5px auto; }
 /* Aide : le mot-symbole pour fond clair (la page d'aide ne connaît que logo-dark.svg). */
 .aide .brand .wm { content: url(assets/img/logo-light.svg); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .aide .brand .wm { content: url(assets/img/logo-dark.svg); } }
+:root[data-theme="dark"] .aide .brand .wm { content: url(assets/img/logo-dark.svg); }
 
 /* Boutons et liens */
 .btn { display: inline-flex; align-items: baseline; gap: 10px; font: 600 var(--fs)/1 var(--sans); padding: 15px 22px; border-radius: var(--r); border: 0; cursor: pointer; background: var(--blue); color: #fff; }
@@ -77,7 +79,7 @@ h1 span { display: block; }
 .hero .tlink { color: #fff; }
 .hero .fine { color: #fff; max-width: 38em; margin-top: 22px; }
 .hero :focus-visible { outline-color: #fff; }
-.heroFig img { width: 100%; max-width: 500px; margin-left: auto; }
+.heroFig img { width: 100%; }
 .heroFig figcaption { font-size: var(--fs-s); line-height: 1.45; max-width: 500px; margin: 10px 0 0 auto; }
 .heroFig figcaption b { font-weight: 600; }
 .facts { display: grid; grid-template-columns: repeat(6, auto); justify-content: space-between; gap: 0 24px; padding: 56px 0 0; }
@@ -203,7 +205,7 @@ h3 { font-size: var(--fs-m); letter-spacing: -0.015em; line-height: 1.2; }
   .navEnd { margin-left: auto; }
   .hero { padding: 48px 0; }
   .heroIn { grid-template-columns: minmax(0, 1fr); gap: 32px; }
-  .heroFig img, .heroFig figcaption { max-width: 420px; margin-left: 0; }
+  .heroFig figcaption { max-width: 420px; margin-left: 0; }
   .grid, .flip, .duo, .trio, .figSide, .footIn { grid-template-columns: minmax(0, 1fr); }
   .figSide .shot, .figSide figcaption { grid-column: 1; grid-row: auto; }
   .figSide figcaption { padding-top: 12px; }
@@ -230,3 +232,53 @@ h3 { font-size: var(--fs-m); letter-spacing: -0.015em; line-height: 1.2; }
   .btn, .links a, .copy { transition: background-color .12s, color .12s; }
 }
 @media print { .nav, .copy, .menu { display: none; } .home main { padding-top: 0; } .hero { background: none; color: #000; } }
+
+/* ---------- Thème sombre : celui du système, ou celui choisi (bouton de la barre) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { color-scheme: dark; --bg: #0f1114; --bg2: #171a1f; --panel: #171a1f; --panel2: #1f242b; --line: #272c34; --line2: #3a414c;
+    --text: #f3f4f6; --muted: #b9bec6; --dim: #8d939c; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
+  :root:not([data-theme="light"]) .brand .wm, :root:not([data-theme="light"]) .foot img { content: url(assets/img/logo-dark.svg); }
+}
+:root[data-theme="dark"] { color-scheme: dark; --bg: #0f1114; --bg2: #171a1f; --panel: #171a1f; --panel2: #1f242b; --line: #272c34; --line2: #3a414c;
+    --text: #f3f4f6; --muted: #b9bec6; --dim: #8d939c; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
+:root[data-theme="dark"] .brand .wm, :root[data-theme="dark"] .foot img { content: url(assets/img/logo-dark.svg); }
+.copy { background: var(--bg); }
+.themeBtn { width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; border-radius: var(--r); color: var(--text); cursor: pointer; padding: 0; }
+.themeBtn:hover { background: var(--panel); }
+.themeBtn svg { transition: transform .35s cubic-bezier(.2, .7, .2, 1); }
+.themeBtn[aria-pressed="true"] svg { transform: rotate(180deg); }
+
+/* ---------- Retour en haut ---------- */
+.toTop { position: fixed; right: 20px; bottom: 20px; z-index: 40; width: 44px; height: 44px; display: grid; place-items: center; border: 0; border-radius: 50%; background: var(--blue); color: #fff; cursor: pointer; opacity: 0; transform: translateY(10px); transition: opacity .2s, transform .2s; }
+.toTop[hidden] { display: none; }
+.toTop.on { opacity: 1; transform: none; }
+.toTop:hover { background: #1d4ed8; }
+
+/* ---------- Mouvement : transform et opacity seulement, rien si le système le demande ---------- */
+.heroArt { position: relative; max-width: 500px; margin-left: auto; }
+.heroArt img { max-width: none; margin: 0; will-change: transform; transform: translate3d(var(--px, 0), var(--py, 0), 0) rotate(var(--rz, 0deg)); }
+.heroShadow { position: absolute; left: 14%; right: 14%; bottom: 1.5%; height: 7%; border-radius: 50%; background: rgba(0, 0, 0, .28); filter: blur(14px); }
+@media (max-width: 900px) { .heroArt { max-width: 420px; margin-left: 0; } }
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+  .heroArt { animation: heroIn .9s cubic-bezier(.2, .7, .2, 1) both; }
+  .heroArt img { animation: heroFloat 7s ease-in-out 1s infinite; }
+  .heroShadow { animation: heroShade 7s ease-in-out 1s infinite; }
+  .heroTxt > * { animation: rise .7s cubic-bezier(.2, .7, .2, 1) both; }
+  .heroTxt > :nth-child(2) { animation-delay: .08s; } .heroTxt > :nth-child(3) { animation-delay: .16s; } .heroTxt > :nth-child(n+4) { animation-delay: .24s; }
+  .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s ease-out, transform .6s cubic-bezier(.2, .7, .2, 1); }
+  .js .rv.in { opacity: 1; transform: none; }
+  .js .rv .pin { opacity: 0; transform: scale(.4); transition: opacity .3s, transform .4s cubic-bezier(.3, 1.5, .5, 1); transition-delay: calc(.35s + var(--i, 0) * .09s); }
+  .js .rv.in .pin { opacity: 1; transform: none; }
+  .shot img { transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
+  a.shot:hover img, .shot a:hover img { transform: scale(1.012); }
+  .btn, .links a.navDl { transition: background-color .15s, transform .15s; }
+  .btn:active, .links a.navDl:active { transform: translateY(1px); }
+  .nav { transition: box-shadow .2s; }
+  .nav.scrolled { box-shadow: 0 6px 20px -12px rgba(0, 0, 0, .35); }
+}
+@keyframes heroIn { from { opacity: 0; transform: translateY(26px) scale(.97); } }
+@keyframes heroFloat { 50% { transform: translate3d(var(--px, 0), calc(var(--py, 0px) - 10px), 0) rotate(calc(var(--rz, 0deg) + .6deg)); } }
+@keyframes heroShade { 50% { transform: scale(.9); opacity: .7; } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } }
+@media print { .toTop, .themeBtn { display: none; } }

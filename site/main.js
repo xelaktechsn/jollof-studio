@@ -85,6 +85,41 @@
   if (initial !== 'fr') setLang(initial, false); else showSizes();
   for (const b of $$('[data-lang]')) b.addEventListener('click', () => setLang(b.dataset.lang, true));
 
+  // ---------- Thème : celui du système, sauf choix du visiteur (gardé) ----------
+  const root = document.documentElement, themeBtn = document.getElementById('themeBtn'), mq = matchMedia('(prefers-color-scheme: dark)');
+  const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : mq.matches);
+  const paintTheme = () => { themeBtn.setAttribute('aria-pressed', String(isDark())); const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = isDark() ? '#0f1114' : '#ffffff'; };
+  themeBtn.addEventListener('click', () => { const t = isDark() ? 'light' : 'dark'; root.dataset.theme = t; try { localStorage.setItem('jollof-site-theme', t); } catch (e) { /* stockage indisponible */ } paintTheme(); });
+  mq.addEventListener('change', paintTheme); paintTheme();
+
+  // ---------- Retour en haut, ombre de la barre ----------
+  const calm = matchMedia('(prefers-reduced-motion: reduce)');
+  const toTop = document.getElementById('toTop'), nav = document.querySelector('.nav');
+  const goTop = e => { e.preventDefault(); scrollTo({ top: 0, behavior: calm.matches ? 'auto' : 'smooth' }); history.replaceState(null, '', location.pathname + location.search); };
+  toTop.hidden = false; toTop.addEventListener('click', goTop);
+  for (const a of $$('a[href="#top"]')) a.addEventListener('click', goTop);
+  let tick = false;
+  const onScroll = () => { tick = false; const y = scrollY; toTop.classList.toggle('on', y > 700); toTop.tabIndex = y > 700 ? 0 : -1; nav.classList.toggle('scrolled', y > 8); };
+  addEventListener('scroll', () => { if (!tick) { tick = true; requestAnimationFrame(onScroll); } }, { passive: true }); onScroll();
+
+  // ---------- Apparition des figures (une fois), illustration qui suit le pointeur ----------
+  root.classList.add('js');
+  const rv = $$('main figure:not(.heroFig), main table');
+  for (const f of rv) { f.classList.add('rv'); [...f.querySelectorAll('.pin')].forEach((p, i) => p.style.setProperty('--i', i)); }
+  if ('IntersectionObserver' in window && !calm.matches) {
+    const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    for (const f of rv) io.observe(f);
+  } else for (const f of rv) f.classList.add('in');
+  const art = document.getElementById('heroArt'), hero = document.querySelector('.hero');
+  if (art && matchMedia('(hover: hover) and (pointer: fine)').matches && !calm.matches) {
+    const img = art.querySelector('img'); let raf = 0, mx = 0, my = 0;
+    hero.addEventListener('pointermove', e => {
+      const r = hero.getBoundingClientRect(); mx = (e.clientX - r.left) / r.width - 0.5; my = (e.clientY - r.top) / r.height - 0.5;
+      if (!raf) raf = requestAnimationFrame(() => { raf = 0; img.style.setProperty('--px', (mx * -14).toFixed(1) + 'px'); img.style.setProperty('--py', (my * -10).toFixed(1) + 'px'); img.style.setProperty('--rz', (mx * 1.2).toFixed(2) + 'deg'); });
+    }, { passive: true });
+    hero.addEventListener('pointerleave', () => { img.style.setProperty('--px', '0px'); img.style.setProperty('--py', '0px'); img.style.setProperty('--rz', '0deg'); });
+  }
+
   // Menu sur petit écran.
   const menu = document.querySelector('.menu'), links = document.getElementById('links');
   const closeMenu = () => { links.classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); };
