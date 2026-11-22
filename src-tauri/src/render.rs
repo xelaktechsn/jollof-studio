@@ -147,7 +147,9 @@ pub async fn render_save(
             None => return Err("Aucune vidéo à enregistrer".into()),
         }
     };
-    blocking(move || fs::copy(&src, &dest).map_err(|e| format!("Écriture impossible : {e}"))).await
+    // Copie atomique (files.rs) : un disque plein ou un arrêt brutal ne laissent pas une vidéo tronquée à la place
+    // de celle qui était là.
+    blocking(move || crate::files::copy_atomic(&src, &dest)).await
 }
 
 /// Un rendu fait par ffmpeg (master) devient le rendu courant : « Enregistrer sous » le copiera.

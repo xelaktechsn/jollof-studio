@@ -6,7 +6,8 @@
 // échelle, date, révision, auteur), sa légende, sa flèche du nord et son échelle graphique. SVG vectoriel en millimètres
 // du papier (A3 ou A1 paysage), lisible imprimé : à imprimer (zone d'impression) ou à enregistrer.
 import { tl } from '../i18n/index.js';
-import { floorsOf, polyCentroid, cleanDesign, mountOf } from './dimension.js';
+import { floorsOf, polyCentroid, cleanDesign } from './dimension.js';
+import { mountDev } from './rack.js';
 import { labeler } from './docs.js';
 import { specOf } from './devices.js';
 import * as ROUTE from './route.js';
@@ -170,7 +171,7 @@ export function rackSheet(data, rackIds, o = {}) {
     for (let u = 1; u <= U; u++) parts.push(`<text x="${r2(x - 1)}" y="${r2(y + (U - u + 1) * uh - uh * 0.25)}" font-size="${r2(Math.min(2, uh * 0.7))}" text-anchor="end" fill="${C.mute}">${u}</text>`);
     for (const d of data.devices || []) {
       if (!d.rack || d.rack.id !== r.id || d.rack.face === 'rear') continue;
-      const mu = mountOf(d.type).u; if (!mu) continue;
+      const mu = (mountDev(d) || {}).u; if (!mu) continue;
       const top = y + (U - (d.rack.u + mu - 1)) * uh, role = (specOf(d) || {}).role, blank = d.type === 'blank';
       const fill = blank ? '#eef2f6' : /^patch|fibrepanel/.test(d.type) ? '#dbeafe' : role === 'switch' || role === 'router' || role === 'l3' ? '#1e293b' : role === 'mech' ? '#cbd5e1' : '#e2e8f0';
       const ink = fill === '#1e293b' ? '#f8fafc' : C.ink, name = blank ? '' : /^patch|fibrepanel/.test(d.type) ? Lb.of(d.id) : d.name;

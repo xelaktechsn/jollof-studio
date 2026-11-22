@@ -406,8 +406,10 @@ export function testsCsv(rows, o = {}) {
     const head = [tl('Lien'), tl('Type'), tl('Limite'), tl('Longueur (m)'), tl('Date'), tl('À jour')];
     return [head, ...rows.map(r => [r.label, r.kind === 'pl' ? tl('lien permanent') : tl('canal'), limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit, r.len, r.at || '', r.stale ? tl('non') : tl('oui')])].map(l => l.map(csvCell).join(',')).join('\r\n') + '\r\n';
   }
-  const head = [tl('Lien'), tl('Type'), tl('Limite'), tl('Résultat'), tl('Marge (dB)'), tl('Paramètre le plus faible'), tl('Paire'), tl('Fréquence (MHz)'), tl('Longueur (m)'), tl('Date'), tl('À jour')];
-  const lines = rows.map(r => [r.label, r.kind === 'pl' ? tl('lien permanent') : tl('canal'), limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit, verdictText(r.verdict), r.margin, paramName(r.param), r.pair || '', r.f ?? '', r.len, r.at || '', r.stale ? tl('non') : tl('oui')]);
+  const head = [tl('Lien'), tl('Type'), tl('Limite'), tl('Résultat simulé'), tl('Marge (dB)'), tl('Paramètre le plus faible'), tl('Paire'), tl('Fréquence (MHz)'), tl('Longueur (m)'), tl('Date'), tl('À jour'),
+    tl('Résultat mesuré'), tl('Marge mesurée (dB)'), tl('Longueur mesurée (m)'), tl('Limite du testeur'), tl('Testeur'), tl('Date de la mesure'), tl('Identifiant du testeur')];
+  const ms = r => { const m = r.meas; return m ? [verdictText(m.verdict), m.margin ?? '', m.len ?? '', m.limit || '', [m.tester, m.serial].filter(Boolean).join(' '), m.at || '', m.cableId] : ['', '', '', '', '', '', '']; };
+  const lines = rows.map(r => [r.label, r.kind === 'pl' ? tl('lien permanent') : tl('canal'), limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit, verdictText(r.verdict).replace('—', ''), r.margin, r.param ? paramName(r.param) : '', r.pair || '', r.f ?? '', r.len, r.at || '', r.stale ? tl('non') : tl('oui'), ...ms(r)]);
   return [head, ...lines].map(l => l.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }
 
@@ -481,7 +483,8 @@ table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #d
 .badge{display:inline-block;padding:2px 10px;border-radius:12px;color:#fff;font-weight:700;font-size:14px}.badge.ok{background:#15803d;color:#fff}.badge.mg{background:#b45309;color:#fff}.badge.bad{background:#b91c1c;color:#fff}
 .charts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.charts figure{margin:0}.charts figcaption{font-weight:600;margin-bottom:2px}svg{width:100%;height:auto}text{font-size:10px}
 @media print{body{margin:10mm}.noprint{display:none}}`;
-  const summary = `<table><thead><tr><th>${tl('Lien')}</th><th>${tl('Limite')}</th><th>${tl('Résultat')}</th><th>${tl('Marge (dB)')}</th><th>${tl('Paramètre le plus faible')}</th><th>${tl('Longueur (m)')}</th><th>${tl('Date')}</th></tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit)}</td><td class="${cls(r.verdict)}">${verdictText(r.verdict)}${r.stale ? ' · ' + tl('périmé') : ''}</td><td>${fmt(r.margin, 2)}</td><td>${esc(paramName(r.param))}${r.pair ? ' ' + esc(r.pair) : ''}</td><td>${fmt(r.len)}</td><td>${esc(String(r.at || '').slice(0, 10))}</td></tr>`).join('')}</tbody></table>`;
+  const hasMeas = rows.some(r => r.meas) || (o.measured || []).length > 0;
+  const summary = `<table><thead><tr><th>${tl('Lien')}</th><th>${tl('Limite')}</th><th>${tl('Résultat simulé')}</th><th>${tl('Marge (dB)')}</th><th>${tl('Paramètre le plus faible')}</th><th>${tl('Longueur (m)')}</th><th>${tl('Date')}</th>${hasMeas ? `<th>${tl('Mesuré (testeur)')}</th>` : ''}</tr></thead><tbody>${rows.map(r => `<tr><td>${esc(r.label)}</td><td>${esc(limitInfo(r.limit) ? limitInfo(r.limit).name : r.limit)}</td><td class="${cls(r.verdict)}">${verdictText(r.verdict)}${r.stale ? ' · ' + tl('périmé') : ''}</td><td>${fmt(r.margin, 2)}</td><td>${esc(paramName(r.param))}${r.pair ? ' ' + esc(r.pair) : ''}</td><td>${fmt(r.len)}</td><td>${esc(String(r.at || '').slice(0, 10))}</td>${hasMeas ? `<td class="${r.meas ? cls(r.meas.verdict) : ''}">${r.meas ? verdictText(r.meas.verdict) : ''}</td>` : ''}</tr>`).join('')}</tbody></table>`;
   const pages = (o.details || []).map(d => {
     const r = d.res, li = limitInfo(r.limit);
     return `<section class="page"><h2>${esc(d.label)}</h2><p class="sub">${esc(li ? li.name : r.limit)} · ${tl('longueur {0} m', fmt(r.len))} · <span class="badge ${cls(r.verdict)}">${verdictText(r.verdict)}</span> · ${tl('marge la plus faible {0} dB ({1})', fmt(r.margin, 2), esc(paramName(r.param)))}</p>
@@ -491,7 +494,18 @@ table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #d
 <h1>${esc(o.title || tl('Rapport de certification'))}</h1><p class="sub">${esc(o.project || '')}${o.project ? ' · ' : ''}${esc(String(o.at || '').slice(0, 16).replace('T', ' '))}</p>
 <p class="warn">${esc(modelNote())} ${esc(limitsNote())}</p>
 <p><b>${tl('{0:# lien|# liens}', rows.length)}</b> · <span class="ok">PASS ${count('pass')}</span> · <span class="mg">PASS* ${count('pass*')}</span> · <span class="bad">FAIL* ${count('fail*')}</span> · <span class="bad">FAIL ${count('fail')}</span></p>
-${summary}${pages}</body></html>`;
+${summary}${measuredHtml(o.measured, o.measuredInfo)}${pages}</body></html>`;
+}
+/**
+ * Section « Résultats mesurés » du rapport : mesures d'un vrai certificateur importées dans le projet (data.measured),
+ * nommées comme telles, à part des valeurs simulées. list : [{ label (lien du plan ou ''), …résultat mesuré }].
+ */
+export function measuredHtml(list, info = {}) {
+  if (!list || !list.length) return '';
+  const cls = v => ({ pass: 'ok', 'pass*': 'mg', 'fail*': 'bad', fail: 'bad' }[v] || ''), c = v => list.filter(r => r.verdict === v).length;
+  return `<h2 style="margin-top:18px">${tl('Résultats mesurés (testeur réel)')}</h2><p class="sub">${esc(tl('Mesures importées du fichier d’un certificateur{0} : elles ne viennent pas du modèle. Limite, marge et date sont celles du testeur.', info && info.file ? ' (' + info.file + ')' : ''))}</p>
+<p><b>${tl('{0:# résultat mesuré|# résultats mesurés}', list.length)}</b> · <span class="ok">PASS ${c('pass')}</span> · <span class="mg">PASS* ${c('pass*')}</span> · <span class="bad">FAIL* ${c('fail*')}</span> · <span class="bad">FAIL ${c('fail')}</span></p>
+<table><thead><tr><th>${tl('Identifiant du testeur')}</th><th>${tl('Lien du plan')}</th><th>${tl('Limite du testeur')}</th><th>${tl('Résultat mesuré')}</th><th>${tl('Marge (dB)')}</th><th>${tl('Longueur (m)')}</th><th>${tl('Testeur')}</th><th>${tl('Date')}</th></tr></thead><tbody>${list.map(r => `<tr><td>${esc(r.cableId)}</td><td>${esc(r.label || tl('non rattaché'))}</td><td>${esc(r.limit || '')}</td><td class="${cls(r.verdict)}">${verdictText(r.verdict)}</td><td>${r.margin == null ? '' : fmt(r.margin, 2)}${r.param && PNAME[r.param] ? ' ' + esc(paramName(r.param)) : ''}</td><td>${r.len == null ? '' : fmt(r.len)}</td><td>${esc([r.tester, r.serial].filter(Boolean).join(' '))}</td><td>${esc(String(r.at || '').slice(0, 16).replace('T', ' '))}</td></tr>`).join('')}</tbody></table>`;
 }
 /** Rapport du mode examen : liens, limites, mesures et courbes, sans verdict ni marge. */
 function reportExam(o) {

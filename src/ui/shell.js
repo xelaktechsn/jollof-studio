@@ -67,6 +67,8 @@ export function installShell(host) {
   const tabs = installEditorTabs(host);
   installKeys(host, dock);
   releaseTabFocus();
+  // Boîtes modales : nom, focus retenu et rendu (src/ui/a11y.js), chargé hors du démarrage.
+  setTimeout(() => import('./a11y.js').then(m => m.installA11y()).catch(e => console.warn(e)), 0);
   // Infobulles des boutons de la barre d'application : raccourcis à la façon du système (⌘Z sur Mac, Ctrl+Z ailleurs).
   for (const [id, lab, k, sh] of [['#undoBtn', 'Annuler', 'Z'], ['#redoBtn', 'Rétablir', 'Z', true], ['#saveBtn', 'Enregistrer', 'S']]) { const b = $(id); if (b) b.dataset.tip = `${tl(lab)} · ${shortcut(k, !!sh)}`; }
   return { act, tabs, dock };
@@ -186,7 +188,9 @@ function installEditorTabs(host = {}) {
     return b;
   });
   const end = el('div', 'edEnd');
-  strip.append(...btns, end);
+  // Les onglets dans leur propre liste (role="tablist" n'admet que des onglets) ; les boutons de droite à côté.
+  const list = el('div', 'edTabList'); list.setAttribute('role', 'tablist'); list.setAttribute('aria-label', strip.getAttribute('aria-label') || tl('Plans de travail'));
+  list.append(...btns); strip.append(list, end);
   // Flèches entre les onglets visibles.
   strip.addEventListener('keydown', e => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
@@ -234,7 +238,7 @@ function createDock() {
   /** Onglet ajouté utilisable par ce projet (when() : par exemple, le moniteur série seulement avec une carte programmable). */
   const usable = id => { const x = extra.get(id); return !!x && (!x.when || x.when()); };
   if (!root) return { toggle() {}, show() {}, hide() {}, tab: () => '', log() {}, bind() {}, onCount() {}, onState() {}, addTab() {} };
-  root.innerHTML = `<div class="dkGrip" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="${tl('Hauteur du panneau')}" title="${tl('Tirer pour régler la hauteur · double-clic : hauteur d’origine')}"></div>
+  root.innerHTML = `<div class="dkGrip" role="separator" aria-orientation="horizontal" tabindex="0" aria-valuemin="120" aria-valuenow="220" aria-label="${tl('Hauteur du panneau')}" title="${tl('Tirer pour régler la hauteur · double-clic : hauteur d’origine')}"></div>
     <div class="dkHead" role="tablist">
       <button type="button" role="tab" class="dkTab" data-dk="problems" aria-selected="false">${tl('Problèmes')}<span class="count" data-dkc></span></button>
       <button type="button" role="tab" class="dkTab" data-dk="output" aria-selected="false">${OUTPUT}</button>
@@ -248,7 +252,7 @@ function createDock() {
   const q = s => root.querySelector(s), probBox = q('.dkProblems'), out = q('.dkOutput'), logEl = q('.dkLog');
 
   /* Hauteur : poignée au bord haut, retenue d'une session à l'autre. */
-  const setH = (h, save = true) => { h = Math.round(Math.max(120, Math.min(Math.round(innerHeight * 0.6), h))); app.style.setProperty('--dkH', h + 'px'); if (save) store.set(KEY.h, h); };
+  const setH = (h, save = true) => { h = Math.round(Math.max(120, Math.min(Math.round(innerHeight * 0.6), h))); app.style.setProperty('--dkH', h + 'px'); const g = q('.dkGrip'); if (g) g.setAttribute('aria-valuenow', h); if (save) store.set(KEY.h, h); };
   const savedH = store.get(KEY.h, null); if (Number.isFinite(savedH)) setH(savedH, false);
   const grip = q('.dkGrip');
   grip.addEventListener('pointerdown', e => {

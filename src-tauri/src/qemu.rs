@@ -83,6 +83,11 @@ fn chip_of(
         .ok_or_else(|| "Puce inconnue".to_string())
 }
 const MAX_ZIP: u64 = 100 * 1024 * 1024;
+/// Archive décompressée : 1,5 Gio au plus en tout, 20 000 entrées au plus. L'archive est déjà vérifiée par son
+/// empreinte ; ces bornes restent là pour qu'une archive piégée (bombe de décompression) ne remplisse ni la mémoire
+/// ni le disque si l'empreinte figée venait un jour d'une publication compromise.
+const MAX_UNPACKED: u64 = 1536 * 1024 * 1024;
+const MAX_ENTRIES: usize = 20_000;
 /// Image de la flash : 1 à 16 Mo, par blocs de 64 Kio, chargeur d'amorçage de l'ESP32 à 0x1000 (octet magique 0xE9).
 const MAX_FLASH: usize = 16 * 1024 * 1024;
 
@@ -146,6 +151,10 @@ pub fn check_hash(bytes: &[u8], expected: &str) -> Result<(), String> {
 pub fn extract(bytes: &[u8], dest: &Path) -> Result<(), String> {
     let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes))
         .map_err(|e| format!("Archive illisible : {e}"))?;
+    if zip.len() > MAX_ENTRIES {
+        return Err("Archive refusée : trop d’entrées.".into());
+    }
+    let mut total: u64 = 0;
     for i in 0..zip.len() {
         let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
         let rel = f
@@ -162,8 +171,17 @@ pub fn extract(bytes: &[u8], dest: &Path) -> Result<(), String> {
         if let Some(d) = out.parent() {
             fs::create_dir_all(d).map_err(|e| e.to_string())?;
         }
-        let mut data = Vec::with_capacity(f.size() as usize);
-        f.read_to_end(&mut data).map_err(|e| e.to_string())?;
+        // La taille annoncée n'est pas crue : lecture bornée par ce qui reste du budget (un octet de plus = refus).
+        let left = MAX_UNPACKED - total;
+        let mut data = Vec::new();
+        (&mut f)
+            .take(left + 1)
+            .read_to_end(&mut data)
+            .map_err(|e| e.to_string())?;
+        if data.len() as u64 > left {
+            return Err("Archive refusée : contenu décompressé trop volumineux.".into());
+        }
+        total += data.len() as u64;
         fs::write(&out, &data).map_err(|e| e.to_string())?;
         #[cfg(unix)]
         if let Some(mode) = f.unix_mode() {
@@ -982,6 +1000,19 @@ mod tests {
         assert!(extract(&zip_of(&[("/etc/evil", b"x")]), &d).is_err());
         assert!(extract(&zip_of(&[("autre/fichier", b"x")]), &d).is_err());
         assert!(!d.parent().unwrap().join("evil").exists());
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn extraction_is_bounded() {
+        let d = std::env::temp_dir().join(format!("jollof-qemu-bomb-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        // Trop d'entrées : refusé avant d'écrire quoi que ce soit.
+        let names: Vec<String> = (0..MAX_ENTRIES + 1).map(|i| format!("qemu/f{i}")).collect();
+        let many: Vec<(&str, &[u8])> = names.iter().map(|n| (n.as_str(), &b""[..])).collect();
+        let e = extract(&zip_of(&many), &d).unwrap_err();
+        assert!(e.contains("trop d’entrées"), "{e}");
+        assert!(!d.exists());
         let _ = fs::remove_dir_all(&d);
     }
 }

@@ -14,6 +14,8 @@ import { cleanVlans } from './vlan.js';
 import { cleanMedia } from './fibre.js';
 import { cleanDesign } from './dimension.js';
 import { cleanTests } from './certify.js';
+import { cleanModel, cleanRefs } from './catalog.js';
+import { cleanMeasured } from './measured.js';
 import { cleanUnderlays, cleanBlobs } from './cad/store.js';
 
 /** Plafonds d'un plan (un bâtiment de plusieurs étages : des centaines de prises, de câbles et d'équipements). */
@@ -64,6 +66,7 @@ export function cleanNet(raw) {
     const o = { id, type: d.type, x: num(d.x, -1e5, 1e5, 0), y: num(d.y, -1e5, 1e5, 0), name: txt(d.name, 24) || id, p: cleanProps(d.type, d.p) };
     const loc = cleanLoc(d.loc), rk = cleanRackPos(d.rack), tag = txt(d.tag, 40);
     if (loc) o.loc = loc; if (rk) o.rack = rk; if (tag) o.tag = tag;
+    const model = cleanModel(d.model); if (model) o.model = model; // modèle réel du catalogue (catalog.js)
     if (typeof d.src === 'string' && /^[\w.:-]{1,60}$/.test(d.src)) o.src = d.src; // créé par une conversion DAO (cad/convert.js)
     devices.push(o);
   }
@@ -85,7 +88,7 @@ export function cleanNet(raw) {
   const out = {
     devices, cables, ext, view: r.view === 'net' ? 'net' : 'elec',
     site: cleanSite(r.site), paths: cleanPaths(r.paths), racks: cleanRacks(r.racks), vlans: cleanVlans(r.vlans),
-    design: cleanDesign(r.design), tests: cleanTests(r.tests), images: cleanImages(r.images), wifi: cleanWifi(r.wifi)
+    design: cleanDesign(r.design), tests: cleanTests(r.tests), measured: cleanMeasured(r.measured), refs: cleanRefs(r.refs), images: cleanImages(r.images), wifi: cleanWifi(r.wifi)
   };
   // Fonds de plan vectoriels (DXF/DWG) : un par étage existant ; leurs données binaires, hors historique (cad/store.js).
   out.underlays = cleanUnderlays(r.underlays, out.site.buildings.flatMap(b => b.floors.map(f => f.id)));

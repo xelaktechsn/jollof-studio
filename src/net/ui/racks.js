@@ -11,7 +11,7 @@ import { DEVICES, specOf } from '../devices.js';
 import {
   MOUNT, U_MM, PANEL_MM, RACK_DESIGN, PANELS, newRack, removeRack, cleanRacks, rackIndex, rackSummary, racksSummary, facesOf, spanOf, canPlace,
   canPlaceGroup, findFree, unracked, patchingSchedule, freePorts
-} from '../rack.js';
+, mountDev } from '../rack.js';
 import { CODES as RACK_CODES } from '../checks/rack.js';
 import { faceSvg, faceH, portSlots, backPortSlots, BACK_PORTS, pduStripSvg, EAR } from './racks-face.js';
 import { rackPane, mechPane, placeFields, summaryPane } from './racks-pane.js';
@@ -119,7 +119,7 @@ export function createRackView(ctx) {
     return out;
   }
   function portPos(r, d, pid) {
-    const m = MOUNT[d.type]; if (!m || !m.u || !d.rack) return null;
+    const m = mountDev(d); if (!m || !m.u || !d.rack) return null;
     const own = d.rack.face === 'rear' ? 'rear' : 'front', faces = facesOf(d, r), h = faceH(m.u);
     if (m.shelf || specOf(d).role === 'mech') return null; // boîtier de bureau, équipement sans port
     // Serveur, NAS : cartes réseau à l'arrière, sur la face opposée à leur montage (dessin vu de derrière).
@@ -151,7 +151,7 @@ export function createRackView(ctx) {
       g += '</g>';
       // Équipements.
       for (const d of devs) {
-        const m = MOUNT[d.type]; if (!m || !m.u) continue;
+        const m = mountDev(d); if (!m || !m.u) continue;
         const faces = facesOf(d, r); if (!faces.includes(face)) continue;
         const own = (d.rack.face === 'rear' ? 'rear' : 'front') === face, h = faceH(m.u), y = yTop(r, d.rack.u + m.u - 1);
         if (spanOf(d)[0] < 1 && spanOf(d)[1] < 1) continue;
@@ -162,9 +162,9 @@ export function createRackView(ctx) {
       // PDU verticales (0U), fixées à l'arrière : la première à gauche vu de devant, la deuxième à droite. Vue de
       // derrière (élévation arrière, retournée gauche-droite), la première est donc à droite.
       if (face === 'rear') {
-        devs.filter(d => MOUNT[d.type] && MOUNT[d.type].pdu && !MOUNT[d.type].u).forEach((d, i) => {
+        devs.filter(d => mountDev(d) && mountDev(d).pdu && !mountDev(d).u).forEach((d, i) => {
           const leftFromFront = i % 2 === 0, len = Math.min(r.u * U_MM - 20, 1620), x = leftFromFront ? r2(px + PANEL_MM + 6) : r2(px - 58), y = TOP + FRAME + (r.u * U_MM - len) / 2;
-          g += `<g class="ntRkDev ntRkZero${isSel('dev', d.id) ? ' isSel' : ''}" data-dev="${esc(d.id)}" transform="translate(${x} ${r2(y)})"><title>${esc(d.name)}</title>${pduStripSvg(d, len, MOUNT[d.type].pdu.outlets)}</g>`;
+          g += `<g class="ntRkDev ntRkZero${isSel('dev', d.id) ? ' isSel' : ''}" data-dev="${esc(d.id)}" transform="translate(${x} ${r2(y)})"><title>${esc(d.name)}</title>${pduStripSvg(d, len, mountDev(d).pdu.outlets)}</g>`;
         });
       }
     }
@@ -216,7 +216,7 @@ export function createRackView(ctx) {
   function miniRack(r, s) {
     const H = 120, k = H / r.u;
     let g = `<svg viewBox="0 0 40 ${H}" preserveAspectRatio="none" aria-hidden="true"><rect class="ntRkMiniCab" x="0" y="0" width="40" height="${H}"/>`;
-    for (const d of s.devices) if (d.h) g += `<rect class="ntRkMiniDev t-${MOUNT[d.type] && (MOUNT[d.type].ups || MOUNT[d.type].ebmOf) ? 'ups' : PANELS.has(d.type) ? 'patch' : specOf({ type: d.type }) && specOf({ type: d.type }).role === 'mech' ? 'mech' : 'net'}" x="3" y="${r2(H - (d.u + d.h - 1) * k)}" width="34" height="${r2(Math.max(1, d.h * k - 0.6))}"/>`;
+    for (const d of s.devices) if (d.h) g += `<rect class="ntRkMiniDev t-${mountDev(d) && (mountDev(d).ups || mountDev(d).ebmOf) ? 'ups' : PANELS.has(d.type) ? 'patch' : specOf({ type: d.type }) && specOf({ type: d.type }).role === 'mech' ? 'mech' : 'net'}" x="3" y="${r2(H - (d.u + d.h - 1) * k)}" width="34" height="${r2(Math.max(1, d.h * k - 0.6))}"/>`;
     return g + '</svg>';
   }
 
@@ -226,7 +226,7 @@ export function createRackView(ctx) {
     const norm = v => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
     const list = unracked(data()).filter(d => !q || norm(`${d.name} ${DEVICES[d.type].name()} ${d.type}`).includes(q));
     if (!list.length) return '';
-    return `<h3 class="ntRkLibH">${esc(tl('Hors baie'))}<span>${list.length}</span></h3><div class="ntGrid ntRkLibGrid">${list.map(d => `<button type="button" class="ntItem ntRkLoose${isSel('dev', d.id) ? ' isSel' : ''}" data-dev="${esc(d.id)}" data-t="${esc(d.type)}" title="${esc(tl('{0} : glisser dans un U, ou clic pour ranger dans la baie', DEVICES[d.type].name()))}">${icon(DEVICES[d.type].icon)}<span>${esc(d.name)}</span><small>${MOUNT[d.type].u ? MOUNT[d.type].u + 'U' : '0U'}</small></button>`).join('')}</div>`;
+    return `<h3 class="ntRkLibH">${esc(tl('Hors baie'))}<span>${list.length}</span></h3><div class="ntGrid ntRkLibGrid">${list.map(d => `<button type="button" class="ntItem ntRkLoose${isSel('dev', d.id) ? ' isSel' : ''}" data-dev="${esc(d.id)}" data-t="${esc(d.type)}" title="${esc(tl('{0} : glisser dans un U, ou clic pour ranger dans la baie', DEVICES[d.type].name()))}">${icon(DEVICES[d.type].icon)}<span>${esc(d.name)}</span><small>${mountDev(d).u ? mountDev(d).u + 'U' : '0U'}</small></button>`).join('')}</div>`;
   }
   function drawSum(r, s) {
     const f = v => (Math.round(v * 10) / 10).toLocaleString(isEn ? 'en-GB' : 'fr-FR'), ups = s.ups[0];
@@ -235,14 +235,14 @@ export function createRackView(ctx) {
   /** Équipement réseau choisi : une puce dans la barre du bas (sa place), qui déplie la carte de place au-dessus d'elle. */
   function selChip() {
     const s = sel(), d = s && s.kind === 'dev' && ms.length <= 1 ? findDev(s.id) : null;
-    if (!d || !MOUNT[d.type] || specOf(d).role === 'mech') return '';
-    const m = MOUNT[d.type], where = d.rack ? `U${d.rack.u}${m.u > 1 ? '–' + (d.rack.u + m.u - 1) : ''} · ${d.rack.face === 'rear' ? tl('à l’arrière') : tl('à l’avant')}` : tl('hors baie');
+    if (!d || !mountDev(d) || specOf(d).role === 'mech') return '';
+    const m = mountDev(d), where = d.rack ? `U${d.rack.u}${m.u > 1 ? '–' + (d.rack.u + m.u - 1) : ''} · ${d.rack.face === 'rear' ? tl('à l’arrière') : tl('à l’avant')}` : tl('hors baie');
     return `<button type="button" class="ntRkChip" data-rksel="toggle" aria-expanded="${!!cardOpen}" data-tip="${tip(tl('Place dans la baie'))}">${icon(DEVICES[d.type].icon)}<b>${esc(d.name)}</b><span>${esc(where)}</span>${icon(cardOpen ? 'chevDown' : 'chevUp')}</button>`;
   }
   function drawSelCard() {
     const card = $('.ntRkSel'), s = sel(), d = s && s.kind === 'dev' && ms.length <= 1 ? findDev(s.id) : null;
-    if (!d || !MOUNT[d.type] || specOf(d).role === 'mech') { card.hidden = true; return; }
-    const m = MOUNT[d.type], open = !!cardOpen;
+    if (!d || !mountDev(d) || specOf(d).role === 'mech') { card.hidden = true; return; }
+    const m = mountDev(d), open = !!cardOpen;
     const where = d.rack ? `U${d.rack.u}${m.u > 1 ? '–' + (d.rack.u + m.u - 1) : ''} · ${d.rack.face === 'rear' ? tl('à l’arrière') : tl('à l’avant')}` : tl('hors baie');
     card.hidden = !open; card.classList.toggle('open', open); if (!open) { card.innerHTML = ''; return; }
     card.innerHTML = `<header>${icon(DEVICES[d.type].icon)}<b>${esc(d.name)}</b><small>${esc(where)} · ${esc(m.ref)}</small><button type="button" class="tb" data-rksel="toggle" aria-expanded="true" aria-label="${tl('Replier')}" data-tip="${tip(tl('Replier'))}">${icon('chevDown')}</button><button type="button" class="tb" data-rksel="close" aria-label="${tl('Fermer')}" data-tip="${tip(tl('Fermer'), 'Esc')}">${icon('x')}</button></header>${open ? `${placeFields(ctx, d, data())}${d.rack ? `<button type="button" class="btn small subtle" data-rksel="unrack" data-tip="${tip(tl('Retirer de la baie'), tl('Suppr'))}">${icon('x')}<span>${tl('Retirer de la baie')}</span></button>` : ''}<p class="mut">${tl('Réglages réseau : onglet Réseau de l’inspecteur.')}</p>` : ''}`;
@@ -331,7 +331,7 @@ export function createRackView(ctx) {
     if (list.some(x => x.kind === 'rack' && x.id === r.id)) return bounds();
     let b = null;
     for (const x of list) {
-      const d = x.kind === 'dev' ? findDev(x.id) : null, m = d && MOUNT[d.type];
+      const d = x.kind === 'dev' ? findDev(x.id) : null, m = d && mountDev(d);
       if (!d || !m || !d.rack || d.rack.id !== r.id || !m.u) continue;
       const face = faceList().includes(d.rack.face) ? d.rack.face : faceList()[0], y = yTop(r, d.rack.u + m.u - 1), px = panelX(r, face);
       b = b ? { x0: Math.min(b.x0, px - 40), y0: Math.min(b.y0, y - 60), x1: Math.max(b.x1, px + PANEL_MM + 40), y1: Math.max(b.y1, y + m.u * U_MM + 60) } : { x0: px - 40, y0: y - 60, x1: px + PANEL_MM + 40, y1: y + m.u * U_MM + 60 };
@@ -348,7 +348,7 @@ export function createRackView(ctx) {
       data: () => {
         const r = curRack(), b = bounds(); if (!r || !b) return null; const R = canvas.getBoundingClientRect();
         const boxes = faceList().map(f => [faceX(r, f), TOP, r.w, totalH(r) - TOP, false]);
-        for (const d of data().devices) { const m = MOUNT[d.type]; if (!d.rack || d.rack.id !== r.id || !m || !m.u) continue; for (const f of facesOf(d, r)) if (faceList().includes(f)) boxes.push([panelX(r, f), yTop(r, d.rack.u + m.u - 1), PANEL_MM, m.u * U_MM, isSel('dev', d.id)]); }
+        for (const d of data().devices) { const m = mountDev(d); if (!d.rack || d.rack.id !== r.id || !m || !m.u) continue; for (const f of facesOf(d, r)) if (faceList().includes(f)) boxes.push([panelX(r, f), yTop(r, d.rack.u + m.u - 1), PANEL_MM, m.u * U_MM, isSel('dev', d.id)]); }
         return { bounds: [b.x0, b.y0, b.x1, b.y1], boxes, view: [view.x, view.y, view.x + R.width / view.k, view.y + R.height / view.k] };
       },
       centerOn: (x, y) => { const R = canvas.getBoundingClientRect(); view.x = x - R.width / 2 / view.k; view.y = y - R.height / 2 / view.k; applyView(); }
@@ -376,7 +376,7 @@ export function createRackView(ctx) {
   /* ---------- Gestes : déplacer, poser, sélectionner ---------- */
   /** Place proposée pour d sous le pointeur (U du bas, face) et son verdict. */
   function proposal(r, d, ev, grab = 0) {
-    const w = toWorld(ev.clientX, ev.clientY), m = MOUNT[d.type], h = hit(r, w.x, w.y - grab);
+    const w = toWorld(ev.clientX, ev.clientY), m = mountDev(d), h = hit(r, w.x, w.y - grab);
     const u = Math.max(1, Math.min(r.u - m.u + 1, h.u - m.u + 1));
     const right = facesShown() === 'both' ? r.w * 2 + GAP : r.w;
     const inside = w.x > -80 && w.x < right + 80 && w.y > 0 && w.y < totalH(r) + 40;
@@ -387,17 +387,17 @@ export function createRackView(ctx) {
     if (!items || !items.length) { ghostL.innerHTML = ''; return; }
     let g = '';
     for (const it of items) {
-      const m = MOUNT[it.dev.type]; if (!m || !m.u) continue;
+      const m = mountDev(it.dev); if (!m || !m.u) continue;
       for (const f of facesOf({ ...it.dev, rack: { id: r.id, u: it.u, face: it.face } }, r)) {
         if (!faceList().includes(f)) continue;
         g += `<rect class="ntRkGhost ${ok.ok ? 'ok' : 'bad'}" x="${r2(panelX(r, f))}" y="${r2(yTop(r, it.u + m.u - 1))}" width="${PANEL_MM}" height="${r2(m.u * U_MM)}" rx="2"/>`;
       }
     }
     if (!ok.ok && ok.with) {
-      const o = findDev(ok.with), m = o && MOUNT[o.type];
+      const o = findDev(ok.with), m = o && mountDev(o);
       if (o && m && m.u && o.rack) for (const f of facesOf(o, r)) if (faceList().includes(f)) g += `<rect class="ntRkClash" x="${r2(panelX(r, f))}" y="${r2(yTop(r, o.rack.u + m.u - 1))}" width="${PANEL_MM}" height="${r2(m.u * U_MM)}" rx="2"/>`;
     }
-    const a = items[0], ma = MOUNT[a.dev.type], af = faceList().includes(a.face) ? a.face : faceList()[0];
+    const a = items[0], ma = mountDev(a.dev), af = faceList().includes(a.face) ? a.face : faceList()[0];
     g += `<g class="ntRkGhostT ${ok.ok ? 'ok' : 'bad'}" transform="translate(${r2(panelX(r, af) + PANEL_MM + 16)} ${r2(yTop(r, a.u + (ma.u || 1) - 1))})"><rect x="0" y="0" width="${Math.max(120, label.length * 9.5 + 20)}" height="30" rx="6"/><text x="10" y="20">${esc(label)}</text></g>`;
     ghostL.innerHTML = g;
   }
@@ -425,8 +425,8 @@ export function createRackView(ctx) {
       selectList(has ? list.filter(x => x.id !== d.id) : [...list, { kind: 'dev', id: d.id }]); return;
     }
     if (!ms.includes(k) || ms.length < 2) selectList([{ kind: 'dev', id: d.id }]);
-    const m = MOUNT[d.type]; if (!m || !m.u || !d.rack) return;
-    const ids = selected().filter(x => x.kind === 'dev').map(x => x.id).filter(id => { const o = findDev(id); return o && o.rack && o.rack.id === r.id && MOUNT[o.type] && MOUNT[o.type].u; });
+    const m = mountDev(d); if (!m || !m.u || !d.rack) return;
+    const ids = selected().filter(x => x.kind === 'dev').map(x => x.id).filter(id => { const o = findDev(id); return o && o.rack && o.rack.id === r.id && mountDev(o) && mountDev(o).u; });
     const w = toWorld(e.clientX, e.clientY), grab = w.y - yTop(r, d.rack.u + m.u - 1) - (m.u * U_MM) / 2 + U_MM / 2;
     drag = { id: d.id, ids: ids.includes(d.id) ? ids : [d.id], sx: e.clientX, sy: e.clientY, moved: false, grab };
     follow();
@@ -449,7 +449,7 @@ export function createRackView(ctx) {
     const items = drag.ids.map(id => { const o = findDev(id); return { dev: o, u: o.rack.u + du, face: single ? p.face : o.rack.face }; });
     const ok = p.inside ? canPlaceGroup(data(), r, items) : { ok: false, why: 'outside' };
     drag.p = { items, ok, inside: p.inside };
-    const m = MOUNT[d.type];
+    const m = mountDev(d);
     paintGhost(r, p.inside ? items : [], ok, `U${p.u}${m.u > 1 ? '–' + (p.u + m.u - 1) : ''}${single ? ' · ' + (p.face === 'rear' ? tl('à l’arrière') : tl('à l’avant')) : ' · ' + tl('{0} équipements', items.length)}${verdict(ok)}`);
   };
   const endDrag = e => {
@@ -459,7 +459,7 @@ export function createRackView(ctx) {
       if (!b.moved) { if (!b.add) selectList(b.face ? [{ kind: 'rack', id: r.id }] : []); return; }
       const hitIds = [];
       for (const d of data().devices) {
-        const m = MOUNT[d.type]; if (!d.rack || d.rack.id !== r.id || !m || !m.u) continue;
+        const m = mountDev(d); if (!d.rack || d.rack.id !== r.id || !m || !m.u) continue;
         for (const f of facesOf(d, r)) {
           if (!faceList().includes(f)) continue;
           const x0 = panelX(r, f), y0 = yTop(r, d.rack.u + m.u - 1), x1 = x0 + PANEL_MM, y1 = y0 + m.u * U_MM;
@@ -515,24 +515,24 @@ export function createRackView(ctx) {
   // Glisser depuis la bibliothèque (type neuf ou équipement « Hors baie ») : la place proposée suit le pointeur.
   function dragOver(info, ev) {
     const r = curRack(); ghostL.innerHTML = '';
-    if (!info || !ev || !r || mode !== 'elev' || !MOUNT[info.type] || !MOUNT[info.type].u) return;
+    if (!info || !ev || !r || mode !== 'elev' || !mountDev(info) || !mountDev(info).u) return;
     const d = info.dev ? findDev(info.dev) : { id: '\u0000new', type: info.type }; if (!d) return;
     const p = proposal(r, d, ev); if (!p.inside) return;
-    const m = MOUNT[d.type]; paintGhost(r, [{ dev: d, u: p.u, face: p.face }], p.ok, `U${p.u}${m.u > 1 ? '–' + (p.u + m.u - 1) : ''}${verdict(p.ok)}`);
+    const m = mountDev(d); paintGhost(r, [{ dev: d, u: p.u, face: p.face }], p.ok, `U${p.u}${m.u > 1 ? '–' + (p.u + m.u - 1) : ''}${verdict(p.ok)}`);
   }
   /** Équipement « Hors baie » lâché (ev) ou cliqué (null) : à sa place sous le pointeur, sinon le premier U libre. */
   function dropDev(id, ev) {
-    const d = findDev(id), r = curRack(); if (!d || !MOUNT[d.type]) return;
+    const d = findDev(id), r = curRack(); if (!d || !mountDev(d)) return;
     if (!r) { ctx.status(tl('Aucune baie'), 'warn'); return; }
     if (mode !== 'elev') { mode = 'elev'; fitted = false; }
-    if (!ev || !MOUNT[d.type].u) { selectList([{ kind: 'dev', id }]); if (ev) { const R = canvas.getBoundingClientRect(); if (ev.clientX < R.left || ev.clientX > R.right) return; } quickPlace(d, r); return; }
+    if (!ev || !mountDev(d).u) { selectList([{ kind: 'dev', id }]); if (ev) { const R = canvas.getBoundingClientRect(); if (ev.clientX < R.left || ev.clientX > R.right) return; } quickPlace(d, r); return; }
     const p = proposal(r, d, ev);
     if (p.inside && p.ok.ok) { placeAt(d, r, p.u, p.face); selectList([{ kind: 'dev', id }]); ctx.commit(); }
     else if (p.inside) ctx.status(p.ok.why === 'clash' ? tl('Place prise par {0}.', ctx.nameOf(p.ok.with)) : tl('Hors de la baie.'), 'warn');
   }
   over.addEventListener('contextmenu', e => { const c = e.target.closest('[data-rkopen]'); if (!c) return; e.preventDefault(); const r = rackById(c.dataset.rkopen); if (r) { selectList([{ kind: 'rack', id: r.id }]); A.rackMenu(e, r, { card: true }); } });
   function quickPlace(d, r, near) {
-    const m = MOUNT[d.type], face = m.u ? 'front' : 'rear', u = findFree(data(), r, d, face, near ?? 1);
+    const m = mountDev(d), face = m.u ? 'front' : 'rear', u = findFree(data(), r, d, face, near ?? 1);
     if (!u) { ctx.status(tl('Plus de place de {0} U libre dans {1}.', m.u, r.name), 'warn'); return false; }
     placeAt(d, r, u, face); ctx.commit(); ctx.status(tl('{0} en U{1} de {2}.', d.name, u, r.name), 'ok'); return true;
   }
@@ -596,7 +596,7 @@ export function createRackView(ctx) {
     if (k === 'rack') {
       if (!v) { delete d.rack; ctx.commit(); return; }
       const r = rackById(v); if (!r) return;
-      const m = MOUNT[d.type], face = d.rack ? d.rack.face : (m.u ? 'front' : 'rear'), u = findFree(data(), r, d, face);
+      const m = mountDev(d), face = d.rack ? d.rack.face : (m.u ? 'front' : 'rear'), u = findFree(data(), r, d, face);
       if (!u) { ctx.status(tl('Plus de place de {0} U libre dans {1}.', m.u, r.name), 'warn'); ctx.renderPane(); return; }
       d.rack = { id: r.id, u, face }; cur = r.id; ctx.commit(); return;
     }
@@ -693,7 +693,7 @@ export function createRackView(ctx) {
     reveal(id) {
       const r = rackById(id);
       if (r) { cur = r.id; mode = 'elev'; fitted = true; ms = []; ctx.select({ kind: 'rack', id }); render(); fit(); return true; }
-      const d = findDev(id); if (!d || !MOUNT[d.type] && specOf(d).role !== 'mech') return false;
+      const d = findDev(id); if (!d || !mountDev(d) && specOf(d).role !== 'mech') return false;
       ms = [];
       if (d.rack && rackById(d.rack.id)) { cur = d.rack.id; mode = 'elev'; ctx.select({ kind: 'dev', id }); render(); const b = selBox(); if (b) fitTo(b); else fit(); return true; }
       mode = racks().length ? 'elev' : 'over'; ctx.select({ kind: 'dev', id }); render(); return true;
@@ -721,6 +721,7 @@ export function createRackView(ctx) {
         const a = t.closest('[data-rka]');
         if (a && a.dataset.rka === 'delrack' && s && s.kind === 'rack') { deleteRack(s.id); return true; }
         if (a && a.dataset.rka === 'deldev' && s && s.kind === 'dev') { A.remove([s]); return true; }
+        if (a && a.dataset.rka === 'model' && s && s.kind === 'dev') { import('./catalogui.js').then(m => m.openModelPicker(ctx, s.id)).catch(err => console.error(err)); return true; }
         return !!t.closest('[data-rkf], [data-rkd]');
       }
       if (e.type === 'change') {

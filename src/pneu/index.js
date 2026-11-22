@@ -9,6 +9,7 @@
 // montre les deux côtés à la fois (montage à gauche, circuit à droite, chaîne de commande au-dessus) ; sinon une
 // vignette du circuit reste visible sur le banc.
 import './pneu.css';
+import { placeInSlot } from '../ui/spaces.js';
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { createNavDock } from '../ui/navdock.js';
@@ -82,14 +83,13 @@ export function installPneu(app) {
 
   /* ---------- Sélecteur : troisième bouton ---------- */
   const sw = $('.wsSwitch');
-  sw.insertAdjacentHTML('beforeend', `<button type="button" class="segBtn" data-ws="pneu" aria-pressed="false" data-tip="${tl('Pneumatique : distributeurs, vérins, électrovannes commandées par la carte')}">${icon('pneu')}<span>${tl('Pneumatique')}</span></button>`);
+  // Le bouton « Pneumatique » du sélecteur est posé au démarrage par src/ui/spaces.js (ce plan se charge à la demande).
   // Électronique ou Logique choisi : on quitte d'abord la pneumatique (avant le gestionnaire de la logique).
   sw.addEventListener('click', e => { const b = e.target.closest('[data-ws]'); if (b && b.dataset.ws !== 'pneu') { setMode(false); setSplit(false); setTimeout(paintSplitBtn, 0); } }, true);
-  sw.querySelector('[data-ws="pneu"]').onclick = () => { if (app.logic && app.logic.isOn()) app.logic.setMode(false); setMode(true); };
 
   /* ---------- Plan de travail ---------- */
   const host = document.createElement('div'); host.className = 'pnHost'; host.hidden = true;
-  $('#stage').appendChild(host);
+  placeInSlot('stage:pneu', host, $('#stage'));
   let nav = null; // barre de navigation (créée après l'éditeur)
   const ed = createPneuEditor(host, {
     changed() { app.markDirty(); if (ed.circuit().elements.length && app.ensureSpace) app.ensureSpace('pneu'); if (app.recheck) app.recheck(); counts(); renderPane(); if (gfReady && gf.isOpen()) gf.render(); if (plReady && pl.isOpen()) pl.render(); if (gfReady) { refresh3d(); paintSplitBtn(); if (split) paintChain(); } },
@@ -342,7 +342,7 @@ export function installPneu(app) {
   });
 
   /* ---------- Onglet de l'inspecteur ---------- */
-  $('.panel.right .tabs').insertAdjacentHTML('beforeend', `<button type="button" role="tab" class="tab pnTab" id="tab-pneu" aria-controls="pane-pneu" aria-selected="false">${icon('pneu')}${tl('Pneumatique')}</button>`);
+  placeInSlot('tabs:pneu', `<button type="button" role="tab" class="tab pnTab" id="tab-pneu" aria-controls="pane-pneu" aria-selected="false">${icon('pneu')}${tl('Pneumatique')}</button>`, $('.panel.right .tabs'));
   const pane = document.createElement('div'); pane.className = 'pane pnPane'; pane.id = 'pane-pneu'; pane.setAttribute('role', 'tabpanel'); pane.hidden = true;
   $('#modPane').before(pane);
   $('#tab-pneu').onclick = () => { app.setTab('pneu'); renderPane(); };
@@ -847,7 +847,7 @@ export function installPneu(app) {
   /* ---------- Vignette sur le banc ---------- */
   const mini = document.createElement('div'); mini.className = 'pnMini glass'; mini.hidden = true;
   mini.innerHTML = `<header>${icon('pneu')}<b>${tl('Circuit pneumatique')}</b><span class="grow"></span><button type="button" class="tb" data-split-open data-tip="${tl('Vue partagée : le montage et le circuit côte à côte')}" aria-label="${tl('Vue partagée')}">${icon('split')}</button><button type="button" class="tb" data-open-pneu data-tip="${tl('Ouvrir le plan de travail pneumatique')}">${icon('expand')}</button><button type="button" class="tb" data-hide aria-label="${tl('Masquer')}">${icon('x')}</button></header><svg class="pnMiniSvg"></svg>`;
-  $('#stage').appendChild(mini);
+  host.after(mini); // juste après le plan, comme au temps où tout se chargeait au démarrage
   let miniHidden = false;
   mini.addEventListener('click', e => {
     if (e.target.closest('[data-open-pneu]')) { if (app.logic && app.logic.isOn()) app.logic.setMode(false); setMode(true); return; }

@@ -36,9 +36,9 @@
 /* (Le reste de la scène 3D est caché par net.css : .app.netMode .stage > …, règle chargée avec le plan réseau.) */
 /* Le nom du type reste lisible quand la barre compacte réduit les autres boutons à leur icône (sa règle compte
    plusieurs identifiants : !important). Électropneumatique : le sélecteur à côté dit déjà les deux plans. */
-.app:not([data-kind="epneu"]) .appbar #kindBtn > span { display: inline !important; }
+.app:not([data-kind="epneu"]) .appbar #kindBtn > span { display: inline !important; position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip-path: none !important; } /* défait le masquage des libellés de la barre (styles.css) */
 .appbar #kindBtn.tb.label { padding: 0 8px 0 10px; }
-@media (max-width: 1180px) { .app:not([data-kind="epneu"]) .appbar #kindBtn > span { display: none !important; } }
+@media (max-width: 1180px) { .app:not([data-kind="epneu"]) .appbar #kindBtn > span { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; } }
 
 /* ---------- Choix du type à la création ---------- */
 .kdGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 12px; }

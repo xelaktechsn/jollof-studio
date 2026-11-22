@@ -141,6 +141,8 @@ export const CODES = {
   J1285: { level: 'warning' },
   // @cert
   J1286: { level: 'error' }, J1287: { level: 'warning' }, J1288: { level: 'warning' }, J1289: { level: 'warning' },
+  // Résultats mesurés par un vrai testeur, importés (src/net/checks/cert.js).
+  J1301: { level: 'error' }, J1302: { level: 'warning' }, J1303: { level: 'warning' },
   // @design
   J1290: { level: 'warning' }, J1291: { level: 'warning' }, J1292: { level: 'warning' }, J1293: { level: 'warning' }, J1294: { level: 'warning' }, J1295: { level: 'warning' },
   J1001: { level: 'error' }, J1002: { level: 'error' }, J1101: { level: 'error' }, J1102: { level: 'error' },

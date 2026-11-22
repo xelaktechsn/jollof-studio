@@ -192,7 +192,7 @@ td.bad { color: var(--nt-err); }
 
 /* Petites largeurs (1280 × 720, panneaux ouverts) : barre sur une ligne, libellés en infobulle */
 @container ntrk (max-width: 760px) {
-  .ntRkBar .segBtn[data-rkmode] span, .ntRkBar .btn span { display: none; }
+  .ntRkBar .segBtn[data-rkmode] span, .ntRkBar .btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .ntRkBar .btn { padding: 0 8px; }
   .ntRkPick .sel { min-width: 104px; max-width: 140px; }
   .ntRkPatchScroll .c-perm, .ntRkPatchScroll .c-cord, .ntRkTipTxt { display: none; }
@@ -223,7 +223,7 @@ td.bad { color: var(--nt-err); }
 .ntRkSvg .ntRkTitle { font-size: var(--rkt, 24px); }
 .ntRkSvg .ntRkFoot { font-size: var(--rkc, 15px); }
 @container ntrk (max-width: 760px) {
-  .ntRkPatch.slim .ntRkPatchT span, .ntRkPatch.slim .ntRkPatchForm .btn.subtle span { display: none; }
+  .ntRkPatch.slim .ntRkPatchT span, .ntRkPatch.slim .ntRkPatchForm .btn.subtle span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .ntRkPatch.slim .ntRkPatchForm .sel { min-width: 0; max-width: 130px; }
 }
 

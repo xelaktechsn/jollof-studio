@@ -1,0 +1,23 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Résultats mesurés (measuredui.js, certui.js) et sélecteur du catalogue (catalogui.js). Classes ntMs… / ntCat…, jetons du thème. */
+.ntMsUnk { font-size: 12px; color: var(--fg-2); }
+.ntMsUnk p { margin: 4px 0 0; color: var(--muted); word-break: break-word; }
+.ntMs select.sel { max-width: 260px; }
+.ntMsTag { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font-size: 10.5px; font-weight: 600; line-height: 16px; border: 1px solid var(--line-2); color: var(--fg-2); white-space: nowrap; }
+.ntMsTag.real { border-color: var(--accent); color: var(--accent); }
+.ntMsBox { margin: 8px 0; padding: 8px 10px; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 6px; font-size: 12.5px; line-height: 1.5; }
+.ntMsBox b { margin-right: 6px; }
+.ntMsBox small { display: block; color: var(--muted); }
+.ntCat { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--fg); }
+.ntCatTools { display: flex; gap: 6px; }
+.ntCatTools input { flex: 1; min-width: 0; }
+.ntCatList { border: 1px solid var(--line); border-radius: 8px; overflow: auto; max-height: 48vh; }
+.ntCatRow { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; width: 100%; padding: 7px 10px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.ntCatRow:hover, .ntCatRow:focus-visible { background: var(--panel-2); outline: none; }
+.ntCatRow.on { box-shadow: inset 3px 0 0 var(--accent); background: var(--panel-2); }
+.ntCatRow small { grid-column: 1 / -1; color: var(--muted); font-size: 11.5px; }
+.ntCatRow i { font-style: normal; color: var(--fg-2); font-size: 12px; }
+.ntCatInfo { min-height: 34px; margin: 0; font-size: 12px; color: var(--fg-2); line-height: 1.45; }
+.ntCatInfo a { color: var(--accent); }
+.ntCatEmpty { padding: 14px; text-align: center; color: var(--muted); }

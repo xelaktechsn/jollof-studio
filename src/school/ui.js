@@ -71,7 +71,7 @@ export const skeleton = (n = 3) => `<div class="skel">${'<div></div>'.repeat(n)}
 /* ---------- Notifications éphémères ---------- */
 let toastBox = null;
 export function toast(text, kind = 'ok', ms = 3800) {
-  if (!toastBox) { toastBox = document.createElement('div'); toastBox.className = 'toasts'; document.body.appendChild(toastBox); }
+  if (!toastBox) { toastBox = document.createElement('div'); toastBox.className = 'toasts'; toastBox.setAttribute('role', 'status'); toastBox.setAttribute('aria-live', 'polite'); document.body.appendChild(toastBox); }
   const el = document.createElement('div');
   el.className = 'toast ' + kind; el.innerHTML = `${icon(kind === 'err' ? 'alert' : kind === 'warn' ? 'info' : 'check')}<span>${esc(text)}</span>`;
   toastBox.appendChild(el);
@@ -90,11 +90,13 @@ export function clearToasts() { if (toastBox) toastBox.replaceChildren(); }
  * Boîte de dialogue. head : { icon, sub } donne l'en-tête des assistants et fenêtres d'échange (icône, titre, sous-titre,
  * fond et filet : le même que les assistants du plan réseau), sinon un simple titre.
  */
+let dlgSeq = 0;
 export function dialog({ title, body = '', actions = [{ label: tl('Fermer'), value: null }], width = 480, onAction, onOpen, cls = '', head = null }) {
   return new Promise(resolve => {
     const wrap = document.createElement('div');
     wrap.className = 'sDialogWrap';
-    wrap.innerHTML = `<div class="sDialog ${cls}${head ? ' sDlgHd' : ''}" role="dialog" aria-modal="true" style="--w:${width}px"><header>${head ? `${head.icon ? icon(head.icon) : ''}<div class="sDlgTtl"><h3>${title}</h3>${head.sub ? `<span>${head.sub}</span>` : ''}</div>` : `<h3>${title}</h3>`}<button type="button" class="iconBtn" data-x aria-label="${tl('Fermer')}">${icon('x')}</button></header><div class="sBody"></div><footer>${actions.map((a, i) => `<button type="button" class="btn ${a.kind || ''}" data-a="${i}">${a.label}</button>`).join('')}</footer></div>`;
+    const tid = `sDlgT${++dlgSeq}`;
+    wrap.innerHTML = `<div class="sDialog ${cls}${head ? ' sDlgHd' : ''}" role="dialog" aria-modal="true" aria-labelledby="${tid}" style="--w:${width}px"><header role="presentation">${head ? `${head.icon ? icon(head.icon) : ''}<div class="sDlgTtl"><h3 id="${tid}">${title}</h3>${head.sub ? `<span>${head.sub}</span>` : ''}</div>` : `<h3 id="${tid}">${title}</h3>`}<button type="button" class="iconBtn" data-x aria-label="${tl('Fermer')}">${icon('x')}</button></header><div class="sBody"></div><footer role="presentation">${actions.map((a, i) => `<button type="button" class="btn ${a.kind || ''}" data-a="${i}">${a.label}</button>`).join('')}</footer></div>`;
     const bodyEl = wrap.querySelector('.sBody');
     if (typeof body === 'string') bodyEl.innerHTML = body; else bodyEl.appendChild(body);
     document.body.appendChild(wrap); hydrateIcons(wrap);
@@ -128,14 +130,25 @@ export function ask(title, label, value = '', { placeholder = '', multiline = fa
 export function menu(anchor, items) {
   return new Promise(resolve => {
     document.querySelectorAll('.sMenu').forEach(m => m.remove());
-    const m = document.createElement('div'); m.className = 'sMenu';
-    m.innerHTML = items.map((it, i) => (it === '-' ? '<hr>' : `<button type="button" data-i="${i}" class="${it.danger ? 'danger' : ''}"${it.checked != null ? ` role="menuitemradio" aria-checked="${!!it.checked}"` : ''}>${it.icon ? icon(it.icon) : ''}<span>${it.label}</span>${it.checked ? icon('check', 'sMenuCk') : ''}</button>`)).join('');
+    const m = document.createElement('div'); m.className = 'sMenu'; m.setAttribute('role', 'menu');
+    const kb = !!(anchor && anchor.matches && anchor.matches(':focus-visible')); // ouvert au clavier : le focus entre dans le menu et revient au bouton
+    m.innerHTML = items.map((it, i) => (it === '-' ? '<hr role="separator">' : `<button type="button" tabindex="-1" data-i="${i}" class="${it.danger ? 'danger' : ''}" ${it.checked != null ? `role="menuitemradio" aria-checked="${!!it.checked}"` : 'role="menuitem"'}>${it.icon ? icon(it.icon) : ''}<span>${it.label}</span>${it.checked ? icon('check', 'sMenuCk') : ''}</button>`)).join('');
     document.body.appendChild(m);
     const r = anchor.getBoundingClientRect(), w = m.offsetWidth, hgt = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
     m.style.top = (r.bottom + hgt + 8 > innerHeight ? r.top - hgt - 6 : r.bottom + 6) + 'px';
-    const done = v => { m.remove(); document.removeEventListener('mousedown', out, true); resolve(v); };
+    const done = (v, back = kb) => { m.remove(); document.removeEventListener('mousedown', out, true); window.removeEventListener('keydown', esc, true); if (back && anchor && anchor.isConnected && anchor.focus) anchor.focus({ preventScroll: true }); resolve(v); };
+    // Clavier : flèches, Début, Fin ; Échap ferme et rend le focus ; Tab ferme.
+    m.addEventListener('keydown', e => {
+      const bs = [...m.querySelectorAll('button')], i = bs.indexOf(document.activeElement);
+      const go = k => { e.preventDefault(); e.stopPropagation(); bs[(k + bs.length) % bs.length]?.focus(); };
+      if (e.key === 'ArrowDown') go(i + 1); else if (e.key === 'ArrowUp') go(i < 0 ? bs.length - 1 : i - 1); else if (e.key === 'Home') go(0); else if (e.key === 'End') go(bs.length - 1);
+      else if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); done(null, true); } else if (e.key === 'Tab') done(null, false);
+    });
+    if (kb) (m.querySelector('[aria-checked="true"]') || m.querySelector('button'))?.focus({ preventScroll: true });
     const out = e => { if (!m.contains(e.target)) done(null); };
+    const esc = e => { if (e.key === 'Escape' && m.isConnected) { e.preventDefault(); e.stopImmediatePropagation(); done(null); } };
+    window.addEventListener('keydown', esc, true); // fenêtre : avant l'Échap d'une boîte de dialogue ouverte dessous
     setTimeout(() => document.addEventListener('mousedown', out, true));
     m.onclick = e => { const b = e.target.closest('[data-i]'); if (b) done(items[+b.dataset.i].value); };
   });

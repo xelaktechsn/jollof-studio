@@ -259,6 +259,31 @@ pub fn validate_base(raw: &str, allow_http: bool) -> Result<String, NbError> {
     let scheme = if s.starts_with("https://") { "https" } else { "http" };
     Ok(format!("{scheme}://{}{}", host_port.to_ascii_lowercase(), path))
 }
+/// Origine d'une adresse de base validée : « schéma://hôte[:port] », sans le sous-chemin.
+pub fn origin_of(base: &str) -> String {
+    let at = base.find("://").map(|i| i + 3).unwrap_or(0);
+    match base[at..].find('/') {
+        Some(i) => base[..at + i].to_string(),
+        None => base.to_string(),
+    }
+}
+/// Ce que l'utilisateur accepte dans la boîte de dialogue du système : le serveur (origine) ET la façon de lui
+/// parler. Désactiver la vérification TLS ou changer d'autorité de certification donne une autre clé, donc une
+/// nouvelle demande : la fenêtre seule ne peut ni viser un autre serveur, ni affaiblir le chiffrement vers celui
+/// déjà accepté.
+pub fn trust_key(base: &str, verify: bool, ca: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let mut k = origin_of(base);
+    if base.starts_with("https://") && !verify {
+        k.push_str(";tls-non-verifie");
+    }
+    let ca = ca.trim();
+    if !ca.is_empty() {
+        let h: String = Sha256::digest(ca.as_bytes()).iter().take(8).map(|b| format!("{b:02x}")).collect();
+        k.push_str(&format!(";ca={h}"));
+    }
+    k
+}
 /// Chemin d'API permis : /api/…/ (lettres, chiffres, - _ . /), sans « .. », terminé par « / » (NetBox redirige sinon).
 pub fn validate_path(path: &str) -> Result<(), NbError> {
     let ok = path.starts_with("/api/")
@@ -531,6 +556,10 @@ pub struct Config {
     consented: Vec<String>,
     /// Où est le jeton : 'keyring' | 'file' | '' (aucun).
     store: String,
+    /// Serveurs que l'utilisateur a acceptés dans la boîte de dialogue du système (clés de `trust_key`). Absent :
+    /// réglages d'avant cette liste, le serveur déjà réglé est tenu pour accepté.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    approved: Option<Vec<String>>,
 }
 fn yes() -> bool {
     true
@@ -677,12 +706,42 @@ impl Store {
         self.save(&c)?;
         Ok(())
     }
+    /// Le serveur (et sa façon de chiffrer) a-t-il été accepté dans la boîte de dialogue du système ?
+    pub fn approved(&self, key: &str) -> bool {
+        let c = self.config();
+        match &c.approved {
+            Some(l) => l.iter().any(|k| k == key),
+            None => !c.url.is_empty() && trust_key(&c.url, c.verify, &c.ca) == key,
+        }
+    }
+    /// Note l'accord donné dans la boîte de dialogue du système (20 serveurs gardés au plus, les plus récents).
+    pub fn approve(&self, key: &str) -> Result<(), NbError> {
+        let mut c = self.config();
+        let mut l = match c.approved.take() {
+            Some(l) => l,
+            None if c.url.is_empty() => vec![],
+            None => vec![trust_key(&c.url, c.verify, &c.ca)],
+        };
+        l.retain(|k| k != key);
+        l.push(key.to_string());
+        if l.len() > 20 {
+            let extra = l.len() - 20;
+            l.drain(0..extra);
+        }
+        c.approved = Some(l);
+        self.save(&c)?;
+        Ok(())
+    }
     pub fn conn(&self) -> Result<Conn, NbError> {
         let c = self.config();
         if c.url.is_empty() {
             return Err(err("config", "NetBox n’est pas réglé : saisissez l’adresse du serveur et un jeton d’API."));
         }
         let base = validate_base(&c.url, c.allow_http)?;
+        // Aucune requête vers un serveur que l'utilisateur n'a pas accepté lui-même (boîte du système, nb_configure).
+        if !self.approved(&trust_key(&base, c.verify, &c.ca)) {
+            return Err(err("config", "Ce serveur NetBox n’a pas été autorisé : enregistrez de nouveau ses réglages et acceptez la demande de connexion."));
+        }
         let token = self.token().ok_or_else(|| err("config", "Aucun jeton d’API enregistré pour ce serveur."))?;
         Conn::new(&base, &token, c.verify, Some(&c.ca))
     }
@@ -714,7 +773,52 @@ pub async fn nb_configure(
     token: Option<String>,
 ) -> Result<Settings, NbError> {
     let s = store(&app)?;
-    blocking(move || s.set(&url, verify, allow_http, ca.as_deref(), token.as_deref())).await
+    blocking(move || {
+        // Nouveau serveur, ou chiffrement affaibli vers un serveur connu : l'accord se donne dans une boîte de
+        // dialogue du système, hors de portée de la fenêtre. Un contenu malveillant exécuté dans la fenêtre (projet
+        // piégé) ne peut donc pas faire interroger par l'application une machine du réseau local (les requêtes
+        // partent d'ici, sans les garde-fous du navigateur), ni détourner les réglages d'un serveur accepté.
+        if !url.trim().is_empty() {
+            let base = validate_base(&url, allow_http)?;
+            let cur = s.config();
+            let ca_new = ca.as_deref().map(str::trim).unwrap_or(&cur.ca).to_string();
+            let key = trust_key(&base, verify, &ca_new);
+            if !s.approved(&key) {
+                if !ask_trust(&app, &base, verify, !ca_new.is_empty()) {
+                    return Err(err("cancel", "Connexion à ce serveur NetBox refusée : réglages inchangés."));
+                }
+                s.approve(&key)?;
+            }
+        }
+        s.set(&url, verify, allow_http, ca.as_deref(), token.as_deref())
+    })
+    .await
+}
+/// Texte de la demande d'accord (boîte de dialogue du système) : le serveur, puis ce qui affaiblit la liaison.
+pub fn trust_prompt(base: &str, verify: bool, own_ca: bool) -> String {
+    let mut t = format!(
+        "Jollof Studio va se connecter au serveur NetBox :\n\n{}\n\net lui envoyer le jeton d’API et, à la synchronisation, les données du projet.",
+        origin_of(base)
+    );
+    if base.starts_with("http://") {
+        t.push_str("\n\nAttention : liaison http, le jeton circule en clair sur le réseau.");
+    } else if !verify {
+        t.push_str("\n\nAttention : la vérification du certificat TLS est désactivée, l’identité du serveur n’est pas contrôlée.");
+    } else if own_ca {
+        t.push_str("\n\nLe certificat du serveur sera vérifié avec l’autorité de certification fournie dans les réglages.");
+    }
+    t.push_str("\n\nN’acceptez que si vous venez de régler ce serveur vous-même.");
+    t
+}
+fn ask_trust(app: &AppHandle, base: &str, verify: bool, own_ca: bool) -> bool {
+    use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
+    log::info!("NetBox : accord demandé pour {}", origin_of(base));
+    app.dialog()
+        .message(trust_prompt(base, verify, own_ca))
+        .title("Connexion à NetBox")
+        .kind(MessageDialogKind::Warning)
+        .buttons(MessageDialogButtons::OkCancelCustom("Se connecter".to_string(), "Refuser".to_string()))
+        .blocking_show()
 }
 #[tauri::command]
 pub async fn nb_consent(app: AppHandle, url: String) -> Result<(), NbError> {
@@ -1037,6 +1141,74 @@ mod tests {
         let st = s.set("https://nb2.example.org", true, false, None, None).unwrap();
         assert!(!st.has_token && !st.consented);
         assert!(s.set("http://nb2.example.org", true, false, None, None).is_err());
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    #[test]
+    fn origine_et_cle_d_accord() {
+        assert_eq!(origin_of("https://nb.example.org/netbox"), "https://nb.example.org");
+        assert_eq!(origin_of("http://10.0.0.5:8000"), "http://10.0.0.5:8000");
+        assert_eq!(origin_of("https://[::1]:8443/x/y"), "https://[::1]:8443");
+        let k = trust_key("https://nb.example.org/netbox", true, "");
+        assert_eq!(k, "https://nb.example.org");
+        // Un sous-chemin du même serveur ne redemande rien ; un autre port, un autre schéma, TLS non vérifié ou
+        // une autre autorité de certification, si.
+        assert_eq!(trust_key("https://nb.example.org/autre", true, ""), k);
+        assert_ne!(trust_key("https://nb.example.org:8443", true, ""), k);
+        assert_ne!(trust_key("http://nb.example.org", true, ""), k);
+        assert_ne!(trust_key("https://nb.example.org", false, ""), k);
+        assert_ne!(trust_key("https://nb.example.org", true, "PEM A"), k);
+        assert_ne!(trust_key("https://nb.example.org", true, "PEM A"), trust_key("https://nb.example.org", true, "PEM B"));
+        assert_eq!(trust_key("https://nb.example.org", true, " PEM A\n"), trust_key("https://nb.example.org", true, "PEM A"));
+        let p = trust_prompt("http://169.254.169.254/latest", true, false);
+        assert!(p.contains("http://169.254.169.254") && !p.contains("/latest") && p.contains("en clair"));
+        assert!(trust_prompt("https://nb.example.org", false, false).contains("désactivée"));
+    }
+    #[test]
+    fn aucune_requete_sans_accord_du_systeme() {
+        let dir = std::env::temp_dir().join(format!("jollof-nb-trust-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let s = Store::new(dir.clone(), "sn.jollof.test");
+        // Réglé par la fenêtre seule (Store::set), sans passer par la boîte de dialogue : aucune connexion.
+        s.approve(&trust_key("https://connu.example.org", true, "")).unwrap();
+        s.set("http://169.254.169.254", true, true, None, Some("0123456789abcdef0123")).unwrap();
+        let e = s.conn().err().expect("serveur non accepté : pas de connexion");
+        assert_eq!(e.kind, "config");
+        assert!(e.message.contains("autorisé"));
+        // Accepté : la connexion se prépare.
+        s.approve(&trust_key("http://169.254.169.254", true, "")).unwrap();
+        assert!(s.conn().is_ok());
+        // Vérification TLS coupée ensuite sur un serveur https accepté : nouvelle clé, donc refus tant que
+        // l'utilisateur ne l'a pas acceptée à son tour.
+        s.approve(&trust_key("https://nb.example.org", true, "")).unwrap();
+        s.set("https://nb.example.org", true, false, None, Some("0123456789abcdef0123")).unwrap();
+        assert!(s.conn().is_ok());
+        s.set("https://nb.example.org", false, false, None, None).unwrap();
+        assert!(s.settings().has_token, "même serveur : le jeton reste");
+        assert_eq!(s.conn().err().map(|e| e.kind), Some("config"));
+        s.approve(&trust_key("https://nb.example.org", false, "")).unwrap();
+        assert!(s.conn().is_ok());
+        // 20 accords gardés au plus.
+        for i in 0..30 {
+            s.approve(&format!("https://h{i}.example.org")).unwrap();
+        }
+        assert_eq!(s.config().approved.map(|l| l.len()), Some(20));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+    #[test]
+    fn reglages_d_avant_la_liste_des_accords() {
+        // netbox.json d'une version précédente (pas de champ approved) : le serveur déjà réglé reste utilisable,
+        // un autre non ; le premier accord garde l'ancien serveur dans la liste.
+        let dir = std::env::temp_dir().join(format!("jollof-nb-legacy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(FILE), r#"{"url":"https://ancien.example.org","verify":true,"allow_http":false,"ca":"","consented":[],"store":""}"#).unwrap();
+        let s = Store::new(dir.clone(), "sn.jollof.test");
+        assert!(s.approved(&trust_key("https://ancien.example.org", true, "")));
+        assert!(!s.approved(&trust_key("https://ancien.example.org", false, "")));
+        assert!(!s.approved(&trust_key("https://autre.example.org", true, "")));
+        s.approve(&trust_key("https://autre.example.org", true, "")).unwrap();
+        assert!(s.approved(&trust_key("https://ancien.example.org", true, "")));
+        assert!(s.approved(&trust_key("https://autre.example.org", true, "")));
         let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -109,7 +109,7 @@
 .twOk .ic { width: 13px; height: 13px; color: #4ade80; }
 /* Fenêtre étroite : libellés de la barre masqués, palette réduite ; plan très étroit : la machine prend tout. */
 @container (max-width: 820px) {
-  .twBar .tb span { display: none; }
+  .twBar .tb span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .twBar .tb { padding: 0 6px; }
   .twPal:not(.narrow) { width: 150px; }
   .pn3d.building .pn3dHud { left: 164px; }

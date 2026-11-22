@@ -114,7 +114,9 @@ function tables() {
     tests: {
       en: 'Test Results', fr: 'Tests', rows: data => testRows(data),
       cols: [{ k: 'link', en: 'Link', fr: 'Lien', get: r => r.label, width: 28 }, { k: 'limit', en: 'Limit', fr: 'Limite', get: r => r.limit }, { k: 'verdict', en: 'Result', fr: 'Résultat', get: r => r.verdict },
-        { k: 'margin', en: 'Margin (dB)', fr: 'Marge (dB)', fmt: 'dec2', get: r => r.margin }, { k: 'len', en: 'Length (m)', fr: 'Longueur (m)', fmt: 'dec1', get: r => r.len }, { k: 'at', en: 'Date', fr: 'Date', fmt: 'date', get: r => r.at }]
+        { k: 'margin', en: 'Margin (dB)', fr: 'Marge (dB)', fmt: 'dec2', get: r => r.margin }, { k: 'len', en: 'Length (m)', fr: 'Longueur (m)', fmt: 'dec1', get: r => r.len }, { k: 'at', en: 'Date', fr: 'Date', fmt: 'date', get: r => r.at },
+        // Origine de chaque ligne : simulée par le modèle (certify.js) ou mesurée par un vrai testeur (data.measured).
+        { k: 'source', en: 'Source', fr: 'Origine', get: r => r.source }, { k: 'tester', en: 'Tester', fr: 'Testeur', get: r => r.tester || '' }, { k: 'cableId', en: 'Tester Cable ID', fr: 'Identifiant du testeur', get: r => r.cableId || '' }]
     }
   };
 }
@@ -138,7 +140,11 @@ function priceSet(d, key, v) {
 }
 function testRows(data) {
   const res = (data.tests && data.tests.results) || [];
-  return res.map(r => ({ id: r.link, label: r.label || r.link, limit: r.limit, verdict: ({ pass: 'PASS', 'pass*': 'PASS*', 'fail*': 'FAIL*', fail: 'FAIL' })[r.verdict] || r.verdict || '', margin: r.margin ?? '', len: r.len ?? '', at: r.at ? new Date(r.at) : '' }));
+  const V = { pass: 'PASS', 'pass*': 'PASS*', 'fail*': 'FAIL*', fail: 'FAIL' }, labels = new Map(res.map(r => [r.link, r.label || r.link]));
+  const date = at => { const d = at ? new Date(at) : null; return d && !Number.isNaN(+d) ? d : ''; };
+  const sim = res.map(r => ({ id: r.link, label: r.label || r.link, limit: r.limit, verdict: V[r.verdict] || r.verdict || '', margin: r.margin ?? '', len: r.len ?? '', at: date(r.at), source: 'simulated' }));
+  const meas = data.exam === true ? [] : ((data.measured && data.measured.results) || []).map(r => ({ id: 'measured:' + r.cableId, label: labels.get(r.link) || r.link || r.cableId, limit: r.limit || '', verdict: V[r.verdict], margin: r.margin ?? '', len: r.len ?? '', at: date(r.at), source: 'measured', tester: [r.tester, r.serial].filter(Boolean).join(' '), cableId: r.cableId }));
+  return [...sim, ...meas];
 }
 
 /**

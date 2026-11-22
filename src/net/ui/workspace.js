@@ -15,6 +15,7 @@ import { menu as popMenu, confirm as confirmDlg, dialog as dialogDlg, toast } fr
 import { cleanText } from '../../sanitize.js';
 import { createLan } from '../lan.js';
 import { DEVICES, LIB_GROUPS, specOf, portsOf, newDevice } from '../devices.js';
+import { MODEL_TYPES, modelLabel } from '../catalog.js';
 import { indexOf as relIndex, walk as relWalk } from '../relate.js';
 import { makeCable, CATS, CAT_IDS, analyzeCable } from '../cable.js';
 import { cleanNet } from '../clean.js';
@@ -149,7 +150,7 @@ export function createNetWorkspace(app, ui, raw) {
   const host = document.createElement('div'); host.className = 'ntHost'; host.hidden = true;
   $('#stage').appendChild(host);
   host.innerHTML = `
-    <div class="ntViewBar" role="tablist" aria-label="${tl('Vues du projet réseau')}">${VIEWS.map(v => `<button type="button" role="tab" class="ntVTab" data-view="${v.id}" aria-selected="${v.id === 'logic'}" data-tip="${esc(v.tip())} · ${keyLabelNet('Alt+' + (VIEWS.indexOf(v) + 1), MAC_KEYS)}">${icon(v.icon)}<span>${esc(v.name())}</span></button>`).join('')}</div>
+    <h2 class="sr">${tl('Réseau')}</h2><div class="ntViewBar"><div class="ntVTabs" role="tablist" aria-label="${tl('Vues du projet réseau')}">${VIEWS.map(v => `<button type="button" role="tab" class="ntVTab" data-view="${v.id}" aria-selected="${v.id === 'logic'}" data-tip="${esc(v.tip())} · ${keyLabelNet('Alt+' + (VIEWS.indexOf(v) + 1), MAC_KEYS)}">${icon(v.icon)}<span>${esc(v.name())}</span></button>`).join('')}</div></div>
     <button type="button" class="ntExam" data-exam hidden>${icon('lock')}<span>${tl('Mode examen')}</span></button>
     <div class="ntVw ntLogic">
     <div class="ntView"><svg class="ntSvg" xmlns="http://www.w3.org/2000/svg"><g class="ntWorld"><g class="ntCables"></g><g class="ntWifi"></g><g class="ntDevs"></g><g class="ntOver"></g></g></svg></div>
@@ -951,7 +952,7 @@ export function createNetWorkspace(app, ui, raw) {
     <div class="phead"><h2>${icon('network')}${tl('Réseau')}</h2><span class="count">${Object.keys(DEVICES).length}</span><button type="button" class="tb" data-close data-tip="${tl('Replier · Ctrl+B')}" aria-label="${tl('Replier la bibliothèque')}">${icon('chevsLeft')}</button></div>
     <div class="search">${icon('search')}<input type="search" placeholder="${tl('Rechercher : switch, box, caméra…')}" autocomplete="off" aria-label="${tl('Rechercher un équipement')}"></div>
     <div class="libScroll ntLibList"></div>
-    <div class="pfoot"><div class="row"><button type="button" class="btn subtle small" data-labs>${icon('checklist')}<span>${tl('TP de réseau')}</span></button></div></div>`;
+    <div class="pfoot"><div class="row"><button type="button" class="btn subtle small" data-labs>${icon('checklist')}<span>${tl('TP de réseau')}</span></button><button type="button" class="btn subtle small" data-catalog data-tip="${tl('Poser un équipement d’après un modèle réel (fiches des fabricants)')}">${icon('search')}<span>${tl('Catalogue…')}</span></button></div></div>`;
   $('#libPanel').after(lib);
   const list = lib.querySelector('.ntLibList'), search = lib.querySelector('input');
   /* Bibliothèque selon la vue : une vue peut filtrer les types (libFilter(type) → bool, ex. Baies : ce qui se monte en
@@ -1002,6 +1003,7 @@ export function createNetWorkspace(app, ui, raw) {
     if (e.target.closest('[data-close]')) app.setLibOpen(false);
     if (e.target.closest('[data-open]')) app.setLibOpen(true);
     if (e.target.closest('[data-labs]') && app.openLabs) app.openLabs('net');
+    if (e.target.closest('[data-catalog]')) { if (!on) setMode(true); import('./catalogui.js').then(m => m.openCatalog(ctx)).catch(err => { console.error(err); app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); }); }
   });
   function place(type, x, y) {
     if (!on) setMode(true);
@@ -1269,6 +1271,8 @@ export function createNetWorkspace(app, ui, raw) {
       h += `<div class="ntHead">${icon(s.icon)}<div><b>${esc(n.name || s.name())}</b><small>${esc(s.name())}</small></div>${n.ext ? '' : `<button type="button" class="tb" data-a="del" data-tip="${tl('Retirer cet équipement')}" aria-label="${tl('Retirer')}">${icon('trash')}</button>`}</div>`;
       h += `<p class="ntDoc ntDocClamp" data-a="doc" title="${tl('Clic : tout lire')}">${esc(n.ext ? (n.type === 'wifi' ? tl('Carte du montage : elle rejoint un point d’accès par son programme (WiFi.begin).') : tl('Module Ethernet du montage : son adresse vient du programme de la carte (Ethernet.begin).')) : s.doc())}</p>`;
       if (!n.ext) h += `<section class="ntSec">${field(tl('Nom'), inp('name', n.name, 'maxlength="24"'))}</section>`;
+      // Modèle réel du catalogue (catalog.js) : référence, ports, PoE, puissance et encombrement de la fiche du fabricant.
+      if (!n.ext && MODEL_TYPES.has(n.type)) h += `<section class="ntSec"><h4>${tl('Modèle réel')}</h4><p class="ntDoc">${n.model ? esc(modelLabel(n.model)) : tl('Modèle générique (aucune référence de fabricant).')}</p><button type="button" class="btn small" data-nt="model">${icon('search')}<span>${n.model ? tl('Changer de modèle…') : tl('Choisir un modèle réel…')}</span></button></section>`;
       if (pw && !pw.on) h += `<p class="ntWarn">${icon('alert')}${tl('Éteint : {0}', whyText(pw.why))}</p>`;
       else if (pw && pw.w) h += `<p class="ntOk">${icon('zap')}${tl('Alimenté par PoE : classe {0}, {1} W réservés sur le switch.', pw.cls, pw.w)}</p>`;
       const rows = MANAGED.has(n.type) ? '' : portRows(n); // switch administrable : tableau des ports plus bas (simpane.js)
@@ -1413,6 +1417,7 @@ export function createNetWorkspace(app, ui, raw) {
     if (b.dataset.reg && b.classList.contains('ntBit')) { const [tab, a] = b.dataset.reg.split(':'), d = findDev(sel.id); d.p.regs[tab][+a] = d.p.regs[tab][+a] ? 0 : 1; commit(); return; }
     if (b.dataset.iss != null) { const i = shownIssues()[+b.dataset.iss]; if (i && i.id) reveal(i.id); return; }
     const a = b.dataset.nt || b.dataset.a;
+    if (a === 'model' && n) { import('./catalogui.js').then(m => m.openModelPicker(ctx, n.id)).catch(err => { console.error(err); app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); }); return; }
     if (a === 'trace') { const t = (b.closest('form') || pane).querySelector('input[name="t"]'); const v = t && t.value.trim(); if (v) doTrace(sel.id, v); return; }
     if (a === 'cert') { openCertLazy({ cables: [sel.id] }); return; }
     if (a === 'fibre') { import('./fibreui.js').then(m => m.openBudget(ctx, sel.id)).catch(err => { console.error(err); app.status(tl('Cette vue n’a pas pu se charger.'), 'err'); }); return; }

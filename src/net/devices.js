@@ -19,10 +19,36 @@ const cage = (id, kind, o = {}) => eth(id, { sfp: kind, speed: kind === 'sfp+' ?
 const pass = (id, other, o = {}) => eth(id, { passive: other, ...o });
 /** Nettoyeur des équipements administrables : leurs réglages (vlan.js) et ceux de leur type (PoE, adresse du serveur). */
 const managed = (type, extra) => (s, d) => {
-  const spec = DEVICES[type], ports = spec.ports(d).map(p => p.id), cages = spec.ports(d).filter(p => p.sfp).map(p => p.id);
+  const lay = cleanLayout(s && s.lay), dd = lay ? { ...d, lay } : d;
+  const spec = DEVICES[type], ports = spec.ports(dd).map(p => p.id), cages = spec.ports(dd).filter(p => p.sfp).map(p => p.id);
   const o = cleanManaged(type, s, d, ports, cages);
+  if (lay) o.lay = lay;
   return extra ? extra(s || {}, o) : o;
 };
+/**
+ * Disposition de ports d'un modèle réel du catalogue (catalog.js, d.p.lay) : { rj, speed, poe, up, cage } → ports p1…pN
+ * (RJ45, les « poe » premiers alimentent) puis x1…xM (cages). Listes partagées et figées, une par disposition.
+ */
+function cleanLayout(l) {
+  if (!l || typeof l !== 'object') return null;
+  const int = (v, hi) => (Number.isFinite(+v) ? Math.max(0, Math.min(hi, Math.round(+v))) : 0), rj = int(l.rj, 96), up = int(l.up, 48);
+  if (!rj && !up) return null;
+  return { rj, speed: [100, 1000, 2500, 10000].includes(+l.speed) ? +l.speed : 1000, poe: Math.min(rj, int(l.poe, 96)), up, cage: l.cage === 'sfp' ? 'sfp' : 'sfp+' };
+}
+const LAYS = new Map();
+export function layPorts(l, cagesFirst = false) {
+  const c = cleanLayout(l); if (!c) return [];
+  const k = [c.rj, c.speed, c.poe, c.up, c.cage, cagesFirst].join('|');
+  let m = LAYS.get(k);
+  if (!m) {
+    const rj = range(c.rj, i => eth('p' + i, { label: cagesFirst ? 'T' + i : String(i), speed: c.speed, ...(i <= c.poe ? { poe: 'pse' } : {}) })), up = range(c.up, i => cage('x' + i, c.cage, { label: 'X' + i }));
+    m = Object.freeze((cagesFirst ? [...up, ...rj] : [...rj, ...up]).map(p => Object.freeze(p)));
+    if (LAYS.size > 500) LAYS.clear(); LAYS.set(k, m);
+  }
+  return m;
+}
+/** Ports d'un type à disposition variable : ceux du modèle choisi (p.lay), sinon ceux du type générique (figés, partagés). */
+const layOr = (def, cagesFirst) => { const base = Object.freeze(def().map(p => Object.freeze(p))); return p => (p && p.lay ? layPorts(p.lay, cagesFirst) : base); };
 const poeClean = (s, o) => ({ ...o, budget: Math.max(0, Math.min(5000, Number.isFinite(+s.budget) ? +s.budget : o.budget)), pseType: ['af', 'at', 'bt3', 'bt4'].includes(s.pseType) ? s.pseType : o.pseType, portW: Math.max(0, Math.min(100, Number.isFinite(+s.portW) ? +s.portW : o.portW)) });
 const stpDefault = () => ({ on: true, prio: 32768 });
 /** Adresse IP d'un hôte : par DHCP (défaut) ou fixe. */
@@ -168,21 +194,21 @@ export const DEVICES = {
   switch24: {
     role: 'switch', managed: true, icon: 'switchNet', w: 400, h: 44, name: () => tl('Switch administrable 24 ports PoE+'), prefix: 'SW',
     doc: () => tl('Switch d’accès administrable : 24 ports 1 Gb/s PoE+ (802.3at, 30 W par port, budget 370 W) et 4 cages SFP+ 10 Gb/s, d’après le Cisco Catalyst C1000-24FP-4X-L. VLAN 802.1Q, Spanning Tree rapide (RSTP), agrégats LACP.'),
-    ports: () => [...range(24, i => eth('p' + i, { label: String(i), poe: 'pse' })), ...range(4, i => cage('x' + i, 'sfp+', { label: 'X' + i }))],
+    ports: layOr(() => [...range(24, i => eth('p' + i, { label: String(i), poe: 'pse' })), ...range(4, i => cage('x' + i, 'sfp+', { label: 'X' + i }))]),
     props: () => ({ budget: 370, pseType: 'at', portW: 30, ports: {}, stp: stpDefault(), lags: [], sfp: {} }),
     clean: (s, d) => managed('switch24', poeClean)(s, d)
   },
   switch48: {
     role: 'switch', managed: true, icon: 'switchNet', w: 380, h: 52, rows: 2, name: () => tl('Switch administrable 48 ports PoE+'), prefix: 'SW',
     doc: () => tl('Switch d’accès administrable : 48 ports 1 Gb/s PoE+ (802.3at, 30 W par port, budget 740 W) et 4 cages SFP+ 10 Gb/s, d’après le Cisco Catalyst C1000-48FP-4X-L. VLAN 802.1Q, Spanning Tree rapide (RSTP), agrégats LACP.'),
-    ports: () => [...range(48, i => eth('p' + i, { label: String(i), poe: 'pse' })), ...range(4, i => cage('x' + i, 'sfp+', { label: 'X' + i }))],
+    ports: layOr(() => [...range(48, i => eth('p' + i, { label: String(i), poe: 'pse' })), ...range(4, i => cage('x' + i, 'sfp+', { label: 'X' + i }))]),
     props: () => ({ budget: 740, pseType: 'at', portW: 30, ports: {}, stp: stpDefault(), lags: [], sfp: {} }),
     clean: (s, d) => managed('switch48', poeClean)(s, d)
   },
   l3switch: {
     role: 'switch', managed: true, routes: true, icon: 'switchL3', w: 400, h: 48, name: () => tl('Switch de niveau 3 (cœur)'), prefix: 'CORE',
     doc: () => tl('Switch d’agrégation de niveau 3 : 24 cages SFP+ 10 Gb/s et 4 ports cuivre 10GBASE-T, d’après le Cisco Catalyst C1300-24XS (sur le vrai, les 4 ports cuivre partagent leur place avec 4 cages : modèle simplifié). Interfaces VLAN (SVI), routes statiques, relais DHCP, listes d’accès.'),
-    ports: () => [...range(24, i => cage('x' + i, 'sfp+', { label: 'X' + i })), ...range(4, i => eth('p' + i, { label: 'T' + i, speed: 10000 }))],
+    ports: layOr(() => [...range(24, i => cage('x' + i, 'sfp+', { label: 'X' + i })), ...range(4, i => eth('p' + i, { label: 'T' + i, speed: 10000 }))], true),
     props: () => ({ ports: {}, stp: stpDefault(), lags: [], sfp: {}, routing: true, svis: [], routes: [], dhcp: [], acls: [] }),
     clean: (s, d) => managed('l3switch')(s, d)
   },

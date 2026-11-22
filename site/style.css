@@ -42,6 +42,9 @@ section { padding: 110px 0; position: relative; }
 .links { display: flex; gap: 26px; margin-right: auto; }
 .links a { color: var(--muted); font-size: 15px; font-weight: 500; transition: color .15s; }
 .links a:hover { color: var(--text); }
+/* Huit liens : sur un écran moyen, ils se serrent au lieu de passer sur deux lignes. */
+.links a { white-space: nowrap; }
+@media (max-width: 1160px) and (min-width: 981px) { .navIn { gap: 18px; } .links { gap: 16px; } .links a { font-size: 14px; } }
 .navEnd { display: flex; align-items: center; gap: 14px; }
 .lang { display: flex; padding: 3px; border: 1px solid var(--line2); border-radius: 999px; background: var(--panel); }
 .lang button { font: 600 12px/1 var(--mono); color: var(--muted); background: none; border: 0; padding: 7px 11px; border-radius: 999px; cursor: pointer; letter-spacing: .06em; }

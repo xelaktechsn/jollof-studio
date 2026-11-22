@@ -6,7 +6,7 @@ window.JOLLOF_EN = {
   description: 'Jollof Studio: a free, open-source app to wire, program and simulate electronics, logic, pneumatics and electropneumatics in 3D, with a checker that proves nothing burns and 62 guided labs.',
   skip: 'Skip to content',
   copy: 'Copy', copied: 'Copied',
-  'nav.features': 'Features', 'nav.video': 'Video', 'nav.labs': 'Labs', 'nav.start': 'Download', 'nav.open': 'Open source',
+  'nav.features': 'Features', 'nav.video': 'Video', 'nav.labs': 'Labs', 'nav.start': 'Download', 'nav.open': 'Open source', 'nav.help': 'Help',
   'hero.badge': 'Free · Open source · AGPL-3.0',
   'hero.h1a': 'An electronics lab.', 'hero.h1b': 'No lab required.',
   'hero.lead': 'Wire, program and simulate electronics, logic, pneumatics and electropneumatics in 3D. A checker proves nothing burns before you move to a real board.',

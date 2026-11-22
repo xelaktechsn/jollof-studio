@@ -10,17 +10,25 @@
 // l'affaiblissement ne fait que redire « longueur proche du maximum » (J1204). J1288 et J1289 sont groupés (un seul
 // message pour tout le plan) pour ne pas noyer le panneau Problèmes.
 import { tl } from '../../i18n/index.js';
+import { measuredByLink } from '../measured.js';
+import { NET } from '../limits.js';
 import { certLinks, certify, certifyCached, defaultLimit, linkLabel, testState, paramName, verdictText, limitInfo, fmtNum } from '../certify.js';
 
 /** Niveau de chaque code : 'error' | 'warning'. */
-export const CODES = { J1286: 'error', J1287: 'warning', J1288: 'warning', J1289: 'warning' };
+//   Résultats MESURÉS par un vrai testeur (data.measured, importés : interop/linkware.js) · J1301 lien en échec au testeur ·
+//   J1302 réussite marginale mesurée (PASS*) · J1303 longueur mesurée loin de celle du plan (au-delà de l'incertitude de
+//   NVP, CERT_NVP_TOL, et de 2 m) : tracé, catégorie ou rattachement à revoir.
+export const CODES = { J1286: 'error', J1287: 'warning', J1288: 'warning', J1289: 'warning', J1301: 'error', J1302: 'warning', J1303: 'warning' };
 const MODEL = ['anixterTia568c2', 'ieee8023anD22', 'diminico10gbtTables', 'tsb155D13', 'adriaenssensChannelIL', 'commscopeCat6aWp'];
 /** Sources de chaque code (clés de src/check/sources.js). */
 export const SRC = {
   J1286: [...MODEL, 'flukeMarginalPasses', 'flukePropDelayCase8'],
   J1287: ['flukeMarginalBand', 'flukeMarginalPasses', 'flukeTop10Mistakes'],
   J1288: ['flukeTop10Mistakes', 'flukeMarginalPasses'],
-  J1289: ['flukeTop10Mistakes']
+  J1289: ['flukeTop10Mistakes', 'flukeChannelPlMptl', 'flukeMptlTest'],
+  J1301: ['flukeLinkwareReportHeader', 'flukeLinkwareReportDetails', 'flukeLinkwareExport'],
+  J1302: ['flukeMarginalBand', 'flukeMarginalPasses', 'flukeLinkwareReportDetails'],
+  J1303: ['flukePropDelayCase8', 'flukeLinkwareReportHeader']
 };
 const UNIT = { length: 'm', delay: 'ns', skew: 'ns' };
 const num = v => fmtNum(v, 1);
@@ -56,6 +64,7 @@ export function modelSig(data) {
     mix(sid(c.id)); mix(sid(a[0])); mix(sid(a[1])); mix(sid(b[0])); mix(sid(b[1])); mix(sid(c.cat || '')); mix(Math.round((+c.len || 0) * 1000)); mix(sid(c.media || ''));
     mix(oid(w)); mix(oid(w.a)); mix(oid(w.b)); mix(oid(w.cut));
   }
+  mix(oid(data && data.measured));
   const t = data && data.tests;
   mix(oid(t)); if (t) { mix(sid(String(t.at))); mix(Math.round((+t.band || 0) * 100)); mix(oid(t.results)); mix((t.results || []).length); }
   const site = data && data.site;
@@ -71,7 +80,7 @@ export function issues(data, lan, h) {
   if (!data || typeof data !== 'object') return [];
   // Dans l'application, chaque changement passe par ctx.commit(), qui recalcule le réseau (lan.version change) : même
   // version, mêmes tableaux, même rapport → rien n'a bougé, pas même besoin de l'empreinte.
-  const t = data.tests, quick = lan && Number.isFinite(lan.version) ? `${lan.version}|${oid(data.cables)}|${(data.cables || []).length}|${oid(data.devices)}|${oid(t)}|${t ? t.at + '|' + t.band : ''}` : null;
+  const t = data.tests, quick = lan && Number.isFinite(lan.version) ? `${lan.version}|${oid(data.measured)}|${oid(data.cables)}|${(data.cables || []).length}|${oid(data.devices)}|${oid(t)}|${t ? t.at + '|' + t.band : ''}` : null;
   const m = memo.get(data);
   if (m && quick && m.quick === quick) return m.out.map(x => ({ ...x }));
   const sig = modelSig(data);
@@ -98,6 +107,18 @@ function compute(data) {
     else if (r.verdict === 'pass*') {
       const p = Object.keys(r.params).find(k => XT.has(k) && r.params[k].st === 'pass*');
       if (p) out.push({ code: 'J1287', id, text: tl('Lien {0} : réussite marginale en {1} ({2} {3}, marge {4} dB, dans la précision du testeur).', label, lim, paramName(p), r.params[p].pair || '', num(r.params[p].margin)) });
+    }
+  }
+  // Mesures réelles importées : elles priment sur le modèle pour le lien qu'elles concernent, et sont dites « mesurées ».
+  if (data.exam !== true) {
+    const M = measuredByLink(data), tol = NET.CERT_NVP_TOL.v;
+    for (const row of st.rows) {
+      const m = M.get(row.link.id); if (!m) continue;
+      const label = linkLabel(data, row.link), id = row.link.cables[0].id, w = m.margin == null ? '' : ' ' + tl('(marge {0} dB)', num(m.margin));
+      if (/fail/.test(m.verdict)) out.push({ code: 'J1301', id, text: tl('Lien {0} : mesure réelle en échec au testeur ({1}{2}, limite « {3} »).', label, verdictText(m.verdict), w, m.limit || '?') });
+      else if (m.verdict === 'pass*') out.push({ code: 'J1302', id, text: tl('Lien {0} : réussite marginale mesurée au testeur (PASS*{1}) : dans la précision de l’appareil.', label, w) });
+      const plan = +row.link.len || 0;
+      if (m.len != null && plan > 0 && Math.abs(m.len - plan) > Math.max(2, plan * tol)) out.push({ code: 'J1303', id, text: tl('Lien {0} : {1} m mesurés au testeur pour {2} m dans le plan.', label, num(m.len), num(plan)) });
     }
   }
   stale += st.orphans.length;

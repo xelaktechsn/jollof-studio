@@ -10,7 +10,7 @@
 //   PDU, ou plus d'appareils que de prises.
 import { tl, isEn } from '../../i18n/index.js';
 import { NET } from '../limits.js';
-import { MOUNT, rackIndex, occupancy, rackPower, cableManagers, blanksNeeded, spanOf, patchingSchedule } from '../rack.js';
+import { MOUNT, mountDev, rackIndex, occupancy, rackPower, cableManagers, blanksNeeded, spanOf, patchingSchedule } from '../rack.js';
 
 /** Niveau de chaque code : 'error' | 'warning'. */
 export const CODES = {
@@ -34,7 +34,7 @@ export function issues(data, lan, h) {
   for (const d of data.devices || []) {
     if (!d.rack) continue;
     if (!racks.has(d.rack.id)) add('J1284', d.id, tl('{0} est rangé dans une baie qui n’existe plus.', name(d.id)));
-    else if (!MOUNT[d.type]) add('J1284', d.id, tl('{0} ne se monte pas dans une baie 19 pouces.', name(d.id)));
+    else if (!mountDev(d)) add('J1284', d.id, tl('{0} ne se monte pas dans une baie 19 pouces.', name(d.id)));
   }
   for (const r of data.racks || []) {
     const devs = idx.get(r.id) || [], occ = occupancy(r, devs), pw = rackPower(r, devs, lan);
@@ -43,7 +43,7 @@ export function issues(data, lan, h) {
     // Appareils de bureau : sur une tablette, juste au-dessus d'elle ; charge de chaque tablette.
     const shelves = devs.filter(d => d.type === 'shelf'), onShelf = new Map(shelves.map(s => [s.id, 0]));
     for (const d of devs) {
-      const m = MOUNT[d.type]; if (!m || !m.shelf) continue;
+      const m = mountDev(d); if (!m || !m.shelf) continue;
       const s = shelves.find(x => { const t = spanOf(x); return t && t[1] === d.rack.u - 1; });
       if (!s) add('J1284', d.id, tl('{0} est un appareil de bureau : posez-le sur une tablette, juste au-dessus d’elle.', name(d.id)));
       else onShelf.set(s.id, onShelf.get(s.id) + (m.kg || 0));
@@ -60,7 +60,7 @@ export function issues(data, lan, h) {
       else if (r.runtime > 0 && u.w > 0 && u.runtime < r.runtime) add('J1278', u.id, tl('{0} : environ {1} min d’autonomie à {2} W, pour {3} min visées.', name(u.id), fmt(u.runtime), fmt(u.w), r.runtime));
     }
     for (const d of devs) {
-      const m = MOUNT[d.type];
+      const m = mountDev(d);
       if (m && m.u && m.depth != null && m.depth > r.depth) add('J1279', d.id, tl('{0} fait {1} mm de profondeur, la baie {2} n’offre que {3} mm entre rails.', name(d.id), fmt(m.depth), r.name, fmt(r.depth)));
     }
     const nb = blanksNeeded(r, devs, occ);

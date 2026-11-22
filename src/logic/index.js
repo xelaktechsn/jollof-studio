@@ -8,6 +8,7 @@
 // Blocs (sous-circuits, voir blocks.js) : « Mes blocs » dans la bibliothèque ; un bloc ouvert remplace
 // le circuit sur le plan de travail (fil d'Ariane en haut, Échap ou « Retour au circuit » pour revenir).
 import './logic.css';
+import { placeInSlot } from '../ui/spaces.js';
 import { tl, isEn } from '../i18n/index.js';
 import { icon } from '../ui/icons.js';
 import { createNavDock } from '../ui/navdock.js';
@@ -41,15 +42,13 @@ export function installLogic(app) {
   const changeHooks = new Set();
 
   /* ---------- Sélecteur Électronique / Logique ---------- */
-  $('.brand').insertAdjacentHTML('afterend', `<div class="seg wsSwitch" role="group" aria-label="${tl('Plan de travail')}">
-    <button type="button" class="segBtn" data-ws="elec" aria-pressed="true" data-tip="${tl('Montage électronique : cartes, capteurs, câblage en 3D')}">${icon('cpu')}<span>${tl('Électronique')}</span></button>
-    <button type="button" class="segBtn" data-ws="logic" aria-pressed="false" data-tip="${tl('Logique : portes, bascules, compteurs, tables de vérité')}">${icon('logic')}<span>${isEn ? 'Logic' : 'Logique'}</span></button></div>`);
-  document.querySelectorAll('.wsSwitch [data-ws]').forEach(b => (b.onclick = () => setMode(b.dataset.ws === 'logic')));
+  // Le sélecteur (.wsSwitch) et ses boutons Électronique / Logique sont posés au démarrage par src/ui/spaces.js : ils
+  // appellent setMode de ce plan, chargé à la demande.
 
   /* ---------- Plan de travail ---------- */
   const stage = $('#stage');
   const host = document.createElement('div'); host.className = 'lgHost'; host.hidden = true;
-  stage.appendChild(host);
+  placeInSlot('stage:logic', host, stage);
   /* ---------- Son des buzzers ---------- */
   let audio = null, osc = null, tone = 0;
   function sound(tones) {
@@ -306,9 +305,9 @@ export function installLogic(app) {
     ed.structural(); ed.commit(); renderLib(); panels.refresh(); app.markDirty();
   }
   const tabs = $('.panel.right .tabs');
-  tabs.insertAdjacentHTML('beforeend', `<button type="button" role="tab" class="tab lgTab" id="tab-lcirc" aria-controls="pane-lcirc" aria-selected="false">${icon('logic')}${tl('Circuit')}</button>
+  placeInSlot('tabs:logic', `<button type="button" role="tab" class="tab lgTab" id="tab-lcirc" aria-controls="pane-lcirc" aria-selected="false">${icon('logic')}${tl('Circuit')}</button>
     <button type="button" role="tab" class="tab lgTab" id="tab-ltable" aria-controls="pane-ltable" aria-selected="false">${icon('list')}${tl('Table')}</button>
-    <button type="button" role="tab" class="tab lgTab" id="tab-lwave" aria-controls="pane-lwave" aria-selected="false">${icon('activity')}${tl('Chronogramme')}</button>`);
+    <button type="button" role="tab" class="tab lgTab" id="tab-lwave" aria-controls="pane-lwave" aria-selected="false">${icon('activity')}${tl('Chronogramme')}</button>`, tabs);
   for (const [id, el] of [['lcirc', panels.circ], ['ltable', panels.table], ['lwave', panels.wave]]) {
     const pane = document.createElement('div'); pane.className = 'pane lgPaneWrap'; pane.id = 'pane-' + id; pane.setAttribute('role', 'tabpanel'); pane.hidden = true; pane.appendChild(el);
     $('#modPane').before(pane);

@@ -188,7 +188,7 @@ export const MENUS = [
     { id: 'help.labs', label: () => tl('TP de réseau'), icon: 'checklist', act: 'labs' },
     { id: 'help.example', label: () => tl('Exemple : collège sur deux étages'), icon: 'building', act: 'template:school' },
     SEP,
-    { id: 'help.docs', label: () => tl('Documentation en ligne'), icon: 'book', act: 'url:site' },
+    { id: 'help.docs', label: () => tl('Documentation en ligne'), icon: 'book', act: 'url:help', palette: false },
     { id: 'help.issue', label: () => tl('Signaler un problème…'), icon: 'alert', act: 'url:issues' },
     { id: 'help.about', label: () => tl('À propos de Jollof Studio'), icon: 'info', act: 'about' }
   ] }

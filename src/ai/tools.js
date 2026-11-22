@@ -923,7 +923,11 @@ export function createTools(H) {
     }
   ];
   const kind = () => (H.kind ? H.kind() : 'elec');
-  const out = tools.map(t => ({ ...t, title: t.title || t.name.replace(/_/g, ' '), ...(BENCH_TOOLS.has(t.name) ? { run: a => { if (!toolFits(t.name, kind())) fail(benchRefusal(t.name)); return t.run(a); } } : {}) }));
+  // Outils du plan pneumatique (circuit, GRAFCET, automate, machine 3D) : le plan, chargé à la demande
+  // (src/ui/spaces.js), l'est avant l'appel.
+  const PNEU_TOOL = /^(pneumatic|grafcet|plc|machine)_/;
+  const runOf = t => (PNEU_TOOL.test(t.name) && H.pneu && H.pneu.ready ? async a => { await H.pneu.ready(); return t.run(a); } : t.run);
+  const out = tools.map(t => { const run = runOf(t); return { ...t, title: t.title || t.name.replace(/_/g, ' '), run: BENCH_TOOLS.has(t.name) ? a => { if (!toolFits(t.name, kind())) fail(benchRefusal(t.name)); return run(a); } : run }; });
   /** Outil montré à l'assistant pour le projet en cours (tools/list) : pas d'outil du montage dans un projet réseau seul. */
   out.visible = t => toolFits(t.name, kind());
   /**

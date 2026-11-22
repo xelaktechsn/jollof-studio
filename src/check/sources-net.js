@@ -7,7 +7,8 @@ import { SOURCES } from './sources.js';
 
 export const NET_SOURCES = {
   /* ---------- Réseau informatique (src/net : NET de limits.js, NET_SRC de issues.js), relu en novembre 2026 ---------- */
-  // Les normes de câblage (ANSI/TIA-568, ISO/IEC 11801) et IEEE 802.3 sont payantes : leurs chiffres sont lus dans les
+  // Les normes de câblage (ANSI/TIA-568, ISO/IEC 11801) sont payantes ; IEEE 802.3 est offerte par le programme IEEE GET mais
+  // n'a pas pu y être lue (fiche ieeeGetProgram) : leurs chiffres sont lus dans les
   // guides des fabricants qui les citent (Belden, Fluke Networks, Cisco) et dans les documents publics du groupe 802.3.
   beldenCopperDesignGuide: {
     title: 'Copper Structured Cabling Design Guide, Issue 10',
@@ -61,13 +62,13 @@ export const NET_SOURCES = {
     title: 'IEEE Std 802.3-2022, IEEE Standard for Ethernet',
     publisher: 'IEEE',
     url: 'https://standards.ieee.org/ieee/802.3/10422/',
-    section: 'Norme payante, texte non lu directement : référence de la couche physique Ethernet (10BASE-T, 100BASE-TX, 1000BASE-T, 10GBASE-T) ; les chiffres utilisés viennent des documents publics du groupe 802.3 et des guides cités ici'
+    section: 'Texte non lu directement : référence de la couche physique Ethernet (10BASE-T, 100BASE-TX, 1000BASE-T, 10GBASE-T). La norme est offerte par le programme IEEE GET, mais IEEE Xplore, qui sert les PDF, a refusé la lecture automatisée en novembre 2026 (fiche ieeeGetProgram) : aucune clause n’est citée ici ; les chiffres utilisés viennent des documents publics du groupe 802.3 et des guides cités'
   },
   ieee80211_2024: {
     title: 'IEEE Std 802.11-2024, Wireless LAN Medium Access Control (MAC) and Physical Layer (PHY) Specifications',
     publisher: 'IEEE',
     url: 'https://standards.ieee.org/ieee/802.11/10548/',
-    section: 'Norme payante, texte non lu directement : référence du Wi-Fi (MAC et couche physique), qui remplace 802.11-2020 ; l’association à un point d’accès et la sécurité RSNA y sont définies'
+    section: 'Texte non lu directement (programme IEEE GET non lisible de façon automatisée en novembre 2026, fiche ieeeGetProgram ; aucune clause citée) : référence du Wi-Fi (MAC et couche physique), qui remplace 802.11-2020 ; l’association à un point d’accès et la sécurité RSNA y sont définies'
   },
   ieeeMaint1115: {
     title: 'IEEE 802.3 Maintenance Request 1115',
@@ -1230,6 +1231,157 @@ export const NET_SOURCES = {
     publisher: 'JGraph (GitHub, jgraph/drawio-mcp)',
     url: 'https://raw.githubusercontent.com/jgraph/drawio-mcp/main/shared/mxfile.xsd',
     section: 'Schéma des éléments mxfile, diagram, mxGraphModel (pageWidth et pageHeight entiers positifs), root, mxCell, object / UserObject (id requis, anyAttribute pour les données), mxGeometry, mxPoint, Array ; utilisé par les essais (outil d’essai) pour valider les fichiers écrits.'
+  },
+  /* ---------- Normes IEEE 802 : programme GET, résultats de testeurs réels, catalogue de matériel (novembre 2026) ---------- */
+  ieeeGetProgram: {
+    title: 'IEEE GET Program (accès gratuit aux normes IEEE 802 six mois après leur publication)',
+    publisher: 'IEEE Standards Association',
+    url: 'https://standards.ieee.org/products-programs/ieee-get-program/',
+    section: 'Page du programme (lue) : les normes sont servies en PDF par IEEE Xplore, après acceptation des conditions d’utilisation (« before access to the standard(s) PDF file is permitted »). Tentative de lecture en novembre 2026 : IEEE Xplore refuse les requêtes automatisées (HTTP 418) sur la page du programme comme sur ses pages d’aide ; aucun compte n’a été créé. Aucune clause d’IEEE 802.3, 802.1Q, 802.1D, 802.1AX ni 802.11 n’a donc été lue par ce programme : les fiches de ces normes restent marquées « texte non lu directement ».'
+  },
+  flukeLinkwareExport: {
+    title: 'Exporting to .csv or .xml using LinkWare PC',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/content/exporting-csv-or-xml-using-linkware-pc',
+    section: 'Exports documentés du logiciel : « File > Export to File > Autotest Reports » (CSV complet), « Autotest Summary » (CSV de synthèse), « File > Export to XML » ; champs exportés choisis dans « Options > CSV ». L’article ne donne ni la liste des colonnes ni de fichier d’exemple : notre lecteur est écrit par synonymes et reste à valider avec un export réel.'
+  },
+  flukeLinkwareReportHeader: {
+    title: 'Cable Testing 101: Understanding Your LinkWare Report',
+    publisher: 'Fluke Networks',
+    url: 'https://flukenetworks.com/blog/cabling-chronicles/101-series-whats-top-your-linkware-report',
+    section: 'En-tête d’un rapport de test : résultat global (PASS ou FAIL), identifiant du câble (Cable ID), date et heure, opérateur, limite de test, modèle du testeur, numéros de série des deux boîtiers, date d’étalonnage, versions du logiciel et des limites, NVP (elle ne joue que sur la longueur ; paires torsadées : 60 à 80 %).'
+  },
+  flukeLinkwareReportDetails: {
+    title: 'Cable Testing 101: How to Read the LinkWare PC Report',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/series-101-how-read-details-your-linkware-pc-report',
+    section: 'Contenu d’un rapport : longueur, délai de propagation, écart de délai, résistance, marge d’affaiblissement ; NEXT, PS NEXT, ACR-F, PS ACR-F, ACR-N, PS ACR-N, RL, chacun avec sa marge la plus faible (« worst case margin », point le plus proche de la limite) et sa valeur la plus faible, côté appareil principal et côté distant.'
+  },
+  flukeChannelPlMptl: {
+    title: 'Channel, Permanent Link, Patch Cords, MPTL, E2E… Oh My!',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/channel-permanent-link-patch-cords-mptl-e2e-oh-my',
+    section: '« the channel is the connection from one active device to another » ; le lien permanent est la partie fixe du canal, sans les cordons : « The maximum permitted length of the permanent link is 90 meters. » ; canal : 100 m ; MPTL : « a horizontal cable is terminated on one end to a plug and plugged directly into a device ».'
+  },
+  flukeMptlTest: {
+    title: 'What is the right way to test an MPTL?',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/right-way-to-test-MPTL',
+    section: 'Lien terminé par une fiche (MPTL), reconnu par ANSI/TIA-568.2-D (lu chez Fluke) : adaptateur de lien permanent côté panneau, adaptateur de cordon côté fiche ; un adaptateur de canal au bout « excludes the mated connection at the far end from the test » et « leads to optimistic results with a lot of headroom ».'
+  },
+  flukeDcResistanceUnbalance: {
+    title: 'DC Resistance Unbalance Testing',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/dc-resistance-unbalance-what-you-need-know',
+    section: 'Déséquilibre de résistance en courant continu (lu chez Fluke, d’après ANSI/TIA-568.2) : dans une paire « 3% of the pair’s total DC loop resistance or 0.20 Ω », entre paires « a maximum of 7% or 0.20 Ω » ; un déséquilibre trop fort « can saturate a device’s transformer » en PoE. Mesure de chantier non exigée par les normes (« Technically, it is not required by industry standards »).'
+  },
+  flukeFiberTier1: {
+    title: 'Fiber Certification Testing: All You Really Need Is Loss, Length, Polarity (and Sometimes Reflectance)',
+    publisher: 'Fluke Networks',
+    url: 'https://www.flukenetworks.com/blog/cabling-chronicles/fiber-certification-testing-all-you-really-need-loss-length-and-sometimes',
+    section: '« insertion loss plus length and polarity (Tier 1 testing) are almost always what will determine application support » ; un réflectomètre (OTDR) est requis pour le niveau 2 ; exemple : 10GBASE-SR, « maximum channel insertion loss of 2.9 dB over 400 meters of OM4 multimode fiber ».'
+  },
+  uiUswPro24Poe: {
+    title: 'UniFi Pro 24 PoE (USW-Pro-24-POE), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/switching/usw-pro-24-poe',
+    section: '442 × 285 × 44 mm, 4,3 kg (sans équerres), 1U ; 24 ports RJ45 1 Gb/s (16 PoE+, 8 PoE++), 2 cages SFP+ ; PoE disponible 400 W ; 50 W au plus sans PoE, 450 W avec.'
+  },
+  uiUswPro48Poe: {
+    title: 'UniFi Pro 48 PoE (USW-Pro-48-POE), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/switching/usw-pro-48-poe',
+    section: '442 × 400 × 44 mm, 6,2 kg (sans équerres), 1U ; 48 ports RJ45 1 Gb/s (40 PoE+, 8 PoE++), 4 cages SFP+ ; PoE disponible 600 W ; 60 W au plus sans PoE, 660 W avec.'
+  },
+  uiUsw24Poe: {
+    title: 'UniFi Standard 24 PoE (USW-24-POE), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/switching/usw-24-poe',
+    section: '442 × 200 × 44 mm, 3 kg, 1U ; 24 ports RJ45 dont 16 PoE+, 2 cages SFP 1 Gb/s ; PoE disponible 95 W ; 25 W au plus sans PoE, 120 W avec.'
+  },
+  uiUsw48Poe: {
+    title: 'UniFi Standard 48 PoE (USW-48-POE), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/switching/usw-48-poe',
+    section: '442 × 285 × 44 mm, 4,5 kg, 1U ; 48 ports RJ45 dont 32 PoE+, 4 cages SFP 1 Gb/s ; PoE disponible 195 W ; 45 W au plus sans PoE, 240 W avec.'
+  },
+  uiUswProAggregation: {
+    title: 'UniFi Pro Aggregation (USW-Pro-Aggregation), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/switching/usw-pro-aggregation',
+    section: '442 × 325 × 44 mm, 4,6 kg (sans équerres), 1U ; 28 cages SFP+ et 4 cages SFP28 ; 100 W au plus ; routage entre VLAN et routes statiques.'
+  },
+  uiUdmPro: {
+    title: 'UniFi Dream Machine Pro (UDM-Pro), Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/cloud-gateways/udm-pro',
+    section: '442,4 × 43,7 × 285,6 mm, 3,9 kg, 1U ; 2 cages SFP+ ; 33 W au plus (alimentation interne 50 W).'
+  },
+  uiU6Pro: {
+    title: 'UniFi U6 Pro, Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/wifi/u6-pro',
+    section: 'Wi-Fi 6, 2,4 et 5 GHz ; ⌀197 × 35 mm, 580 g ; port 1 Gb/s ; 13 W au plus ; gain d’antenne 4 dBi (2,4 GHz) et 6 dBi (5 GHz).'
+  },
+  uiU7Pro: {
+    title: 'UniFi U7 Pro, Tech Specs',
+    publisher: 'Ubiquiti',
+    url: 'https://techspecs.ui.com/unifi/wifi/u7-pro',
+    section: 'Wi-Fi 7, 2,4, 5 et 6 GHz ; ⌀206 × 46 mm, 680 g ; port 1/2,5 Gb/s ; PoE+ ; 21 W au plus ; gain d’antenne 4 / 6 / 5,8 dBi.'
+  },
+  tplinkSg3428mp: {
+    title: 'Omada SG3428MP V6.30, Specifications',
+    publisher: 'TP-Link (Omada)',
+    url: 'https://www.omadanetworks.com/us/business-networking/omada-switch-access/sg3428mp/',
+    section: '24 ports RJ45 1 Gb/s PoE+ (802.3at/af), 4 cages SFP ; budget PoE 384 W ; 463,7 W au plus (220 V, 384 W de PoE) ; 1581,11 BTU/h ; 440 × 330 × 44 mm ; poids non donné.'
+  },
+  tplinkSg3452p: {
+    title: 'Omada SG3452P V3.40, Specifications',
+    publisher: 'TP-Link (Omada)',
+    url: 'https://www.omadanetworks.com/us/business-networking/omada-switch-access/sg3452p/',
+    section: '48 ports RJ45 1 Gb/s PoE+ (802.3af/at), 4 cages SFP ; budget PoE 384 W ; 447,4 W au plus (220 V, 384 W de PoE) ; 1525,63 BTU/h ; 440 × 330 × 44 mm ; poids non donné.'
+  },
+  tplinkEr7206: {
+    title: 'Omada ER7206 V2.30, Specifications',
+    publisher: 'TP-Link (Omada)',
+    url: 'https://www.omadanetworks.com/us/business-networking/omada-router-wired-router/er7206/',
+    section: '1 cage SFP WAN/LAN, 1 port WAN, 4 ports LAN/WAN 1 Gb/s ; 7,5 W au plus ; 226 × 131 × 35 mm ; bureau, mur ou baie.'
+  },
+  tplinkEap650: {
+    title: 'Omada EAP650 V3, Specifications',
+    publisher: 'TP-Link (Omada)',
+    url: 'https://www.omadanetworks.com/us/business-networking/omada-wifi-ceiling-mount/eap650/',
+    section: 'Wi-Fi 6 ; port 1 Gb/s ; 802.3at ; 15,5 W au plus ; antennes 4 dBi (2,4 GHz) et 5 dBi (5 GHz) ; 160 × 160 × 33,6 mm, 0,38 kg.'
+  },
+  tplinkEap772: {
+    title: 'Omada EAP772 V2.20, Specifications',
+    publisher: 'TP-Link (Omada)',
+    url: 'https://www.omadanetworks.com/us/business-networking/omada-wifi-ceiling-mount/eap772/',
+    section: 'Wi-Fi 7, 2,4, 5 et 6 GHz ; port 2,5 Gb/s ; 802.3at ; 25,4 W au plus (PoE) ; antennes 4 / 5 / 5 dBi ; 220 × 220 × 32,5 mm ; poids non donné.'
+  },
+  mikrotikCrs328: {
+    title: 'CRS328-24P-4S+RM, Specifications',
+    publisher: 'MikroTik',
+    url: 'https://mikrotik.com/product/crs328_24p_4s_rm',
+    section: '24 ports RJ45 1 Gb/s PoE (802.3af/at), 4 cages SFP+ ; 450 W de PoE garantis ; 44 W au plus sans rien d’alimenté, 494 W avec ; 443 × 300 × 44 mm, 1U ; poids non donné.'
+  },
+  mikrotikCrs354: {
+    title: 'CRS354-48P-4S+2Q+RM, Specifications',
+    publisher: 'MikroTik',
+    url: 'https://mikrotik.com/product/crs354_48p_4s_2q_rm',
+    section: '48 ports RJ45 1 Gb/s PoE (802.3af/at), 4 cages SFP+, 2 cages QSFP+ ; budget PoE 700 W ; 85 W au plus sans rien d’alimenté, 800 W avec ; 443 × 382 × 44 mm ; poids non donné.'
+  },
+  mikrotikCcr2004: {
+    title: 'CCR2004-16G-2S+PC, Specifications',
+    publisher: 'MikroTik',
+    url: 'https://mikrotik.com/product/ccr2004_16g_2s_pc',
+    section: '16 ports RJ45 1 Gb/s, 2 cages SFP+ ; 36 W au plus ; 272 × 195 × 44 mm.'
+  },
+  mikrotikRb5009: {
+    title: 'RB5009UG+S+IN, Specifications',
+    publisher: 'MikroTik',
+    url: 'https://mikrotik.com/product/rb5009ug_s_in',
+    section: '7 ports 1 Gb/s, 1 port 2,5 Gb/s, 1 cage SFP+ ; 14 W au plus sans rien d’alimenté, 25 W avec ; 220 × 125 × 22 mm ; quatre appareils par U avec les accessoires de montage.'
   }
 };
 Object.assign(SOURCES, NET_SOURCES);

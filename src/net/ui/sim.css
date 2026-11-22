@@ -91,8 +91,8 @@
 /* Étroit : d'abord les libellés de l'affichage et l'aide, puis ceux des outils, enfin la légende (infobulles gardées). */
 /* Les trois bascules d'affichage gardent leur libellé (leur état se lit) ; les outils passent en icônes d'abord. */
 @container ntlogic (max-width: 1180px) { .ntLogic .ntHint { display: none; } }
-@container ntlogic (max-width: 1000px) { .ntLogic .ntTools .segBtn > span { display: none; } }
-@container ntlogic (max-width: 560px) { .ntLogic .ntSimBar .segBtn > span { display: none; } }
+@container ntlogic (max-width: 1000px) { .ntLogic .ntTools .segBtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+@container ntlogic (max-width: 560px) { .ntLogic .ntSimBar .segBtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 @container ntlogic (max-width: 560px) { .ntLogic .ntLegend { display: none; } }
 .ntHost:not(.toolCable) .ntLogic .ntBar.top { flex-wrap: nowrap; }
 .ntEmptyGo { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin-top: 4px; }

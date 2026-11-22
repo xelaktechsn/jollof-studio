@@ -92,13 +92,13 @@ export function renderIpPlan(ctx, el) {
       ${selField(tl('Réseaux en place'), 'ip.keep', D.ip.keep ? 'yes' : 'no', [['yes', tl('Les garder quand ils conviennent')], ['no', tl('Tout redécouper dans le bloc')]])}</section>
       <p class="ntDsNote">${esc(tl('Découpage VLSM : les réseaux sont placés du plus grand au plus petit, chacun aligné sur sa taille (RFC 4632) ; l’adresse du réseau et celle de diffusion ne sont pas données aux hôtes (RFC 950). Une adresse est comptée pour la passerelle.'))}</p>
       <p class="ntDsNote">${esc(tl('Appliquer le plan crée aussi, sur le switch de niveau 3 de cœur, une interface VLAN (SVI) par VLAN à l’adresse de la passerelle, et le DHCP : relais vers le serveur DHCP du projet s’il y en a un, sinon des étendues sur le cœur (sauf le VLAN de gestion).'))}</p></aside>`;
-    if (!vl.length) return (el.innerHTML = `<div class="ntDsGrid">${side}<main class="ntDsMain"><div class="ntDsEmptyBig">${ctx.icon('network')}<h3>${esc(tl('Aucun VLAN'))}</h3><p>${esc(tl('Créez les VLAN du projet (le générateur de l’onglet Dimensionnement pose DATA, VOICE, WIFI et MGMT) : ce plan leur donne ensuite un réseau et une passerelle.'))}</p></div></main></div>`);
+    if (!vl.length) return (el.innerHTML = `<div class="ntDsGrid">${side}<div class="ntDsMain"><div class="ntDsEmptyBig">${ctx.icon('network')}<h3>${esc(tl('Aucun VLAN'))}</h3><p>${esc(tl('Créez les VLAN du projet (le générateur de l’onglet Dimensionnement pose DATA, VOICE, WIFI et MGMT) : ce plan leur donne ensuite un réseau et une passerelle.'))}</p></div></div></div>`);
     const ST = { kept: ['ntDsGood', tl('gardé')], new: ['ntDsMuted', tl('nouveau')], changed: ['ntDsWarnTxt', tl('change')], nofit: ['ntDsBad', tl('ne tient pas')] };
     const st = s => { if (ovSet.has(s.id) && s.status === 'kept') return `<span class="ntDsBad">${esc(tl('chevauchement'))}</span>`; const [c, t] = ST[s.status] || ST.new; return `<span class="${c}">${esc(t)}</span>`; };
     const SRC = { set: tl('saisi'), count: tl('compté'), estimate: tl('estimé'), none: '—' };
     const bar = u => `<span class="ntDsBar"><i style="width:${Math.round(Math.min(1, u) * 100)}%"></i></span> ${fmt(u * 100)} %`;
     const rows = plan.subnets, changes = plan.changes;
-    el.innerHTML = `<div class="ntDsGrid">${side}<main class="ntDsMain">
+    el.innerHTML = `<div class="ntDsGrid">${side}<div class="ntDsMain">
       <div class="ntDsKpis">${kpi(tl('Bloc'), plan.block || D.ip.block, { warn: !blk || plan.private === false, sub: !blk ? tl('illisible') : plan.private === false ? tl('adresses publiques') : tl('privé (RFC 1918)') })}${kpi(tl('VLAN'), fmt(vl.length))}${kpi(tl('Changements proposés'), fmt(changes), { ok: !changes, warn: changes > 0 })}${kpi(tl('Sans place'), fmt(plan.fail.length), { warn: plan.fail.length > 0, ok: !plan.fail.length })}</div>
       <div class="ntDsTools"><button type="button" class="btn small" data-ip="estimate">${ctx.icon('gauge')}<span>${esc(tl('Estimer les hôtes'))}</span></button><span class="ntDsSp"></span><button type="button" class="btn small${changes ? ' primary' : ''}" data-ip="apply"${changes ? '' : ' disabled'}>${ctx.icon('check')}<span>${esc(changes ? tl('Appliquer {0:# changement|# changements}…', changes) : tl('Rien à appliquer'))}</span></button></div>
       ${ov.length ? `<section class="ntDsWarn">${ov.slice(0, 10).map(([a, b]) => `<p>${ctx.icon('alert')}${esc(tl('Les réseaux des VLAN {0} et {1} se chevauchent.', a, b))}</p>`).join('')}</section>` : ''}
@@ -108,7 +108,7 @@ export function renderIpPlan(ctx, el) {
         { name: tl('Proposé'), key: s => (s.fit ? `<span title="${esc(tl('Adresses utilisables'))} : ${esc(s.first)} – ${esc(s.last)}">${esc(s.cidr)}${s.gw ? '<br>' + esc(s.gw) : ''}</span>` : '—'), html: 1, cls: 'ntDsMono ntDsIpCell' },
         { name: tl('Utilisation'), key: s => (s.fit ? bar(s.util) : '—'), html: 1 },
         { name: tl('État'), key: st, html: 1 }], rows, { cls: 'ntDsFit' })}
-    </main></div>`;
+    </div></div>`;
   }
   render();
   return { render, destroy() { el.removeEventListener('click', onClick); el.removeEventListener('change', onChange); el.classList.remove('ntDsIp'); } };

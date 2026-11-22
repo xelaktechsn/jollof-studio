@@ -117,14 +117,13 @@ export function installLab(app) {
       return n === 'sim' ? app.simOn() : n === 'split' ? !!(P && P.isSplit()) : n === 'pneu' ? onP : n === 'elec' ? !onP && !onL : n === 'grafcet' ? !!(P && P.grafcetOpen()) : n === 'plc' ? !!(P && P.plcOpen()) : n === '3d' ? !!(P && P.is3dOpen()) : n === 'build' ? !!(P && P.isBuilding && P.isBuilding()) : false;
     }
   };
-  const btn = app.toolbar(`<button type="button" class="tb label" id="labBtn" data-tip="${tl('Travaux pratiques guidés, vérifiés pas à pas')}">${icon('checklist')}<span>${tl('TP')}</span></button>`);
-  btn.onclick = () => openLibrary(app.pneu && app.pneu.isOn() ? 'pneu' : logic() && logic().isOn() ? 'logic' : net() && net().isOn() ? 'net' : null);
-  app.openLabs = domain => openLibrary(domain);
+  // Le bouton « TP », app.openLabs, app.openTutorial et les commandes de la palette sont posés au démarrage par
+  // src/ui/ondemand.js (labButton) : ce module, chargé au premier besoin, leur donne open, tutorial et commands.
   /** Ouvre un TP ou un tutoriel par son identifiant (bouton « Tutoriel » du plan pneumatique…). */
-  app.openTutorial = async id => { await loadTps(); const tp = TPS.find(t => t.id === id); if (tp) run(tp); else toast(tl('Tutoriel introuvable.'), 'err'); };
+  const tutorial = async id => { await loadTps(); const tp = TPS.find(t => t.id === id); if (tp) run(tp); else toast(tl('Tutoriel introuvable.'), 'err'); };
   // Palette de commandes : « TP : Feu tricolore » ouvre le TP (le contenu des TP se charge à la première ouverture de la palette).
   // Projet réseau seul : seulement les TP de réseau (kind.js netOnly) ; les autres types : tous les TP.
-  if (app.commands) app.commands.provide(async () => { await loadTps(); return TPS.filter(tp => !(app.kind && netOnly(app.kind())) || tp.domain === 'net').map(tp => ({ id: 'tp:' + tp.id, cat: tl('TP'), icon: 'checklist', label: L(tp.title), run: () => run(tp) })); });
+  const commands = async () => { await loadTps(); return TPS.filter(tp => !(app.kind && netOnly(app.kind())) || tp.domain === 'net').map(tp => ({ id: 'tp:' + tp.id, cat: tl('TP'), icon: 'checklist', label: L(tp.title), run: () => run(tp) })); };
 
   /* ---------- Bibliothèque ---------- */
   async function openLibrary(domain = null) {
@@ -198,6 +197,7 @@ export function installLab(app) {
     if (st.done.length !== tp.steps.length) st = { step: 0, done: tp.steps.map(() => false), answers: {}, results: {}, startedAt: Date.now(), finishedAt: null };
     const resume = st.done.some(Boolean) && !st.finishedAt;
     let watcher = null;
+    if (isLogic && logic().ready) await logic().ready(); // plan logique chargé à la demande (src/ui/spaces.js)
     const project = st.project || (isLogic ? logic().project(tp.start.logic, L(tp.title)) : tp.start);
     const panel = document.createElement('div'); panel.className = 'sessPanel labPanel' + (isLogic ? ' logicLab' : isPneu ? ' pneuLab' : isNet ? ' netLab' : '');
     const save = () => { st.project = app.projectData(); store(tp.id, st); };
@@ -695,5 +695,5 @@ export function installLab(app) {
     render();
     if (resume) toast(tl('Reprise du TP à l’étape {0}.', st.step + 1));
   }
-  return { get list() { return TPS; }, load: loadTps, run, open: openLibrary };
+  return { get list() { return TPS; }, load: loadTps, run, open: openLibrary, tutorial, commands };
 }

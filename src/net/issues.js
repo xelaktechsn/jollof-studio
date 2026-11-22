@@ -41,7 +41,7 @@ export const NET_SRC = {
   J1201: ['flukeWireMapBlog', 'beldenCopperDesignGuide', 'flukeT568AvsB'], J1202: ['flukeWireMapBlog'],
   J1203: NET.CHANNEL_M.src, J1204: [...NET.PERMANENT_M.src, NET.CORDS_M.src].flat(), J1205: NET.SPEED_CAT.src,
   J1206: ['ciscoStp', 'ciscoL2Loops'], J1207: ['rfc2131'], J1208: ['rfc1918'], J1209: ['rfc950', 'rfc4632'], J1210: ['rfc950', 'rfc4632'],
-  J1211: ['ieee8023_2022'], J1212: [NET.POE_PSE_W.src, NET.POE_TYPE_MAXCLASS.src].flat(), J1213: ['ieeeMaint1115', 'cisco10100Cables'],
+  J1211: ['ieee8023_2022', 'ieeeGetProgram'], J1212: [NET.POE_PSE_W.src, NET.POE_TYPE_MAXCLASS.src, 'flukeDcResistanceUnbalance'].flat(), J1213: ['ieeeMaint1115', 'cisco10100Cables'],
   J1214: ['ieee80211_2024'], J1215: NET.CAT6_10G_SURE_M.src, J1216: ['rfc3927', 'rfc2131'],
   ...SIM_SRC,
   ...Object.assign({}, ...PARTS.map(m => m.SRC))

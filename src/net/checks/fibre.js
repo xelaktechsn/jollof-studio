@@ -26,7 +26,7 @@ export const SRC = {
   J1241: ['foaLinkspec', 'flukeOmOsFiber', ...MODSRC],
   J1242: ['flukeOmOsFiber', 'cisco1gSfp', 'cisco10gSfpPlus', 'ciscoMcpBulletin'],
   J1243: ['cisco1gSfp', 'cisco10gSfpPlus'],
-  J1244: ['foaLossBudget', ...MODSRC],
+  J1244: ['foaLossBudget', 'flukeFiberTier1', ...MODSRC],
   J1245: ['cisco1gSfp', 'cisco10gSfpPlus'],
   J1246: NET.FIBRE_MARGIN_DB.src,
   J1247: ['flukeOmOsFiber', 'foaSmfTypes'],

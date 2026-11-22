@@ -50,6 +50,25 @@ const txt = (v, n) => cleanText(String(v ?? ''), n);
 const r1 = v => Math.round(v * 100) / 100;
 
 export const mountOf = type => MOUNT[type] || null;
+/**
+ * Montage d'un équipement : celui de son type, ou celui de son modèle réel (d.model, catalog.js) quand il en a un — la
+ * fiche du modèle remplace alors hauteur, profondeur, poids et puissances ; un champ que la fiche ne donne pas vaut null
+ * (jamais celui du type générique). Sans puissance maximale, un switch PoE garde le majorant « sans PoE + budget ».
+ */
+const mountMemo = new WeakMap();
+export function mountDev(d) {
+  if (!d) return null;
+  const base = MOUNT[d.type] || null, m = d.model;
+  if (!m || !base) return base;
+  let o = mountMemo.get(m);
+  if (!o || o.base !== base) {
+    const poe = !!m.poeBudget, typ = m.w ?? null, max = m.wMax ?? (typ != null && poe ? Math.round((typ + m.poeBudget) * 100) / 100 : typ);
+    o = { base, v: { ...base, u: base.u === 0 ? 0 : m.u ?? base.u, depth: m.depth ?? null, kg: m.kg ?? null, typ: base.pdu || base.ups || base.ebmOf ? base.typ : typ, max: base.pdu || base.ups || base.ebmOf ? base.max : max, shelf: !!m.shelf, poe, ref: `${m.vendor} ${m.pn}`, model: true } };
+    if (!o.v.shelf) delete o.v.shelf; if (!poe) delete o.v.poe;
+    mountMemo.set(m, o);
+  }
+  return o.v;
+}
 export const rackable = type => !!MOUNT[type];
 
 /* ---------- Nettoyage ---------- */
@@ -124,7 +143,7 @@ export function rackIndex(data) {
 }
 /** U occupés : [bas, haut] (null pour une PDU verticale ou un type hors baie). */
 export function spanOf(d, u = d.rack && d.rack.u) {
-  const m = MOUNT[d.type]; if (!m || !m.u) return null;
+  const m = mountDev(d); if (!m || !m.u) return null;
   return [u, u + m.u - 1];
 }
 /**
@@ -132,7 +151,7 @@ export function spanOf(d, u = d.rack && d.rack.u) {
  * (règle de conception : un appareil profond ne laisse pas la place d'en monter un autre derrière lui).
  */
 export function facesOf(d, rack, face = d.rack && d.rack.face) {
-  const m = MOUNT[d.type]; if (!m || !m.u) return [];
+  const m = mountDev(d); if (!m || !m.u) return [];
   if (m.depth != null && m.depth > rack.depth / 2) return ['front', 'rear'];
   return [face === 'rear' ? 'rear' : 'front'];
 }
@@ -156,7 +175,7 @@ export function occupancy(rack, devs) {
 }
 /** L'équipement dev peut-il aller en U u, face face, dans rack (sans compter sa place actuelle) ? */
 export function canPlace(data, rack, dev, u, face = 'front') {
-  const m = MOUNT[dev.type]; if (!m) return { ok: false, why: 'type' };
+  const m = mountDev(dev); if (!m) return { ok: false, why: 'type' };
   if (!m.u) return { ok: true };
   if (u < 1 || u + m.u - 1 > rack.u) return { ok: false, why: 'outside' };
   const others = (data.devices || []).filter(x => x !== dev && x.id !== dev.id && x.rack && x.rack.id === rack.id);
@@ -169,7 +188,7 @@ export function canPlace(data, rack, dev, u, face = 'front') {
 }
 /** U libre le plus proche de near (par défaut : le plus bas) pour dev, ou 0 s'il n'y en a pas. */
 export function findFree(data, rack, dev, face = 'front', near = 1) {
-  const m = MOUNT[dev.type]; if (!m) return 0; if (!m.u) return 1;
+  const m = mountDev(dev); if (!m) return 0; if (!m.u) return 1;
   const order = []; for (let k = 1; k + m.u - 1 <= rack.u; k++) order.push(k);
   order.sort((a, b) => Math.abs(a - near) - Math.abs(b - near) || a - b);
   for (const k of order) if (canPlace(data, rack, dev, k, face).ok) return k;
@@ -185,7 +204,7 @@ export function canPlaceGroup(data, rack, moves) {
   const others = (data.devices || []).filter(x => x.rack && x.rack.id === rack.id && !moved.has(x.id));
   const front = new Array(rack.u + 2).fill(null), rear = new Array(rack.u + 2).fill(null);
   const mark = (d, u, face, check) => {
-    const m = MOUNT[d.type]; if (!m || !m.u) return null;
+    const m = mountDev(d); if (!m || !m.u) return null;
     for (const f of facesOf({ ...d, rack: { id: rack.id, u, face } }, rack, face)) {
       const arr = f === 'front' ? front : rear;
       for (let k = Math.max(1, u); k <= Math.min(rack.u, u + m.u - 1); k++) { if (arr[k] && check) return arr[k]; arr[k] = d.id; }
@@ -194,7 +213,7 @@ export function canPlaceGroup(data, rack, moves) {
   };
   for (const o of others) mark(o, o.rack.u, o.rack.face, false);
   for (const { dev, u, face } of moves) {
-    const m = MOUNT[dev.type]; if (!m) return { ok: false, why: 'type', dev: dev.id };
+    const m = mountDev(dev); if (!m) return { ok: false, why: 'type', dev: dev.id };
     if (m.u && (u < 1 || u + m.u - 1 > rack.u)) return { ok: false, why: 'outside', dev: dev.id };
     const w = mark(dev, u, face, true); if (w) return { ok: false, why: 'clash', dev: dev.id, with: w };
   }
@@ -205,7 +224,7 @@ export function canPlaceGroup(data, rack, moves) {
  * essaie d'abord near, puis les U les plus proches. Rend la base (U du bas du groupe) ou 0 s'il n'y a pas la place.
  */
 export function findGroupBase(data, rack, items, near = 1, o = {}) {
-  const top = Math.max(0, ...items.map(it => it.du + ((MOUNT[it.dev.type] || {}).u || 1) - 1));
+  const top = Math.max(0, ...items.map(it => it.du + ((mountDev(it.dev) || {}).u || 1) - 1));
   const order = []; for (let b = 1; b + top <= rack.u; b++) order.push(b);
   order.sort((a, b) => Math.abs(a - near) - Math.abs(b - near) || a - b);
   // o.block : le groupe garde un seul bloc d'U (rien d'autre entre ses équipements, en façade).
@@ -242,7 +261,7 @@ export function managerSlots(rack, devs) {
  * l'alimentation non comptées), w : celle retenue (basis). d.rack.w impose la puissance (mesurée ou annoncée).
  */
 export function devicePower(d, lan, basis = 'typ') {
-  const m = MOUNT[d.type]; if (!m) return { typ: 0, max: 0, poe: 0, w: 0, guess: false, user: false };
+  const m = mountDev(d); if (!m) return { typ: 0, max: 0, poe: 0, w: 0, guess: false, user: false };
   if (d.rack && d.rack.w != null) return { typ: d.rack.w, max: d.rack.w, poe: 0, w: d.rack.w, guess: false, user: true };
   let poe = 0;
   if (m.poe && lan && lan.poe) { const i = lan.poe(d.id); poe = i ? +i.used || 0 : 0; }
@@ -274,7 +293,7 @@ export function rackPower(rack, devs, lan) {
   let typ = 0, max = 0, poe = 0, w = 0, kg = 0;
   const loads = [], unknownKg = [], guess = [];
   for (const d of devs) {
-    const m = MOUNT[d.type]; if (!m) continue;
+    const m = mountDev(d); if (!m) continue;
     if (m.kg == null) unknownKg.push(d.id); else kg += m.kg;
     if (m.ups || m.ebmOf || m.pdu) continue;
     const p = devicePower(d, lan, basis);
@@ -282,7 +301,7 @@ export function rackPower(rack, devs, lan) {
     if (p.guess) guess.push(d.id);
     if (p.w > 0 || m.max > 0) loads.push({ id: d.id, w: p.w, pdu: d.rack && d.rack.pdu });
   }
-  const pdus = devs.filter(d => MOUNT[d.type] && MOUNT[d.type].pdu).map(d => ({ id: d.id, type: d.type, spec: MOUNT[d.type].pdu, w: 0, plugs: 0 }));
+  const pdus = devs.filter(d => mountDev(d) && mountDev(d).pdu).map(d => ({ id: d.id, type: d.type, spec: mountDev(d).pdu, w: 0, plugs: 0 }));
   const unplugged = [];
   if (pdus.length) {
     const free = [];
@@ -294,10 +313,10 @@ export function rackPower(rack, devs, lan) {
     p.va = r1(p.w / pf); p.capVA = r1(capVA); p.pct = capVA ? r1((p.va / capVA) * 100) : 0; p.outlets = p.spec.outlets; p.w = r1(p.w);
     p.amps = r1(p.va / rack.volts);
   }
-  const upsList = devs.filter(d => MOUNT[d.type] && MOUNT[d.type].ups);
-  const ebms = devs.filter(d => MOUNT[d.type] && MOUNT[d.type].ebmOf).map(d => ({ id: d.id, of: MOUNT[d.type].ebmOf, used: false }));
+  const upsList = devs.filter(d => mountDev(d) && mountDev(d).ups);
+  const ebms = devs.filter(d => mountDev(d) && mountDev(d).ebmOf).map(d => ({ id: d.id, of: mountDev(d).ebmOf, used: false }));
   const ups = upsList.map(d => {
-    const s = MOUNT[d.type].ups, load = w / upsList.length, e = ebms.find(x => !x.used && x.of === d.type);
+    const s = mountDev(d).ups, load = w / upsList.length, e = ebms.find(x => !x.used && x.of === d.type);
     if (e) e.used = true;
     const rt = upsRuntime(s, load, !!e);
     return { id: d.id, type: d.type, va: s.va, capW: s.w, w: r1(load), loadVA: r1(load / pf), pct: r1(Math.max(load / s.w, load / pf / s.va) * 100), runtime: rt.min, extra: rt.extra, ebm: e ? e.id : null, target: rack.runtime };
@@ -326,7 +345,7 @@ export function cableManagers(rack, devs) {
 }
 /** Obturateurs : U libres en façade d'une baie qui contient des équipements alimentés (0 s'il n'y en a pas). */
 export function blanksNeeded(rack, devs, occ = occupancy(rack, devs)) {
-  const hot = devs.some(d => { const m = MOUNT[d.type]; return m && m.u && ((m.typ ?? m.max ?? 0) > 0 || m.ups); });
+  const hot = devs.some(d => { const m = mountDev(d); return m && m.u && ((m.typ ?? m.max ?? 0) > 0 || m.ups); });
   return hot ? occ.freeFront : 0;
 }
 
@@ -334,12 +353,12 @@ export function blanksNeeded(rack, devs, occ = occupancy(rack, devs)) {
 /** Tout ce qu'on sait d'une baie : occupation, bilan électrique, profondeurs, passe-câbles, obturateurs, équipements. */
 export function rackSummary(data, rack, lan, idx = rackIndex(data)) {
   const devs = idx.get(rack.id) || [], occ = occupancy(rack, devs), pw = rackPower(rack, devs, lan);
-  const deep = devs.filter(d => { const m = MOUNT[d.type]; return m && m.u && m.depth != null && m.depth > rack.depth; }).map(d => d.id);
+  const deep = devs.filter(d => { const m = mountDev(d); return m && m.u && m.depth != null && m.depth > rack.depth; }).map(d => d.id);
   return {
     id: rack.id, name: rack.name, kind: rack.kind, u: rack.u, usedU: occ.usedU, freeU: occ.freeFront, freeBoth: occ.freeBoth,
     collisions: occ.collisions, outside: occ.outside, deep, load: rack.load, ...pw,
     managers: cableManagers(rack, devs), blanks: blanksNeeded(rack, devs, occ), occ,
-    devices: devs.map(d => { const m = MOUNT[d.type] || {}; return { id: d.id, name: d.name, type: d.type, u: d.rack.u, h: m.u || 0, face: d.rack.face, kg: m.kg ?? null, ref: m.ref || '', depth: m.depth ?? null }; }).sort((a, b) => b.u - a.u)
+    devices: devs.map(d => { const m = mountDev(d) || {}; return { id: d.id, name: d.name, type: d.type, u: d.rack.u, h: m.u || 0, face: d.rack.face, kg: m.kg ?? null, ref: m.ref || '', depth: m.depth ?? null }; }).sort((a, b) => b.u - a.u)
   };
 }
 /** Résumé de toutes les baies (une seule passe d'index). */
@@ -350,7 +369,7 @@ export function racksSummary(data, lan) {
 /** Équipements montables en baie qui ne sont dans aucune baie connue. */
 export function unracked(data) {
   const ids = new Set((data.racks || []).map(r => r.id));
-  return (data.devices || []).filter(d => MOUNT[d.type] && !(d.rack && ids.has(d.rack.id)));
+  return (data.devices || []).filter(d => mountDev(d) && !(d.rack && ids.has(d.rack.id)));
 }
 
 /* ---------- Brassage ---------- */

@@ -16,6 +16,7 @@ import { FIBRE_LIM } from './lim/fibre.js';
 import { IFC_LIM } from './lim/ifc.js';
 import { NETBOX_LIM } from './lim/netbox.js';
 import { VISIO_LIM } from './lim/visio.js';
+import { CATALOG_LIM } from './lim/catalog.js';
 
 export const NET = {
   /** Canal horizontal : 100 m au plus, dont 90 m de lien permanent et 10 m de cordons (TIA-568, cité par Belden). */
@@ -46,6 +47,6 @@ export const NET = {
   MDIX_REQUIRED: { v: { 10: false, 100: false, 1000: false, 10000: true }, src: ['ieeeMaint1115', 'ieeeMaint1183', 'unhIolFeTestPlans'] },
   /** Ports des services : DHCP (serveur 67, client 68), MQTT 1883, Modbus TCP 502. */
   PORTS: { v: { dhcpServer: 67, dhcpClient: 68, mqtt: 1883, modbus: 502 }, src: ['rfc2131', 'mqtt311', 'modbusTcpGuide'] },
-  ...SIM_LIM, ...PLAN_LIM, ...WIFI_LIM, ...RACK_LIM, ...CERT_LIM, ...DESIGN_LIM, ...FIBRE_LIM, ...IFC_LIM, ...NETBOX_LIM, ...VISIO_LIM
+  ...SIM_LIM, ...PLAN_LIM, ...WIFI_LIM, ...RACK_LIM, ...CERT_LIM, ...DESIGN_LIM, ...FIBRE_LIM, ...IFC_LIM, ...NETBOX_LIM, ...VISIO_LIM, ...CATALOG_LIM
 };
 export const v = k => NET[k].v;

@@ -48,7 +48,7 @@ export function createHome(h) {
     const r = h.resume();
     const wrap = document.createElement('div'); wrap.className = 'hmWrap';
     wrap.innerHTML = `
-      <header class="hmHead"><span class="hmLogo">${LOGO}</span><span class="hmMark">${WORDMARK}</span>
+      <header class="hmHead" role="presentation"><span class="hmLogo">${LOGO}</span><span class="hmMark">${WORDMARK}</span>
         <p>${tl('Un labo d’électronique. Sans labo.')}</p></header>
       ${r ? `<section class="hmSec"><h2>${tl('Reprendre le travail')}</h2>
         <button type="button" class="hmResume" data-a="resume"><span class="hmIc">${icon((KINDS[r.kind] || KINDS.elec).icon)}</span>
@@ -63,7 +63,7 @@ export function createHome(h) {
           <button type="button" class="hmLink" data-a="labs">${icon('checklist')}<span><b>${tl('TP guidés')}</b><small>${tl('Vérifiés pas à pas')}</small></span></button>
           <button type="button" class="hmLink" data-a="tutorial">${icon('graduation')}<span><b>${tl('Tutoriel')}</b><small>${tl('Mon premier projet électropneumatique')}</small></span></button>
         </div></section>
-      <footer class="hmFoot"><button type="button" class="hmText" data-a="intro">${icon('play')}${tl('Revoir la présentation')}</button></footer>`;
+      <footer class="hmFoot" role="presentation"><button type="button" class="hmText" data-a="intro">${icon('play')}${tl('Revoir la présentation')}</button></footer>`;
     root.appendChild(wrap);
     const first = root.querySelector('.hmResume') || root.querySelector('.hmKind'); if (first) first.focus({ preventScroll: true });
   }

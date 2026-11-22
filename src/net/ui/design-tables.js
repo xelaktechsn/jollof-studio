@@ -4,6 +4,7 @@
 // des câbles avec longueurs et cheminements), Brassage (tableau de brassage de rack.js, sinon le nôtre) et Nomenclature
 // (quantités du modèle, prix unitaires modifiables, main-d'œuvre, total). Exports CSV.
 import { tl, isEn } from '../../i18n/index.js';
+import { refKindOf } from '../catalog.js';
 import { labelTable, labelIssues, labelFormats, cableSchedule, patchingRows, patchColName, PATCH_KEYS, bom, money, kindName } from '../docs.js';
 import { LABEL_PRESETS, CURRENCIES } from '../dimension.js';
 import * as RACK from '../rack.js';
@@ -69,12 +70,12 @@ function renderLabels(ctx, state) {
     </section>
     <section><h3>${esc(tl('Jetons'))}</h3><dl class="ntDsTok">${tok.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join('')}</dl>
     <p class="ntDsNote">${esc(tl('Forme fs-an de TIA-606 (local fs, panneau a, port n) : chaque extrémité d’un lien porte le même identifiant. Une étiquette imposée à une prise ou à un panneau (colonne de droite) remplace le format.'))}</p></section>
-  </aside><main class="ntDsMain">
+  </aside><div class="ntDsMain">
     <div class="ntDsKpis">${kpi(tl('Étiquettes'), fmt(rows.length))}${kpi(tl('En double'), fmt(li.dups.length), { warn: li.dups.length > 0, ok: !li.dups.length })}${kpi(tl('Prises sans identifiant'), fmt(li.empty.length), { warn: li.empty.length > 0, ok: !li.empty.length })}${kpi(tl('Format du lien'), F.link.replace(/\{(\w+)\}/g, '‹$1›'))}</div>
     ${li.dups.length ? `<section class="ntDsWarn"><p>${esc(tl('Identifiants en double :'))}</p><ul>${dupList}</ul></section>` : ''}
     ${tools(ctx, `${search(state, tl('Rechercher une étiquette, une pièce…'))}<select class="sel ntDsKind" data-filter="lkind" aria-label="${esc(tl('Objet'))}"><option value="">${esc(tl('Tous les objets'))}</option>${['space', 'rack', 'panel', 'outlet'].map(k => `<option value="${k}"${state.lkind === k ? ' selected' : ''}>${esc(kindName(k))}</option>`).join('')}</select>`, 'csv-labels')}
     ${table([cols[0], { name: tl('Étiquette'), key: r => `<button type="button" class="ntDsLink ntDsMono" data-act="reveal" data-id="${esc(r.id)}">${esc(r.label || '—')}</button>`, html: 1 }, cols[2], { name: tl('Étiquette imposée'), key: r => (r.kind === 'panel' || (r.kind === 'outlet' && !/2$/.test(r.port || ''))) ? `<input class="inp ntDsTag" data-edit="tag" data-id="${esc(r.id)}" value="${esc(tagOf(data, r.id))}" maxlength="40" placeholder="—" aria-label="${esc(tl('Étiquette imposée'))}">` : '', html: 1 }], rows.slice(0, MAX_ROWS), { empty: tl('Aucun objet à étiqueter : posez des baies, des panneaux et des prises.') })}${more(rows.length)}
-  </main></div>`;
+  </div></div>`;
 }
 const tagOf = (data, id) => ((data.devices || []).find(d => d.id === id) || {}).tag || '';
 
@@ -87,7 +88,7 @@ function renderBom(ctx) {
   for (const g of order) {
     const ls = lines.filter(l => l.group === g); if (!ls.length) continue;
     rowsHtml += `<tr class="ntDsGrp"><td colspan="5">${esc(GROUPS[g])}</td><td class="n">${esc(money(b.groups[g] || 0, cur, isEn))}</td></tr>`;
-    rowsHtml += ls.map(l => `<tr class="${l.price ? '' : 'ntDsUnpriced'}"><td>${esc(l.name)}${l.note ? `<small>${esc(l.note)}</small>` : ''}</td><td class="n">${esc(fmt(l.qty, 2))}</td><td>${esc(l.unit)}</td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.01" data-edit="price" data-key="${esc(l.key)}" value="${l.price || ''}" placeholder="${esc(tl('à renseigner'))}" aria-label="${esc(tl('Prix unitaire de {0}', l.name))}"></td><td class="n ntDsMuted">${esc(cur)}</td><td class="n">${l.price ? esc(money(l.total, cur, isEn)) : `<span class="ntDsToFill">${esc(tl('à renseigner'))}</span>`}</td></tr>`).join('');
+    rowsHtml += ls.map(l => `<tr class="${l.price ? '' : 'ntDsUnpriced'}"><td>${esc(l.name)}${l.part ? `<small>${esc(tl('Réf. {0} {1}', l.maker || '', l.part))}</small>` : ''}${l.note ? `<small>${esc(l.note)}</small>` : ''}${refKindOf(l.key) ? ` <button type="button" class="btn small subtle" data-act="bom-ref" data-key="${esc(l.key)}">${esc(l.model ? tl('Changer la référence…') : tl('Référence du catalogue…'))}</button>` : ''}</td><td class="n">${esc(fmt(l.qty, 2))}</td><td>${esc(l.unit)}</td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.01" data-edit="price" data-key="${esc(l.key)}" value="${l.price || ''}" placeholder="${esc(tl('à renseigner'))}" aria-label="${esc(tl('Prix unitaire de {0}', l.name))}"></td><td class="n ntDsMuted">${esc(cur)}</td><td class="n">${l.price ? esc(money(l.total, cur, isEn)) : `<span class="ntDsToFill">${esc(tl('à renseigner'))}</span>`}</td></tr>`).join('');
   }
   const lab = D.labour.map((l, i) => `<tr><td><input class="inp" data-edit="labour" data-i="${i}" data-f="name" value="${esc(l.name)}" maxlength="80" aria-label="${esc(tl('Désignation'))}"></td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.5" data-edit="labour" data-i="${i}" data-f="qty" value="${l.qty}" aria-label="${esc(tl('Quantité'))}"></td><td><input class="inp ntDsUnit" data-edit="labour" data-i="${i}" data-f="unit" value="${esc(l.unit)}" maxlength="12" aria-label="${esc(tl('Unité'))}"></td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.01" data-edit="labour" data-i="${i}" data-f="price" value="${l.price || ''}" placeholder="${esc(tl('à renseigner'))}" aria-label="${esc(tl('Prix unitaire'))}"></td><td class="n"><button type="button" class="btn small icon" data-act="del-labour" data-i="${i}" aria-label="${esc(tl('Supprimer la ligne'))}" data-tip="${esc(tl('Supprimer la ligne'))}">${ctx.icon('trash')}</button></td><td class="n">${l.price ? esc(money(l.qty * l.price, cur, isEn)) : `<span class="ntDsToFill">${esc(tl('à renseigner'))}</span>`}</td></tr>`).join('');
   const nUn = b.unpriced.length, partial = nUn > 0;
@@ -108,6 +109,7 @@ function renderBom(ctx) {
 /** Boutons des onglets (data-act). */
 export function onAction(ctx, act, b, state, rerender) {
   const data = ctx.data();
+  if (act === 'bom-ref') return import('./catalogui.js').then(C => C.openRefPicker(ctx, b.dataset.key)).then(ok => { if (ok && rerender) rerender(); });
   if (act === 'xlsx-prices') return import('./xlsxui.js').then(X => X.openPriceImport(ctx));
   if (act === 'csv-labels') return saveTable(ctx, 'labels', tl('etiquettes'));
   if (act === 'csv-cables') return saveTable(ctx, 'cables', tl('cables'));

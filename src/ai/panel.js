@@ -95,11 +95,9 @@ export function installAi(H) {
   }
 
   /* ---------- Bouton ---------- */
-  const bar = document.querySelector('.abTools');
-  if (bar) {
-    bar.insertAdjacentHTML('beforeend', `<button type="button" class="tb label" id="aiBtn" data-tip="${esc(tl('Laisser votre assistant IA (Claude, Cursor, VS Code…) piloter Jollof Studio'))}">${icon('sparkle')}<span>${tl('IA')}</span><b class="aiDot" hidden></b></button>`);
-    document.getElementById('aiBtn').onclick = open;
-  }
+  // Le bouton « IA » est posé au démarrage par src/ui/ondemand.js (aiButton) ; ce module, chargé au premier clic ou
+  // pour relancer le pont, en reprend le clic.
+  { const b = document.getElementById('aiBtn'); if (b) b.onclick = open; }
   function paintDot() {
     const d = document.querySelector('#aiBtn .aiDot'); if (!d) return;
     const busy = Date.now() - lastAct < 4000;

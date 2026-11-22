@@ -10,15 +10,23 @@ import { STANDARD } from './library/standard.js';
 import { installStandard, isStandard, isInstalled, uninstall as uninstallPkg } from './library/packages.js';
 import * as native from './native.js';
 import { sanitizeProject, cleanText } from './sanitize.js';
+import { FORMAT, migrateProject, canOpen } from './project/format.js'; // version du schéma des projets, migrations
+import { EXAMPLES, localizeExample } from './project/examples.js'; // projets du dossier exemples/, intégrés à l'application
 import { createBench } from './sim/bench.js';
 import { solveDC, resetDynamic } from './sim/dc.js';
 import { wireFlows } from './sim/flow.js';
 import { createFlow } from './sim/flowfx.js';
-import { installLab } from './lab/index.js';
+import './lab/lab.css'; // TP guidés et assistants IA : chargés à la demande (src/ui/ondemand.js), leurs styles dès le démarrage
+import './ai/ai.css';
+import { labButton, aiButton, aiBridgeWanted } from './ui/ondemand.js';
 import { installUpload } from './hil/upload.js'; // téléversement sur une vraie carte (arduino-cli)
 import { installGuide } from './schematic/guide.js'; // guide de montage en PDF
-import { installLogic } from './logic/index.js';
-import { installPneu } from './pneu/index.js';
+// Plans logique et pneumatique : chargés à la demande (src/ui/spaces.js) ; leurs feuilles de style restent ici, avec
+// celles du démarrage (des règles servent ailleurs : TP, vue partagée, sélecteur de plan).
+import './logic/logic.css';
+import './pneu/pneu.css';
+import './plc/plc.css';
+import { lazySpace, pneuStub, logicStub, spaceHasData, createWsSwitch } from './ui/spaces.js';
 import { installNet } from './net/ui/install.js'; // plan réseau : chargé à la demande (src/net/ui/workspace.js)
 import { Q, LIGHT, LEVEL, CHOICE, stdMat, setQuality, autoLevel } from './quality.js';
 import { menu as popMenu, confirm as confirmDlg, dialog as dialogDlg, download as downloadText } from './school/ui.js';
@@ -68,7 +76,6 @@ import { toSvg, toPdf, Draw, textWidth } from './schematic/draw.js';
 import { tl, isEn, translateDom, checkInstallLanguage, DEC, locale, dec, CANCEL } from './i18n/index.js';
 import { creditsHtml } from './library/credits.js';
 import * as parts from './library/parteditor.js'; // composants en paquet (.jpart) : éditeur, import, bibliothèque
-import { installAi } from './ai/panel.js'; // assistants IA : pont MCP (application de bureau) et copier-coller
 import * as TL from './video/timeline.js';
 import { planAll } from './video/planner.js';
 import { mapPins, clashes } from './sim/replace.js';
@@ -78,38 +85,6 @@ import { createTimelineDock } from './video/dock.js';
 import { valueOf, valueText, familyOf, acceptValue, defaultValue, formatValue, suggestions, bandsOf, ratingOf, capKind, RATINGS } from './sim/passives.js'; // valeur réglable des passifs
 import { createBusLog } from './sim/buslog.js'; // analyseur de bus I2C, SPI, série
 import { installBusView } from './sim/busview.js';
-
-/** Projets du dossier exemples/, intégrés à l'application. */
-const EXAMPLES = Object.entries(import.meta.glob('../exemples/*.jollof', { query: '?raw', import: 'default', eager: true }))
-  .sort(([a], [b]) => a.localeCompare(b))
-  .map(([path, text]) => ({ file: path.split('/').pop(), data: localizeExample(JSON.parse(text)) }))
-  .concat(lazyExamples());
-
-/**
- * Grands exemples (exemples/pro : un bâtiment entier, plusieurs centaines de kilo-octets) : seule leur fiche (.meta.json,
- * nom et description) est lue au démarrage ; le projet se charge à l'ouverture (load), pour garder le démarrage rapide.
- */
-function lazyExamples() {
-  const meta = import.meta.glob('../exemples/pro/*.meta.json', { import: 'default', eager: true });
-  const files = import.meta.glob('../exemples/pro/*.jollof', { query: '?raw', import: 'default' });
-  return Object.keys(files).sort().map(path => {
-    const m = meta[path.replace(/\.jollof$/, '.meta.json')] || {};
-    return { file: path.split('/').pop(), load: files[path], data: localizeExample({ name: m.name || path.split('/').pop(), description: m.description || '', en: m.en, comps: [], wires: [], settings: { kind: m.kind || 'net' } }) };
-  });
-}
-
-/** Exemple dans la langue de l'interface : le fichier peut porter sa version anglaise (champ « en »). */
-function localizeExample(d) {
-  const en = d.en; delete d.en;
-  if (!isEn) return d;
-  const out = { ...d, name: (en && en.name) || tl(d.name), description: (en && en.description) || tl(d.description || ''), wires: (d.wires || []).map(w => (w.role ? { ...w, role: tl(w.role) } : w)) };
-  if (en && en.code && d.settings && d.settings.prog) {
-    const prog = JSON.parse(JSON.stringify(d.settings.prog));
-    for (const [id, code] of Object.entries(en.code)) if (prog.boards && prog.boards[id]) prog.boards[id].code = Array.isArray(code) ? code.join('\n') : code;
-    out.settings = { ...d.settings, prog };
-  }
-  return out;
-}
 
 const $ = s => document.querySelector(s);
 const mk = (g, m) => new THREE.Mesh(g, m);
@@ -3701,7 +3676,7 @@ const redo = () => (S.histHook ? S.histHook.redo() : travel(REDO, UNDO, tl('Rét
 /* ---------- Projets ---------- */
 function serialize() {
   return {
-    app: 'jollof-studio', version: 1, name: S.projectName,
+    app: 'jollof-studio', version: FORMAT, name: S.projectName, // version du schéma : src/project/format.js
     comps: S.comps.map(c => ({ id: c.id, type: c.type, name: c.name, x: c.group.position.x, z: c.group.position.z, r: c.group.rotation.y, custom: c.custom, skin: c.skin, inp: Object.keys(c.inp).length ? c.inp : undefined, env: c.env || undefined })),
     packages: parts.embed(S.comps), // composants en paquet utilisés : le projet s'ouvre ailleurs
     wires: S.wires.map(w => ({ id: w.id, a: [w.a.comp.id, w.a.key], b: [w.b.comp.id, w.b.key], color: w.color, role: w.role, shape: w.shape })),
@@ -3732,9 +3707,19 @@ function clearProject() {
   S.comps.forEach(c => { dropLabel(c); scene.remove(c.group); }); S.comps = []; S.pinHits = [];
   blocks.set([]);
 }
+/** Messages des erreurs de format (src/project/format.js), dans la langue de l'interface. */
+const formatMsg = () => ({
+  notProject: tl('ce fichier n’est pas un projet Jollof Studio'),
+  tooNew: tl('ce projet a été enregistré avec une version plus récente de Jollof Studio (format {0}, cette version lit jusqu’au format {1}). Mettez l’application à jour pour l’ouvrir : rien n’a été modifié.')
+});
 async function restore(raw) {
+  // Projet entier (fichier, exemple, TP, sauvegarde automatique) : amené au format courant par les migrations
+  // (src/project/format.js). Un fichier plus récent que l'application est refusé ici, avant de toucher au projet
+  // en cours : l'erreur remonte à l'appelant, qui l'affiche. Les instantanés de l'historique passent tels quels.
+  if (raw && typeof raw === 'object' && !raw.hist) raw = migrateProject(raw, { msg: formatMsg() }).data;
   if (!S.restoring) closeHome(); // un projet arrive (fichier, exemple, TP, assistant IA…) : l'accueil s'efface ; pas pour un simple redessin (pièces CAO, annulation)
   const data = sanitizeProject(raw); // projet reçu d'ailleurs : libellés nettoyés avant tout affichage
+  if (data.settings) await needSpaces(inferKind(data), data.settings.modules); // plans de travail du projet, chargés avant ses données
   invalidate(500);
   clearProject();
   await parts.restoreEmbedded(data.packages); // paquets .jpart enregistrés dans le projet, avant ses composants
@@ -3810,6 +3795,9 @@ function setKind(k, quiet = false) {
       if (P.refresh) P.refresh();
     } finally { kindBusy = false; }
   }
+  // Type fixé sans passer par l'ouverture d'un projet (assistant IA, plan qui s'élargit) : son plan se charge, puis s'affiche.
+  const late = spacesNeeded(k, null);
+  if (late.length) Promise.all(late.map(sp => moduleApi[sp].ready())).then(() => { if (S.kind === k) setKind(k, true); }).catch(e => console.error(e));
   if (kindUi) kindUi.paint();
   if (was !== k) { if (was) renderLibrary(); if (chk) chk.schedule(); if (!quiet) moduleApi.markDirty(); }
 }
@@ -3824,6 +3812,7 @@ async function askKind(k) {
   const hides = (S.comps.length && !spaces.includes('elec')) || (P && P.circuit().elements.length && !spaces.includes('pneu')) || (Lg && Lg.circuit().elements.length && !spaces.includes('logic')) || (N && N.hasContent() && !spaces.includes('net'));
   if (hides && !(await confirmDlg(tl('Type de projet'), tl('Passer ce projet en « {0} » ? Ce qui appartient aux autres plans de travail reste enregistré dans le projet, mais n’est plus affiché ni simulé.', KINDS[k].name()), tl('Changer de type')))) return;
   if (S.simOn) setSim(false);
+  await needSpaces(k, S.modulesRaw);
   setKind(k); status(tl('Projet {0}.', KINDS[k].name().toLowerCase()), 'ok');
 }
 /**
@@ -3855,6 +3844,7 @@ async function newProject(kind) {
     if (!kind) return false;
   }
   if (!(await closeCurrent())) return false;
+  await needSpaces(kind, null);
   closeHome();
   clearProject(); prog.load(null); loadModules(null); setKind(kind, true);
   // Nouveau projet : plans, noms de nœuds et timeline repartent de zéro.
@@ -3898,6 +3888,7 @@ async function openProjectFile() {
 async function openProjectText(f) {
   const data = JSON.parse(f.text);
   if (!data || !Array.isArray(data.comps)) throw new Error(tl('ce fichier n’est pas un projet Jollof Studio'));
+  migrateProject(data, { msg: formatMsg() }); // fichier d'une version plus récente : refusé ici, avec son message, avant tout changement
   if (S.anim) finishAnim();
   await restore(data); setProjectName(f.name, f.path); S.projectPath = f.path;
   S.dirty = false; $('#projectName').classList.remove('dirty'); autosave(); frameAll(); resetHistory(); status(tl('Projet ouvert : {0}', f.name), 'ok');
@@ -4686,6 +4677,20 @@ function moduleData() {
   S.modules.forEach((m, k) => { out[k] = m.save(); });
   return Object.keys(out).length ? out : undefined;
 }
+/**
+ * Plans de travail chargés à la demande (src/ui/spaces.js) : avant de donner ses données à un projet, ceux de son type
+ * et ceux dont il garde des données sont chargés. Rien à attendre (aucune promesse en attente) s'ils le sont déjà.
+ */
+function spacesNeeded(kind, mods) {
+  const sp = spacesOf(kind), m = mods && typeof mods === 'object' ? mods : {};
+  return ['logic', 'pneu'].filter(k => moduleApi[k] && !moduleApi[k].loaded() && (sp.includes(k) || spaceHasData[k](m[k])));
+}
+async function needSpaces(kind, mods) {
+  const need = spacesNeeded(kind, mods);
+  if (need.length) await Promise.all(need.map(k => moduleApi[k].ready()));
+}
+/** Un plan vient d'être installé (l'ossature se repeint d'elle-même : elle observe la barre d'application). */
+function spaceArrived(api) { invalidate(300); return api; }
 function loadModules(raw) { S.modulesRaw = raw && typeof raw === 'object' ? raw : {}; S.modules.forEach((m, k) => m.load(S.modulesRaw[k] ?? null)); }
 
 /* ---------- Démarrage ---------- */
@@ -4728,12 +4733,16 @@ async function start() {
   // Séances dans le plan de travail (TP ; devoirs et projets de groupe avec l'espace classe) : dans les deux éditions.
   moduleApi.sessions = school ? school.sessions : createSessions(moduleApi);
   mark('school');
-  moduleApi.logic = installLogic(moduleApi); // plan de travail logique : portes, bascules, compteurs
-  moduleApi.pneu = installPneu(moduleApi); // plan de travail pneumatique, simulé avec le montage (électrovannes, capteurs de vérin)
+  // Plans logique (portes, bascules, compteurs) et pneumatique (simulé avec le montage : électrovannes, capteurs de
+  // vérin) : des façades au démarrage, le vrai plan quand un projet s'en sert (needSpaces).
+  moduleApi.logic = lazySpace(() => import('./logic/index.js').then(m => spaceArrived(m.installLogic(moduleApi))), logicStub(() => moduleApi.logic));
+  moduleApi.pneu = lazySpace(() => import('./pneu/index.js').then(m => spaceArrived(m.installPneu(moduleApi))), pneuStub(() => moduleApi.pneu));
+  createWsSwitch(moduleApi);
   moduleApi.net = installNet(moduleApi); // plan réseau : câbles RJ45, switchs, box, adresses IP (le plan se charge à la demande)
   kindUi = installKind({ anchor: document.querySelector('.brand'), get: () => S.kind, set: k => askKind(k) });
   setKind(S.kind || 'elec', true);
-  installLab(moduleApi); // travaux pratiques guidés (hors ligne, sans compte)
+  // Travaux pratiques guidés (hors ligne, sans compte) : le bouton au démarrage, la bibliothèque et le moteur au premier besoin.
+  labButton(moduleApi, () => import('./lab/index.js').then(m => m.installLab(moduleApi)));
   // Édition Pro : ses modules sont chargés avant le projet, pour en lire les données.
   // Dans une construction gratuite, cette condition est fausse dès la compilation : le code Pro n'y est pas.
   // Modules Pro : dépôt privé jollof-studio-pro, résolu par vite.config.js (virtual:jollof-pro).
@@ -4756,7 +4765,8 @@ async function start() {
     renderer: () => renderer });
   S.userLib = await parts.loadLibrary(userLib); // les paquets .jpart rejoignent la bibliothèque, le reste « Mes composants »
   // Assistants IA (src/ai) : chaque outil agit par les fonctions de l'interface (historique, vérificateur, autosave).
-  S.ai = installAi({ ...moduleApi, prog, EXAMPLES, native, renderLibrary, frameAll, undo, loadExample, newProject, setProjectName: n => setProjectName(n, null), wiresOn,
+  // Le bouton au démarrage ; les outils et le pont MCP au premier clic, ou après la première image si le pont était activé.
+  const aiLoad = aiButton(() => import('./ai/panel.js').then(m => (S.ai = m.installAi({ ...moduleApi, prog, EXAMPLES, native, renderLibrary, frameAll, undo, loadExample, newProject, setProjectName: n => setProjectName(n, null), wiresOn,
     addPart(type, o = {}) {
       if (S.anim) finishAnim();
       const c = createComp(type, { x: o.x, z: o.z, r: o.r, name: o.name });
@@ -4784,7 +4794,7 @@ async function start() {
       cv.getContext('2d').drawImage(src, 0, 0, cv.width, cv.height);
       return cv.toDataURL('image/jpeg', 0.85);
     }
-  });
+  }))));
   mark('ai');
   renderUI();
   renderLibrary();
@@ -4798,8 +4808,15 @@ async function start() {
   let opened = false;
   if (launched) { try { await openProjectText(launched); startData = null; opened = true; } catch (e) { status(tl('Ouverture impossible : ') + (e.message || e)); } }
   if (opened) { /* déjà ouvert */ }
-  else if (startData && onboarded()) { const d = startData; startData = null; await restore(d); setProjectName(d.name || tl('Sans titre'), d.path || null); S.projectPath = d.path || null; }
-  else { setProjectName(tl('Sans titre'), null); S.homeGuard = true; showHome({ firstRun: true }); }
+  else if (startData && onboarded() && canOpen(startData)) { const d = startData; startData = null; await restore(d); setProjectName(d.name || tl('Sans titre'), d.path || null); S.projectPath = d.path || null; }
+  else {
+    // Session d'avant enregistrée par une version plus récente (application revenue en arrière) : elle n'est ni
+    // ouverte ni écrasée (homeGuard), et on le dit.
+    const newer = startData && !canOpen(startData);
+    if (newer) { startData = null; console.warn('sauvegarde automatique d’un format plus récent : laissée intacte'); }
+    setProjectName(tl('Sans titre'), null); S.homeGuard = true; showHome({ firstRun: true });
+    if (newer) status(tl('La session précédente vient d’une version plus récente de Jollof Studio : elle n’a pas été ouverte. Mettez l’application à jour pour la retrouver.'), 'warn');
+  }
   mark('project');
   frameAll(); resetHistory();
   requestAnimationFrame(tick);
@@ -4815,7 +4832,9 @@ async function start() {
     lb.onclick = () => native.openLogDir().catch(e => status(String(e.message || e)));
   }
   if (import.meta.env.VITE_EDITION !== 'pro' && native.isTauri()) setTimeout(() => import('./ui/update.js').then(m => m.initUpdates({ beforeRestart: autosave })).catch(e => console.warn(e)), 2000);
-  if (import.meta.env.DEV) window.__jollof = { ...moduleApi, ai: S.ai,
+  // Pont IA activé (application de bureau), ou développement (tests de l'interface : window.__jollof.ai) : chargé après la première image.
+  if ((native.isTauri() && aiBridgeWanted()) || import.meta.env.DEV) setTimeout(() => aiLoad.ready().catch(e => console.warn(e)), 300);
+  if (import.meta.env.DEV) window.__jollof = { ...moduleApi, get ai() { return S.ai; }, aiReady: () => aiLoad.ready(),
     test: { // tests de l'interface : état du projet, blocs, composant posé à un point précis (comme un glisser-déposer)
       data: () => serialize(), restore: async d => { await restore(d); commit(); }, blocks: () => blocks.list.map(b => ({ id: b.id, name: b.name, comps: [...b.comps] })),
       bounds: id => blocks.bounds(blocks.list.find(b => b.id === id)),

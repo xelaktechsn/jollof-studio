@@ -55,23 +55,122 @@ fn blocking_in_place<T>(f: impl FnOnce() -> T) -> T {
 /// Écriture atomique : fichier temporaire à côté de la cible, vidé sur le disque, puis renommé.
 /// Un arrêt brutal pendant l'écriture laisse l'ancien fichier intact, jamais un fichier tronqué.
 fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    if let Some(dir) = path.parent() {
+    atomic_write(path, bytes, None)
+}
+
+/// Écriture atomique sûre, commune à tout ce que l'application écrit d'un coup (projets, réglages, clés).
+///
+/// Le fichier temporaire porte un nom propre à ce processus et à cette écriture, et il est créé en exclusivité
+/// (`create_new`, O_EXCL) : un fichier ou un lien symbolique déjà posé à ce nom n'est jamais suivi ni écrasé (un
+/// lien préparé dans un dossier partagé ne détourne pas l'écriture, un « projet.jollof.tmp » de l'utilisateur
+/// n'est pas détruit). `mode` (Unix) : droits posés à la création, avant le premier octet, si bien qu'une clé
+/// n'est lisible par personne d'autre à aucun moment (0o600) ; None : droits par défaut du système.
+pub(crate) fn atomic_write(path: &Path, bytes: &[u8], mode: Option<u32>) -> std::io::Result<()> {
+    use std::sync::atomic::{AtomicU32, Ordering};
+    static SEQ: AtomicU32 = AtomicU32::new(0);
+    if let Some(dir) = path.parent().filter(|d| !d.as_os_str().is_empty()) {
         fs::create_dir_all(dir)?;
     }
-    let mut tmp = path.as_os_str().to_owned();
-    tmp.push(".tmp");
-    let tmp = PathBuf::from(tmp);
-    let res = (|| {
-        let mut f = fs::File::create(&tmp)?;
-        f.write_all(bytes)?;
-        f.sync_all()?;
-        drop(f);
-        fs::rename(&tmp, path)
-    })();
-    if res.is_err() {
-        let _ = fs::remove_file(&tmp);
+    let name: String = path
+        .file_name()
+        .map(|n| n.to_string_lossy().chars().take(80).collect())
+        .unwrap_or_else(|| "fichier".into());
+    let mut last = None;
+    for _ in 0..16 {
+        let tmp = path.with_file_name(format!(
+            ".{name}.{}-{}.tmp",
+            std::process::id(),
+            SEQ.fetch_add(1, Ordering::Relaxed)
+        ));
+        let mut o = fs::OpenOptions::new();
+        o.write(true).create_new(true);
+        #[cfg(unix)]
+        if let Some(m) = mode {
+            use std::os::unix::fs::OpenOptionsExt;
+            o.mode(m);
+        }
+        #[cfg(not(unix))]
+        let _ = mode;
+        let mut f = match o.open(&tmp) {
+            Ok(f) => f,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {
+                last = Some(e);
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
+        let res = f.write_all(bytes).and_then(|_| f.sync_all()).and_then(|_| {
+            drop(f);
+            fs::rename(&tmp, path)
+        });
+        if res.is_err() {
+            let _ = fs::remove_file(&tmp);
+        }
+        return res;
     }
-    res
+    Err(last.unwrap_or_else(|| std::io::Error::other("fichier temporaire impossible à créer")))
+}
+
+// ---------------------------------------------------------------------------
+// Programmes externes (arduino-cli, convertisseurs DWG) : lesquels peut-on lancer ?
+//
+// Ils sont cherchés par leur nom dans le PATH et aux emplacements d'installation habituels, puis lancés par leur
+// chemin absolu (jamais par un interpréteur de commandes, jamais par un nom nu que le système résoudrait). Deux
+// garde-fous contre un programme glissé à la place du vrai :
+//  - les entrées relatives du PATH (« . », entrée vide, « bin ») sont ignorées : le dossier courant de
+//    l'application (celui du projet ouvert par un double-clic, un dossier de téléchargements…) ne peut pas
+//    fournir le programme ;
+//  - sous Unix, un programme que n'importe quel utilisateur de la machine peut remplacer n'est pas lancé : fichier
+//    inscriptible par tous, ou rangé dans un dossier inscriptible par tous (/tmp…).
+// ---------------------------------------------------------------------------
+
+/// Dossiers absolus d'un PATH (`value` : contenu de la variable).
+pub(crate) fn absolute_path_dirs(value: Option<std::ffi::OsString>) -> Vec<PathBuf> {
+    value
+        .map(|p| {
+            std::env::split_paths(&p)
+                .filter(|d| d.is_absolute())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// Dossiers du PATH où chercher un programme : les absolus seulement.
+pub(crate) fn path_dirs() -> Vec<PathBuf> {
+    absolute_path_dirs(std::env::var_os("PATH"))
+}
+
+/// Programme qu'on accepte de lancer : chemin absolu d'un fichier exécutable que seuls son propriétaire (ou son
+/// groupe) peuvent remplacer. Les liens sont suivis (Homebrew range ses programmes derrière des liens).
+pub(crate) fn trusted_exec(p: &Path) -> bool {
+    if !p.is_absolute() {
+        return false;
+    }
+    let Ok(real) = fs::canonicalize(p) else {
+        return false;
+    };
+    let Ok(m) = fs::metadata(&real) else {
+        return false;
+    };
+    if !m.is_file() {
+        return false;
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mode = m.permissions().mode();
+        if mode & 0o111 == 0 || mode & 0o002 != 0 {
+            return false;
+        }
+        // Le dossier du programme (réel) et celui où on l'a trouvé (un lien y serait remplaçable).
+        for dir in [real.parent(), p.parent()].into_iter().flatten() {
+            match fs::metadata(dir) {
+                Ok(d) if d.permissions().mode() & 0o002 == 0 => {}
+                _ => return false,
+            }
+        }
+    }
+    true
 }
 
 // ---------------------------------------------------------------------------
@@ -117,7 +216,8 @@ fn save_grants(app: &AppHandle, g: &Grants) {
             let _ = fs::create_dir_all(dir);
         }
         if let Ok(text) = serde_json::to_string(&g.write) {
-            let _ = fs::write(f, text);
+            // Atomique, lisible par l'utilisateur seul : la liste des emplacements autorisés ne se tronque pas.
+            let _ = atomic_write(&f, text.as_bytes(), Some(0o600));
         }
     }
 }
@@ -479,9 +579,7 @@ fn find_arduino_cli() -> Option<PathBuf> {
     } else {
         "arduino-cli"
     };
-    let mut dirs: Vec<PathBuf> = std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).collect())
-        .unwrap_or_default();
+    let mut dirs: Vec<PathBuf> = path_dirs();
     for d in [
         "/opt/homebrew/bin",
         "/usr/local/bin",
@@ -504,7 +602,10 @@ fn find_arduino_cli() -> Option<PathBuf> {
     if let Some(pf) = std::env::var_os("ProgramFiles") {
         dirs.push(PathBuf::from(pf).join("Arduino CLI"));
     }
-    dirs.into_iter().map(|d| d.join(exe)).find(|p| p.is_file())
+    // Lancé par son chemin absolu ; un programme remplaçable par n'importe qui n'est pas retenu (trusted_exec).
+    dirs.into_iter()
+        .map(|d| d.join(exe))
+        .find(|p| trusted_exec(p))
 }
 
 /// Dossier du croquis compilé et téléversé (le seul que arduino-cli peut recevoir).
@@ -1463,5 +1564,165 @@ mod tests {
         assert!(safe_id("mon-composant_1").is_ok());
         assert!(safe_id("../../etc/passwd").is_err());
         assert!(safe_id("").is_err());
+    }
+
+    /// Dossier d'essai privé (0700 sous Unix : même dans /tmp, personne d'autre ne peut y écrire).
+    fn sec_dir(name: &str) -> PathBuf {
+        let d = std::env::temp_dir().join(format!("jollof-sec-{}-{name}", std::process::id()));
+        let _ = fs::remove_dir_all(&d);
+        fs::create_dir_all(&d).unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&d, fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        d
+    }
+    fn names(d: &Path) -> Vec<String> {
+        let mut v: Vec<String> = fs::read_dir(d)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        v.sort();
+        v
+    }
+
+    #[test]
+    fn atomic_write_replaces_and_leaves_no_temporary_file() {
+        let d = sec_dir("aw");
+        let f = d.join("projet.jollof");
+        super::atomic_write(&f, b"un", None).unwrap();
+        super::atomic_write(&f, b"deux", None).unwrap();
+        assert_eq!(fs::read(&f).unwrap(), b"deux");
+        assert_eq!(names(&d), vec!["projet.jollof".to_string()]);
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn atomic_write_never_touches_a_file_named_like_the_old_temporary() {
+        // Avant : « cible.tmp » était ouvert, vidé, puis effacé. Un fichier de l'utilisateur de ce nom reste intact.
+        let d = sec_dir("aw-tmp");
+        let f = d.join("projet.jollof");
+        let mine = d.join("projet.jollof.tmp");
+        fs::write(&mine, b"a moi").unwrap();
+        write_atomic(&f, b"contenu").unwrap();
+        assert_eq!(fs::read(&mine).unwrap(), b"a moi");
+        assert_eq!(fs::read(&f).unwrap(), b"contenu");
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn atomic_write_does_not_follow_a_planted_symlink() {
+        use std::os::unix::fs::symlink;
+        let d = sec_dir("aw-link");
+        let victim = d.join("victime.txt");
+        fs::write(&victim, b"intact").unwrap();
+        let f = d.join("projet.jollof");
+        // Lien posé au nom de l'ancien temporaire : il n'est ni suivi ni remplacé.
+        symlink(&victim, d.join("projet.jollof.tmp")).unwrap();
+        write_atomic(&f, b"contenu").unwrap();
+        assert_eq!(fs::read(&victim).unwrap(), b"intact");
+        // La cible elle-même est un lien : le renommage remplace le lien, pas le fichier visé.
+        let f2 = d.join("lien.jollof");
+        symlink(&victim, &f2).unwrap();
+        write_atomic(&f2, b"autre").unwrap();
+        assert_eq!(fs::read(&victim).unwrap(), b"intact");
+        assert!(!fs::symlink_metadata(&f2).unwrap().file_type().is_symlink());
+        assert_eq!(fs::read(&f2).unwrap(), b"autre");
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn secrets_are_private_from_creation() {
+        use std::os::unix::fs::PermissionsExt;
+        let d = sec_dir("aw-mode");
+        let f = d.join("netbox.token");
+        ai::write_atomic(&f, "jeton-secret", true).unwrap();
+        assert_eq!(
+            fs::metadata(&f).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        // Réécrit : toujours privé, et aucun temporaire lisible ne reste.
+        ai::write_atomic(&f, "autre-jeton", true).unwrap();
+        assert_eq!(
+            fs::metadata(&f).unwrap().permissions().mode() & 0o777,
+            0o600
+        );
+        assert_eq!(names(&d), vec!["netbox.token".to_string()]);
+        // Fichier d'une autre application (non privé) : ses droits sont gardés.
+        let g = d.join("mcp.json");
+        fs::write(&g, b"{}").unwrap();
+        fs::set_permissions(&g, fs::Permissions::from_mode(0o640)).unwrap();
+        ai::write_atomic(&g, "{\"a\":1}", false).unwrap();
+        assert_eq!(
+            fs::metadata(&g).unwrap().permissions().mode() & 0o777,
+            0o640
+        );
+        let _ = fs::remove_dir_all(d);
+    }
+
+    #[test]
+    fn relative_path_entries_never_provide_a_program() {
+        let sep = if cfg!(windows) { ";" } else { ":" };
+        let abs = if cfg!(windows) {
+            "C:\\outils"
+        } else {
+            "/opt/outils"
+        };
+        let value = [".", "", "bin", abs, "./x"].join(sep);
+        assert_eq!(
+            absolute_path_dirs(Some(value.into())),
+            vec![PathBuf::from(abs)]
+        );
+        assert!(absolute_path_dirs(None).is_empty());
+        // Un nom nu ou relatif n'est jamais « digne de confiance », même s'il existe dans le dossier courant.
+        assert!(!trusted_exec(Path::new("arduino-cli")));
+        assert!(!trusted_exec(Path::new("./arduino-cli")));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn programs_anyone_can_replace_are_not_run() {
+        use std::os::unix::fs::{symlink, PermissionsExt};
+        let d = sec_dir("exec");
+        let mode =
+            |p: &Path, m: u32| fs::set_permissions(p, fs::Permissions::from_mode(m)).unwrap();
+        let good = d.join("dwg2dxf");
+        fs::write(&good, b"#!/bin/sh\n").unwrap();
+        mode(&good, 0o755);
+        assert!(trusted_exec(&good));
+        // Pas exécutable, dossier, fichier absent.
+        let plain = d.join("notes");
+        fs::write(&plain, b"x").unwrap();
+        mode(&plain, 0o644);
+        assert!(!trusted_exec(&plain));
+        assert!(!trusted_exec(&d));
+        assert!(!trusted_exec(&d.join("absent")));
+        // Inscriptible par tous : n'importe quel compte de la machine pourrait le remplacer.
+        let open = d.join("ouvert");
+        fs::write(&open, b"#!/bin/sh\n").unwrap();
+        mode(&open, 0o757);
+        assert!(!trusted_exec(&open));
+        // Lien (comme Homebrew) vers un programme sûr : accepté ; vers un programme rangé dans un dossier
+        // inscriptible par tous : refusé, comme le programme lui-même.
+        let link = d.join("lien");
+        symlink(&good, &link).unwrap();
+        assert!(trusted_exec(&link));
+        let shared = d.join("partage");
+        fs::create_dir_all(&shared).unwrap();
+        mode(&shared, 0o777);
+        let inside = shared.join("dwg2dxf");
+        fs::write(&inside, b"#!/bin/sh\n").unwrap();
+        mode(&inside, 0o755);
+        assert!(!trusted_exec(&inside));
+        let link2 = d.join("lien2");
+        symlink(&inside, &link2).unwrap();
+        assert!(!trusted_exec(&link2));
+        mode(&shared, 0o755);
+        assert!(trusted_exec(&inside));
+        let _ = fs::remove_dir_all(d);
     }
 }

@@ -7,6 +7,9 @@
 import { tl, COLON } from '../i18n/index.js';
 import { icon } from './icons.js';
 
+/** Aide en ligne publiée avec le site (GitHub Pages). */
+export const HELP_URL = 'https://xelaktechsn.github.io/jollof-studio/aide/';
+
 const MRU_KEY = 'jollof-cmd-mru';
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -133,6 +136,8 @@ export function createPalette() {
     open = false; root.hidden = true; gen++;
     if (document.activeElement === input) input.blur();
   }
+  // Aide en ligne (site/aide, produit de docs/GUIDE.md par scripts/help-site.mjs) : toujours dans la palette.
+  items.set('help.online', { id: 'help.online', cat: tl('Aide'), icon: 'book', label: tl('Documentation en ligne'), run: () => import('../native.js').then(n => n.openExternal(HELP_URL)) });
   return {
     register(c) { for (const it of Array.isArray(c) ? c : [c]) if (it && it.id && it.label && it.run) items.set(it.id, it); },
     unregister(id) { items.delete(id); },

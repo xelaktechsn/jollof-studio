@@ -17,7 +17,7 @@
 // endpoint(kind), fetch(bridge, ours, o) → { raws: { kind: [] }, … }, components(bridge, kind, deviceIds) → [raw] }.
 // bridge : { get(path, query, max) → { results }, write(method, path, body) → réponse } (Rust, ou faux serveur en test).
 import { DEVICES, portsOf, newDevice } from '../devices.js';
-import { MOUNT } from '../rack.js';
+import { MOUNT, mountDev } from '../rack.js';
 import { makerOf, cableLabel } from '../docs.js';
 import { portCfg, parseVlanList, vlansInUse, ifName, MANAGED } from '../vlan.js';
 import { floorOf, roomAt, roomPoint, allFloors } from '../site.js';
@@ -58,6 +58,13 @@ export function catalogue(type) {
   const M = MOUNT[type], u = M && !M.shelf ? +M.u || 0 : 0;
   const generic = maker === 'Generic';
   return { maker, mslug: slugify(maker), model, slug: generic ? 'jollof-' + slugify(type) : slugify(maker + ' ' + model), u, role: ROLE_OF[type] || 'accessory' };
+}
+/** Fiche d'un équipement : son modèle réel du catalogue (fabricant, référence, hauteur de la fiche) ou celle de son type. */
+export function catalogueDev(d) {
+  const c = catalogue(d.type), m = d.model;
+  if (!m) return c;
+  const M = mountDev(d), maker = m.vendor, model = m.pn;
+  return { ...c, maker, mslug: slugify(maker), model, slug: slugify(maker + ' ' + model), u: M && !M.shelf ? +M.u || 0 : 0 };
 }
 let REV = null;
 /** Type du projet d'après le slug d'un type d'équipement (ceux que l'on a créés, ou d'une même fiche). */
@@ -139,7 +146,7 @@ export function ourModel(data, o = {}) {
   const devNames = new Set();
   for (const d of data.devices || []) {
     const spec = DEVICES[d.type]; if (!spec) continue;
-    const c = catalogue(d.type), [rslug, rname, color] = ROLES[c.role];
+    const c = catalogueDev(d), [rslug, rname, color] = ROLES[c.role];
     if (!objs.has('mfr:' + c.mslug)) add('manufacturer', 'mfr:' + c.mslug, c.maker, { name: c.maker, slug: c.mslug });
     if (!objs.has('role:' + rslug)) add('role', 'role:' + rslug, rname, { name: rname, slug: rslug, color });
     if (!objs.has('dt:' + c.slug)) add('dtype', 'dt:' + c.slug, `${c.maker} ${c.model}`, { manufacturer: R('mfr:' + c.mslug), model: c.model, slug: c.slug, u_height: c.u, is_full_depth: false });

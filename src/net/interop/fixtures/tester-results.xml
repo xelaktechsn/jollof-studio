@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Sample written for the parser (NOT an authentic file from a tester). -->
+<TestResults project="College">
+  <Result>
+    <CableID>PR1</CableID><Summary>PASS</Summary><TestLimit>TIA Cat 6 Perm. Link</TestLimit><Length>76.8 ft</Length>
+    <DateTime>2026-11-18T09:12:44</DateTime><TesterType>DSX-8000</TesterType><MainSN>99</MainSN><Operator>A. Diop</Operator>
+    <Margins><NEXTMargin>6.1</NEXTMargin><RLMargin>5.2</RLMargin></Margins><Extra>x</Extra>
+  </Result>
+  <Result CableID="PR2" Summary="FAIL*" TestLimit="TIA Cat 6 Perm. Link" Length="88.9" NEXTMargin="-0.3"/>
+</TestResults>

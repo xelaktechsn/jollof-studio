@@ -196,31 +196,27 @@ fn save_config(path: &Path, cfg: &Config) -> Result<(), String> {
         },
     )
 }
-/// Écriture atomique (fichier temporaire puis renommage) ; private : lisible par l'utilisateur seul.
+/// Écriture atomique (fichier temporaire puis renommage) ; private : lisible par l'utilisateur seul, dès la création
+/// du fichier temporaire (une clé n'est lisible par personne d'autre à aucun moment). Sinon les droits du fichier
+/// remplacé sont gardés. Le temporaire a un nom propre à l'écriture et se crée en exclusivité (crate::atomic_write).
 pub(crate) fn write_atomic(path: &Path, text: &str, private: bool) -> Result<(), String> {
-    if let Some(dir) = path.parent() {
-        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
-    }
-    let tmp = path.with_extension("jollof-tmp");
-    std::fs::write(&tmp, text).map_err(|e| e.to_string())?;
     #[cfg(unix)]
-    {
+    let mode = {
         use std::os::unix::fs::PermissionsExt;
-        let mode = if private {
+        if private {
             0o600
         } else {
             std::fs::metadata(path)
                 .map(|m| m.permissions().mode() & 0o777)
                 .unwrap_or(0o644)
-        };
-        let _ = std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(mode));
-    }
+        }
+    };
     #[cfg(not(unix))]
-    let _ = private;
-    std::fs::rename(&tmp, path).map_err(|e| {
-        let _ = std::fs::remove_file(&tmp);
-        e.to_string()
-    })
+    let mode = {
+        let _ = private;
+        0o644
+    };
+    crate::atomic_write(path, text.as_bytes(), Some(mode)).map_err(|e| e.to_string())
 }
 fn write_config(path: &Path, c: &Config) -> Result<(), String> {
     write_atomic(

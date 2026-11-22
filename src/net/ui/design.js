@@ -178,7 +178,7 @@ function renderDim(ctx) {
     </section>
     <p class="ntDsNote">${esc(tl('Valeurs par défaut modifiables. Chiffres de norme lus dans : {0}.', srcLine(['WA_AREA_M2', 'CABLE_BOX_M', 'OVERSUB_ACCESS'])))}</p>
   </aside>`;
-  if (!nRooms) return `<div class="ntDsGrid">${side}<main class="ntDsMain"><div class="ntDsEmptyBig">${ctx.icon('floorPlan')}<h3>${esc(tl('Aucune pièce à dimensionner'))}</h3><p>${esc(tl('Dessinez les bâtiments, les étages et les pièces (avec leur usage) dans la vue Plans : le dimensionnement en déduit les postes de travail, les prises, les switchs, les panneaux et le câble.'))}</p><button type="button" class="btn primary" data-act="plan">${ctx.icon('floorPlan')}<span>${esc(tl('Ouvrir la vue Plans'))}</span></button></div></main></div>`;
+  if (!nRooms) return `<div class="ntDsGrid">${side}<div class="ntDsMain"><div class="ntDsEmptyBig">${ctx.icon('floorPlan')}<h3>${esc(tl('Aucune pièce à dimensionner'))}</h3><p>${esc(tl('Dessinez les bâtiments, les étages et les pièces (avec leur usage) dans la vue Plans : le dimensionnement en déduit les postes de travail, les prises, les switchs, les panneaux et le câble.'))}</p><button type="button" class="btn primary" data-act="plan">${ctx.icon('floorPlan')}<span>${esc(tl('Ouvrir la vue Plans'))}</span></button></div></div></div>`;
   const r = dimension(data), t = r.totals, L = labeler(data), pv = previewDesign(data), c = pv.created;
   const trName = key => { const x = r.trs.find(z => z.key === key); if (!x) return '—'; const s = L.space(key); return (s || (x.level < 0 ? 'S' + -x.level : x.level) + x.letter) + (x.virtual ? ' ' + tl('(à créer)') : ''); };
   const flName = id => { const F = floors.find(x => x.f.id === id); return F ? (floors.some(x => x.b !== F.b) ? (F.b.name || F.b.id) + ' · ' : '') + (F.f.name || F.f.id) : id; };
@@ -223,8 +223,8 @@ function renderDim(ctx) {
   const floorTable = table([{ name: tl('Étage'), key: x => (floors.some(z => z.b.id !== x.building) ? x.buildingName + ' · ' : '') + x.name }, { name: tl('Nombre de pièces'), key: 'rooms', num: 1 }, { name: 'm²', key: x => fmt(x.area), num: 1 }, { name: tl('Postes de travail'), key: 'wa', num: 1 }, { name: tl('Prises'), key: 'outlets', num: 1 }, { name: tl('Locaux'), key: x => x.trs.map(trName).join(', ') || '—' }], r.floors);
   return `<div class="ntDsGrid ntDsDim">${side}<div class="ntDsHead">${kpis}${gen}
     ${warn.length ? `<section class="ntDsWarn">${warn.map(w => `<p>${ctx.icon('alert')}${esc(w)}</p>`).join('')}</section>` : ''}</div>
-    <main class="ntDsMain ntDsRest"><section class="ntDsCard"><h3>${esc(tl('Locaux techniques'))}</h3>${trTable}${est ? `<p class="ntDsNote">* ${esc(tl('Longueur estimée (modèle simplifié : trajet en L sous le plafond, descentes et mou) tant qu’aucun câble n’est posé.'))}</p>` : ''}</section>
+    <div class="ntDsMain ntDsRest"><section class="ntDsCard"><h3>${esc(tl('Locaux techniques'))}</h3>${trTable}${est ? `<p class="ntDsNote">* ${esc(tl('Longueur estimée (modèle simplifié : trajet en L sous le plafond, descentes et mou) tant qu’aucun câble n’est posé.'))}</p>` : ''}</section>
     <section class="ntDsCard"><h3>${esc(tl('Étages'))}</h3>${floorTable}</section>
     <section class="ntDsCard"><h3>${esc(tl('Pièces à équiper'))}</h3>${roomTable}<p class="ntDsNote">${esc(tl('Laissez « Prises » vide pour le calcul par la densité ; choisissez un local pour imposer celui qui dessert la pièce.'))}</p></section>
-  </main></div>`;
+  </div></div>`;
 }

@@ -35,6 +35,9 @@ use std::time::{Duration, Instant};
 use tauri::ipc::{Channel, InvokeBody, Request, Response};
 use tauri::{AppHandle, Manager, State};
 
+/// Travaux ouverts en même temps au plus : chacun peut recevoir plusieurs Gio (un par conversion suffit ; la fenêtre
+/// ne peut pas remplir le disque en en ouvrant sans fin : au-delà, le plus ancien est fermé).
+const MAX_JOBS: usize = 4;
 /// DWG le plus gros accepté (2 Gio).
 const MAX_DWG: u64 = 2 << 30;
 /// DXF le plus gros accepté (8 Gio) : au-delà le convertisseur est arrêté (disque).
@@ -115,9 +118,8 @@ fn entries_starting(dir: &Path, prefix: &str) -> Vec<PathBuf> {
 }
 /// Dossiers du PATH, plus ceux que les applications graphiques de macOS ne reçoivent pas (Homebrew, MacPorts).
 fn search_dirs() -> Vec<PathBuf> {
-    let mut d: Vec<PathBuf> = std::env::var_os("PATH")
-        .map(|p| std::env::split_paths(&p).collect())
-        .unwrap_or_default();
+    // Entrées absolues seulement : ni « . » ni entrée vide (le dossier courant ne fournit jamais le convertisseur).
+    let mut d: Vec<PathBuf> = crate::path_dirs();
     if !cfg!(windows) {
         for x in [
             "/usr/local/bin",
@@ -201,18 +203,10 @@ fn libredwg_candidates(dir: Dir) -> Vec<PathBuf> {
         .map(|d| d.join(exe(name)))
         .collect()
 }
+/// Convertisseur qu'on accepte de lancer : chemin absolu d'un fichier exécutable que seul son propriétaire (ou son
+/// groupe) peut remplacer (crate::trusted_exec : ni fichier ni dossier inscriptible par tous).
 fn is_exec(p: &Path) -> bool {
-    let Ok(m) = fs::metadata(p) else { return false };
-    if !m.is_file() {
-        return false;
-    }
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        m.permissions().mode() & 0o111 != 0
-    }
-    #[cfg(not(unix))]
-    true
+    crate::trusted_exec(p)
 }
 fn find(kind: Kind, dir: Dir) -> Option<PathBuf> {
     let list = match kind {
@@ -438,6 +432,11 @@ fn dxf_complete(p: &Path) -> bool {
     }
     buf.windows(3).any(|w| w == b"EOF")
 }
+/// Fichier ordinaire, lien symbolique exclu : ce que le convertisseur a écrit dans le dossier de sortie est relu et
+/// rendu à la fenêtre ; un lien posé là ne doit jamais faire lire un autre fichier du disque.
+fn is_plain_file(p: &Path) -> bool {
+    fs::symlink_metadata(p).is_ok_and(|m| m.file_type().is_file())
+}
 /// Premier fichier .dxf (casse indifférente) d'un dossier.
 fn find_dxf(dir: &Path) -> Option<PathBuf> {
     let mut v: Vec<PathBuf> = fs::read_dir(dir)
@@ -445,7 +444,7 @@ fn find_dxf(dir: &Path) -> Option<PathBuf> {
         .flatten()
         .map(|e| e.path())
         .filter(|p| {
-            p.is_file()
+            is_plain_file(p)
                 && p.extension()
                     .and_then(|e| e.to_str())
                     .is_some_and(|e| e.eq_ignore_ascii_case("dxf"))
@@ -541,6 +540,18 @@ pub fn cleanup(app: &AppHandle) {
 #[tauri::command]
 pub async fn cad_begin(app: AppHandle, state: State<'_, Cad>) -> Result<u32, String> {
     let r = root(&app)?;
+    // Travaux abandonnés par la fenêtre (jamais refermés) : au-delà de MAX_JOBS, les plus anciens sont arrêtés et
+    // leur dossier effacé par le balayage ci-dessous. Une conversion ne reste jamais bloquée par d'anciens travaux.
+    {
+        let mut jobs = state.jobs.lock().unwrap_or_else(|e| e.into_inner());
+        while jobs.len() >= MAX_JOBS {
+            let Some(&old) = jobs.keys().min() else { break };
+            if let Some(j) = jobs.remove(&old) {
+                stop(&j);
+                j.upload.lock().unwrap_or_else(|e| e.into_inner()).take();
+            }
+        }
+    }
     let id = state.next.fetch_add(1, Ordering::SeqCst) + 1;
     let dir = r.join(format!("job-{}-{id}", std::process::id()));
     let live: Vec<PathBuf> = state
@@ -577,6 +588,22 @@ pub async fn cad_begin(app: AppHandle, state: State<'_, Cad>) -> Result<u32, Str
     Ok(id)
 }
 
+/// Fichier d'entrée d'un envoi par morceaux : créé en exclusivité (`create_new`). Un nom déjà pris est refusé au lieu
+/// d'être vidé : après une conversion ODA, `input.DWG` peut être un lien physique vers le DWG de l'utilisateur
+/// (même fichier sur le disque), et l'ouvrir en écriture écraserait son dessin ; un lien symbolique posé là n'est
+/// pas suivi non plus.
+fn open_upload(path: &Path) -> Result<File, String> {
+    fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|e| match e.kind() {
+            std::io::ErrorKind::AlreadyExists => {
+                "Ce travail a déjà un fichier d'entrée : ouvrez un nouveau travail".to_string()
+            }
+            _ => format!("Écriture impossible : {e}"),
+        })
+}
 fn header<'a>(r: &'a Request<'_>, k: &str) -> Option<&'a str> {
     r.headers().get(k).and_then(|v| v.to_str().ok())
 }
@@ -602,14 +629,11 @@ pub async fn cad_upload_write(state: State<'_, Cad>, request: Request<'_>) -> Re
     let job = state.job(id)?;
     let mut up = job.upload.lock().unwrap_or_else(|e| e.into_inner());
     if up.is_none() {
-        *up = Some(
-            File::create(
-                job.dir
-                    .join("in")
-                    .join(if dxf { "input.DXF" } else { "input.DWG" }),
-            )
-            .map_err(|e| format!("Écriture impossible : {e}"))?,
-        );
+        *up = Some(open_upload(&job.dir.join("in").join(if dxf {
+            "input.DXF"
+        } else {
+            "input.DWG"
+        }))?);
     }
     let f = up.as_mut().ok_or("Écriture impossible")?;
     blocking_in_place(|| {
@@ -927,7 +951,7 @@ fn find_dwg(dir: &Path) -> Option<PathBuf> {
         .flatten()
         .map(|e| e.path())
         .filter(|p| {
-            p.is_file()
+            is_plain_file(p)
                 && p.extension()
                     .and_then(|e| e.to_str())
                     .is_some_and(|e| e.eq_ignore_ascii_case("dwg"))
@@ -1456,5 +1480,65 @@ mod tests {
         assert!(!t.contains('\u{1b}'));
         q.push_back("x".repeat(2000));
         assert!(tail_text(&q).chars().count() <= 601);
+    }
+
+    #[test]
+    fn upload_never_truncates_an_existing_input() {
+        // Après une conversion ODA, in/input.DWG peut être un lien physique vers le DWG de l'utilisateur : un envoi
+        // par morceaux sur le même travail ne doit pas le vider.
+        let d = tmp("upload-excl");
+        let original = d.join("plan.dwg");
+        fs::write(&original, b"AC1032 dessin de l'utilisateur").unwrap();
+        let staged = d.join("input.DWG");
+        if fs::hard_link(&original, &staged).is_err() {
+            fs::copy(&original, &staged).unwrap();
+        }
+        let e = open_upload(&staged).unwrap_err();
+        assert!(e.contains("déjà un fichier d'entrée"), "{e}");
+        assert_eq!(
+            fs::read(&original).unwrap(),
+            b"AC1032 dessin de l'utilisateur"
+        );
+        // Dossier neuf : le fichier se crée, une seule fois.
+        let fresh = d.join("neuf.DWG");
+        assert!(open_upload(&fresh).is_ok());
+        assert!(open_upload(&fresh).is_err());
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn symlinks_in_the_output_folder_are_never_read_back() {
+        use std::os::unix::fs::symlink;
+        let d = tmp("out-links");
+        let secret = d.join("secret.txt");
+        fs::write(&secret, b"0\nSECTION\n0\nEOF\n").unwrap();
+        let out = d.join("out");
+        fs::create_dir_all(&out).unwrap();
+        symlink(&secret, out.join("a.dxf")).unwrap();
+        symlink(&secret, out.join("a.dwg")).unwrap();
+        assert!(find_dxf(&out).is_none());
+        assert!(find_dwg(&out).is_none());
+        assert!(
+            !open_upload(&out.join("a.dxf")).is_ok(),
+            "un lien posé à la place de l'entrée n'est pas suivi"
+        );
+        fs::write(out.join("b.dxf"), b"0\nEOF\n").unwrap();
+        assert_eq!(find_dxf(&out).unwrap().file_name().unwrap(), "b.dxf");
+        let _ = fs::remove_dir_all(&d);
+    }
+
+    #[test]
+    fn converters_are_only_searched_in_absolute_folders() {
+        for dir in search_dirs() {
+            assert!(dir.is_absolute(), "{}", dir.display());
+        }
+        for c in oda_candidates()
+            .into_iter()
+            .chain(libredwg_candidates(Dir::ToDxf))
+        {
+            assert!(c.is_absolute(), "{}", c.display());
+        }
+        assert!(!is_exec(Path::new("dwg2dxf")));
     }
 }

@@ -39,7 +39,8 @@ const SUPERSEDES = {
 };
 const VIEW_IDS = ['logic', 'plan', 'racks', 'design'];
 const PRO = !!(import.meta.env && import.meta.env.VITE_EDITION === 'pro');
-const LINKS = { site: 'https://xelaktechsn.github.io/jollof-studio/', issues: 'https://github.com/xelaktechsn/jollof-studio/issues' };
+const LINKS = { site: 'https://xelaktechsn.github.io/jollof-studio/', help: 'https://xelaktechsn.github.io/jollof-studio/aide/', // aide : docs/GUIDE.md en pages (scripts/help-site.mjs)
+  issues: 'https://github.com/xelaktechsn/jollof-studio/issues' };
 
 let installed = null;
 /**

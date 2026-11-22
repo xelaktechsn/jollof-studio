@@ -25,9 +25,9 @@ import { CATS } from '../cable.js';
 import { FIBRE_TYPES } from '../fibre.js';
 import { USAGES, roomPoint, bbox as bboxA } from '../site.js';
 import { PATH_KINDS } from '../route.js';
-import { floorsOf, mountOf } from '../dimension.js';
+import { floorsOf } from '../dimension.js';
 import { labeler } from '../docs.js';
-import { U_MM, PANEL_MM } from '../rack.js';
+import { U_MM, PANEL_MM, mountDev } from '../rack.js';
 
 /**
  * Clés des données de forme (lignes de la section Shape Data de Visio, attributs de draw.io), dans l'ordre d'affichage.
@@ -93,7 +93,7 @@ function context(data, o) {
     return '';
   }
   function devProps(d) {
-    const s = specOf(d) || {}, ip = (o.ipOf && o.ipOf(d.id)) || staticIp(d), mu = d.rack ? mountOf(d.type).u : 0;
+    const s = specOf(d) || {}, ip = (o.ipOf && o.ipOf(d.id)) || staticIp(d), mu = d.rack ? (mountDev(d) || {}).u : 0;
     return {
       Label: (isOutlet(d) || isPanel(d) ? L.of(d.id) : '') || d.tag || d.name || d.id, Type: s.name ? s.name() : d.type, IP: ip || '', VLAN: vlanOf(d),
       Rack: d.rack ? L.rack(d.rack.id) || (racks.get(d.rack.id) || {}).name || d.rack.id : '', U: d.rack ? (mu > 1 ? `${d.rack.u}-${d.rack.u + mu - 1}` : String(d.rack.u)) : '',
@@ -185,14 +185,14 @@ function rackPage(data, C, masters, r, N) {
       shapes.push({ id: `u:${face}:${u}`, kind: 'unum', layers: ['labels'], geom: 'text', x: ox + 4, y, w: (rw - RAIL_MM) / 2 - 8, h: uh, rot: 0, text: String(u), style: { font: 5, ink: '#64748b', align: 'right' } });
     }
     // Équipements 0 U (PDU verticales) : bandes dans l'espace libre à droite des montants, sur toute la hauteur.
-    const zero = devsIn.filter(d => (d.rack.face || 'front') === face && !mountOf(d.type).u), side = (rw - RAIL_MM) / 2 - 16;
+    const zero = devsIn.filter(d => (d.rack.face || 'front') === face && !(mountDev(d) || {}).u), side = (rw - RAIL_MM) / 2 - 16;
     zero.forEach((d, i) => {
       const w = Math.max(8, side / zero.length - 4), P = C.devProps(d);
       shapes.push({ id: `d:${d.id}`, kind: 'dev', master: masterOf(masters, d.type), layers: ['devices'], geom: 'rect', x: ox + (rw + RAIL_MM) / 2 + 8 + i * (w + 4), y: top + 20, w, h: H, rot: 0, ...(ft => ({ text: ft.text, style: { font: ft.font } }))(fitText(d.name || P.Label, H / 25.4 / RACK_SCALE, w / 25.4 / RACK_SCALE, 6)), vtext: true, props: P, ref: { kind: 'dev', id: d.id } });
     });
     for (const d of devsIn) {
       const f = d.rack.face || 'front'; if (f !== face) continue;
-      const mu = mountOf(d.type).u; if (!mu) continue; // 0 U : dessinées plus haut
+      const mu = (mountDev(d) || {}).u; if (!mu) continue; // 0 U : dessinées plus haut
       const y = top + 20 + (U - (d.rack.u + mu - 1)) * uh, P = C.devProps(d);
       const text = P.Label === d.name ? d.name : `${P.Label}${d.name && d.name !== P.Label ? ' · ' + d.name : ''}`;
       shapes.push({ id: `d:${d.id}`, kind: 'dev', master: masterOf(masters, d.type), layers: ['devices'], geom: 'rect', x: ox + (rw - RAIL_MM) / 2, y, w: RAIL_MM, h: mu * uh, rot: 0,

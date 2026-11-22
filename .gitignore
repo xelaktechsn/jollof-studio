@@ -23,3 +23,6 @@ src-tauri/binaries/
 
 # Démonstration en ligne : construite par le flux Pages (vite build --outDir site/app), jamais versionnée
 site/app/
+
+# Site d'aide : produit par scripts/help-site.mjs à partir de docs/GUIDE.md (flux Pages), jamais versionné
+site/aide/

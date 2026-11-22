@@ -32,10 +32,11 @@ function width(app, panel) {
   grip.setAttribute('role', 'separator'); grip.setAttribute('aria-orientation', 'vertical');
   grip.setAttribute('aria-label', tl('Largeur de l’inspecteur'));
   grip.title = tl('Tirer pour régler la largeur · double-clic : largeur d’origine');
+  grip.setAttribute('aria-valuemin', 300); grip.setAttribute('aria-valuenow', 364); // largeur d'origine (--insDef)
   panel.prepend(grip);
   const max = () => Math.min(900, Math.round(innerWidth * 0.62));
   const set = (w, save = true) => {
-    if (w == null) { app.style.removeProperty('--insUser'); if (save) write(KEY.width, null); return; }
+    if (w == null) { app.style.removeProperty('--insUser'); grip.setAttribute('aria-valuenow', 364); if (save) write(KEY.width, null); return; }
     w = Math.round(Math.max(300, Math.min(max(), w)));
     app.style.setProperty('--insUser', w + 'px'); grip.setAttribute('aria-valuenow', w);
     if (save) write(KEY.width, w);
@@ -74,15 +75,17 @@ function folds(panel) {
   const paint = sec => {
     const h = head(sec); if (!h) return;
     const open = !sec.classList.contains('folded');
-    h.setAttribute('aria-expanded', open);
+    const b = h.querySelector(':scope > .foldBtn'); if (b) b.setAttribute('aria-expanded', open);
     if (open) sec.classList.remove('unread');
   };
   const prep = sec => {
     if (sec.dataset.foldReady) return;
     const h = head(sec); if (!h) return;
     sec.dataset.foldReady = '1';
-    h.setAttribute('role', 'button'); h.tabIndex = 0; h.classList.add('foldHead');
+    // Le titre reste un titre ; un bouton transparent le recouvre (nommé par le titre), il porte le focus et l'état.
+    h.classList.add('foldHead'); if (!h.id) h.id = `fold-${sec.dataset.fold}`;
     h.insertAdjacentHTML('afterbegin', '<span class="foldChev" aria-hidden="true"></span>');
+    h.insertAdjacentHTML('beforeend', `<button type="button" class="foldBtn" aria-labelledby="${h.id}"></button>`);
     sec.classList.toggle('folded', shut.has(sec.dataset.fold));
     paint(sec);
   };
@@ -101,9 +104,6 @@ function folds(panel) {
     const h = e.target.closest('.foldHead'); if (!h) return;
     const sec = h.closest('section[data-fold]'); if (sec) toggle(sec);
   });
-  panel.addEventListener('keydown', e => {
-    if ((e.key === 'Enter' || e.key === ' ') && e.target.classList?.contains('foldHead')) { e.preventDefault(); e.target.click(); }
-  });
   // Moniteur série replié : une pastille signale ce que la carte vient d'écrire.
   const out = document.getElementById('serialOut'), serial = out && out.closest('section[data-fold]');
   if (out && serial) new MutationObserver(() => { if (serial.classList.contains('folded') && out.textContent) serial.classList.add('unread'); })
@@ -119,10 +119,12 @@ function heights(panel) {
     grip.tabIndex = 0;
     grip.setAttribute('role', 'separator'); grip.setAttribute('aria-orientation', 'horizontal');
     grip.title = tl('Tirer pour régler la hauteur · double-clic : hauteur d’origine');
+    grip.setAttribute('aria-valuemin', min); grip.setAttribute('aria-valuenow', min);
     const set = (h, save = true) => {
       if (h == null) { target.style.removeProperty('height'); delete saved[key]; }
       else { h = Math.round(Math.max(min, Math.min(innerHeight * 0.85, h))); target.style.height = h + 'px'; saved[key] = h; }
       if (save) write(KEY.heights, saved);
+      grip.setAttribute('aria-valuenow', h == null ? Math.round(target.getBoundingClientRect().height) || min : h);
       target.dispatchEvent(new Event('resized'));
     };
     if (Number.isFinite(saved[key])) set(saved[key], false);

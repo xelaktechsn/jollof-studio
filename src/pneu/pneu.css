@@ -103,7 +103,7 @@
 .pnSec h3 { display: flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; }
 .pnSec h3 .ic { width: 14px; height: 14px; color: var(--pnP); }
 .pnSec .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--fg-2); }
-.pnSec .inp, .pnSec .sel { height: 28px; font: inherit; font-size: 12.5px; color: var(--fg); background: var(--raise); border: 1px solid var(--line-2); border-radius: 6px; padding: 0 8px; }
+.pnSec .inp, .pnSec .sel { height: 28px; font-size: 12.5px; } /* champs communs (src/styles.css : .inp, .sel), hauteur d'inspecteur */
 .pnSec input[type=range] { accent-color: var(--accent); }
 .pnSec .note { margin: 0; font-size: 12px; line-height: 1.5; color: var(--fg-2); }
 .pnSec .note.ok { color: var(--ok); }
@@ -151,7 +151,6 @@
 .pnCam { fill: none; stroke: var(--pnLine); stroke-width: 1.1; }
 .pnCam.on { fill: var(--pnOn); stroke: var(--pnOn); }
 .pnSeq { display: flex; flex-direction: column; gap: 6px; padding-top: 4px; }
-.pnSeq h4 { margin: 0; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 .pnMoves { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; }
 .pnMoves b { font: 600 11.5px var(--mono); padding: 1px 6px; border-radius: 6px; background: var(--raise); color: var(--fg); }
 .pnMoves b:last-child { background: #3b82f626; color: var(--accent-hi); }
@@ -304,7 +303,7 @@
 .pn3d[hidden] { display: none; }
 /* Fenêtre étroite (à côté du panneau Automate) : les commandes gardent leur icône et leur infobulle, le texte s'efface. */
 .pn3d { container-type: inline-size; }
-@container (max-width: 400px) { .pn3dCtl .btn span { display: none; } .pn3dCtl .btn { padding: 0 7px; } .pn3dHud { font-size: 11px; gap: 3px 4px; } }
+@container (max-width: 400px) { .pn3dCtl .btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .pn3dCtl .btn { padding: 0 7px; } .pn3dHud { font-size: 11px; gap: 3px 4px; } }
 .pn3d.big { width: min(900px, calc(100% - 400px)); height: calc(100% - 116px); min-width: 480px; }
 .pn3dHead { position: relative; display: flex; align-items: center; gap: 5px; padding: 6px 92px 6px 10px; border-bottom: 1px solid var(--line); flex-wrap: wrap; min-width: 0; }
 .pn3dHead > * { flex-shrink: 0; }

@@ -4,7 +4,7 @@
 // déplacement groupé, obturateurs et passe-câbles ajoutés d'un geste, et menus contextuels (équipement, port, U libre,
 // baie, carte de la vue d'ensemble, liste hors baie) faits avec la trousse (kit/menu.js). Chaque action = un seul commit.
 import { DEVICES, specOf, portsOf } from '../devices.js';
-import { MOUNT, PANELS, RACK_DESIGN, newRack, cleanRacks, canPlaceGroup, findGroupBase, freeFrontU, managerSlots, freePorts, findFree } from '../rack.js';
+import { MOUNT, mountDev, PANELS, RACK_DESIGN, newRack, cleanRacks, canPlaceGroup, findGroupBase, freeFrontU, managerSlots, freePorts, findFree } from '../rack.js';
 import { ctxMenu } from './kit/index.js';
 import { portLinks, revealLogical, revealCable, revealOnPlan, onPlan } from './racks-nav.js';
 
@@ -58,10 +58,10 @@ export function createRackActions(ctx, V) {
   }
   /** Colle des équipements dans la baie r, groupés comme à la copie, près de near (U) ; les autres restent hors baie. */
   function pasteDevs(src, cables, r, near) {
-    const map = cloneDevs(src), placed = [], racked = src.filter(d => d.rack && MOUNT[d.type]);
+    const map = cloneDevs(src), placed = [], racked = src.filter(d => d.rack && mountDev(d));
     if (r && racked.length) {
       const base0 = Math.min(...racked.map(d => d.rack.u));
-      const items = racked.map(d => ({ dev: map.get(d.id), du: d.rack.u - base0, face: d.rack.face, zero: !MOUNT[d.type].u }));
+      const items = racked.map(d => ({ dev: map.get(d.id), du: d.rack.u - base0, face: d.rack.face, zero: !mountDev(d).u }));
       const g = items.filter(i => !i.zero), b = findGroupBase(V.data(), r, g, near ?? base0, { block: true }) || findGroupBase(V.data(), r, g, near ?? base0);
       if (b || items.every(i => i.zero)) for (const it of items) { it.dev.rack = { id: r.id, u: it.zero ? 1 : b + it.du, face: it.face }; placed.push(it.dev.id); }
       else for (const it of items) { const u = findFree(V.data(), r, it.dev, it.face); if (u) { it.dev.rack = { id: r.id, u, face: it.face }; placed.push(it.dev.id); } }
@@ -96,7 +96,7 @@ export function createRackActions(ctx, V) {
     const data = V.data(), rk = racksOf(list);
     if (rk.length) { const ids = new Set(data.devices.filter(d => d.rack && rk.some(r => r.id === d.rack.id)).map(d => d.id)); dupRacks(rk, data.devices.filter(d => ids.has(d.id)), inner(data, ids)); return true; }
     const ds = devsOf(list); if (!ds.length) return false;
-    const r = ds[0].rack && V.rackById(ds[0].rack.id), top = Math.max(...ds.filter(d => d.rack).map(d => d.rack.u + ((MOUNT[d.type] || {}).u || 1)), 1);
+    const r = ds[0].rack && V.rackById(ds[0].rack.id), top = Math.max(...ds.filter(d => d.rack).map(d => d.rack.u + ((mountDev(d) || {}).u || 1)), 1);
     const out = pasteDevs(ds, inner(data, new Set(ds.map(d => d.id))), r, top);
     V.selectList(out.all.map(d => ({ kind: 'dev', id: d.id }))); ctx.commit();
     ctx.status(tl('{0:# équipement dupliqué|# équipements dupliqués}.', out.all.length), out.placed.length === out.all.length ? 'ok' : 'warn');
@@ -106,7 +106,7 @@ export function createRackActions(ctx, V) {
   /* ---------- Déplacer, retirer, supprimer ---------- */
   /** Déplace les équipements choisis de du U (et/ou vers face) ensemble ; refuse tout le geste s'il y a collision. */
   function move(list, du, face) {
-    const ds = devsOf(list).filter(d => d.rack && MOUNT[d.type] && MOUNT[d.type].u); if (!ds.length) return false;
+    const ds = devsOf(list).filter(d => d.rack && mountDev(d) && mountDev(d).u); if (!ds.length) return false;
     const r = V.rackById(ds[0].rack.id); if (!r) return false;
     const same = ds.filter(d => d.rack.id === r.id), moves = same.map(d => ({ dev: d, u: d.rack.u + du, face: face || d.rack.face }));
     const ok = canPlaceGroup(V.data(), r, moves);
@@ -161,7 +161,7 @@ export function createRackActions(ctx, V) {
   const open = (ev, items) => (common ? ctx.ctxMenu(ev, items) : ctxMenu(ev, items));
   function devMenu(ev, list) {
     const ds = devsOf(list); if (!ds.length) return;
-    const one = ds.length === 1 ? ds[0] : null, racked = ds.some(d => d.rack), inU = ds.some(d => d.rack && MOUNT[d.type] && MOUNT[d.type].u);
+    const one = ds.length === 1 ? ds[0] : null, racked = ds.some(d => d.rack), inU = ds.some(d => d.rack && mountDev(d) && mountDev(d).u);
     if (one && common) {
       const verbs = [
         { label: tl('Monter d’un U'), icon: 'chevUp', keys: '↑', disabled: !inU, run: () => move(list, 1) },
@@ -283,7 +283,7 @@ export function createRackActions(ctx, V) {
     ]);
   }
   function addExisting(d, r) {
-    const m = MOUNT[d.type], face = m.u ? 'front' : 'rear', u = findFree(V.data(), r, d, face);
+    const m = mountDev(d), face = m.u ? 'front' : 'rear', u = findFree(V.data(), r, d, face);
     if (!u) { ctx.status(tl('Plus de place de {0} U libre dans {1}.', m.u, r.name), 'warn'); return; }
     d.rack = { id: r.id, u, face }; ctx.commit(); ctx.status(tl('{0} en U{1} de {2}.', d.name, u, r.name), 'ok');
   }

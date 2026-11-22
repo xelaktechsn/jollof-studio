@@ -4,7 +4,8 @@
 # Site de présentation (dossier site/, statique, bilingue) publié sur GitHub Pages à chaque poussée sur main qui le
 # modifie, ou à la main (Actions → Site → Run workflow). Le site est publié tel quel ; la démonstration en ligne
 # (l'édition libre de l'application, construite pour le navigateur) est ajoutée dans site/app/ : « Essayer dans le
-# navigateur » y mène. Elle suit donc aussi les modifications de l'application.
+# navigateur » y mène. Elle suit donc aussi les modifications de l'application. L'aide en ligne (site/aide/) est
+# produite à partir de docs/GUIDE.md par scripts/help-site.mjs.
 # Réglage du dépôt : Settings → Pages → Source = « GitHub Actions ».
 name: Site
 
@@ -14,6 +15,9 @@ on:
     paths:
       - 'site/**'
       - 'src/**'
+      - 'docs/GUIDE.md'
+      - 'scripts/help-site.mjs'
+      - 'scripts/help/**'
       - 'public/**'
       - 'exemples/**'
       - 'index.html'
@@ -63,6 +67,9 @@ jobs:
       - run: npm ci
       - name: Construire la démonstration en ligne (site/app)
         run: npx vite build --base=./ --outDir site/app --emptyOutDir
+      # Aide en ligne : docs/GUIDE.md découpé en pages statiques avec recherche (site/aide), sans dépendance.
+      - name: Construire le site d'aide (site/aide)
+        run: node scripts/help-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

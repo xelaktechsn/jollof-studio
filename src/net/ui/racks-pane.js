@@ -3,7 +3,8 @@
 // Inspecteur de la vue Baies : baie (taille, charge, valeurs de conception, bilan électrique, PDU, onduleurs, conseils,
 // problèmes), équipement de baie sans rôle réseau (place, puissance, fiche), et résumé de toutes les baies. Rend du HTML ;
 // les changements sont lus par la vue (data-rkf : champ de la baie, data-rkd : champ de l'équipement, data-rka : action).
-import { MOUNT, RACK_U, RACK_W, RACK_D, PRESETS } from '../rack.js';
+import { MODEL_TYPES } from '../catalog.js';
+import { MOUNT, mountDev, RACK_U, RACK_W, RACK_D, PRESETS } from '../rack.js';
 import { DEVICES } from '../devices.js';
 
 const f1 = (v, isEn) => (v == null || !Number.isFinite(+v) ? '—' : (Math.round(v * 10) / 10).toLocaleString(isEn ? 'en-GB' : 'fr-FR'));
@@ -62,11 +63,12 @@ export function rackPane(ctx, r, s, list) {
 
 /** Inspecteur d'un équipement de baie sans rôle réseau (passe-câbles, PDU, onduleur…). */
 export function mechPane(ctx, d, s) {
-  const { tl, esc, icon, isEn } = ctx, data = ctx.data(), m = MOUNT[d.type] || {}, spec = DEVICES[d.type];
+  const { tl, esc, icon, isEn } = ctx, data = ctx.data(), m = mountDev(d) || {}, spec = DEVICES[d.type];
   const field = (label, html, tip = '') => `<label class="ntF"${tip ? ` data-tip="${esc(tip)}"` : ''}><span>${label}</span>${html}</label>`;
   let h = `<div class="ntHead">${icon(spec.icon)}<div><b>${esc(d.name)}</b><small>${esc(spec.name())}</small></div><button type="button" class="tb" data-rka="deldev" data-tip="${tl('Supprimer cet équipement')}" aria-label="${tl('Supprimer')}">${icon('trash')}</button></div>`;
   h += `<p class="ntDoc">${esc(spec.doc())}</p>`;
   h += `<section class="ntSec">${field(tl('Nom'), `<input class="inp" data-rkd="name" value="${esc(d.name)}" maxlength="24">`)}${placeFields(ctx, d, data)}</section>`;
+  if (MODEL_TYPES.has(d.type)) h += `<section class="ntSec"><button type="button" class="btn small" data-rka="model">${icon('search')}<span>${d.model ? tl('Changer de modèle…') : tl('Choisir un modèle réel…')}</span></button></section>`;
   h += `<section class="ntSec"><h4>${tl('Fiche technique')}</h4><table class="ntTable"><tr><th>${tl('Modèle')}</th><td>${esc(m.ref || '—')}</td></tr><tr><th>${tl('Encombrement')}</th><td>${m.u ? m.u + ' U' : tl('0U (vertical)')} · ${f1(m.depth, isEn)} mm</td></tr><tr><th>${tl('Poids')}</th><td>${m.kg == null ? tl('non donné') : f1(m.kg, isEn) + ' kg'}</td></tr>${m.max ? `<tr><th>${tl('Puissance consommée')}</th><td>${f1(m.max, isEn)} W</td></tr>` : ''}${m.pdu ? `<tr><th>${tl('Capacité')}</th><td>${m.pdu.a} A · ${m.pdu.w} W · ${tl('{0} prises', m.pdu.outlets)}</td></tr>` : ''}${m.ups ? `<tr><th>${tl('Capacité')}</th><td>${m.ups.va} VA / ${m.ups.w} W · ${tl('{0} prises', m.ups.outlets)}</td></tr>` : ''}${m.load ? `<tr><th>${tl('Taux de charge')}</th><td>${m.load} kg</td></tr>` : ''}</table></section>`;
   if (s && m.pdu) { const p = s.pdus.find(x => x.id === d.id); if (p) h += `<section class="ntSec"><h4>${tl('Taux de charge')}</h4><p>${f1(p.va, isEn)} / ${f1(p.capVA, isEn)} VA · ${f1(p.amps, isEn)} A · ${tl('{0} prises sur {1}', p.plugs, p.outlets)}</p>${gauge(p.pct)}</section>`; }
   if (s && m.ups) { const u = s.ups.find(x => x.id === d.id); if (u) h += `<section class="ntSec"><h4>${tl('Taux de charge')}</h4><p>${f1(u.w, isEn)} / ${u.capW} W · ${u.runtime === Infinity ? '' : tl('environ {0} min d’autonomie', f1(u.runtime, isEn))}</p>${gauge(u.pct)}<p class="mut">${tl('Autonomie interpolée entre les points de la fiche (pleine charge, demi-charge) : modèle simplifié, ±15 % selon le fabricant.')}</p></section>`; }
@@ -75,13 +77,13 @@ export function mechPane(ctx, d, s) {
 
 /** Champs de place dans une baie (baie, U, face, puissance imposée, PDU) : communs à l'inspecteur et à la carte de la vue. */
 export function placeFields(ctx, d, data) {
-  const { tl, esc } = ctx, m = MOUNT[d.type] || {}, racks = data.racks || [], r = d.rack && racks.find(x => x.id === d.rack.id);
+  const { tl, esc } = ctx, m = mountDev(d) || {}, racks = data.racks || [], r = d.rack && racks.find(x => x.id === d.rack.id);
   const field = (label, html, tip = '') => `<label class="ntF"${tip ? ` data-tip="${esc(tip)}"` : ''}><span>${label}</span>${html}</label>`;
   let h = field(tl('Baie'), `<select class="sel" data-rkd="rack"><option value="">${tl('hors baie')}</option>${racks.map(x => `<option value="${esc(x.id)}"${r && x.id === r.id ? ' selected' : ''}>${esc(x.name)}</option>`).join('')}</select>`);
   if (r && m.u) h += field(tl('U du bas'), `<input class="inp" type="number" data-rkd="u" min="1" max="${r.u}" value="${d.rack.u}">`) + field(tl('Face de montage'), `<select class="sel" data-rkd="face"><option value="front"${d.rack.face !== 'rear' ? ' selected' : ''}>${tl('à l’avant')}</option><option value="rear"${d.rack.face === 'rear' ? ' selected' : ''}>${tl('à l’arrière')}</option></select>`);
   if (r && !m.pdu && !m.ups && !m.ebmOf && (m.max || m.typ || m.poe)) h += field(tl('Puissance mesurée (W)'), `<input class="inp" type="number" data-rkd="w" min="0" max="20000" value="${d.rack.w ?? ''}" placeholder="${tl('fiche')}">`, tl('Vide : la consommation de la fiche.'));
   if (r && !m.pdu && (m.max || m.typ || m.poe)) {
-    const pdus = (data.devices || []).filter(x => x.rack && x.rack.id === r.id && MOUNT[x.type] && MOUNT[x.type].pdu);
+    const pdus = (data.devices || []).filter(x => x.rack && x.rack.id === r.id && mountDev(x) && mountDev(x).pdu);
     if (pdus.length > 1) h += field(tl('Branché sur'), `<select class="sel" data-rkd="pdu"><option value="">${tl('réparti')}</option>${pdus.map(p => `<option value="${esc(p.id)}"${d.rack.pdu === p.id ? ' selected' : ''}>${esc(p.name)}</option>`).join('')}</select>`);
   }
   return h;

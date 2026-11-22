@@ -71,9 +71,10 @@ export function installIa(ctx, { lib, host, pane }) {
   const TABS = [['lib', () => tl('Bibliothèque'), 'box'], ['project', () => tl('Projet'), 'list'], ['layers', () => tl('Calques'), 'layers']];
   const tabs = document.createElement('div'); tabs.className = 'ntLibTabs'; tabs.setAttribute('role', 'tablist'); tabs.setAttribute('aria-label', tl('Panneau de gauche'));
   // Panneau étroit : icônes seules (le nom en infobulle).
-  tabs.innerHTML = TABS.map(([id, name, ic]) => `<button type="button" role="tab" class="ntLibTab" data-libtab="${id}" id="ntLibTab-${id}" aria-controls="ntLibPane-${id}" aria-label="${esc(name())}" data-tip="${esc(name())}">${icon(ic)}<span>${esc(name())}</span></button>`).join('');
+  tabs.innerHTML = TABS.map(([id, name, ic]) => `<button type="button" role="tab" class="ntLibTab" data-libtab="${id}" id="ntLibTab-${id}" aria-controls="${id === 'lib' ? 'lib' : 'ntLibPane-' + id}" aria-label="${esc(name())}" data-tip="${esc(name())}">${icon(ic)}<span>${esc(name())}</span></button>`).join('');
   new ResizeObserver(() => lib.classList.toggle('ntLibNarrow', lib.clientWidth > 0 && lib.clientWidth < 268)).observe(lib);
   head.prepend(tabs);
+  { const h = document.createElement('h2'); h.className = 'sr'; h.textContent = tl('Panneau de gauche'); head.prepend(h); } // titre de niveau 2 avant les h3 des catégories
   const proj = document.createElement('section'); proj.className = 'ntBr'; proj.id = 'ntLibPane-project'; proj.setAttribute('role', 'tabpanel'); proj.setAttribute('aria-labelledby', 'ntLibTab-project');
   proj.innerHTML = `<div class="ntBrBar"></div><div class="ntBrTree"></div><div class="ntBrFoot" aria-live="polite"></div>`;
   const lay = document.createElement('section'); lay.className = 'ntLy'; lay.id = 'ntLibPane-layers'; lay.setAttribute('role', 'tabpanel'); lay.setAttribute('aria-labelledby', 'ntLibTab-layers');

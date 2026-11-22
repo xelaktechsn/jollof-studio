@@ -94,7 +94,6 @@ text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-e
 .ntBar.top { top: 10px; }
 .ntBar.bottom { bottom: 10px; }
 .ntTools .segBtn { height: 30px; padding: 0 10px; gap: 6px; }
-.ntTools .segBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
 .ntDef { display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 10px; font-size: 12px; color: var(--fg-2); }
 .ntDef label { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 .ntDef .sel { height: 26px; font-size: 12px; width: auto; min-width: 0; padding-right: 22px; }
@@ -111,7 +110,7 @@ text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-e
 .ntEmptyCard > .ic { width: 38px; height: 38px; color: var(--nt-c5e); }
 .ntEmptyCard p { margin: 0; color: var(--fg-2); font-size: 13px; line-height: 1.5; }
 .ntEmptyCard .row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
-@media (max-width: 1100px) { .ntTools .segBtn span, .ntDef label span { display: none; } }
+@media (max-width: 1100px) { .ntTools .segBtn span, .ntDef label span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 
 /* ---------- Navigateur du PC ---------- */
 .ntBrowser { position: absolute; z-index: 20; right: 72px; top: 96px; width: min(560px, calc(100% - 100px)); height: min(440px, calc(100% - 120px)); display: flex; flex-direction: column; border-radius: 12px; border: 1px solid var(--line-2); box-shadow: 0 16px 50px #0006; overflow: hidden; }
@@ -130,7 +129,6 @@ text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-e
 .ntHead small { color: var(--muted); }
 .ntDoc { margin: 0; color: var(--fg-2); line-height: 1.45; }
 .ntSec { display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--line); }
-.ntSec h4 { margin: 0; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); font-weight: 600; }
 .ntSec .row { display: flex; gap: 6px; flex-wrap: wrap; }
 .ntF { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 8px; }
 .ntF > span { color: var(--fg-2); }
@@ -138,7 +136,6 @@ text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-e
 .ntChk { display: flex; align-items: center; gap: 6px; color: var(--fg-2); cursor: pointer; }
 .ntMode { align-self: flex-start; }
 .ntMode .segBtn { height: 26px; padding: 0 10px; }
-.ntMode .segBtn[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 -2px 0 var(--accent); color: var(--fg); }
 .ntTable { width: 100%; border-collapse: collapse; font-size: 11.5px; }
 .ntTable th, .ntTable td { text-align: left; padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .ntTable th { color: var(--muted); font-weight: 600; }
@@ -178,11 +175,9 @@ text.ntPl { font-size: 7.5px; fill: var(--muted); text-anchor: middle; pointer-e
 .ntReg { width: 46px; height: 24px; padding: 0 3px; font: 11px var(--mono); }
 
 /* ---------- Vues du projet réseau (Logique, Plans, Baies, Conception) ---------- */
+.ntVTabs { display: flex; align-items: center; gap: 2px; flex: none; }
 .ntViewBar { position: absolute; top: 0; left: 0; right: 0; height: 38px; display: flex; align-items: center; gap: 2px; padding: 0 10px; border-bottom: 1px solid var(--line); background: var(--panel); z-index: 8; }
-.ntVTab { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12.5px; color: var(--fg-2); cursor: pointer; white-space: nowrap; }
-.ntVTab:hover { background: var(--raise); color: var(--fg); }
-.ntVTab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.ntVTab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+/* .ntVTab : onglet en pastille commun (src/styles.css). */
 .ntVTab .ic { width: 16px; height: 16px; }
 .ntVw { position: absolute; inset: 38px 0 0 0; overflow: hidden; }
 .ntVw[hidden] { display: none !important; }

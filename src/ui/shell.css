@@ -34,6 +34,7 @@
 
 /* ---------- Onglets des plans de travail ---------- */
 .edTabs { grid-column: 3; grid-row: 2; display: flex; align-items: stretch; height: 36px; min-width: 0; background: var(--bg); border-bottom: 1px solid var(--line); }
+.edTabList { display: flex; align-items: stretch; min-width: 0; }
 .edTab { appearance: none; position: relative; display: inline-flex; align-items: center; gap: 7px; height: 100%; padding: 0 14px; border: 0; border-right: 1px solid var(--line); background: var(--bg); color: var(--muted); font: inherit; font-weight: 500; white-space: nowrap; cursor: pointer; transition: color .12s; }
 .edTab .ic { width: 15px; height: 15px; }
 .edTab:hover { color: var(--fg-2); }
@@ -50,7 +51,7 @@
 .edEnd .tb .ic { width: 14px; height: 14px; }
 .edEnd .tb[aria-pressed="true"] { color: var(--accent-hi); background: #3b82f61f; }
 .edEnd [data-tip]:hover::after, .edEnd [data-tip]:focus-visible::after { left: auto; right: 0; transform: none; animation-name: fadeIn; }
-@media (max-width: 1180px) { .edEnd .tb span { display: none; } }
+@media (max-width: 1180px) { .edEnd .tb span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 
 /* ---------- Panneau du bas : Problèmes, Sortie ---------- */
 .dockPanel { grid-column: 3; grid-row: 4; position: relative; display: flex; flex-direction: column; height: var(--dkH, 220px); min-height: 0; min-width: 0; background: var(--panel); border-top: 1px solid var(--line-2); }

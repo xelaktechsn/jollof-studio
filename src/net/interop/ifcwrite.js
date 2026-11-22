@@ -41,8 +41,8 @@
 // projet redonne les mêmes GlobalId (idempotent), deux objets différents en ont deux différents.
 import { polyArea } from '../site.js';
 import { locate, routeCable, PATH_KINDS, cableOd } from '../route.js';
-import { MOUNT } from '../rack.js';
-import { labeler, makerOf } from '../docs.js';
+import { MOUNT, mountDev } from '../rack.js';
+import { labeler, makerOfDev } from '../docs.js';
 import { specOf } from '../devices.js';
 import { CATS } from '../cable.js';
 import { stepWriter, INT, E, ref, T, BOOL, DERIVED } from './step.js';
@@ -120,7 +120,7 @@ const CARRIER_PSET = { CABLETRAYSEGMENT: 'Pset_CableCarrierSegmentTypeCableTrayS
 /** Boîtes symboliques (largeur, profondeur, hauteur en m) des équipements qui ne se montent pas en baie : modèle simplifié. */
 const BOX = { outlet: [0.08, 0.03, 0.08], outlet2: [0.08, 0.03, 0.08], ap: [0.2, 0.2, 0.045], ap6: [0.2, 0.2, 0.045], ap6e: [0.2, 0.2, 0.045], camera: [0.12, 0.12, 0.12], phone: [0.2, 0.2, 0.1], pc: [0.18, 0.4, 0.38], laptop: [0.33, 0.23, 0.02], printer: [0.42, 0.4, 0.3] };
 function boxOf(d) {
-  const m = MOUNT[d.type];
+  const m = mountDev(d);
   if (d.rack && m) return [0.44, (m.depth || 300) / 1000, Math.max(1, m.u || 1) * U_M];
   return BOX[d.type] || (m ? [0.44, (m.depth || 300) / 1000, Math.max(1, m.u || 1) * U_M] : [0.2, 0.2, 0.2]);
 }
@@ -331,7 +331,7 @@ export function writeIfc(data, opts = {}) {
       devEnt.set(d.id, id); sys.push(id);
       if (k.cls === 'IFCOUTLET') st.outlets++; else st.appliances++;
       if (F) F.contained.push(id); else unplaced.push(id);
-      const mk = makerOf(d.type), m = MOUNT[d.type];
+      const mk = makerOfDev(d), m = mountDev(d);
       pset('dev:' + d.id, id, 'JOLLOF_Network', [
         ['Label', LBL(name)], ['Type', LBL(d.type)], ['VLAN', LBL(vlansOf(d).join(','))], ['IP', LBL(ipText(d))],
         ['Rack', LBL(d.rack ? rackName(d.rack.id) : '')], ['U', d.rack ? T('IFCINTEGER', INT(d.rack.u)) : null], ['Id', T('IFCIDENTIFIER', d.id)]

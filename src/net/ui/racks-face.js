@@ -4,7 +4,7 @@
 // placés comme sur un vrai appareil (rangées, cages SFP à droite), voyants d'après la simulation. Dessins faits ici,
 // sans reprendre l'aspect d'aucun fabricant.
 import { portsOf, specOf } from '../devices.js';
-import { MOUNT, U_MM, PANEL_MM } from '../rack.js';
+import { MOUNT, mountDev, U_MM, PANEL_MM } from '../rack.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 /** Oreilles de fixation (largeur d'une oreille, mm) : la façade utile fait 482,6 − 2 × EAR. */
@@ -48,7 +48,7 @@ export function portSlots(d, hmm) {
 
 /** Façade d'un équipement : chaîne SVG dans le repère de la façade (largeur PANEL_MM, hauteur hmm). */
 export function faceSvg(d, hmm, o = {}) {
-  const m = MOUNT[d.type] || {}, s = specOf(d) || {}, W = PANEL_MM, kind = d.type;
+  const m = mountDev(d) || {}, s = specOf(d) || {}, W = PANEL_MM, kind = d.type;
   const lan = o.lan, used = o.used || new Set();
   let g = `<rect class="ntRkEar" x="0" y="0" width="${W}" height="${n(hmm)}" rx="1.5"/>`;
   g += `<rect class="ntRkBody ${o.back ? 'back' : ''}" x="${EAR}" y="0" width="${W - 2 * EAR}" height="${n(hmm)}" rx="1"/>`;
@@ -124,7 +124,7 @@ export const BACK_PORTS = new Set(['server', 'nas']);
 const mirror = p => ({ ...p, x: n(PANEL_MM - p.x - p.w) });
 /** Éléments de l'arrière (repère de la façade avant ; rien sous x = 90 mm, place du nom vu de derrière) : [{ kind: 'psu' | 'fan' | 'port' | 'punch' | 'outlet' | 'inlet' | 'conn', x, y, w, h, id? }]. */
 function backParts(d, hmm) {
-  const m = MOUNT[d.type] || {}, s = specOf(d) || {}, W = PANEL_MM, out = [], mid = hmm / 2;
+  const m = mountDev(d) || {}, s = specOf(d) || {}, W = PANEL_MM, out = [], mid = hmm / 2;
   const psu = x => out.push({ kind: 'psu', x, y: 5, w: 64, h: n(hmm - 10) }), fan = x => out.push({ kind: 'fan', x, y: 5, w: 70, h: n(hmm - 10) });
   if (BACK_PORTS.has(d.type)) {
     psu(W - EAR - 74); if (d.type === 'server') psu(W - EAR - 144);

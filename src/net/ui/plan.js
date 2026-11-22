@@ -50,10 +50,10 @@ export function createPlanView(ctx) {
       <div class="glass ntPlSub" hidden></div>
       <span class="grow"></span>
       <div class="seg glass ntPlLayers" role="group" aria-label="${tl('Calques')}">
-        <button type="button" class="segBtn" data-layer="image" data-tip="${tl('Plan importé sous le dessin')}">${icon('image')}</button>
-        <button type="button" class="segBtn" data-layer="routes" data-tip="${tl('Tracé des câbles de l’équipement choisi')}">${icon('route')}</button>
+        <button type="button" class="segBtn" data-layer="image" data-tip="${tl('Plan importé sous le dessin')}" aria-label="${tl('Plan importé sous le dessin')}">${icon('image')}</button>
+        <button type="button" class="segBtn" data-layer="routes" data-tip="${tl('Tracé des câbles de l’équipement choisi')}" aria-label="${tl('Tracé des câbles de l’équipement choisi')}">${icon('route')}</button>
         <button type="button" class="segBtn" data-layer="wifi" data-tip="${tl('Calque Wi-Fi : couverture des points d’accès')}">${icon('wifi')}<span>Wi-Fi</span></button>
-        <button type="button" class="segBtn" data-layer="cad" data-tip="${tl('Fond de plan DXF : calques, opacité, position')}">${icon('layers')}</button>
+        <button type="button" class="segBtn" data-layer="cad" data-tip="${tl('Fond de plan DXF : calques, opacité, position')}" aria-label="${tl('Fond de plan DXF : calques, opacité, position')}">${icon('layers')}</button>
       </div>
     </div>
     <div class="ntBar bottom ntPlBottom"><div class="glass ntPlScale"><i></i><span></span></div><div class="glass ntPlInfo" hidden></div><span class="grow"></span><span class="ntHint glass ntPlHint"></span></div>

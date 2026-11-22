@@ -3,7 +3,7 @@
 /* Jollof Studio — barre d'application, bibliothèque | plan de travail 3D | inspecteur à onglets, barre d'état. */
 :root {
   --bg: #0b0e11; --panel: #11151a; --raise: #182027; --raise-2: #202932; --line: #212931; --line-2: #2d3740;
-  --fg: #e6e9eb; --fg-2: #b6bec4; --muted: #7d8891;
+  --fg: #e6e9eb; --fg-2: #b6bec4; --muted: #87919a; /* 4,5:1 au moins sur toutes les surfaces, --raise-2 comprise */
   --accent: #3b82f6; --accent-hi: #60a5fa; --accent-ink: #ffffff; --accent-soft: #3b82f61f;
   --accent-fill: #2563eb; --accent-fill-hi: #326ced; /* fond plein sous un texte blanc (contraste AA) */
   --danger: #e5484d; --ok: #3fb27f; --warn: #f2c94c; --info: #5b9cf5;
@@ -21,7 +21,7 @@
    un peu plus foncé pour rester lisible sur blanc. */
 :root[data-theme="light"] {
   --bg: #e9edf2; --panel: #ffffff; --panel-2: #f6f8fa; --raise: #eef1f5; --raise-2: #e2e7ed; --line: #dde2e8; --line-2: #c9d1da; --line-3: #b4bfca;
-  --fg: #16202a; --fg-2: #3b4855; --muted: #6b7682;
+  --fg: #16202a; --fg-2: #3b4855; --muted: #5b6672;
   --accent: #2563eb; --accent-hi: #1d4ed8; --accent-soft: #2563eb14; --accent-fill: #2563eb; --accent-fill-hi: #1d4ed8;
   --danger: #d2363b; --ok: #1f9d63; --warn: #c98a00; --info: #2563eb;
   --stage: #f3f5f8; --menu: #ffffff; --tip: #ffffff; --glass: #ffffffe6; --overlay: #ffffffee; --backdrop: #1e293b66;
@@ -33,9 +33,9 @@
    du code et fond du schéma lisibles sur blanc. L'écran d'ouverture reste sombre. */
 :root[data-theme="light"] :is(.brand, .hmMark) .wordmark :is([fill="#fff"], [fill="#f8fafc"]) { fill: #16202a; }
 :root[data-theme="light"] :is(.brand, .hmMark) .wordmark :is([stroke="#fff"], [stroke="#f8fafc"]) { stroke: #16202a; }
-:root[data-theme="light"] .tk { color: #c2410c; } :root[data-theme="light"] .tt { color: #0369a1; } :root[data-theme="light"] .tf { color: #a16207; }
+:root[data-theme="light"] .tk { color: #b93a0a; } :root[data-theme="light"] .tt { color: #0369a1; } :root[data-theme="light"] .tf { color: #92570a; }
 :root[data-theme="light"] .to { color: #be123c; } :root[data-theme="light"] .tu { color: #1d4ed8; }
-:root[data-theme="light"] .ts { color: #15803d; } :root[data-theme="light"] .tp { color: #7e22ce; } :root[data-theme="light"] .tn { color: #c2410c; } :root[data-theme="light"] .tc { color: #6b7682; }
+:root[data-theme="light"] .ts { color: #15803d; } :root[data-theme="light"] .tp { color: #7e22ce; } :root[data-theme="light"] .tn { color: #b93a0a; }
 :root[data-theme="light"] .schView { --schBg: #ffffff; --schMuted: #6b7682; color: #1f2a35; }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -43,6 +43,15 @@ html, body { height: 100%; margin: 0; }
 body { background: var(--bg); color: var(--fg); font: 13px/1.45 var(--sans); overflow: hidden; -webkit-user-select: none; user-select: none; -webkit-font-smoothing: antialiased; }
 input, select, textarea { -webkit-user-select: text; user-select: text; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* Boîte modale qui reçoit le focus à l'ouverture (src/ui/a11y.js) : pas de cadre autour de toute la boîte. */
+[role="dialog"]:focus, [role="alertdialog"]:focus { outline: none; }
+/* Texte réservé aux lecteurs d'écran. Un libellé de bouton qu'on retire faute de place se masque ainsi (jamais par
+   display: none, qui ôte son nom au bouton) : docs/UI.md. */
+.sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+/* Animations réduites à la demande du système : plus de mouvement d'interface (les simulations restent animées). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
 .ic { width: 16px; height: 16px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 i[data-icon] { display: inline-flex; font-style: normal; }
 .grow { flex: 1; min-width: 0; }
@@ -276,12 +285,13 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 
 /* Fenêtres */
 .modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: var(--backdrop); -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); animation: fadeIn .15s ease-out; }
-.sheet { background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 12px; width: min(860px, 100%); box-shadow: var(--shadow); animation: sheetIn .18s ease-out; }
+.sheet { background: var(--panel); border: 1px solid var(--line-2); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 12px; width: min(860px, 100%); box-shadow: var(--shadow); animation: sheetIn .18s ease-out; }
 .sheetHead { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-.sheetHead h2 { font-size: 12px; color: var(--fg-2); }
+.sheetHead h2 { font-size: 16px; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--fg); } /* comme le titre de dialog() (.sDialog h3) */
+.sheetHead h2 .ic { width: 16px; height: 16px; }
 .sheetHead h2 .ic { color: var(--accent); }
 .sheet video { width: 100%; border-radius: 8px; background: #000; max-height: 62vh; }
-@media (max-width: 1180px) { .app { --libW: 248px; --insDef: 320px; } .tb.label span, .statusbar .hint { display: none; } }
+@media (max-width: 1180px) { .app { --libW: 248px; --insDef: 320px; } .tb.label span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } .statusbar .hint { display: none; } }
 
 /* Explication du câblage */
 .explain:empty { display: none; }
@@ -373,7 +383,7 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .docList { overflow: auto; flex: 1; padding-bottom: 10px; }
 .docList button { all: unset; cursor: pointer; display: block; width: 100%; box-sizing: border-box; padding: 5px 16px; font-size: 12.5px; }
 .docList button:hover { background: var(--raise); }
-.docList button.on { background: var(--raise); box-shadow: inset 2px 0 0 var(--accent); color: var(--accent); }
+.docList button.on { background: var(--raise); box-shadow: inset 2px 0 0 var(--accent); color: var(--accent-hi); }
 .docList button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .docPage { overflow: auto; padding: 20px 28px 32px; -webkit-user-select: text; user-select: text; }
 .docPage { display: grid; grid-template-columns: minmax(0, 1fr) minmax(240px, 340px); gap: 24px; align-items: start; }
@@ -453,12 +463,26 @@ input[type=range] { accent-color: var(--accent); width: 100%; }
 .segBtn .ic { width: 14px; height: 14px; }
 .segBtn:hover { color: var(--fg); }
 .segBtn[aria-pressed="true"] { background: var(--raise-2); color: var(--fg); }
+/* Choix d'un outil ou d'un mode (ce que fera le prochain clic), par opposition à un réglage d'affichage : fond d'accent
+   et filet. .seg.pick pour un nouveau sélecteur ; les sélecteurs existants sont nommés ici (docs/UI.md, « Segments »). */
+.seg.pick .segBtn[aria-pressed="true"], .wsSwitch .segBtn[aria-pressed="true"], .ntTools .segBtn[aria-pressed="true"], .ntMode .segBtn[aria-pressed="true"], .ntPlLayers .segBtn[aria-pressed="true"] { background: var(--accent-soft); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+/* Onglets en pastille : vues à l'intérieur d'un plan de travail ou d'un panneau (vues du réseau, Conception, étages,
+   panneau du bas .dkTab). .pillTab pour un nouvel onglet ; docs/UI.md, « Onglets ». */
+.pillTab, .ntVTab, .ntDsTabs button, .ntPlFTab { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 7px; font-size: 12.5px; font-weight: 500; color: var(--fg-2); white-space: nowrap; cursor: pointer; }
+.pillTab .ic, .ntVTab .ic, .ntDsTabs button .ic, .ntPlFTab .ic { width: 15px; height: 15px; }
+.pillTab:hover, .ntVTab:hover, .ntDsTabs button:hover, .ntPlFTab:hover, .ntLibTab:hover { background: var(--raise); color: var(--fg); }
+.pillTab[aria-selected="true"], .ntVTab[aria-selected="true"], .ntDsTabs button[aria-selected="true"], .ntPlFTab[aria-selected="true"], .ntLibTab[aria-selected="true"] { background: var(--panel-2); color: var(--fg); box-shadow: inset 0 -2px 0 var(--accent); }
+.pillTab:focus-visible, .ntVTab:focus-visible, .ntDsTabs button:focus-visible, .ntPlFTab:focus-visible, .ntLibTab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* Étiquette de section (petites capitales) dans un inspecteur ou une palette : même dessin que les h2 des panneaux. */
+.cap, .ntSec h4, .lgPins h4, .pnSeq h4 { margin: 0; font: 600 11px var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
 
 /* Assistant d'import */
 .wizard { display: flex; flex-direction: column; gap: 8px; }
 .wstep { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 12.5px; }
 .wn { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font: 600 11px var(--mono); }
 .sel { width: 100%; height: var(--ctl); font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 8px; }
+/* Champ de saisie (.inp) : le même dessin que la liste déroulante (.sel). En inspecteur, hauteur 28 px (le module la fixe). */
+.inp { height: var(--ctl); font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line-2); border-radius: var(--r-sm); padding: 0 8px; }
 .cpins { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; max-height: 210px; overflow: auto; }
 .cpins li { display: flex; align-items: center; gap: 6px; min-height: 28px; padding: 2px 4px; border-radius: 5px; font-size: 12px; }
 .cpins li[data-k] { cursor: pointer; }
@@ -668,7 +692,7 @@ body.dragging, body.dragging * { cursor: grabbing !important; -webkit-user-selec
 .edTa { position: absolute; inset: 0; width: 100%; height: 100%; resize: none; border: 0; outline: 0; background: transparent; color: transparent; caret-color: #fff; overflow: auto; }
 .edTa::selection { background: #3b82f655; color: transparent; }
 .edTa::placeholder { color: var(--muted); }
-.tc { color: #6b7a86; font-style: italic; } .ts { color: #a5d6a7; } .tp { color: #c792ea; } .tn { color: #f5a97f; }
+.tc { color: var(--muted); font-style: italic; } .ts { color: #a5d6a7; } .tp { color: #c792ea; } .tn { color: #f5a97f; }
 .tk { color: #ff9e64; } .tt { color: #7dcfff; } .tf { color: #e0c46c; } .to { color: #f07178; } .tu { color: #82aaff; }
 .diag { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 160px; overflow: auto; }
 .diag li { display: grid; grid-template-columns: 14px auto minmax(0, 1fr); gap: 6px; align-items: baseline; padding: 5px 8px; border-radius: 6px; font-size: 12px; cursor: pointer; }
@@ -963,7 +987,7 @@ canvas.picking { cursor: crosshair !important; }
 .tpSeries { margin: 4px 0 6px; padding: 12px 14px 14px; border-radius: 16px; border: 1px solid var(--accent); background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, transparent); }
 .tpSeries .subHead { margin-top: 0; }
 .tpSeriesIntro { margin: 0 0 10px; font-size: 13px; line-height: 1.5; color: var(--fg-2); }
-.tpTag { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font: 700 10px/1.6 var(--sans); letter-spacing: .04em; color: var(--accent); background: var(--accent-soft); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.tpTag { display: inline-flex; align-items: center; gap: 4px; margin-left: 8px; padding: 1px 7px; border-radius: 999px; font: 700 10px/1.6 var(--sans); letter-spacing: .04em; color: var(--accent-hi); background: var(--accent-soft); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .tpTag .ic { width: 11px; height: 11px; }
 .tpCard.logic:hover { border-color: #4ade80aa; }
 .kind.lab.logic { color: #4ade80; }
@@ -1003,7 +1027,7 @@ canvas.picking { cursor: crosshair !important; }
 /* Barre d'application compacte : sur les écrans de 1366 px (fréquents dans les salles), les boutons
    secondaires ne gardent que leur icône (l'info-bulle donne leur nom). */
 @media (max-width: 1720px) {
-  .appbar .tb.label:not(#hubBtn):not(#labBtn):not(#simBtn):not(#checkChip) > span:not(.tbBadge) { display: none; }
+  .appbar .tb.label:not(#hubBtn):not(#labBtn):not(#simBtn):not(#checkChip) > span:not(.tbBadge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .appbar .tb.label:not(#hubBtn):not(#labBtn):not(#simBtn):not(#checkChip) { padding: 0 8px; }
   .brand .wordmark { display: none; }
   .brand .logo { display: block; }
@@ -1011,7 +1035,7 @@ canvas.picking { cursor: crosshair !important; }
   .sessChip { max-width: 360px; }
   .scTitle { max-width: 150px; }
 }
-@media (max-width: 1400px) { .projBtn { max-width: 170px; } .stage-bottom .label > span, .viewbar .label > span { display: none; } }
+@media (max-width: 1400px) { .projBtn { max-width: 170px; } .stage-bottom .label > span, .viewbar .label > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 
 /* Guide « Quelle carte choisir ? » */
 .docGuide { all: unset; cursor: pointer; display: flex; align-items: center; gap: 8px; margin: 0 12px 8px; padding: 9px 12px; border-radius: 9px; background: linear-gradient(90deg, #3b82f622, #3b82f60a); border: 1px solid #3b82f644; color: var(--fg); font-weight: 600; font-size: 12.5px; }
@@ -1112,10 +1136,10 @@ canvas.picking { cursor: crosshair !important; }
 .stage { container-type: inline-size; container-name: stage; }
 .stageBar.bottom { left: 12px; justify-content: flex-end; flex-wrap: wrap-reverse; }
 @container stage (max-width: 980px) {
-  .stageBar.bottom #benchBtn > span, .stageBar.bottom #flowBtn > span, .stageBar.bottom #qualityBtn > span { display: none; }
+  .stageBar.bottom #benchBtn > span, .stageBar.bottom #flowBtn > span, .stageBar.bottom #qualityBtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .stageBar.bottom #benchBtn, .stageBar.bottom #flowBtn, .stageBar.bottom #qualityBtn { padding: 0 9px; }
 }
-@container stage (max-width: 780px) { .stageBar.bottom .segBtn > span { display: none; } }
+@container stage (max-width: 780px) { .stageBar.bottom .segBtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 #flowBtn[aria-pressed="true"] { color: var(--accent-hi); border-color: #3b82f666; }
 /* Barre du haut : plan étroit (inspecteur élargi), la pastille « câblage verrouillé » et le libellé « Fil » se réduisent à leur icône. */
 .lockChip { white-space: nowrap; }
@@ -1156,10 +1180,10 @@ canvas.picking { cursor: crosshair !important; }
 .stage:not(.sch2d) .only2d { display: none !important; }
 #schValues[aria-pressed="true"] { color: var(--accent-hi); border-color: #3b82f666; }
 @container stage (max-width: 980px) {
-  .stageBar.bottom #schValues > span { display: none; }
+  .stageBar.bottom #schValues > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .stageBar.bottom #schValues { padding: 0 9px; }
 }
-@container stage (max-width: 620px) { #stageView .segBtn > span { display: none; } }
+@container stage (max-width: 620px) { #stageView .segBtn > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
 .stageBar.top #stageView [data-tip]:hover::after, .stageBar.top #stageView [data-tip]:focus-visible::after { left: 0; transform: none; animation-name: fadeIn; }
 .schView g.act { color: var(--accent-hi); }
 
@@ -1269,14 +1293,15 @@ body.rowResize, body.rowResize * { cursor: row-resize !important; -webkit-user-s
 .panel.right .tab > .ic { flex: none; }
 .panel.right .tab .count, .panel.right .tab .fcount, .panel.right .tab .live { flex: none; }
 .panel.right .tab[data-tip]:hover::after { content: none; }
-.tabs.tight .tab:not([aria-selected="true"]) > .tl, .tabs.tight .tab:not([aria-selected="true"]) > span:not([class]) { display: none; }
+.tabs.tight .tab:not([aria-selected="true"]) > .tl, .tabs.tight .tab:not([aria-selected="true"]) > span:not([class]) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .tabs.tight .tab:not([aria-selected="true"]) { padding: 0 9px; }
 .panel.right .tabs.tight .tab:not([aria-selected="true"])[data-tip]:hover::after { content: attr(data-tip); }
 
 /* Sections repliables (titre cliquable, état retenu) */
-.foldHead { cursor: pointer; border-radius: 5px; margin: -3px -6px; padding: 3px 6px; transition: color .12s, background .12s; }
+.foldHead { position: relative; cursor: pointer; border-radius: 5px; margin: -3px -6px; padding: 3px 6px; transition: color .12s, background .12s; }
+.foldBtn { appearance: none; position: absolute; inset: 0; margin: 0; padding: 0; border: 0; border-radius: inherit; background: none; cursor: pointer; }
+.foldBtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 .foldHead:hover { color: var(--fg-2); background: var(--hi-0); }
-.foldHead:focus-visible { outline: 2px solid var(--accent); outline-offset: 0; }
 .foldChev { flex: none; width: 6px; height: 6px; margin: 0 1px 0 0; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: translateY(-2px) rotate(45deg); transition: transform .15s; opacity: .8; }
 section.folded .foldChev { transform: rotate(-45deg); }
 section.folded > :not(h2):not(.secHead) { display: none !important; }
@@ -1308,13 +1333,13 @@ section.unread .foldHead::after { content: ""; width: 7px; height: 7px; border-r
 .progBar .pstate { flex: 1 1 0; }
 .progBar > .tb, .progBar > .btn, .progBar > .sel { flex: none; }
 @container insp (max-width: 470px) {
-  .progBar .btn:not(#progRun) > span:not(.proBadge) { display: none; }
+  .progBar .btn:not(#progRun) > span:not(.proBadge) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .progBar .btn:not(#progRun) { padding: 0 8px; }
 }
 @container insp (max-width: 470px) { .progBar .pstate > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; } }
 @container insp (max-width: 400px) { .progBar .sel { max-width: 108px; } .progBar { gap: 4px; padding-left: 12px; } }
 @container insp (max-width: 350px) {
-  #progRun > span { display: none; }
+  #progRun > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   #progRun { padding: 0 9px; }
 }
 

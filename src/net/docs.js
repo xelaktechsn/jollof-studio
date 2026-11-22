@@ -16,7 +16,7 @@ import { roomPath, roomPoint } from './site.js';
 import { DEVICES, specOf } from './devices.js';
 import { CATS } from './cable.js';
 import * as RACK from './rack.js';
-import { cleanDesign, spacesOf, spaceLetters, floorsOf, horizontalLinks, mountOf, roomOfDev, PRICE_KEYS, PRESETS } from './dimension.js';
+import { cleanDesign, spacesOf, spaceLetters, floorsOf, horizontalLinks, roomOfDev, PRICE_KEYS, PRESETS } from './dimension.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const designOf = data => (data.design && data.design.usage ? data.design : cleanDesign(data && data.design));
@@ -217,11 +217,21 @@ const GROUP = { switch: 'active', router: 'active', ap: 'active', host: 'termina
 export function bom(data) {
   const D = designOf(data), price = k => +(D.prices[k] || 0), lines = [];
   const add = (key, group, name, unit, qty, note) => { if (qty > 0) lines.push({ key, group, name, unit, qty: +qty.toFixed(2), price: price(key), total: +(qty * price(key)).toFixed(2), note: note || '' }); };
-  const count = new Map();
-  for (const d of data.devices || []) count.set(d.type, (count.get(d.type) || 0) + 1);
+  // Équipements : une ligne par type générique, et une par modèle réel choisi au catalogue (clé « m_… », fabricant et
+  // référence du modèle : catalog.js).
+  const count = new Map(), models = new Map();
+  for (const d of data.devices || []) {
+    if (d.model && DEVICES[d.type]) { const k = modelKey(d.model), x = models.get(k) || { n: 0, m: d.model, t: d.type }; x.n++; models.set(k, x); }
+    else count.set(d.type, (count.get(d.type) || 0) + 1);
+  }
   for (const [t, n] of [...count.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
     const s = DEVICES[t]; if (!s) continue;
     add(t, GROUP[s.role] || 'active', s.name(), tl('u.'), n);
+    Object.assign(lines[lines.length - 1], makerOf(t));
+  }
+  for (const [k, x] of [...models.entries()].sort((a, b) => (a[0] < b[0] ? -1 : 1))) {
+    add(k, GROUP[DEVICES[x.t].role] || 'active', `${x.m.vendor} ${x.m.model}`, tl('u.'), x.n, DEVICES[x.t].name());
+    Object.assign(lines[lines.length - 1], { maker: x.m.vendor, part: x.m.pn, model: x.m.id });
   }
   const jacks = (data.devices || []).filter(isOutlet).reduce((a, d) => a + specOf(d).ports(d.p || {}).filter(p => p.punch).length, 0);
   add('jack', 'passive', tl('Embase RJ45 (keystone) {0}', (CATS[D.cat] || {}).name || ''), tl('u.'), jacks);
@@ -247,6 +257,8 @@ export function bom(data) {
   if (racks.length) add('rack', 'rack', tl('Baie 19 pouces ({0})', [...new Set(racks.map(r => (r.u || '?') + ' U'))].join(', ')), tl('u.'), racks.length);
   const links = horizontalLinks(data).length;
   add('label', 'passive', tl('Étiquette (deux par lien, une par panneau et par baie)'), tl('u.'), links * 2 + (data.devices || []).filter(isPanel).length + racks.length);
+  // Références du catalogue choisies pour des lignes (modules SFP, câble, baies) : data.refs.
+  for (const l of lines) { const r = data.refs && data.refs[l.key]; if (r) { l.maker = r.vendor; l.part = r.pn; l.model = r.id; } }
   for (const [i, l] of D.labour.entries()) lines.push({ key: 'labour' + i, group: 'labour', name: l.name, unit: l.unit || tl('h'), qty: l.qty, price: l.price, total: +(l.qty * l.price).toFixed(2), note: '', labour: i });
   const groups = {};
   for (const l of lines) groups[l.group] = +((groups[l.group] || 0) + l.total).toFixed(2);
@@ -282,6 +294,10 @@ export function csvOptions(data, en) {
 }
 /** Fabricant et référence d'un type, d'après la fiche qui a servi au modèle (rack.js MOUNT.ref). */
 const MAKERS = ['Tripp Lite', 'TP-Link', 'UniFi', 'Ubiquiti', 'Cisco', 'Belden', 'Leviton', 'Eaton', 'Dell', 'Pulsar', 'Panduit', 'APC', 'Axis', 'HPE', 'Aruba'];
+/** Clé de nomenclature (et de tarif) d'un modèle réel : « m_ » + identifiant du catalogue (lettres, chiffres, tirets). */
+export const modelKey = m => ('m_' + String(m.id).replace(/[^\w-]/g, '-')).slice(0, 30);
+/** Fabricant et référence d'un équipement : son modèle réel (catalog.js) s'il en a un, sinon la fiche de son type. */
+export const makerOfDev = d => (d && d.model ? { maker: d.model.vendor, part: d.model.pn } : makerOf(d && d.type));
 export function makerOf(type) {
   const ref = RACK.MOUNT && RACK.MOUNT[type] && RACK.MOUNT[type].ref; if (!ref) return { maker: '', part: '' };
   const m = MAKERS.find(x => ref.startsWith(x + ' ')); return m ? { maker: m, part: ref.slice(m.length + 1) } : { maker: '', part: ref };
@@ -314,7 +330,7 @@ export function csvTables(data, lan, o = {}) {
     { key: (r, i) => r.i, name: H('Item', 'Ligne') }, { key: 'name', name: H('Description', 'Désignation') }, { key: 'maker', name: H('Manufacturer', 'Fabricant') }, { key: 'part', name: H('Part Number', 'Référence') },
     { key: 'qty', name: H('Quantity', 'Quantité'), num: 1 }, { key: 'unit', name: H('Unit', 'Unité') }, { key: r => (r.price ? r.price : ''), name: H('Unit Price', 'Prix unitaire'), num: 1 },
     { key: r => (r.price ? r.total : ''), name: H('Total', 'Total'), num: 1 }, { key: () => b.currency, name: H('Currency', 'Devise') }, { key: 'note', name: H('Notes', 'Remarque') }
-  ], rows: b.lines.map((l, i) => ({ ...l, i: i + 1, ...(DEVICE_KEYS.has(l.key) ? makerOf(l.key) : { maker: '', part: '' }) })) };
+  ], rows: b.lines.map((l, i) => ({ maker: '', part: '', ...l, i: i + 1 })) };
   // Liste des prises : un port par ligne, du mur au switch.
   const orows = [], floors = new Map(floorsOf(data).map(x => [x.f.id, x]));
   for (const d of data.devices || []) {
@@ -344,7 +360,6 @@ export function csvTables(data, lan, o = {}) {
   return { cables, patching, bom: bomT, outlets, ipplan, labels };
 }
 const KINDS_EN = { horizontal: 'Permanent link', cord: 'Patch cord', backbone: 'Backbone', other: 'Other' };
-const DEVICE_KEYS = new Set(Object.keys(DEVICES));
 /**
  * Plan d'étage en SVG (modèle simplifié, pour l'impression) : pièces avec leur nom, murs, baies, prises avec leur
  * identifiant, points d'accès. Coordonnées en mètres ; échelle graphique. Rend '' si l'étage n'existe pas.
@@ -389,7 +404,7 @@ export function rackSvg(data, rackId, o = {}) {
   for (let u = 1; u <= U; u++) { const y = 24 + (U - u) * uh; out.push(`<text x="${x0 - 4}" y="${y + uh - 4}" font-size="8" text-anchor="end" fill="#64748b">${u}</text><line x1="${x0}" y1="${y}" x2="${w - 6}" y2="${y}" stroke="#e2e8f0"/>`); }
   for (const d of data.devices || []) {
     if (!d.rack || d.rack.id !== rackId || (d.rack.face && d.rack.face !== 'front')) continue;
-    const mu = mountOf(d.type).u, y = 24 + (U - (d.rack.u + mu - 1)) * uh, role = (specOf(d) || {}).role;
+    const mu = (RACK.mountDev(d) || {}).u, y = 24 + (U - (d.rack.u + mu - 1)) * uh, role = (specOf(d) || {}).role;
     if (!mu) continue; // PDU verticale (0 U)
     if (d.type === 'blank') { out.push(`<rect x="${x0 + 1}" y="${y + 1}" width="${w - x0 - 8}" height="${uh - 2}" fill="#f1f5f9" stroke="#cbd5e1" stroke-width="0.5"/>`); continue; }
     const fill = isPanel(d) ? '#dbeafe' : role === 'switch' || role === 'router' ? '#1e293b' : role === 'mech' ? '#cbd5e1' : '#e2e8f0', ink = fill === '#1e293b' ? '#f8fafc' : '#0f172a';
