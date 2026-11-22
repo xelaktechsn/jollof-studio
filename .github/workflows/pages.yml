@@ -68,6 +68,16 @@ jobs:
       # Aide en ligne : docs/GUIDE.md découpé en pages statiques avec recherche (site/aide), sans dépendance.
       - name: Construire le site d'aide (site/aide)
         run: node scripts/help-site.mjs
+      # Version des fichiers : sans elle, le navigateur garde dix minutes l'ancienne feuille de style avec la
+      # nouvelle page (mise en page cassée juste après une publication).
+      - name: Versionner les feuilles de style et les scripts
+        run: |
+          v="${GITHUB_SHA::8}"
+          find site -maxdepth 2 -name '*.html' -not -path 'site/app/*' -print0 | xargs -0 sed -i -E \
+            -e "s/\?v=dev\"/?v=$v\"/g" \
+            -e "s/(href=\"[^\"?]*\.css)\"/\1?v=$v\"/g" \
+            -e "s/(src=\"[^\"?:]*\.js)\"/\1?v=$v\"/g"
+          grep -c "?v=$v" site/index.html
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v4
         with:
