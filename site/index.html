@@ -6,49 +6,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Jollof Studio — un labo d’électronique, sans labo</title>
-  <meta name="description" content="Jollof Studio : application gratuite et open source pour câbler, programmer et simuler l’électronique, la logique, la pneumatique et l’électropneumatique en 3D, avec un vérificateur qui prouve que rien ne grille et 62 TP guidés.">
-  <meta name="theme-color" content="#0b0e11">
+  <title>Jollof Studio : concevoir, simuler, vérifier, sans labo</title>
+  <meta name="description" content="Jollof Studio : application de bureau gratuite et open source pour concevoir, simuler et vérifier des montages électroniques, des circuits pneumatiques, de la logique et des réseaux de bâtiment. 156 composants, 10 cartes, 82 TP guidés. Windows et Linux.">
+  <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="assets/img/icon.svg" type="image/svg+xml">
   <link rel="alternate" hreflang="fr" href="https://xelaktechsn.github.io/jollof-studio/?lang=fr">
   <link rel="alternate" hreflang="en" href="https://xelaktechsn.github.io/jollof-studio/?lang=en">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="Jollof Studio — un labo d’électronique, sans labo">
-  <meta property="og:description" content="Électronique, logique, pneumatique et électropneumatique en 3D. Gratuit et open source.">
-  <meta property="og:image" content="https://xelaktechsn.github.io/jollof-studio/assets/img/poster-fr.jpg">
+  <meta property="og:title" content="Jollof Studio : concevoir, simuler, vérifier, sans labo">
+  <meta property="og:description" content="Électronique, pneumatique, logique et réseaux de bâtiment. Gratuit et open source, fait à Dakar.">
+  <meta property="og:image" content="https://xelaktechsn.github.io/jollof-studio/assets/img/og.jpg">
   <meta property="og:url" content="https://xelaktechsn.github.io/jollof-studio/">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="preload" href="assets/fonts/instrument-sans-latin-600-normal.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="home">
   <a class="skip" href="#main" data-i18n="skip">Aller au contenu</a>
 
-  <header class="nav" id="top">
-    <div class="flow" aria-hidden="true"><i></i></div>
+  <header class="nav solid" id="top">
     <div class="wrap navIn">
       <a class="brand" href="#top" aria-label="Jollof Studio">
-        <img src="assets/img/icon.svg" alt="" width="34" height="34">
-        <img class="wm" src="assets/img/logo-dark.svg" alt="Jollof Studio" width="150" height="25">
+        <img src="assets/img/icon.svg" alt="" width="30" height="30">
+        <img class="wm" src="assets/img/logo-light.svg" alt="Jollof Studio" width="150" height="25">
       </a>
       <nav class="links" aria-label="Sections" id="links">
         <a href="#news" data-i18n="nav.news">Nouveautés</a>
-        <a href="#features" data-i18n="nav.features">Fonctions</a>
+        <a href="#features" data-i18n="nav.features">Domaines</a>
+        <a href="#network" data-i18n="nav.network">Réseau</a>
         <a href="#boards" data-i18n="nav.boards">Cartes</a>
-        <a href="#video" data-i18n="nav.video">Vidéo</a>
         <a href="#labs" data-i18n="nav.labs">TP</a>
-        <a href="#download" data-i18n="nav.start">Télécharger</a>
-        <a href="#open" data-i18n="nav.open">Open source</a>
         <a href="aide/" data-i18n="nav.help">Aide</a>
+        <a class="navDl" href="#download" data-i18n="nav.download">Télécharger</a>
       </nav>
       <div class="navEnd">
         <div class="lang" role="group" aria-label="Langue / Language">
           <button type="button" data-lang="fr" aria-pressed="true">FR</button>
           <button type="button" data-lang="en" aria-pressed="false">EN</button>
         </div>
-        <a class="gh" href="https://github.com/xelaktechsn/jollof-studio" aria-label="GitHub">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.19 1.76 1.19 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.73-1.54-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.8 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"/></svg>
-        </a>
         <button type="button" class="menu" aria-controls="links" aria-expanded="false" aria-label="Menu"><span></span><span></span></button>
       </div>
     </div>
@@ -57,473 +52,426 @@
   <main id="main">
     <!-- Accroche -->
     <section class="hero">
-      <svg class="traces" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-        <path d="M0 90H180L240 150H330"/><path d="M0 300H120L170 250H290"/><path d="M0 470H210L260 420H340"/><path d="M1000 110H830L770 170H690"/>
-        <path d="M1000 300H880L840 340H720"/><path d="M1000 500H800L750 450H660"/><path d="M300 0V60L350 110V150"/><path d="M700 600V540L650 490V450"/>
-        <circle cx="330" cy="150" r="5"/><circle cx="290" cy="250" r="5"/><circle cx="340" cy="420" r="5"/><circle cx="690" cy="170" r="5"/><circle cx="720" cy="340" r="5"/><circle cx="660" cy="450" r="5"/>
-      </svg>
       <div class="wrap heroIn">
-        <p class="badge"><span class="led" aria-hidden="true"></span><span data-i18n="hero.badge">Gratuit · Open source · AGPL-3.0</span></p>
-        <h1><span data-i18n="hero.h1a">Un labo d’électronique.</span> <em data-i18n="hero.h1b">Sans labo.</em></h1>
-        <p class="lead" data-i18n="hero.lead">Câblez, programmez et simulez l’électronique, la logique, la pneumatique et l’électropneumatique en 3D. Un vérificateur prouve que rien ne grille avant de passer à une vraie carte.</p>
-        <div class="ctas">
-          <a class="btn primary" href="#download" data-i18n="hero.cta1">Télécharger</a>
-          <a class="btn ghost" href="app/" data-i18n="hero.try">Essayer dans le navigateur</a>
-          <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio" data-i18n="hero.cta2">Code source</a>
+        <div class="heroTxt">
+          <h1><span data-i18n="hero.h1a">Un labo complet.</span> <span data-i18n="hero.h1b">Sans le labo.</span></h1>
+          <p class="lead" data-i18n="hero.lead">Jollof Studio est une application de bureau gratuite pour concevoir, simuler et vérifier de vrais systèmes : montages Arduino et ESP32, circuits pneumatiques, logique, réseaux de bâtiment. On se trompe à l’écran, pas sur le matériel.</p>
+          <div class="ctas">
+            <a class="btn primary" href="#download" data-i18n="hero.cta1">Télécharger</a>
+            <a class="tlink" href="app/" data-i18n="hero.try">Essayer dans le navigateur</a>
+            <a class="tlink" href="https://github.com/xelaktechsn/jollof-studio" data-i18n="hero.cta2">Code source</a>
+          </div>
+          <p class="fine" data-i18n="hero.tryNote">Version 0.4 pour Windows et Linux, sous licence AGPL-3.0. La version navigateur câble, simule, vérifie et ouvre les TP ; le téléversement, la compilation C++ et le DWG demandent l’application.</p>
         </div>
-        <p class="tryNote" data-i18n="hero.tryNote">Sans installation : câblage, simulation, vérificateur, TP. Le téléversement vers une vraie carte et la compilation C++ demandent l’application.</p>
-        <div class="term" aria-label="Terminal">
-          <div class="termBar"><i></i><i></i><i></i></div>
-          <pre><code><span class="p">$</span> git clone https://github.com/xelaktechsn/jollof-studio
-<span class="p">$</span> cd jollof-studio &amp;&amp; npm install
-<span class="p">$</span> npm run tauri dev</code></pre>
-          <button type="button" class="copy" data-copy="git clone https://github.com/xelaktechsn/jollof-studio&#10;cd jollof-studio && npm install&#10;npm run tauri dev" data-i18n="copy">Copier</button>
-        </div>
+        <figure class="heroFig">
+          <img src="assets/img/atelier.webp" width="957" height="992" alt="Illustration : un enfant assis à un bureau câble une carte à microcontrôleur sur une plaque d’essai, avec un multimètre, des fils et un ordinateur portable." data-i18n-alt="hero.alt" fetchpriority="high">
+          <figcaption><b data-i18n="hero.capb">Illustration.</b> <span data-i18n="hero.cap">La paillasse que beaucoup d’élèves n’ont pas : une carte, un multimètre, des fils, du temps pour se tromper.</span></figcaption>
+        </figure>
       </div>
-    </section>
 
-    <!-- Vidéo -->
-    <section class="video" id="video">
       <div class="wrap">
-        <div class="frame">
-          <video controls playsinline preload="none" poster="assets/img/poster-fr.jpg" data-video aria-label="Jollof Studio en 21 secondes">
-            <source src="assets/video/jollof-fr.mp4" type="video/mp4">
-          </video>
-        </div>
-        <p class="cap" data-i18n="video.cap">21 secondes, tournées dans l’application réelle.</p>
+        <dl class="facts" aria-label="Chiffres" data-i18n-label="facts.label">
+          <div><dt data-i18n="facts.parts">composants</dt><dd>156</dd></div>
+          <div><dt data-i18n="facts.boards">cartes</dt><dd>10</dd></div>
+          <div><dt data-i18n="facts.labs">TP guidés</dt><dd>82</dd></div>
+          <div><dt data-i18n="facts.kinds">types de projet</dt><dd>7</dd></div>
+          <div><dt data-i18n="facts.langs">langues, français et anglais</dt><dd>2</dd></div>
+          <div><dt data-i18n="facts.price">produits réseau au catalogue</dt><dd>79</dd></div>
+        </dl>
       </div>
     </section>
 
-    <div class="gates" data-gate="and" aria-hidden="true"></div>
+    <!-- Figure 1 : l'application -->
+    <section class="plate">
+      <div class="wrap">
+        <figure class="fig pinned">
+          <div class="shot">
+            <a class="zoom" data-zoom="bench" href="assets/img/bench-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="bench" src="assets/img/bench-fr.webp" width="1800" height="1125" alt="Fenêtre de Jollof Studio : un Arduino Uno, un capteur à ultrasons, un écran LCD et un buzzer câblés en 3D, simulation en cours, mesures à droite et moniteur série en bas." data-i18n-alt="fig1.alt"></a>
+            <span class="pin" style="left:26.5%;top:7.3%" aria-hidden="true">1</span>
+            <span class="pin" style="left:31%;top:40%" aria-hidden="true">2</span>
+            <span class="pin" style="left:90.6%;top:39.5%" aria-hidden="true">3</span>
+            <span class="pin" style="left:17.5%;top:88.4%" aria-hidden="true">4</span>
+            <span class="pin" style="left:86.3%;top:2.6%" aria-hidden="true">5</span>
+          </div>
+          <figcaption>
+            <p class="figNo" data-i18n="fig1.no">Fig. 1. Exemple « Radar de recul », simulation en cours</p>
+            <ol class="legend">
+              <li data-i18n="fig1.l1">Trois vues du même montage : 3D, schéma, code.</li>
+              <li data-i18n="fig1.l2">Uno, capteur HC-SR04, LCD I2C, buzzer : 7 composants, 15 fils.</li>
+              <li data-i18n="fig1.l3">Mesures en direct : distance de l’obstacle, durée de l’écho.</li>
+              <li data-i18n="fig1.l4">Moniteur série du programme qui tourne.</li>
+              <li data-i18n="fig1.l5">« Vérifié » : aucun état du montage ne dépasse une valeur limite.</li>
+            </ol>
+          </figcaption>
+        </figure>
+      </div>
+    </section>
 
-    <!-- Pourquoi -->
-    <section class="why">
-      <div class="wrap two">
-        <div>
-          <p class="kicker" data-i18n="why.k">Pourquoi</p>
-          <h2 data-i18n="why.h">La salle de TP quand il n’y a pas de matériel</h2>
-        </div>
+    <!-- 01 Pourquoi -->
+    <section class="sec">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="why.h">La salle de TP quand le matériel manque</h2>
+        </header>
         <div class="prose">
-          <p data-i18n="why.p1">Beaucoup d’élèves et d’apprentis ingénieurs n’ont ni paillasse, ni cartes, ni vérins. Jollof Studio leur donne tout cela sur un ordinateur, même ancien : on câble, on programme, on simule et on mesure comme en vrai.</p>
-          <p data-i18n="why.p2">Comme le compilateur Rust refuse un programme dangereux, Jollof Studio ne laisse rien partir vers le monde réel tant que le montage ou son programme ont une erreur. La simulation, elle, montre les fautes : c’est en voyant fumer qu’on apprend.</p>
-        </div>
-      </div>
-      <div class="wrap stats">
-        <div><b>154</b><span data-i18n="stats.parts">composants</span></div>
-        <div><b>62</b><span data-i18n="stats.labs">TP guidés et vérifiés</span></div>
-        <div><b>5</b><span data-i18n="stats.kinds">types de projet</span></div>
-        <div><b>10</b><span data-i18n="stats.boards">cartes : Arduino, ESP32, Pico…</span></div>
-        <div><b>FR · EN</b><span data-i18n="stats.langs">interface bilingue</span></div>
-      </div>
-    </section>
-
-    <div class="gates" data-gate="or" aria-hidden="true"></div>
-
-    <!-- Nouveautés -->
-    <section class="news" id="news">
-      <div class="wrap">
-        <p class="kicker center" data-i18n="news.k">Nouveautés · version 0.3</p>
-        <h2 class="center" data-i18n="news.h">Plus juste, plus complet, plus proche du vrai matériel</h2>
-        <ol class="newsList">
-          <li class="newsItem"><b data-i18n="n1.h">L’ESP32 fait tourner le vrai programme</b><p data-i18n="n1.p">Compilé puis exécuté dans QEMU, l’émulateur d’Espressif : écrans, capteurs I2C et SPI, DHT, DS18B20, LoRa, GPS, SD lui répondent. ESP32-S3 et ESP32-C3 aussi.</p></li>
-          <li class="newsItem"><b data-i18n="n2.h">Un vérificateur adossé aux fiches techniques</b><p data-i18n="n2.p">Chaque composant a ses valeurs limites, vérifiées chez le fabricant et citées. Nouveaux contrôles : 5 V sur une broche 3,3 V, résistances de tirage I2C, courant total de l’USB, broches interdites de l’ESP32, transistor mal saturé.</p></li>
-          <li class="newsItem"><b data-i18n="n3.h">Des règles qui font tout</b><p data-i18n="n3.p">Conditions combinées, fronts, durées, hystérésis, minuteries, heure de l’horloge, messages reçus, variables gardées hors tension, séquences d’étapes. Toujours une phrase en français.</p></li>
-          <li class="newsItem"><b data-i18n="n4.h">Un code généré robuste</b><p data-i18n="n4.p">Pas d’allocation dynamique, rien de bloquant, capteur en panne détecté, sorties écrites seulement quand elles changent. Compilé sans un avertissement sur Uno, Nano, Mega, Pico et ESP32.</p></li>
-          <li class="newsItem"><b data-i18n="n5.h">L’interface de VS Code</b><p data-i18n="n5.p">Barre d’activité, onglets Montage 3D, Schéma et Code, code côte à côte, panneau Problèmes, Sortie et moniteur série, palette de commandes, thème clair.</p></li>
-          <li class="newsItem"><b data-i18n="n6.h">Une simulation plus fidèle</b><p data-i18n="n6.p">Moteurs avec force contre-électromotrice, PNP, Zener et MOSFET canal P, condensateurs plus précis, schéma qui tourne et se retourne, Arduino Mega émulé.</p></li>
-        </ol>
-      </div>
-    </section>
-    <div class="gates" data-gate="and" aria-hidden="true"></div>
-    <!-- Fonctions -->
-    <section class="features" id="features">
-      <div class="wrap">
-        <p class="kicker center" data-i18n="feat.k">Fonctions</p>
-        <h2 class="center" data-i18n="feat.h">Tout un laboratoire dans une seule application</h2>
-        <div class="grid">
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="m3 7 9 5 9-5M12 12v10"/></svg>
-            <h3 data-i18n="f1.h">Montage en 3D</h3>
-            <p data-i18n="f1.p">Breadboards, cartes et capteurs en 3D, câblage direct ou automatique, courant animé dans les fils, vue schéma en direct.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"/><path d="m8.5 12 2.5 2.5 4.5-5"/></svg>
-            <h3 data-i18n="f2.h">Vérificateur</h3>
-            <p data-i18n="f2.p">Valeurs nominales vérifiées sur les fiches des fabricants pour chaque composant, normes I2C et règles de déclassement. Chaque état atteignable est essayé ; diagnostics à la manière de rustc, avec code, cause et correction.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 6-6 6 6 6M16 6l6 6-6 6M14 4l-4 16"/></svg>
-            <h3 data-i18n="f3.h">Programmation</h3>
-            <p data-i18n="f3.p">Des règles en français, complètes : et, ou, dès que, depuis 2 s, minuteries, variables, séquences. Ou des blocs, ou du C++ Arduino ; MicroPython sur le Pico ; débogueur pas à pas, traceur et moniteur série.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h5a5 5 0 0 1 0 10H3zM8 13h3M14 9h3M14 17h3M17 9v8M17 13h4"/></svg>
-            <h3 data-i18n="f4.h">Logique numérique</h3>
-            <p data-i18n="f4.p">51 éléments : portes, bascules, compteurs, mémoires, bus, afficheurs. Table de vérité et chronogramme, blocs réutilisables.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="8" width="14" height="8" rx="1"/><path d="M8 12h14M5 8v8"/></svg>
-            <h3 data-i18n="f5.h">Pneumatique et GRAFCET</h3>
-            <p data-i18n="f5.p">Distributeurs, vérins, capteurs, symboles inspirés de l’ISO 1219, GRAFCET qui génère le programme et machine en 3D qui bouge.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6v6H4zM14 14h6v6h-6zM10 7h4a3 3 0 0 1 3 3v4M7 10v4a3 3 0 0 0 3 3h4"/></svg>
-            <h3 data-i18n="f6.h">Électropneumatique</h3>
-            <p data-i18n="f6.p">Une carte commande une machine pneumatique : vue partagée, électrovannes 24 V, capteurs de fin de course, tout simulé ensemble.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-            <h3 data-i18n="f7.h">Supervision MA-ISA</h3>
-            <p data-i18n="f7.p">Un gardien observe le circuit à chaque pas et demande la mise en sécurité quand un vérin se bloque. Trois questions suffisent pour le régler.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2 2 2 0 0 0 2 2h13"/><path d="m9 9 2 2 4-4"/></svg>
-            <h3 data-i18n="f8.h">62 TP guidés</h3>
-            <p data-i18n="f8.p">Électronique, pneumatique et logique, avec étapes vérifiées automatiquement, quiz, mesures et un tutoriel qui part de zéro.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></svg>
-            <h3 data-i18n="f9.h">Vraies cartes</h3>
-            <p data-i18n="f9.p">Téléversement par USB avec arduino-cli, moniteur série, Firmata, guide de montage en PDF, export KiCad. Bloqué tant qu’une erreur reste.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12h3l2-6 4 12 3-9 2 3h6"/></svg>
-            <h3 data-i18n="f10.h">Lab analogique</h3>
-            <p data-i18n="f10.p">NE555, amplis, MOSFET, bobines, générateur et oscilloscope ; formes d’onde rapides calculées par ngspice.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/></svg>
-            <h3 data-i18n="f11.h">Assistants IA</h3>
-            <p data-i18n="f11.p">Claude, Cursor, VS Code… pilotent l’application par le protocole MCP : poser, câbler, vérifier, simuler. Désactivé par défaut, local seulement.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
-            <h3 data-i18n="f12.h">Vieux ordinateurs</h3>
-            <p data-i18n="f12.p">Mode léger automatique, rendu à la demande, démarrage rapide. Windows, macOS et Linux.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M8 4v16M8 9h13"/></svg>
-            <h3 data-i18n="f13.h">Interface familière</h3>
-            <p data-i18n="f13.p">Barre d’activité, onglets, panneau Problèmes et Sortie, palette de commandes (Ctrl+Maj+P) : la disposition de VS Code. Thème clair ou sombre.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h3l2 4 2-4h4l2 4 2-4h3M3 17h18"/><path d="M7 14v6M12 14v6M17 14v6"/></svg>
-            <h3 data-i18n="f14.h">Analyseur de bus</h3>
-            <p data-i18n="f14.p">Chaque échange I2C, SPI et série décodé octet par octet, adresses sans réponse en rouge, filtres et export CSV.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h10"/><circle cx="18" cy="17" r="2"/></svg>
-            <h3 data-i18n="f15.h">154 composants</h3>
-            <p data-i18n="f15.p">Capteurs, écrans TFT et OLED, LoRa, GPS, RFID, pilotes pas à pas, registres à décalage, horloges, régulateurs… Valeurs des résistances et condensateurs au choix.</p>
-          </article>
-          <article class="card">
-            <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="1.5"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/><path d="m10 12 1.5 1.5L14 10.5"/></svg>
-            <h3 data-i18n="f16.h">Vrai programme</h3>
-            <p data-i18n="f16.p">Le code est compilé par arduino-cli et tourne sur un processeur émulé : AVR, RP2040, ESP32, ESP32-S3 et ESP32-C3. Les modules lui répondent comme en vrai.</p>
-          </article>
+          <p data-i18n="why.p1">Beaucoup d’élèves et d’apprentis ingénieurs n’ont ni paillasse, ni cartes, ni vérins, ni baie de brassage. Jollof Studio met tout cela sur un ordinateur, même ancien : on câble, on programme, on simule, on mesure.</p>
+          <p data-i18n="why.p2">L’application ne laisse rien partir vers le réel tant qu’une erreur reste. Le téléversement est bloqué si le montage peut griller. La simulation, elle, montre les fautes : c’est en voyant fumer une LED à l’écran qu’on comprend la résistance.</p>
+          <p data-i18n="why.p3">Elle est écrite à Dakar par Mamadou Sarr (Xelaktech), et publiée sous licence libre.</p>
         </div>
       </div>
     </section>
 
-    <div class="gates" data-gate="or" aria-hidden="true"></div>
-    <!-- Cartes -->
-    <section class="boards" id="boards">
+    <!-- 02 Nouveautés -->
+    <section class="sec" id="news">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="news.h">Nouveautés de la version 0.4</h2>
+          <p class="sub" data-i18n="news.sub">Un module entier : la conception de réseaux de bâtiment. Et du travail de fond.</p>
+        </header>
+        <dl class="log">
+          <div><dt data-i18n="n1.h">Plans à l’échelle</dt><dd data-i18n="n1.p">Bâtiments, étages, murs, pièces, en mètres. Un plan d’architecte DXF ou DWG s’importe comme fond vectoriel, calque par calque.</dd></div>
+          <div><dt data-i18n="n2.h">Longueurs réelles</dt><dd data-i18n="n2.p">Chemins de câbles, conduits, colonnes montantes. La longueur d’un lien suit le tracé : descentes, cheminement, mou de réserve.</dd></div>
+          <div><dt data-i18n="n3.h">Baies et fibre</dt><dd data-i18n="n3.p">Élévation des baies 19 pouces, face avant et arrière : U occupés, poids, puissance, chaleur. Bilan optique des liaisons fibre.</dd></div>
+          <div><dt data-i18n="n4.h">VLAN, Spanning Tree, OSPF</dt><dd data-i18n="n4.p">Simulés : VLAN 802.1Q, agrégats, routage entre VLAN, DHCP par relais, listes d’accès. Ping et traceroute les respectent.</dd></div>
+          <div><dt data-i18n="n5.h">Couverture Wi-Fi</dt><dd data-i18n="n5.p">Carte calculée à partir des murs et de leur matériau, plan de canaux automatique. C’est un modèle simplifié, pas un relevé sur site.</dd></div>
+          <div><dt data-i18n="n6.h">Testeur de certification</dt><dd data-i18n="n6.p">Simulé : carte de câblage, longueur, NEXT, pertes en retour, comparés aux limites Cat 5e, 6 et 6A. Les résultats d’un vrai testeur s’importent à côté, sans se mélanger.</dd></div>
+          <div><dt data-i18n="n7.h">Livrables</dt><dd data-i18n="n7.p">Étiquettes, tableaux des câbles et du brassage, nomenclature, plan d’adressage, planches PDF. Exports DXF, DWG, IFC, Visio, draw.io, Excel ; synchronisation NetBox.</dd></div>
+          <div><dt data-i18n="n8.h">Catalogue fabricants</dt><dd data-i18n="n8.p">79 produits de 8 fabricants, saisis d’après leurs fiches publiques : ports, PoE, encombrement en baie.</dd></div>
+          <div><dt data-i18n="n9.h">Objets connectés</dt><dd data-i18n="n9.p">Un module W5500 ou une carte ESP32 en Wi-Fi rejoint le réseau du plan. MQTT et Modbus TCP entre le montage et les équipements.</dd></div>
+          <div><dt data-i18n="n10.h">Fond</dt><dd data-i18n="n10.p">Passe d’accessibilité (contrastes, clavier, lecteurs d’écran). Démarrage allégé : le lot principal passe de 3,43 à 2,90 Mo. Aide en ligne avec recherche.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <!-- 03 Types de projet -->
+    <section class="sec" id="features">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="kinds.h">Sept types de projet</h2>
+          <p class="sub" data-i18n="kinds.sub">Le type choisi décide des plans de travail affichés. Rien d’autre ne s’installe.</p>
+        </header>
+        <div class="tableWrap" tabindex="0" role="region" aria-label="Types de projet" data-i18n-label="kinds.h">
+          <table class="spec kinds">
+            <thead><tr><th scope="col" data-i18n="kinds.c1">Type</th><th scope="col" data-i18n="kinds.c2">Ce qu’on y fait</th><th scope="col" data-i18n="kinds.c3">Plans de travail</th></tr></thead>
+            <tbody>
+              <tr><th scope="row" data-i18n="k1.n">Électronique</th><td data-i18n="k1.p">Câbler une carte et ses modules, la programmer par règles, par blocs ou en C++, simuler, téléverser.</td><td data-i18n="k1.w">Montage 3D, Schéma, Code</td></tr>
+              <tr><th scope="row" data-i18n="k2.n">Analogique</th><td data-i18n="k2.p">NE555, amplis, MOSFET, bobines ; générateur et oscilloscope ; formes d’onde calculées par ngspice.</td><td data-i18n="k2.w">Montage 3D, Schéma</td></tr>
+              <tr><th scope="row" data-i18n="k3.n">Pneumatique</th><td data-i18n="k3.p">Distributeurs, vérins, capteurs ; GRAFCET qui produit le programme ; automate Ladder ; machine animée en 3D.</td><td data-i18n="k3.w">Pneumatique, GRAFCET</td></tr>
+              <tr><th scope="row" data-i18n="k4.n">Électropneumatique</th><td data-i18n="k4.p">Une carte commande les électrovannes 24 V et lit les capteurs de fin de course. Les deux simulés ensemble.</td><td data-i18n="k4.w">Montage 3D, Pneumatique, Code</td></tr>
+              <tr><th scope="row" data-i18n="k5.n">Logique</th><td data-i18n="k5.p">Portes, bascules, compteurs, mémoires, bus ; table de vérité, chronogramme, Karnaugh.</td><td data-i18n="k5.w">Logique</td></tr>
+              <tr><th scope="row"><span data-i18n="k6.n">Réseau</span> <em class="new" data-i18n="new">nouveau</em></th><td data-i18n="k6.p">Câbler et concevoir un réseau de bâtiment : plans, baies, fibre, VLAN, Wi-Fi, tests, livrables.</td><td data-i18n="k6.w">Vue logique, Plans, Baies, Conception</td></tr>
+              <tr><th scope="row"><span data-i18n="k7.n">Objets connectés</span> <em class="new" data-i18n="new">nouveau</em></th><td data-i18n="k7.p">Le montage électronique et le réseau dans le même projet : serveur web, MQTT, Modbus TCP.</td><td data-i18n="k7.w">Montage 3D, Code, Réseau</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- 04 Électronique et vérificateur -->
+    <section class="sec">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="elec.h">Électronique : le vrai programme, sur un processeur émulé</h2>
+        </header>
+        <div class="prose">
+          <p data-i18n="elec.p1">Posez une carte, un capteur, un écran. Reliez les broches à la main ou laissez le câblage automatique choisir. Le code est compilé par arduino-cli puis exécuté instruction par instruction sur un processeur émulé : AVR, RP2040, ESP32. Les modules lui répondent comme les vrais.</p>
+          <p data-i18n="elec.p2">Trois façons de programmer : des règles en français (« quand… alors… »), des blocs, ou du C++ Arduino. MicroPython sur le Pico. Débogueur pas à pas, traceur, analyseur de bus I2C, SPI et série.</p>
+        </div>
+      </div>
+      <div class="wrap duo">
+        <figure class="fig wide">
+          <div class="shot"><a class="zoom" data-zoom="sch" href="assets/img/sch-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="sch" src="assets/img/sch-fr.webp" width="1800" height="1033" loading="lazy" alt="Vue Schéma du même montage : symboles, tensions affichées sur les nœuds, légende des couleurs de tension, moniteur série." data-i18n-alt="fig2.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig2.no">Fig. 2. Le même montage en schéma</p><p data-i18n="fig2.cap">Le schéma se dessine tout seul à partir du câblage. Pendant la simulation, chaque nœud affiche sa tension et le courant circule.</p></figcaption>
+        </figure>
+        <figure class="fig narrow">
+          <div class="shot"><a class="zoom" data-zoom="check" href="assets/img/check-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="check" src="assets/img/check-fr.webp" width="1800" height="1566" loading="lazy" alt="Rapport du vérificateur sur l’exemple « À corriger » : cinq erreurs numérotées, chacune avec sa cause, une note et une correction proposée." data-i18n-alt="fig3.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig3.no">Fig. 3. Le vérificateur, exemple « À corriger »</p><p data-i18n="fig3.cap">5 erreurs et 1 avertissement, trouvés en quelques millisecondes. Chacune a un code, une cause, une correction. Tant qu’il en reste une, rien ne part vers la carte.</p></figcaption>
+        </figure>
+      </div>
+      <div class="wrap grid">
+        <div><h3 data-i18n="chk.h">Ce que le vérificateur fait</h3></div>
+        <div class="prose">
+          <p data-i18n="chk.p">Il essaie chaque état atteignable : boutons appuyés ou relâchés, relais collés, potentiomètres aux butées, chaque sortie à LOW et à HIGH. Dans chaque état, le circuit est calculé et chaque composant comparé aux valeurs limites de sa fiche technique.</p>
+          <pre class="diag" aria-label="Exemple de diagnostic" data-i18n-label="chk.diag"><code><b>erreur[J0301]</b>: <span data-i18n="chk.d1">LED1 traversée par 75 mA (30 mA au plus)</span>
+  --&gt; <span data-i18n="chk.d2">quand UNO D7 = HIGH</span>
+   = <span data-i18n="chk.d3">aide : ajoutez une résistance de 220 Ω</span></code></pre>
+          <p class="fine"><span data-i18n="chk.lim">La garantie vaut dans le modèle : régime continu, valeurs nominales. Les pointes de courant au démarrage d’un moteur ne sont pas comptées.</span> <a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/PROVEN.md" data-i18n="chk.more">Ce qui est prouvé, exactement</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- 05 Pneumatique -->
+    <section class="sec">
+      <div class="wrap grid flip">
+        <header>
+          <h2 data-i18n="pneu.h">Pneumatique, GRAFCET, automate</h2>
+          <p class="prosep" data-i18n="pneu.p1">Distributeurs, vérins, régleurs de débit, capteurs, avec des symboles inspirés de l’ISO 1219. Écrivez le GRAFCET : l’application en tire le programme de la carte ou le Ladder d’un automate virtuel.</p>
+          <p class="prosep" data-i18n="pneu.p2">Les TP viennent du transport sénégalais : pantographe du TER, porte de bus du BRT, barrière du parking-relais. La machine en 3D suit le vérin, étape par étape.</p>
+        </header>
+        <figure class="fig">
+          <div class="shot"><a class="zoom" data-zoom="pneu" href="assets/img/pneu-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="pneu" src="assets/img/pneu-fr.webp" width="1800" height="1349" loading="lazy" alt="Plan pneumatique : un vérin double effet 1A avec deux capteurs B1 et B2, un régleur de débit à 60 %, un distributeur 5/2 à électrovanne Y1, une source à 6 bar." data-i18n-alt="fig4.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig4.no">Fig. 4. Exemple « Vérin électropneumatique »</p><p data-i18n="fig4.cap">Vérin 1A, distributeur 5/2, 6 bar. La bobine Y1 et les capteurs B1, B2 sont reliés à la carte du montage : la liste à droite le confirme.</p></figcaption>
+        </figure>
+      </div>
+    </section>
+
+    <!-- 06 Réseau -->
+    <section class="sec net" id="network">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="net.h">Réseau : du plan d’étage au cahier de recette</h2>
+        </header>
+        <div class="prose">
+          <p data-i18n="net.p1">Un projet réseau a un seul modèle et quatre vues : logique, plans, baies, conception. Une prise posée sur le plan est la même dans le tableau des câbles, dans la baie et dans la nomenclature.</p>
+          <p data-i18n="net.p2">Les figures ci-dessous montrent l’exemple livré : un collège de 48 × 17 m sur deux niveaux, 26 pièces, 95 prises, 170 liens permanents, une rocade fibre OM4, 17 points d’accès.</p>
+        </div>
+      </div>
+
       <div class="wrap">
-        <p class="kicker center" data-i18n="boards.k">Cartes</p>
-        <h2 class="center" data-i18n="boards.h">10 cartes, et leur vrai programme</h2>
-        <p class="center sub" data-i18n="boards.p">Choisissez une carte dans la bibliothèque : l’application connaît ses broches, ses tensions et ses limites. Sur huit d’entre elles, le programme compilé tourne sur un processeur émulé, instruction par instruction.</p>
-        <div class="legend">
-          <span><i class="eng real"></i><b data-i18n="boards.lr">Vrai programme</b> <span data-i18n="boards.lr2">émulé dans l’application</span></span>
-          <span><i class="eng qemu"></i><b data-i18n="boards.lq">Vrai programme · QEMU</b> <span data-i18n="boards.lq2">émulateur téléchargé à la première utilisation (environ 15 Mo)</span></span>
-          <span><i class="eng sim"></i><b data-i18n="boards.ls">Simulateur intégré</b> <span data-i18n="boards.ls2">le programme est interprété, Wi-Fi compris</span></span>
+        <figure class="fig pinned">
+          <div class="shot">
+            <a class="zoom" data-zoom="plan" href="assets/img/plan-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="plan" src="assets/img/plan-fr.webp" width="1800" height="990" loading="lazy" alt="Vue Plans : le rez-de-chaussée du collège à l’échelle, salles de classe, couloir, local technique, prises et points d’accès, cheminement des câbles, panneau de l’étage à droite." data-i18n-alt="fig5.alt"></a>
+            <span class="pin" style="left:29.5%;top:8.5%" aria-hidden="true">1</span>
+            <span class="pin" style="left:61.6%;top:35.5%" aria-hidden="true">2</span>
+            <span class="pin" style="left:40.2%;top:55.4%" aria-hidden="true">3</span>
+            <span class="pin" style="left:8.3%;top:37%" aria-hidden="true">4</span>
+            <span class="pin" style="left:75%;top:94.8%" aria-hidden="true">5</span>
+          </div>
+          <figcaption>
+            <p class="figNo" data-i18n="fig5.no">Fig. 5. Rez-de-chaussée du collège, échelle 1:196</p>
+            <ol class="legend">
+              <li data-i18n="fig5.l1">Bâtiment et étage : chaque niveau a son altitude et sa hauteur.</li>
+              <li data-i18n="fig5.l2">Local technique : la baie y est à sa place.</li>
+              <li data-i18n="fig5.l3">Chemin de câbles du couloir. Les longueurs en découlent.</li>
+              <li data-i18n="fig5.l4">Prises étiquetées (0A-A02…), dans le style TIA-606.</li>
+              <li data-i18n="fig5.l5">Import d’un plan DXF ou DWG comme fond.</li>
+            </ol>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="wrap trio">
+        <figure class="fig">
+          <div class="shot"><a class="zoom" data-zoom="rack" href="assets/img/rack-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="rack" src="assets/img/rack-fr.webp" width="960" height="1444" loading="lazy" alt="Vue Baies : élévation de la face avant d’une baie 42U, avec panneaux de brassage, switchs, cœur de réseau, panneau fibre, serveur et routeur ; en bas, 42 U sur 42, 886 W, 3 023 BTU/h, 70,6 kg sur 800." data-i18n-alt="fig6.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig6.no">Fig. 6. Baie du rez-de-chaussée, face avant</p><p data-i18n="fig6.cap">42U, face avant : panneaux, switchs, cœur, fibre, serveur. 886 W, 3 023 BTU/h, 70,6 kg sur 800 admis.</p></figcaption>
+        </figure>
+        <div class="stack">
+          <figure class="fig">
+            <div class="shot"><a class="zoom" data-zoom="wifi" href="assets/img/wifi-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="wifi" src="assets/img/wifi-fr.webp" width="1800" height="862" loading="lazy" alt="Calque Wi-Fi : carte de puissance du signal sur l’étage, en dégradé du vert au bleu, avec l’échelle en dBm et la couverture par pièce." data-i18n-alt="fig7.alt"></a></div>
+            <figcaption><p class="figNo" data-i18n="fig7.no">Fig. 7. Couverture Wi-Fi calculée</p><p data-i18n="fig7.cap">Affaiblissement UIT-R P.1238, murs selon leur matériau. Objectif −67 dBm. Un calcul, pas une mesure.</p></figcaption>
+          </figure>
+          <figure class="fig">
+            <div class="shot"><a class="zoom" data-zoom="dim" href="assets/img/dim-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="dim" src="assets/img/dim-fr.webp" width="1800" height="1128" loading="lazy" alt="Vue Conception, onglet Dimensionnement : 75 postes de travail, 170 prises, 5 switchs d’accès, 9 panneaux, 6 584 m de câble cuivre en 22 tourets, tableau des locaux techniques." data-i18n-alt="fig8.alt"></a></div>
+            <figcaption><p class="figNo" data-i18n="fig8.no">Fig. 8. Dimensionnement</p><p data-i18n="fig8.cap">À partir des surfaces : 75 postes, 170 prises, 9 panneaux de 24 ports, 6 584 m de cuivre, soit 22 tourets de 305 m. Les règles sont réglables.</p></figcaption>
+          </figure>
         </div>
-        <div class="boardGrid">
-          <article class="board" data-engine="real">
-            <div class="bHead"><h3>Arduino Uno R3</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.uno.chip">ATmega328P · AVR 8 bits · 16 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.uno.mem">32 Ko flash · 2 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.uno.io">14 numériques (6 PWM) · 6 analogiques</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.uno.v">5 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.uno.r">—</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.uno.how">Émulateur AVR (avr8js)</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="real">
-            <div class="bHead"><h3>Arduino Nano</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.nano.chip">ATmega328P · AVR 8 bits · 16 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.nano.mem">32 Ko flash · 2 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.nano.io">14 numériques (6 PWM) · 8 analogiques</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.nano.v">5 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.nano.r">—</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.nano.how">Émulateur AVR (avr8js)</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="real">
-            <div class="bHead"><h3>Arduino Mega 2560</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.mega.chip">ATmega2560 · AVR 8 bits · 16 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.mega.mem">256 Ko flash · 8 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.mega.io">54 numériques (15 PWM) · 16 analogiques · 4 ports série</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.mega.v">5 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.mega.r">—</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.mega.how">Émulateur AVR (avr8js)</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="real">
-            <div class="bHead"><h3>Raspberry Pi Pico</h3><span class="eng real" data-i18n="boards.eng.real">Vrai programme</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.pico.chip">RP2040 · 2 × Cortex-M0+ · 133 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.pico.mem">2 Mo flash · 264 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.pico.io">26 GPIO · 3 analogiques 12 bits</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.pico.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.pico.r">—</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.pico.how">Émulateur RP2040 (rp2040js) · C++ ou MicroPython</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="qemu">
-            <div class="bHead"><h3>ESP32 DevKit V1</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32.chip">ESP32 · 2 × Xtensa LX6 · 240 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32.mem">4 Mo flash · 520 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32.io">30 broches · ADC 12 bits</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32.r">Wi-Fi · Bluetooth</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32.how">QEMU d’Espressif</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="qemu">
-            <div class="bHead"><h3 data-i18n="b.esp3238.name">ESP32 DevKitC (38 broches)</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp3238.chip">ESP32 · 2 × Xtensa LX6 · 240 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp3238.mem">4 Mo flash · 520 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp3238.io">38 broches · ADC 12 bits</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp3238.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp3238.r">Wi-Fi · Bluetooth</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp3238.how">QEMU d’Espressif</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="qemu">
-            <div class="bHead"><h3>ESP32-S3 DevKitC-1</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32s3.chip">ESP32-S3 · 2 × Xtensa LX7 · 240 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32s3.mem">8 Mo flash · 512 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32s3.io">44 broches · USB natif</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32s3.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32s3.r">Wi-Fi · Bluetooth LE</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32s3.how">QEMU d’Espressif</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="qemu">
-            <div class="bHead"><h3>ESP32-C3 SuperMini</h3><span class="eng qemu" data-i18n="boards.eng.qemu">Vrai programme · QEMU</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.esp32c3.chip">ESP32-C3 · RISC-V · 160 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.esp32c3.mem">4 Mo flash · 400 Ko RAM</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.esp32c3.io">16 broches · USB natif</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.esp32c3.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.esp32c3.r">Wi-Fi · Bluetooth LE</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.esp32c3.how">QEMU d’Espressif (RISC-V)</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="sim">
-            <div class="bHead"><h3>ESP8266 NodeMCU</h3><span class="eng sim" data-i18n="boards.eng.sim">Simulateur intégré</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.nodemcu.chip">ESP8266 · Tensilica L106 · 80 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.nodemcu.mem">4 Mo flash</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.nodemcu.io">D0 à D8 · 1 analogique</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.nodemcu.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.nodemcu.r">Wi-Fi</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.nodemcu.how">Wi-Fi simulé</dd></div>
-            </dl>
-          </article>
-          <article class="board" data-engine="sim">
-            <div class="bHead"><h3>Wemos D1 mini</h3><span class="eng sim" data-i18n="boards.eng.sim">Simulateur intégré</span></div>
-            <dl>
-              <div><dt data-i18n="boards.chip">Processeur</dt><dd data-i18n="b.d1mini.chip">ESP8266 · Tensilica L106 · 80 MHz</dd></div>
-              <div><dt data-i18n="boards.mem">Mémoire</dt><dd data-i18n="b.d1mini.mem">4 Mo flash</dd></div>
-              <div><dt data-i18n="boards.io">Broches</dt><dd data-i18n="b.d1mini.io">D0 à D8 · 1 analogique</dd></div>
-              <div><dt data-i18n="boards.lvl">Logique</dt><dd data-i18n="b.d1mini.v">3,3 V</dd></div>
-              <div><dt data-i18n="boards.radio">Radio</dt><dd data-i18n="b.d1mini.r">Wi-Fi</dd></div>
-              <div><dt data-i18n="boards.how">Tourne sur</dt><dd data-i18n="b.d1mini.how">Wi-Fi simulé</dd></div>
-            </dl>
-          </article>
+      </div>
+
+      <div class="wrap">
+        <figure class="fig figSide">
+          <div class="shot"><a class="zoom" data-zoom="cert" href="assets/img/cert-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="cert" src="assets/img/cert-fr.webp" width="1800" height="1186" loading="lazy" alt="Testeur de certification simulé : lien 0A-A01, verdict PASS, 31,1 m, marge de 1,2 dB, courbes d’affaiblissement en fonction de la fréquence. La fenêtre indique « valeurs simulées »." data-i18n-alt="fig9.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig9.no">Fig. 9. Testeur de certification (simulé)</p><p data-i18n="fig9.cap">Lien 0A-A01 : 31,1 m, limite Cat 6A, marge 1,2 dB. La fenêtre l’écrit elle-même : valeurs simulées par un modèle, pas une mesure.</p></figcaption>
+        </figure>
+      </div>
+
+      <div class="wrap">
+        <figure class="fig figSide">
+          <div class="shot"><a class="zoom" data-zoom="cables" href="assets/img/cables-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img data-img="cables" src="assets/img/cables-fr.webp" width="1800" height="1440" loading="lazy" alt="Vue Conception, onglet Câbles : 376 câbles dont 170 liens permanents, 203 cordons et 3 rocades ; tableau avec étiquette, genre, extrémités, catégorie, longueur et cheminement de chaque câble." data-i18n-alt="fig10.alt"></a></div>
+          <figcaption><p class="figNo" data-i18n="fig10.no">Fig. 10. Tableau des câbles</p><p data-i18n="fig10.cap">376 câbles : 170 liens permanents (6 584 m), 203 cordons, 3 rocades. Chaque ligne a son étiquette, ses deux extrémités, sa longueur au tracé et son cheminement. Export CSV ou Excel.</p></figcaption>
+        </figure>
+      </div>
+
+      <div class="wrap grid">
+        <div><h3 data-i18n="fmt.h">Formats d’échange</h3><p class="sub" data-i18n="fmt.sub">Pour travailler avec l’architecte, le bureau d’études et l’exploitant.</p></div>
+        <div class="tableWrap" tabindex="0" role="region" aria-label="Formats d’échange" data-i18n-label="fmt.h">
+          <table class="spec fmt">
+            <thead><tr><th scope="col" data-i18n="fmt.c1">Format</th><th scope="col" data-i18n="fmt.c2">Import</th><th scope="col" data-i18n="fmt.c3">Export</th><th scope="col" data-i18n="fmt.c4">À savoir</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">DXF</th><td data-i18n="yes">oui</td><td data-i18n="yes">oui</td><td data-i18n="fmt.dxf">ASCII ou binaire, R12 à 2018. Calques AIA/NCS ou ISO 13567 à l’export.</td></tr>
+              <tr><th scope="row">DWG</th><td data-i18n="yes">oui</td><td data-i18n="yes">oui</td><td data-i18n="fmt.dwg">Par un convertisseur installé sur l’ordinateur (ODA File Converter ou dwg2dxf). Application de bureau seulement.</td></tr>
+              <tr><th scope="row">IFC</th><td data-i18n="fmt.ifci">IFC4, IFC2X3</td><td>IFC4</td><td data-i18n="fmt.ifc">Étages, pièces, murs, équipements. Géométrie simplifiée.</td></tr>
+              <tr><th scope="row">Visio (.vsdx)</th><td data-i18n="yes">oui</td><td data-i18n="yes">oui</td><td data-i18n="fmt.vsdx">Import dans le schéma logique. Export d’une page par vue.</td></tr>
+              <tr><th scope="row">draw.io</th><td data-i18n="no">non</td><td data-i18n="yes">oui</td><td data-i18n="fmt.drawio">Schéma logique, baies, plans d’étage.</td></tr>
+              <tr><th scope="row">Excel (.xlsx)</th><td data-i18n="yes">oui</td><td data-i18n="yes">oui</td><td data-i18n="fmt.xlsx">Un onglet par tableau. Au retour, les différences s’acceptent ligne par ligne.</td></tr>
+              <tr><th scope="row">NetBox 4</th><td data-i18n="yes">oui</td><td data-i18n="yes">oui</td><td data-i18n="fmt.netbox">Comparaison en lecture seule d’abord. Application de bureau seulement.</td></tr>
+              <tr><th scope="row" data-i18n="fmt.scan.n">Plan scanné (PNG, JPG)</th><td data-i18n="yes">oui</td><td data-i18n="no">non</td><td data-i18n="fmt.scan">Étalonné par deux points de distance connue.</td></tr>
+              <tr><th scope="row" data-i18n="fmt.tester.n">Résultats de testeur</th><td data-i18n="yes">oui</td><td data-i18n="no">non</td><td data-i18n="fmt.tester">Exports CSV, texte ou XML d’un logiciel de gestion de tests. Rangés à part des valeurs simulées.</td></tr>
+              <tr><th scope="row">PDF, SVG, CSV</th><td data-i18n="no">non</td><td data-i18n="yes">oui</td><td data-i18n="fmt.pdf">Planches avec cartouche, élévations, tableaux, rapport.</td></tr>
+            </tbody>
+          </table>
         </div>
-        <ul class="ticks boardNotes">
-          <li data-i18n="boards.n1">Écrans OLED, LCD et TFT, capteurs I2C et SPI, DHT, DS18B20, ultrasons, LoRa, GPS, carte SD, registres à décalage, pilotes pas à pas : ils répondent au vrai programme comme le ferait le module réel.</li>
-          <li data-i18n="boards.n2">Wi-Fi et Bluetooth : l’émulateur n’a pas de radio. Un programme qui s’en sert tourne sur le simulateur intégré, avec un réseau simulé.</li>
-          <li data-i18n="boards.n3">Le vérificateur connaît chaque carte : courant par broche et par port, tension admise, broches réservées de l’ESP32, consommation totale sur l’USB.</li>
+      </div>
+
+      <div class="wrap grid">
+        <div><h3 data-i18n="sim.h">Ce qui est simulé</h3></div>
+        <ul class="plain">
+          <li data-i18n="sim.l1">La certification des liens et la couverture Wi-Fi sont des calculs sur le plan. Elles préparent une recette, elles ne la remplacent pas.</li>
+          <li data-i18n="sim.l2">Les normes TIA, ISO/IEC, EN et IEEE sont payantes. Les limites viennent de documents publics lus et cités, règle par règle, dans l’application.</li>
+          <li data-i18n="sim.l3">Spanning Tree : une seule instance pour tous les VLAN.</li>
         </ul>
       </div>
     </section>
-    <div class="gates" data-gate="xor" aria-hidden="true"></div>
 
-    <!-- Démonstrations -->
-    <section class="show">
+    <!-- 07 Cartes -->
+    <section class="sec" id="boards">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="boards.h">10 cartes</h2>
+          <p class="sub" data-i18n="boards.p">L’application connaît les broches, les tensions et les limites de chacune. Sur huit d’entre elles, le programme compilé tourne sur un processeur émulé.</p>
+        </header>
+        <ul class="plain">
+          <li data-i18n="boards.n1">Écrans OLED, LCD et TFT, capteurs I2C et SPI, DHT, DS18B20, ultrasons, LoRa, GPS, carte SD, registres à décalage, pilotes pas à pas : ils répondent au vrai programme comme le ferait le module réel.</li>
+          <li data-i18n="boards.n2">Wi-Fi et Bluetooth : l’émulateur n’a pas de radio. Un programme qui s’en sert tourne sur le simulateur intégré, avec un réseau simulé.</li>
+          <li data-i18n="boards.n3">L’émulateur ESP32 (QEMU, environ 15 Mo) est téléchargé à la première utilisation.</li>
+        </ul>
+      </div>
       <div class="wrap">
-        <div class="row">
-          <div class="txt">
-            <p class="kicker" data-i18n="s1.k">Électronique</p>
-            <h2 data-i18n="s1.h">Câblez et programmez en 3D</h2>
-            <p data-i18n="s1.p">Posez un ESP32, un capteur et un écran, reliez les broches : l’application choisit la bonne broche, écrit le code et fait tourner le programme en temps virtuel. Les mesures s’affichent en direct.</p>
-            <ul class="ticks"><li data-i18n="s1.l1">10 cartes : Arduino Uno, Nano, Mega, ESP32, ESP32-S3, ESP32-C3, ESP8266, Pico</li><li data-i18n="s1.l2">Le vrai programme compilé tourne sur un processeur émulé</li><li data-i18n="s1.l3">Export vidéo pédagogique image par image</li></ul>
-          </div>
-          <figure class="shot"><img data-img="bench" src="assets/img/bench-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
-        </div>
-        <div class="row rev">
-          <div class="txt">
-            <p class="kicker" data-i18n="s2.k">Vérificateur</p>
-            <h2 data-i18n="s2.h">Il prouve que rien ne grille</h2>
-            <p data-i18n="s2.p">Boutons appuyés ou relâchés, relais collés, potentiomètres aux butées, chaque sortie à LOW et à HIGH : dans chaque état, le circuit est calculé et chaque composant comparé à ses valeurs nominales.</p>
-            <pre class="diag"><code><b class="e">erreur[J0301]</b>: <span data-i18n="s2.d1">LED1 traversée par 75 mA (30 mA au plus)</span>
-  <i>--&gt;</i> <span data-i18n="s2.d2">quand UNO D7 = HIGH</span>
-  <i>=</i> <span data-i18n="s2.d3">aide : ajoutez une résistance de 220 Ω</span></code></pre>
-          </div>
-          <figure class="shot"><img data-img="check" src="assets/img/check-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
-        </div>
-        <div class="row">
-          <div class="txt">
-            <p class="kicker" data-i18n="s3.k">Électropneumatique</p>
-            <h2 data-i18n="s3.h">Électronique et pneumatique, ensemble</h2>
-            <p data-i18n="s3.p">Le montage à gauche, le schéma pneumatique à droite : la carte commande l’électrovanne, le vérin sort, son capteur répond au programme. Le projet dit lui-même quels plans de travail il montre.</p>
-          </div>
-          <figure class="shot"><img data-img="epneu" src="assets/img/epneu-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
-        </div>
-        <div class="row rev">
-          <div class="txt">
-            <p class="kicker" data-i18n="s4.k">GRAFCET et 3D</p>
-            <h2 data-i18n="s4.h">Une machine qui bouge vraiment</h2>
-            <p data-i18n="s4.p">Écrivez le GRAFCET, l’application en tire le programme. Porte de TER, pantographe, porte de bus : la machine en 3D suit le vérin, étape par étape.</p>
-          </div>
-          <figure class="shot"><img data-img="door" src="assets/img/door-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
-        </div>
-        <div class="row">
-          <div class="txt">
-            <p class="kicker" data-i18n="s5.k">Logique</p>
-            <h2 data-i18n="s5.h">Des portes jusqu’à la mémoire</h2>
-            <p data-i18n="s5.p">Un plan de travail 2D pour les circuits logiques : horloges, compteurs, ROM, bus et afficheurs, avec des TP qui vérifient la table de vérité, la chronologie ou l’équation.</p>
-          </div>
-          <figure class="shot"><img data-img="logic" src="assets/img/logic-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
-        </div>
-        <div class="row rev">
-          <div class="txt">
-            <p class="kicker" data-i18n="s6.k">Supervision MA-ISA</p>
-            <h2 data-i18n="s6.h">Un gardien qui met en sécurité</h2>
-            <p data-i18n="s6.p">Le moniteur suit le circuit pendant la simulation, sans rien y changer. Un vérin bloqué ? Il demande l’état sûr et guide la reprise en trois étapes. Le calcul vient de la caisse Rust publiée maisa-core.</p>
-            <ul class="ticks"><li data-i18n="s6.l1">Quoi surveiller, quel problème, vérifier : trois questions</li><li data-i18n="s6.l2">Démonstration prête à lancer</li><li data-i18n="s6.l3">Pannes simulées pour s’entraîner</li></ul>
-          </div>
-          <figure class="shot"><img data-img="superv" src="assets/img/superv-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
+        <div class="tableWrap" tabindex="0" role="region" aria-label="Cartes" data-i18n-label="nav.boards">
+          <table class="spec boards">
+            <thead><tr><th scope="col" data-i18n="boards.name">Carte</th><th scope="col" data-i18n="boards.chip">Processeur</th><th scope="col" data-i18n="boards.mem">Mémoire</th><th scope="col" data-i18n="boards.io">Broches</th><th scope="col" data-i18n="boards.lvl">Logique</th><th scope="col" data-i18n="boards.radio">Radio</th><th scope="col" data-i18n="boards.how">Le programme tourne sur</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Arduino Uno R3</th><td data-i18n="b.uno.chip">ATmega328P, AVR 8 bits, 16 MHz</td><td data-i18n="b.uno.mem">32 Ko flash, 2 Ko RAM</td><td data-i18n="b.uno.io">14 numériques (6 PWM), 6 analogiques</td><td data-i18n="v5">5 V</td><td data-i18n="no">non</td><td data-i18n="how.avr">Émulateur AVR (avr8js)</td></tr>
+              <tr><th scope="row">Arduino Nano</th><td data-i18n="b.uno.chip">ATmega328P, AVR 8 bits, 16 MHz</td><td data-i18n="b.uno.mem">32 Ko flash, 2 Ko RAM</td><td data-i18n="b.nano.io">14 numériques (6 PWM), 8 analogiques</td><td data-i18n="v5">5 V</td><td data-i18n="no">non</td><td data-i18n="how.avr">Émulateur AVR (avr8js)</td></tr>
+              <tr><th scope="row">Arduino Mega 2560</th><td data-i18n="b.mega.chip">ATmega2560, AVR 8 bits, 16 MHz</td><td data-i18n="b.mega.mem">256 Ko flash, 8 Ko RAM</td><td data-i18n="b.mega.io">54 numériques (15 PWM), 16 analogiques</td><td data-i18n="v5">5 V</td><td data-i18n="no">non</td><td data-i18n="how.avr">Émulateur AVR (avr8js)</td></tr>
+              <tr><th scope="row">Raspberry Pi Pico</th><td>RP2040, 2 × Cortex-M0+, 133 MHz</td><td data-i18n="b.pico.mem">2 Mo flash, 264 Ko RAM</td><td data-i18n="b.pico.io">26 GPIO, 3 analogiques 12 bits</td><td data-i18n="v33">3,3 V</td><td data-i18n="no">non</td><td data-i18n="how.rp">Émulateur RP2040 (rp2040js)</td></tr>
+              <tr><th scope="row">ESP32 DevKit V1</th><td>ESP32, 2 × Xtensa LX6, 240 MHz</td><td data-i18n="b.esp32.mem">4 Mo flash, 520 Ko RAM</td><td data-i18n="b.esp32.io">30 broches, ADC 12 bits</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi, Bluetooth</td><td data-i18n="how.qemu">QEMU d’Espressif</td></tr>
+              <tr><th scope="row" data-i18n="b.esp3238.name">ESP32 DevKitC (38 broches)</th><td>ESP32, 2 × Xtensa LX6, 240 MHz</td><td data-i18n="b.esp32.mem">4 Mo flash, 520 Ko RAM</td><td data-i18n="b.esp3238.io">38 broches, ADC 12 bits</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi, Bluetooth</td><td data-i18n="how.qemu">QEMU d’Espressif</td></tr>
+              <tr><th scope="row">ESP32-S3 DevKitC-1</th><td>ESP32-S3, 2 × Xtensa LX7, 240 MHz</td><td data-i18n="b.esp32s3.mem">8 Mo flash, 512 Ko RAM</td><td data-i18n="b.esp32s3.io">44 broches, USB natif</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi, Bluetooth LE</td><td data-i18n="how.qemu">QEMU d’Espressif</td></tr>
+              <tr><th scope="row">ESP32-C3 SuperMini</th><td>ESP32-C3, RISC-V, 160 MHz</td><td data-i18n="b.esp32c3.mem">4 Mo flash, 400 Ko RAM</td><td data-i18n="b.esp32c3.io">16 broches, USB natif</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi, Bluetooth LE</td><td data-i18n="how.qemu">QEMU d’Espressif</td></tr>
+              <tr class="simRow"><th scope="row">ESP8266 NodeMCU</th><td>ESP8266, Tensilica L106, 80 MHz</td><td data-i18n="b.nodemcu.mem">4 Mo flash</td><td data-i18n="b.nodemcu.io">D0 à D8, 1 analogique</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi</td><td data-i18n="how.sim">Simulateur intégré (programme interprété)</td></tr>
+              <tr class="simRow"><th scope="row">Wemos D1 mini</th><td>ESP8266, Tensilica L106, 80 MHz</td><td data-i18n="b.nodemcu.mem">4 Mo flash</td><td data-i18n="b.nodemcu.io">D0 à D8, 1 analogique</td><td data-i18n="v33">3,3 V</td><td>Wi-Fi</td><td data-i18n="how.sim">Simulateur intégré (programme interprété)</td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
 
-    <div class="gates" data-gate="nand" aria-hidden="true"></div>
-
-    <!-- TP -->
-    <section class="labs" id="labs">
-      <div class="wrap two">
-        <div class="txt">
-          <p class="kicker" data-i18n="labs.k">Travaux pratiques</p>
-          <h2 data-i18n="labs.h">62 TP guidés, vérifiés pas à pas</h2>
-          <p data-i18n="labs.p">Chaque étape est validée par l’application : un fil posé, une mesure juste, une sortie qui s’allume. Les TP « À retenir » résument l’essentiel, et un tutoriel monte un premier projet électropneumatique à partir de zéro.</p>
-          <div class="pills">
-            <span><b>28</b> <span data-i18n="labs.e">électronique</span></span>
-            <span><b>20</b> <span data-i18n="labs.n">pneumatique, avec machine 3D</span></span>
-            <span><b>14</b> <span data-i18n="labs.l">logique</span></span>
-          </div>
-          <p class="note" data-i18n="labs.t">Des TP tirés du transport : pantographe du TER, porte de bus du BRT, passage à niveau, feu prioritaire, compteur de voyageurs.</p>
+    <!-- 08 TP -->
+    <section class="sec" id="labs">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="labs.h">82 TP guidés, vérifiés pas à pas</h2>
+          <p class="sub" data-i18n="labs.p">Chaque étape est validée par l’application : un fil posé, une mesure juste, un ping qui répond. Compte rendu en PDF à la fin.</p>
+        </header>
+        <div>
+          <table class="spec labsT">
+            <thead><tr><th scope="col" data-i18n="labs.c1">Domaine</th><th scope="col" class="num" data-i18n="labs.c2">TP</th><th scope="col" data-i18n="labs.c3">Exemples</th></tr></thead>
+            <tbody>
+              <tr><th scope="row" data-i18n="k1.n">Électronique</th><td class="num">28</td><td data-i18n="labs.e1">LED et bouton, loi d’Ohm, feu tricolore, radar de recul</td></tr>
+              <tr><th scope="row" data-i18n="k3.n">Pneumatique</th><td class="num">20</td><td data-i18n="labs.e2">Commande indirecte, sécurité à deux mains, porte de bus du BRT</td></tr>
+              <tr><th scope="row" data-i18n="k5.n">Logique</th><td class="num">14</td><td data-i18n="labs.e3">Portes de base, tout en NAND, vote majoritaire</td></tr>
+              <tr><th scope="row" data-i18n="labs.d4">Réseau et objets connectés</th><td class="num">20</td><td data-i18n="labs.e4">Sertir un RJ45 en T568B, budget PoE, VLAN, liaison fibre, MQTT sur ESP32</td></tr>
+            </tbody>
+            <tfoot><tr><th scope="row" data-i18n="labs.total">Total</th><td class="num">82</td><td></td></tr></tfoot>
+          </table>
+          <p class="fine" data-i18n="labs.note">Un tutoriel monte un premier projet à partir de zéro, avec une carte d’aide qui montre où cliquer.</p>
         </div>
-        <figure class="shot"><img data-img="labs" src="assets/img/labs-fr.jpg" alt="" loading="lazy" width="1600" height="960"></figure>
       </div>
     </section>
 
-    <div class="gates" data-gate="not" aria-hidden="true"></div>
+    <!-- 09 Éditions -->
+    <section class="sec">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="ed.h">Gratuit, et une édition Pro pour la classe</h2>
+        </header>
+        <div class="prose">
+          <p data-i18n="ed.p1">Tout ce que montre cette page est dans l’édition gratuite : simulation, vérificateur, programmation, téléversement, TP, module réseau, exports.</p>
+          <p data-i18n="ed.p2">L’édition Pro ajoute seulement les outils de l’enseignant : classes, comptes élèves, devoirs, correction, carnet de notes, présentation pas à pas d’un montage.</p>
+          <p><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/COMMERCIAL.md" data-i18n="ed.link">Licence commerciale et édition Pro</a></p>
+        </div>
+      </div>
+    </section>
 
-    <!-- Télécharger -->
-    <section class="download" id="download">
-      <div class="wrap">
-        <p class="kicker center" data-i18n="dl.k">Télécharger</p>
-        <h2 class="center" data-i18n="dl.h">Choisissez votre système</h2>
-        <p class="center dlVer" data-ver hidden><span data-i18n="dl.ver">Dernière version :</span> <b data-ver-tag></b></p>
+    <!-- 10 Télécharger -->
+    <section class="sec download" id="download">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="dl.h">Télécharger</h2>
+          <p class="sub dlVer" data-ver hidden><span data-i18n="dl.ver">Dernière version :</span> <b data-ver-tag></b></p>
+          <p class="sub" data-i18n="dl.upd">Une fois installée, l’application propose elle-même les mises à jour.</p>
+        </header>
         <div class="os">
           <article class="osCard" data-os="windows">
-            <span class="mine" data-i18n="dl.mine">Votre système</span>
-            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5.5 10.5 4.4v7.1H3zM11.5 4.3 21 3v8.5h-9.5zM3 12.5h7.5v7.1L3 18.5zM11.5 12.5H21V21l-9.5-1.3z"/></svg>
-            <h3>Windows</h3>
-            <p data-i18n="dl.win.p">Windows 10 et 11, 64 bits. L’installateur demande le français ou l’anglais.</p>
-            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Windows-x64-setup.exe" data-asset="Jollof-Studio-Windows-x64-setup.exe"><span data-i18n="dl.win.b">Télécharger pour Windows</span><small data-size></small></a>
-            <p class="hint" data-i18n="dl.win.n">Installateur pas encore signé : si SmartScreen s’affiche, « Informations complémentaires » puis « Exécuter quand même ».</p>
+            <h3>Windows <span class="mine" data-i18n="dl.mine">votre système</span></h3>
+            <div class="osBody">
+              <p data-i18n="dl.win.p">Windows 10 et 11, 64 bits. L’installateur demande le français ou l’anglais.</p>
+              <p class="fine" data-i18n="dl.win.n">Installateur pas encore signé : si SmartScreen s’affiche, « Informations complémentaires » puis « Exécuter quand même ».</p>
+            </div>
+            <div class="osGet">
+              <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Windows-x64-setup.exe" data-asset="Jollof-Studio-Windows-x64-setup.exe"><span data-i18n="dl.win.b">Installateur .exe</span><small data-size></small></a>
+            </div>
           </article>
           <article class="osCard" data-os="linux">
-            <span class="mine" data-i18n="dl.mine">Votre système</span>
-            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c-2.2 0-3.6 1.9-3.6 4.6 0 1.5.3 2.6-.6 4-1.1 1.6-2.8 3.6-2.8 6.1 0 .8.2 1.5.6 2.1-.8.4-1.6.9-1.6 1.6 0 1 2 1.1 3.6.6 1.2-.4 2.4-.5 4.4-.5s3.2.1 4.4.5c1.6.5 3.6.4 3.6-.6 0-.7-.8-1.2-1.6-1.6.4-.6.6-1.3.6-2.1 0-2.5-1.7-4.5-2.8-6.1-.9-1.4-.6-2.5-.6-4 0-2.7-1.4-4.6-3.6-4.6z"/><circle cx="10.4" cy="7.4" r=".9"/><circle cx="13.6" cy="7.4" r=".9"/><path d="M10.6 9.6 12 10.6l1.4-1"/></svg>
-            <h3>Linux</h3>
-            <p data-i18n="dl.lin.p">AppImage pour toutes les distributions récentes (2022 et après), ou paquet de votre système.</p>
-            <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.AppImage" data-asset="Jollof-Studio-Linux-x86_64.AppImage"><span data-i18n="dl.lin.b">Télécharger l’AppImage</span><small data-size></small></a>
-            <div class="alt">
-              <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-amd64.deb" data-asset="Jollof-Studio-Linux-amd64.deb">.deb <span>Debian, Ubuntu</span></a>
-              <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.rpm" data-asset="Jollof-Studio-Linux-x86_64.rpm">.rpm <span>Fedora, openSUSE</span></a>
+            <h3>Linux <span class="mine" data-i18n="dl.mine">votre système</span></h3>
+            <div class="osBody">
+              <p data-i18n="dl.lin.p">AppImage pour les distributions de 2022 et après, ou le paquet de votre système.</p>
+              <p class="fine" data-i18n="dl.lin.n">AppImage : rendez le fichier exécutable (chmod +x), puis lancez-le.</p>
             </div>
-            <p class="hint" data-i18n="dl.lin.n">AppImage : rendez le fichier exécutable (chmod +x), puis lancez-le.</p>
+            <div class="osGet">
+              <a class="btn primary" href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.AppImage" data-asset="Jollof-Studio-Linux-x86_64.AppImage"><span>AppImage</span><small data-size></small></a>
+              <div class="alt">
+                <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-amd64.deb" data-asset="Jollof-Studio-Linux-amd64.deb">.deb <span data-i18n="dl.lin.deb">Debian, Ubuntu</span></a>
+                <a href="https://github.com/xelaktechsn/jollof-studio/releases/latest/download/Jollof-Studio-Linux-x86_64.rpm" data-asset="Jollof-Studio-Linux-x86_64.rpm">.rpm <span data-i18n="dl.lin.rpm">Fedora, openSUSE</span></a>
+              </div>
+            </div>
           </article>
           <article class="osCard soon" data-os="mac">
-            <span class="mine" data-i18n="dl.mine">Votre système</span>
-            <svg class="osIc" viewBox="0 0 24 24" aria-hidden="true"><path d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.8-3.5.8s-1.8-.8-3-.8c-1.5 0-3 .9-3.8 2.3-1.6 2.8-.4 7 1.2 9.3.8 1.1 1.7 2.4 2.9 2.3 1.2 0 1.6-.7 3-.7s1.8.7 3 .7c1.3 0 2.1-1.1 2.8-2.3.9-1.3 1.3-2.6 1.3-2.6s-2.5-1-2.5-3.6zM14.1 5.6c.6-.8 1.1-1.8 1-2.9-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1 .1 2.1-.5 2.7-1.3z"/></svg>
-            <h3>macOS</h3>
-            <p data-i18n="dl.mac.p">En préparation : l’application doit d’abord être signée et notarisée par Apple.</p>
-            <button type="button" class="btn ghost" disabled><span data-i18n="dl.mac.b">Bientôt disponible</span></button>
-            <p class="hint" data-i18n="dl.mac.n">En attendant, elle se construit depuis les sources (ci-dessous).</p>
+            <h3>macOS <span class="mine" data-i18n="dl.mine">votre système</span></h3>
+            <div class="osBody">
+              <p data-i18n="dl.mac.p">Pas encore livré : l’application doit d’abord être signée et notarisée par Apple.</p>
+              <p class="fine" data-i18n="dl.mac.n">En attendant : la version navigateur, ou une construction depuis les sources.</p>
+            </div>
+            <div class="osGet"><a class="tlink" href="app/" data-i18n="hero.try">Essayer dans le navigateur</a></div>
           </article>
         </div>
-        <p class="center all"><a href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="dl.all">Toutes les versions et leurs empreintes SHA-256 →</a></p>
+      </div>
+      <div class="wrap grid">
+        <div></div>
+        <p class="all"><a href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="dl.all">Toutes les versions et leurs empreintes SHA-256</a></p>
       </div>
     </section>
 
-    <!-- Depuis les sources -->
-    <section class="start" id="start">
-      <div class="wrap">
-        <p class="kicker center" data-i18n="start.k">Pour les développeurs</p>
-        <h2 class="center" data-i18n="start.h">Ou construisez-le vous-même</h2>
-        <div class="cols">
-          <div class="card big">
-            <h3 data-i18n="start.d.h">Prérequis</h3>
-            <ul class="ticks">
-              <li data-i18n="start.d.l1">Node.js 20 ou plus récent, et Rust</li>
-              <li data-i18n="start.d.l2">Windows : Microsoft C++ Build Tools et WebView2</li>
-              <li data-i18n="start.d.l3">macOS : outils Xcode (xcode-select --install)</li>
-              <li data-i18n="start.d.l4">Linux : WebKitGTK 4.1, libssl, librsvg, libudev</li>
-            </ul>
-            <a class="btn ghost" href="https://tauri.app/start/prerequisites/" data-i18n="start.d.b">Détail des prérequis</a>
-          </div>
-          <div class="card big">
-            <h3 data-i18n="start.s.h">Depuis les sources</h3>
-            <p data-i18n="start.s.p">Cloner le dépôt, installer les dépendances, lancer.</p>
-            <pre class="code"><code>git clone https://github.com/xelaktechsn/jollof-studio
+    <!-- 11 Sources et limites -->
+    <section class="sec" id="start">
+      <div class="wrap grid">
+        <header>
+          <h2 data-i18n="start.h">Construire depuis les sources</h2>
+          <p class="sub" data-i18n="start.p">Node.js 20 ou plus récent, Rust, et les prérequis de Tauri pour votre système.</p>
+          <p class="sub"><a href="https://tauri.app/start/prerequisites/" data-i18n="start.b">Détail des prérequis</a></p>
+        </header>
+        <div class="term">
+          <pre><code>git clone https://github.com/xelaktechsn/jollof-studio
 cd jollof-studio &amp;&amp; npm install
-npm run tauri dev    <span class="c" data-i18n="start.s.c1"># lancer l’application</span>
-npm run tauri build  <span class="c" data-i18n="start.s.c2"># installateurs</span></code></pre>
-          </div>
+npm run tauri dev      <span class="c" data-i18n="start.c1"># lancer l’application</span>
+npm test               <span class="c" data-i18n="start.c3"># la suite de tests</span>
+npm run tauri build    <span class="c" data-i18n="start.c2"># installateurs</span></code></pre>
+          <button type="button" class="copy" data-copy="git clone https://github.com/xelaktechsn/jollof-studio&#10;cd jollof-studio && npm install&#10;npm run tauri dev" data-i18n="copy">Copier</button>
         </div>
+      </div>
+      <div class="wrap grid" id="limits">
+        <div><h3 data-i18n="lim.h">Limites connues</h3><p class="sub" data-i18n="lim.sub">Autant les dire ici.</p></div>
+        <ul class="plain">
+          <li data-i18n="lim.l1">macOS n’est pas encore livré. Windows 7 et 8 ne sont pas pris en charge par l’application de bureau.</li>
+          <li data-i18n="lim.l2">Le DWG passe par un convertisseur à installer soi-même ; aucun n’est livré avec l’application.</li>
+          <li data-i18n="lim.l3">Certification des liens et couverture Wi-Fi : simulées, à confirmer par des mesures sur site.</li>
+          <li data-i18n="lim.l4">Le vérificateur juge les états stables, pas les pointes de courant.</li>
+          <li data-i18n="lim.l5">Wi-Fi et Bluetooth des cartes : réseau simulé, pas de radio émulée.</li>
+          <li data-i18n="lim.l6">Les performances sur vieux ordinateurs ont été mesurées en simulation de processeur lent, pas encore en établissement.</li>
+        </ul>
       </div>
     </section>
 
-    <!-- Open source -->
-    <section class="open" id="open">
-      <div class="wrap two">
-        <div>
-          <p class="kicker" data-i18n="open.k">Open source</p>
+    <!-- 12 Open source -->
+    <section class="sec" id="open">
+      <div class="wrap grid">
+        <header>
           <h2 data-i18n="open.h">Libre, et le restera</h2>
-          <p data-i18n="open.p">Jollof Studio est publié sous licence AGPL-3.0 : utilisez-le, étudiez-le, améliorez-le. Les contributions sont bienvenues ; une licence commerciale existe pour qui ne peut pas suivre l’AGPL.</p>
-          <div class="ctas left">
-            <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio/blob/main/CONTRIBUTING.md" data-i18n="open.c">Contribuer</a>
-            <a class="btn ghost" href="https://github.com/xelaktechsn/jollof-studio/issues" data-i18n="open.i">Signaler un problème</a>
-          </div>
-        </div>
-        <div>
-          <p class="kicker" data-i18n="built.k">Construit avec</p>
-          <ul class="stack">
-            <li>Tauri 2</li><li>Rust</li><li>Three.js</li><li>ngspice</li><li>rp2040js</li><li>MicroPython</li><li>maisa-core</li><li>Blockly</li><li>arduino-cli</li><li>Vite</li>
-          </ul>
+        </header>
+        <div class="prose">
+          <p data-i18n="open.p">Jollof Studio est publié sous licence AGPL-3.0 : utilisez-le, étudiez-le, améliorez-le. Une licence commerciale existe pour qui ne peut pas suivre l’AGPL.</p>
+          <p class="inlineLinks"><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/CONTRIBUTING.md" data-i18n="open.c">Contribuer</a><a href="https://github.com/xelaktechsn/jollof-studio/issues" data-i18n="open.i">Signaler un problème</a><a href="aide/" data-i18n="open.help">Lire l’aide</a></p>
+          <p class="built"><span data-i18n="built.k">Construit avec</span> Tauri 2, Rust, Three.js, avr8js, rp2040js, QEMU, ngspice, MicroPython, Blockly, arduino-cli, maisa-core, Vite.</p>
         </div>
       </div>
     </section>
@@ -531,18 +479,19 @@ npm run tauri build  <span class="c" data-i18n="start.s.c2"># installateurs</spa
 
   <footer class="foot">
     <div class="wrap footIn">
-      <div>
-        <img src="assets/img/logo-dark.svg" alt="Jollof Studio" width="170" height="28">
-        <p data-i18n="foot.t">Un labo d’électronique, sans labo.</p>
+      <div class="footBrand">
+        <img src="assets/img/logo-light.svg" alt="Jollof Studio" width="170" height="28" loading="lazy">
+        <p data-i18n="foot.t">Un labo complet, sans le labo.</p>
       </div>
       <div class="fcols">
         <div><h4 data-i18n="foot.p">Projet</h4><a href="https://github.com/xelaktechsn/jollof-studio">GitHub</a><a href="https://github.com/xelaktechsn/jollof-studio/releases" data-i18n="foot.r">Versions</a><a href="https://github.com/xelaktechsn/jollof-studio/issues" data-i18n="foot.i">Problèmes</a></div>
-        <div><h4 data-i18n="foot.d">Documentation</h4><a href="https://github.com/xelaktechsn/jollof-studio#readme" data-i18n="foot.readme">Lisez-moi</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/PROVEN.md" data-i18n="foot.proven">Ce que prouve le vérificateur</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/ARCHITECTURE.md" data-i18n="foot.arch">Architecture</a></div>
+        <div><h4 data-i18n="foot.d">Documentation</h4><a href="aide/" data-i18n="foot.help">Aide en ligne</a><a href="https://github.com/xelaktechsn/jollof-studio#readme" data-i18n="foot.readme">Lisez-moi</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/PROVEN.md" data-i18n="foot.proven">Ce que prouve le vérificateur</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/docs/ARCHITECTURE.md" data-i18n="foot.arch">Architecture</a></div>
         <div><h4 data-i18n="foot.l">Licence</h4><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/LICENSE">AGPL-3.0</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/COMMERCIAL.md" data-i18n="foot.com">Licence commerciale</a><a href="https://github.com/xelaktechsn/jollof-studio/blob/main/THIRD_PARTY.md" data-i18n="foot.third">Logiciels tiers</a></div>
       </div>
     </div>
-    <div class="wrap legal"><span>© 2026 Mamadou Sarr · Xelaktech</span><a href="#top" data-i18n="foot.top">Haut de page ↑</a></div>
+    <div class="wrap legal"><span>© 2026 Mamadou Sarr, Xelaktech, Dakar</span><a href="#top" data-i18n="foot.top">Haut de page</a></div>
   </footer>
+
   <script src="i18n.js"></script>
   <script src="main.js"></script>
 </body>

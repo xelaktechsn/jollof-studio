@@ -53,9 +53,8 @@ jobs:
             [ -f "$f" ] || { echo "manquant : $f"; missing=1; }
           done
           for l in fr en; do
-            for f in assets/video/jollof-$l.mp4 assets/img/poster-$l.jpg; do [ -f "$f" ] || { echo "manquant : $f"; missing=1; }; done
             for s in $(grep -oE 'data-img="[a-z]+"' index.html | sed -E 's/data-img="//; s/"//' | sort -u); do
-              [ -f "assets/img/$s-$l.jpg" ] || { echo "manquant : assets/img/$s-$l.jpg"; missing=1; }
+              [ -f "assets/img/$s-$l.webp" ] || { echo "manquant : assets/img/$s-$l.webp"; missing=1; }
             done
           done
           exit $missing
