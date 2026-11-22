@@ -37,11 +37,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
+  # Deux tâches : l'archive du site est finalisée avant que la publication la cherche (dans une seule tâche,
+  # deploy-pages ne la trouvait pas toujours : « No artifacts named "github-pages" were found »).
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - name: Vérifier le site (fichiers référencés présents)
@@ -70,8 +69,15 @@ jobs:
       - name: Construire le site d'aide (site/aide)
         run: node scripts/help-site.mjs
       - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
