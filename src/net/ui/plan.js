@@ -72,7 +72,7 @@ export function createPlanView(ctx) {
   let cad = null, cadP = null;
   const cadHas = f => !!(f && ctx.data().underlays && ctx.data().underlays[f.id]);
   function cadLoad() {
-    if (!cadP) cadP = import('./plan-underlay.js').then(m => { cad = m.createUnderlayLayer(ctx, { el, stage, svg, view: () => V, floor, repaint: () => paint(), hidden: () => el.hidden, cardChanged: on => { S.layers.cad = on; paintTools(); }, act: a => (a === 'wall' || a === 'path' ? setTool(a) : null) }); if (cadHas(floor())) requestAnimationFrame(fit); paintOver(); return cad; }).catch(e => { console.error(e); cadP = null; return null; });
+    if (!cadP) cadP = import('./plan-underlay.js').then(m => { cad = m.createUnderlayLayer(ctx, { el, stage, svg, view: () => V, floor, repaint: () => paint(), hidden: () => el.hidden, cardChanged: on => { S.layers.cad = on; paintTools(); }, act: a => (a === 'wall' || a === 'path' ? setTool(a) : null), fitAvoid: top => { const b = boundsOf(floor()); if (b) { const h = Math.max(1, b[3] - b[1]), pad = 0.05 * Math.max(b[2] - b[0], h, 4); fitTo([b[0] - pad, b[1] - h * top - pad, b[2] + pad, b[3] + pad]); } } }); if (cadHas(floor())) requestAnimationFrame(fit); paintOver(); return cad; }).catch(e => { console.error(e); cadP = null; return null; });
     return cadP;
   }
   const cadImport = () => import('./cadimport.js').then(m => m.openCadImport(ctx, null, { floor: S.floor })).catch(e => { console.error(e); ctx.status(tl('L’import DXF n’a pas pu se charger.'), 'err'); });
@@ -235,8 +235,10 @@ export function createPlanView(ctx) {
     sub.hidden = !sub.innerHTML;
     const t = TOOLS.find(x => x[0] === S.tool);
     // Bulle d'aide de l'outil : quelques secondes après le changement d'outil, puis elle s'efface (l'infobulle reste).
-    const hint = $('.ntPlHint'); if (S.hintTool !== S.tool) { S.hintTool = S.tool; hint.classList.remove('out'); clearTimeout(S.hintT); S.hintT = setTimeout(() => hint.classList.add('out'), 6000); }
-    $('.ntPlHint').textContent = S.tool === 'calib' ? tl('Étalonnage : cliquez deux points du plan importé dont vous connaissez la distance.') : t ? t[4]() : '';
+    // Aide de l'outil : dans la barre d'état quand l'outil change (rien ne couvre le dessin ; l'infobulle du bouton la redit).
+    const hintTxt = S.tool === 'calib' ? tl('Étalonnage : cliquez deux points du plan importé dont vous connaissez la distance.') : t ? t[4]() : '';
+    if (S.hintTool !== S.tool) { if (S.hintTool !== undefined && hintTxt && !el.hidden) ctx.status(hintTxt); S.hintTool = S.tool; }
+    $('.ntPlHint').hidden = true;
   }
   /** Carte d'information en bas : équipement choisi (hauteur de pose, pièce) ou tracé d'un câble. */
   function paintInfo() {
@@ -258,7 +260,7 @@ export function createPlanView(ctx) {
         h += `<label class="ntChk"><input type="checkbox" data-pli="auto"${auto ? ' checked' : ''}><span>${tl('Longueur suivant les cheminements')}</span></label>`;
       }
     }
-    info.innerHTML = h; info.hidden = !h; $('.ntPlHint').hidden = !!h;
+    info.innerHTML = h; info.hidden = !h;
   }
   /** Point d'accès choisi (ses réglages radio s'affichent à côté de lui, dans la carte flottante). */
   const selAp = () => { const s = ctx.selection(), x = s && s.kind === 'dev' && data().devices.find(z => z.id === s.id); return x && /^ap/.test(x.type) ? x : null; };
@@ -276,10 +278,13 @@ export function createPlanView(ctx) {
     if (!ap) return;
     // Réglages radio seuls, repliables, rangés en haut à droite (ou à gauche si le point d'accès est dessous).
     let h = ''; try { h = wifi.apPane ? wifi.apPane(ap) : ''; } catch (e) { console.error(e); }
-    const open = wcard.dataset.open !== '0';
+    const [sx0] = ap.loc ? toS(ap.loc.x, ap.loc.y) : [0], W0 = stage.clientWidth;
+    // Repliée d'office quand la vue est étroite (elle couvrirait l'étage) ; le choix de l'utilisateur est retenu.
+    const open = wcard.dataset.open ? wcard.dataset.open === '1' : W0 >= 980;
     wcard.innerHTML = `<details class="ntPlWfAp"${open ? ' open' : ''}><summary>${icon('wifi')}${esc(tl('Radio de {0}', devName(ap)))}</summary>${h}</details>`;
     const [sx, sy] = ap.loc ? toS(ap.loc.x, ap.loc.y) : [0, 0], W = stage.clientWidth;
-    wcard.classList.toggle('left', sx > W - 360 && sy < 420);
+    // Du côté opposé au point d'accès choisi : sa pièce reste visible.
+    wcard.classList.toggle('left', sx > W / 2); void sy; void sx0;
   }
   const wifiPane = () => (S.layers.wifi && wifi && !selAp() ? `<section class="ntSec ntPlWifiPane"><h4>${tl('Calque Wi-Fi')}</h4>${wifiHtml(null)}</section>` : '');
 
@@ -336,7 +341,7 @@ export function createPlanView(ctx) {
     if (dr.kind === 'wall' && P.length > 1) {
       const u = used(), ids = [];
       for (let i = 1; i < P.length; i++) if (dist(P[i - 1], P[i]) > 0.01) { const w = { id: uid('', 'w', u), a: P[i - 1], b: P[i], t: MATERIALS[S.wallMat].t, mat: S.wallMat }; f.walls.push(w); ids.push(w.id); }
-      if (ids.length) { S.multi = ids.map(id => ({ kind: 'wall', id })); ctx.select({ kind: 'wall', id: ids[ids.length - 1] }); ctx.commit(); ctx.status(tl('{0} mur(s) dessiné(s).', ids.length), 'ok'); }
+      if (ids.length) { S.multi = ids.map(id => ({ kind: 'wall', id })); ctx.select({ kind: 'wall', id: ids[ids.length - 1] }); ctx.commit(); ctx.status(tl('{0:# mur dessiné|# murs dessinés}.', ids.length), 'ok'); }
     } else if (dr.kind === 'room' && P.length > 2) {
       addRoom(P);
     } else if (dr.kind === 'path' && P.length > 1) {
@@ -438,7 +443,7 @@ export function createPlanView(ctx) {
         for (const x of d.paths || []) if (x.floor === f.id && x.pts.every(inR)) push('path', x.id);
         for (const x of d.racks || []) if (x.floor === f.id && inR([x.x, x.y])) push('rack', x.id);
         S.multi = got; ctx.select(got[0] || null); paint();
-        if (got.length) ctx.status(tl('{0} objet(s) choisi(s).', got.length));
+        if (got.length) ctx.status(tl('{0:# objet choisi|# objets choisis}.', got.length));
       }, 'ntPlMarq');
       return;
     }
@@ -513,7 +518,7 @@ export function createPlanView(ctx) {
   function copy(cut) {
     const f = floor(), c = f && copySel(data(), f, selList());
     if (!c) { ctx.status(tl('Rien à copier : choisissez des équipements, pièces, murs ou cheminements.'), 'warn'); return false; }
-    CLIP.c = c; ctx.status(cut ? tl('{0} objet(s) coupé(s).', countClip(c)) : tl('{0} objet(s) copié(s) : Ctrl+V pour coller (sur cet étage ou un autre).', countClip(c)));
+    CLIP.c = c; ctx.status(cut ? tl('{0:# objet coupé|# objets coupés}.', countClip(c)) : tl('{0:# objet copié|# objets copiés} : Ctrl+V pour coller (sur cet étage ou un autre).', countClip(c)));
     if (cut) removeSel();
     return true;
   }
@@ -526,14 +531,14 @@ export function createPlanView(ctx) {
     const sel = pasteClip(data(), f, c, dx, dy, (type, p) => ctx.newDevice(type, p));
     if (!sel.length) return;
     S.multi = sel; ctx.select(sel[0]); ctx.commit(); paint();
-    ctx.status(tl('{0} objet(s) collé(s) : nouveaux identifiants, aucun câble recopié.', sel.length), 'ok');
+    ctx.status(tl('{0:# objet collé|# objets collés} : nouveaux identifiants, aucun câble recopié.', sel.length), 'ok');
   }
   function duplicate() { const keep = CLIP.c; if (copy(false)) paste(null); CLIP.c = keep || CLIP.c; }
   function align(how) { const n = alignSel(data(), floor(), selList(), how); if (n) { ctx.commit(); paint(); } }
   function toFloor(id) {
     const f = floor(), g = floorOf(data().site, id); if (!f || !g) return;
     const n = moveToFloor(data(), f, g.f, selList()); if (!n) return;
-    ctx.commit(); setFloor(g.f.id); ctx.status(tl('{0} objet(s) déplacé(s) vers {1}.', n, g.f.name), 'ok');
+    ctx.commit(); setFloor(g.f.id); ctx.status(tl('{0:# objet déplacé|# objets déplacés} vers {1}.', n, g.f.name), 'ok');
   }
   async function openMenu(e, kind, w) {
     const kit = await import('./kit/menu.js').catch(() => null);
@@ -620,15 +625,15 @@ export function createPlanView(ctx) {
       else if (m.kind === 'floor' || m.kind === 'building') { action('del', m); return; }
     }
     S.multi = []; ctx.select(null);
-    if (n) { ctx.commit(); ctx.status(tl('{0} objet(s) retiré(s) (Ctrl+Z pour annuler).', n), 'ok'); }
-    if (racks) ctx.status(tl('{0} équipement(s) sorti(s) de la baie : ils restent dans le projet (vue Baies pour les ranger).', racks));
+    if (n) { ctx.commit(); ctx.status(tl('{0:# objet retiré|# objets retirés} (Ctrl+Z pour annuler).', n), 'ok'); }
+    if (racks) ctx.status(tl('{0:# équipement sorti|# équipements sortis} de la baie : ils restent dans le projet (vue Baies pour les ranger).', racks));
     paint();
   }
   function nudge(dx, dy) { const g = grab(); if (!g.length) return; moveGrab(g, dx, dy); ctx.commit(); }
   function selectAll() {
     const f = floor(), d = data(); if (!f) return;
     S.multi = [...d.devices.filter(x => x.loc && x.loc.floor === f.id).map(x => ({ kind: 'dev', id: x.id })), ...f.rooms.map(x => ({ kind: 'room', id: x.id })), ...f.walls.map(x => ({ kind: 'wall', id: x.id })), ...(d.paths || []).filter(x => x.floor === f.id).map(x => ({ kind: 'path', id: x.id }))];
-    ctx.select(S.multi[0] || null); paint(); ctx.status(tl('{0} objet(s) choisi(s).', S.multi.length));
+    ctx.select(S.multi[0] || null); paint(); ctx.status(tl('{0:# objet choisi|# objets choisis}.', S.multi.length));
   }
 
   /* ---------- Étages, bâtiments, plan importé ---------- */
@@ -638,7 +643,7 @@ export function createPlanView(ctx) {
     const made = addDetectedRooms(data(), f, S.usage);
     if (!made.length) { ctx.status(tl('Aucun espace fermé par les murs sans pièce : fermez les murs (bouts à moins de 15 cm) ou dessinez la pièce.'), 'warn'); return; }
     S.multi = made.map(r => ({ kind: 'room', id: r.id })); ctx.select(S.multi[0]); ctx.commit(); paint();
-    ctx.status(tl('{0} pièce(s) détectée(s) : nommez-les et choisissez leur usage dans l’inspecteur.', made.length), 'ok');
+    ctx.status(tl('{0:# pièce détectée|# pièces détectées} : nommez-les et choisissez leur usage dans l’inspecteur.', made.length), 'ok');
   }
   function setFloor(id, fitNow) {
     if (!floorOf(data().site, id)) return;
@@ -812,7 +817,7 @@ export function createPlanView(ctx) {
       ctx.app.commands.register({ id: 'net.plan.building', cat: tl('Réseau'), icon: 'building', label: tl('Plans : nouveau bâtiment'), when, run: () => newBuilding() });
       ctx.app.commands.register({ id: 'net.plan.floor', cat: tl('Réseau'), icon: 'plus', label: tl('Plans : nouvel étage au-dessus'), when: () => when() && !!building(), run: () => addFloor(building()) });
       ctx.app.commands.register({ id: 'net.plan.image', cat: tl('Réseau'), icon: 'image', label: tl('Plans : importer un plan (image)'), when, run: () => action('image') });
-      ctx.app.commands.register({ id: 'net.plan.cad', cat: tl('Réseau'), icon: 'upload', label: tl('Plans : importer un plan DXF/DWG'), when: () => ctx.isOn(), run: () => ctx.openView('plan').then(() => cadImport()) });
+      ctx.app.commands.register({ id: 'net.plan.cad', cat: tl('Réseau'), icon: 'upload', label: tl('Plans : importer un plan DXF ou DWG'), when: () => ctx.isOn(), run: () => ctx.openView('plan').then(() => cadImport()) });
       ctx.app.commands.register({ id: 'net.plan.cadLayers', cat: tl('Réseau'), icon: 'layers', label: tl('Plans : calques du fond DXF'), when: () => when() && cadHas(floor()), run: () => toggleLayer('cad') });
       ctx.app.commands.register({ id: 'net.plan.wifi', cat: tl('Réseau'), icon: 'wifi', label: tl('Plans : afficher ou masquer le calque Wi-Fi'), when, run: () => toggleLayer('wifi') });
       ctx.app.commands.register({ id: 'net.plan.detect', cat: tl('Réseau'), icon: 'wand', label: tl('Plans : détecter les pièces fermées par les murs'), when: () => when() && !!floor(), run: () => detectHere() });
@@ -914,6 +919,8 @@ export function createPlanView(ctx) {
   };
   const viewApi = { floor, building, multi, setFloor, action, paint, removeSel };
   /** Menus de l'application (shellnet.js) : outil, calques, actions des étages, tout choisir, étage montré. */
-  view.cmd = { tool: t => setTool(t), layer: l => toggleLayer(l), layers: () => ({ ...S.layers }), action: a => action(a, null), selectAll: () => selectAll(), floor: () => floor() };
+  view.cmd = { tool: t => setTool(t), layer: l => toggleLayer(l), layers: () => ({ ...S.layers }), action: a => action(a, null), selectAll: () => selectAll(), floor: () => floor(),
+    /** Bandeau « Et maintenant ? » après un import (IFC) : la vue se recadre sous lui (plan-underlay.js). */
+    coach: c => cadLoad().then(l => { if (l && l.coach) l.coach(c); else fit(); }) };
   return view;
 }

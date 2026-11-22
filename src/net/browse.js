@@ -77,7 +77,7 @@ export function projectTree(data, o = {}) {
   const siteKids = [];
   for (const b of bs) {
     const fl = [];
-    for (const f of (b.floors || []).slice().sort((x, y) => y.level - x.level)) {
+    for (const f of (b.floors || []).slice().sort((x, y) => x.level - y.level)) { // du plus bas (sous-sol, RDC) au plus haut
       const at = roomIndex(f), rooms = new Map((f.rooms || []).map(r => [r.id, { r, kids: [] }])), direct = [];
       for (const r of data.racks || []) {
         if (r.floor !== f.id) continue; placed.add(r.id);
@@ -99,7 +99,7 @@ export function projectTree(data, o = {}) {
       if (paths.length) kids.push({ key: 'grp:paths:' + f.id, kind: 'grp', label: tl('Cheminements'), icon: 'cableTray', badge: paths.length, children: paths });
       fl.push({ key: keyOf('floor', f.id), kind: 'floor', id: f.id, label: f.name, sub: tl('niveau {0}', f.level), icon: 'floorPlan', dot: dot(f.id), open: nFloors <= 2, terms: f.id, children: kids });
     }
-    siteKids.push({ key: keyOf('building', b.id), kind: 'building', id: b.id, label: b.name, sub: tl('{0} étage(s)', (b.floors || []).length), icon: 'building', dot: dot(b.id), open: bs.length <= 3, terms: b.id, children: fl });
+    siteKids.push({ key: keyOf('building', b.id), kind: 'building', id: b.id, label: b.name, sub: tl('{0:# étage|# étages}', (b.floors || []).length), icon: 'building', dot: dot(b.id), open: bs.length <= 3, terms: b.id, children: fl });
   }
   if (siteKids.length) roots.push({ key: 'site', kind: 'grp', label: site.name || tl('Site'), icon: 'globe', open: true, children: siteKids });
   // Baies sans étage (vue Baies seulement) et équipements hors plan.

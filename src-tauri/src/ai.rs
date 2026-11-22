@@ -141,7 +141,7 @@ fn read_config(path: &Path) -> Option<Config> {
 // le trousseau n'est utilisé qu'avec JOLLOF_KEYRING=1 : chaque recompilation ferait redemander l'accès sous macOS.
 
 const KEY_USER: &str = "ai-bridge";
-fn keyring_on() -> bool {
+pub(crate) fn keyring_on() -> bool {
     !cfg!(debug_assertions) || std::env::var_os("JOLLOF_KEYRING").is_some_and(|v| v == "1")
 }
 /// Édition d'un fichier de clé : le nom de son dossier de données (sn.jollof.studio…).
@@ -197,7 +197,7 @@ fn save_config(path: &Path, cfg: &Config) -> Result<(), String> {
     )
 }
 /// Écriture atomique (fichier temporaire puis renommage) ; private : lisible par l'utilisateur seul.
-fn write_atomic(path: &Path, text: &str, private: bool) -> Result<(), String> {
+pub(crate) fn write_atomic(path: &Path, text: &str, private: bool) -> Result<(), String> {
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
     }

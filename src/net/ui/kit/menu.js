@@ -38,8 +38,10 @@ function build(items, level, done) {
     if (it === '-' || it == null) return '<hr role="separator">';
     if (it.header) return `<div class="ntKMh" role="presentation">${esc(it.header)}</div>`;
     const sub = Array.isArray(it.items) && it.items.length, dis = !!it.disabled, chk = typeof it.checked === 'boolean';
-    const ic = chk ? (it.checked ? icon('check') : '<span></span>') : it.icon ? icon(it.icon) : '<span></span>';
-    return `<button type="button" class="ntKMi${it.danger ? ' danger' : ''}" role="${chk ? 'menuitemcheckbox' : 'menuitem'}" data-i="${i}" tabindex="-1"${dis ? ' aria-disabled="true"' : ''}${chk ? ` aria-checked="${it.checked}"` : ''}${sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}${it.hint ? ` title="${esc(it.hint)}"` : ''}>${ic}<span>${esc(it.label)}</span>${it.keys ? `<kbd>${esc(keyLabel(it.keys))}</kbd>` : '<span></span>'}${sub ? icon('chevRight', 'ntKMs') : '<span></span>'}</button>`;
+    // Case à cocher avec icône : l'icône à sa place, la coche en fin de ligne ; sans icône : la coche à la place de l'icône.
+    const ic = chk && !it.icon ? (it.checked ? icon('check') : '<span></span>') : it.icon ? icon(it.icon) : '<span></span>';
+    const tail = sub ? icon('chevRight', 'ntKMs') : chk && it.icon && it.checked ? icon('check', 'ntKMs') : '<span></span>';
+    return `<button type="button" class="ntKMi${it.danger ? ' danger' : ''}" role="${chk ? 'menuitemcheckbox' : 'menuitem'}" data-i="${i}" tabindex="-1"${dis ? ' aria-disabled="true"' : ''}${chk ? ` aria-checked="${it.checked}"` : ''}${sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}${it.hint ? ` title="${esc(it.hint)}"` : ''}>${ic}<span>${esc(it.label)}</span>${it.keys ? `<kbd>${esc(keyLabel(it.keys))}</kbd>` : '<span></span>'}${tail}</button>`;
   }).join('');
   document.body.appendChild(m);
   const btns = () => [...m.querySelectorAll('.ntKMi:not([aria-disabled="true"])')];
@@ -140,3 +142,21 @@ export function ctxMenu(at, items, o = {}) {
 export const menuAt = (anchor, items, o) => ctxMenu(anchor, items, o);
 /** Ferme le menu ouvert (changement de vue, projet fermé). */
 export function closeMenus() { if (open) open.cancel(); }
+
+/**
+ * Amène el en vue en ne faisant défiler que son panneau (premier ancêtre qui défile vraiment en hauteur) :
+ * scrollIntoView déplace aussi les ancêtres en overflow: hidden (la fenêtre entière glisse).
+ */
+export function scrollWithin(el, block = 'start', smooth = true) {
+  let p = el && el.parentElement;
+  for (; p; p = p.parentElement) { const o = getComputedStyle(p).overflowY; if ((o === 'auto' || o === 'scroll') && p.scrollHeight > p.clientHeight + 1) break; }
+  if (!p) return false;
+  const a = el.getBoundingClientRect(), b = p.getBoundingClientRect();
+  let top = p.scrollTop + a.top - b.top - 8;
+  if (block === 'center') top -= Math.max(0, (p.clientHeight - a.height) / 2 - 8);
+  else if (block === 'nearest') { if (a.top >= b.top && a.bottom <= b.bottom) return true; if (a.top >= b.top) top = p.scrollTop + a.bottom - b.bottom + 8; }
+  top = Math.max(0, Math.min(p.scrollHeight - p.clientHeight, top));
+  if (smooth && p.scrollTo && !matchMedia('(prefers-reduced-motion: reduce)').matches) p.scrollTo({ top, behavior: 'smooth' }); else p.scrollTop = top;
+  return true;
+}
+

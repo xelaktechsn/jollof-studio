@@ -7,7 +7,7 @@
 import { tl } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { DEVICES } from '../devices.js';
-import { USAGES, dist, roomArea, roomPoint, roomPath } from '../site.js';
+import { USAGES, dist, roomArea, roomPoint, roomPath, polePoint, inRoom, bbox } from '../site.js';
 import { PATH_KINDS, isConduitKind } from '../route.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -96,15 +96,34 @@ export function overSvg(data, f, st) {
   const rank = d => (st.sel.has('dev:' + d.id) ? 3 : /^(outlet|patch|fibrepanel)/.test(d.type) ? 0 : 1);
   const on = (data.devices || []).filter(d => d.loc && d.loc.floor === f.id && vis(...st.toS(d.loc.x, d.loc.y), 40)).sort((a, b) => rank(a) - rank(b));
   for (const d of on) { const [sx, sy] = st.toS(d.loc.x, d.loc.y); placed.push([sx - r - 1, sy - r - 1, sx + r + 1, sy + r + 1]); }
-  // Pièces : nom et surface près du centre, si la pièce est assez grande à l'écran.
+  // Pièces : nom (et surface) bien à l'intérieur de la pièce, près de son pôle d'inaccessibilité. Variantes essayées
+  // dans l'ordre : nom + surface, nom seul, plus petit, sur deux lignes, abrégé ; la boîte doit tenir dans la pièce et
+  // ne gêner aucun symbole déjà posé. Une pièce assez grande à l'écran garde toujours son nom (au pire abrégé).
+  const o0 = st.toS(0, 0), toW = (sx, sy) => [(sx - o0[0]) / st.k, (sy - o0[1]) / st.k];
+  const insideBox = (rm, b) => [[b[0], b[1]], [b[2], b[1]], [b[0], b[3]], [b[2], b[3]], [(b[0] + b[2]) / 2, b[1]], [(b[0] + b[2]) / 2, b[3]], [b[0], (b[1] + b[3]) / 2], [b[2], (b[1] + b[3]) / 2]].every(([x, y]) => inRoom(toW(x, y), rm));
   for (const rm of f.rooms) {
-    const c = roomPoint(rm), [sx, sy] = st.toS(c[0], c[1]); if (!vis(sx, sy, 120)) continue;
-    const A = roomArea(rm); if (Math.sqrt(A) * st.k < 46) continue;
-    const nm = rm.name || (USAGES[rm.usage] ? USAGES[rm.usage].name() : ''), w = Math.max(tw(nm, 7.2), 50);
-    let dy = null; for (const o of [0, 26, -26, 44, -44, 62]) if (!hit(box(sx, sy + 4 + o, w, 28))) { dy = o; break; }
-    if (dy == null) { if (!st.allRooms) continue; dy = 0; } // trop de monde : le nom revient en zoomant (ou au survol de la pièce)
-    placed.push(box(sx, sy + 4 + dy, w, 28));
-    h += `<g class="ntPlRL${USAGES[rm.usage] && USAGES[rm.usage].tech ? ' tech' : ''}" transform="translate(${sx | 0} ${(sy + dy) | 0})"><text y="-2">${esc(nm)}</text><text class="a" y="11">${fmtNum(A, 1, st.en)} m²</text></g>`;
+    const pl = polePoint(rm), [sx, sy] = st.toS(pl[0], pl[1]); if (!vis(sx, sy, 160)) continue;
+    const A = roomArea(rm), rb = bbox(rm.poly), rw = (rb[2] - rb[0]) * st.k, rh = (rb[3] - rb[1]) * st.k;
+    if (Math.min(rw, rh) < 22 || Math.sqrt(A) * st.k < 34) continue;
+    const nm = rm.name || (USAGES[rm.usage] ? USAGES[rm.usage].name() : ''), area = `${fmtNum(A, 1, st.en)} m²`;
+    const words = nm.split(/\s+/), cut = Math.max(1, Math.round(words.length / 2)), two = words.length > 1 ? [words.slice(0, cut).join(' '), words.slice(cut).join(' ')] : null;
+    const abbr = n => { const m = Math.max(3, Math.floor((rw - 8) / 6)); return n.length > m ? n.slice(0, m - 1) + '…' : n; };
+    const V = [
+      { lines: [nm], sub: area, w: Math.max(tw(nm, 6.9), tw(area, 6)), h: 28, cls: '' },
+      { lines: [nm], w: tw(nm, 6.9), h: 15, cls: '' },
+      { lines: [nm], w: tw(nm, 6), h: 13, cls: ' s' },
+      ...(two ? [{ lines: two, w: Math.max(tw(two[0], 6), tw(two[1], 6)), h: 25, cls: ' s' }] : []),
+      { lines: [abbr(nm)], w: tw(abbr(nm), 6), h: 13, cls: ' s', full: nm }
+    ];
+    const pos = [[0, 0], [0, 16], [0, -16], [0, 30], [0, -30], [-rw / 4, 0], [rw / 4, 0], [0, 46], [0, -46]];
+    let pick = null;
+    for (const v of V) { for (const [dx, dy] of pos) { const b = box(sx + dx, sy + dy, v.w, v.h); if (!hit(b) && insideBox(rm, b)) { pick = { v, dx, dy, b }; break; } } if (pick) break; }
+    // Rien de libre : la variante la plus courte au pôle (le nom ne disparaît pas), si elle tient dans la pièce.
+    if (!pick) { const v = V[V.length - 1], b = box(sx, sy, v.w, v.h); if (insideBox(rm, b) || v.w < rw) pick = { v, dx: 0, dy: 0, b }; }
+    if (!pick) continue;
+    placed.push(pick.b);
+    const { v } = pick, L = v.lines.length, top = -((L - 1) * 11 + (v.sub ? 12 : 0)) / 2 + 4;
+    h += `<g class="ntPlRL${v.cls}${USAGES[rm.usage] && USAGES[rm.usage].tech ? ' tech' : ''}" transform="translate(${(sx + pick.dx) | 0} ${(sy + pick.dy) | 0})">${v.full ? `<title>${esc(v.full)}</title>` : ''}${v.lines.map((t, i) => `<text y="${(top + i * (v.cls ? 11 : 13)).toFixed(0)}">${esc(t)}</text>`).join('')}${v.sub ? `<text class="a" y="${(top + L * 13).toFixed(0)}">${esc(v.sub)}</text>` : ''}</g>`;
   }
   // Baies : nom.
   for (const r of data.racks || []) { if (r.floor !== f.id) continue; const [sx, sy] = st.toS(r.x, r.y); if (vis(sx, sy) && st.k > 14) h += `<text class="ntPlRkL" x="${sx | 0}" y="${(sy - ((r.d || 1000) / 2000) * st.k - 4) | 0}">${esc(r.name)}</text>`; }
@@ -128,8 +147,15 @@ export function overSvg(data, f, st) {
   const dense = on.length > 140, outletsL = st.k >= 16 && on.length <= 90;
   for (const d of on) {
     const [sx, sy] = st.toS(d.loc.x, d.loc.y), s = st.sel.has('dev:' + d.id), nm = st.name(d);
-    const want = s || (showL && !dense && (outletsL || !/^outlet/.test(d.type)) && fits(sx, sy + r + 9, tw(nm, 6.4), 12));
-    h += `<g class="ntPlDev t-${d.type}${s ? ' sel' : ''}${st.bad.has(d.id) ? ' bad' : ''}" data-k="dev" data-id="${esc(d.id)}" transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)})"><circle r="${r}"/>${devIcon(d.type, r * 1.25)}<text${want ? '' : ' class="hov"'} y="${(r + 11).toFixed(0)}">${esc(nm)}</text></g>`;
+    // Étiquette du côté de la pièce (une prise posée sur un mur : son nom va vers l'intérieur, pas sur le mur) : dessous,
+    // dessus, à droite, à gauche ; la première place libre dont le centre est dans la pièce de l'équipement.
+    const room = f.rooms.find(z => inRoom([d.loc.x, d.loc.y], z)) || f.rooms.find(z => inRoom(toW(sx, sy + r + 9), z) || inRoom(toW(sx, sy - r - 9), z)), w = tw(nm, 6.4);
+    const spots = [[0, r + 9, 'middle', r + 13], [0, -r - 9, 'middle', -r - 5], [r + 6 + w / 2, 0, 'start', 4], [-r - 6 - w / 2, 0, 'end', 4]];
+    let lab = null;
+    if (s || (showL && !dense && (outletsL || !/^outlet/.test(d.type)))) for (const sp of spots) { const cx = sx + sp[0], cy = sy + sp[1]; if ((!room || inRoom(toW(cx, cy), room)) && fits(cx, cy, w, 12)) { lab = sp; break; } }
+    if (!lab && s) lab = spots[0];
+    const L = lab || spots[0], tx = L[2] === 'start' ? r + 6 : L[2] === 'end' ? -r - 6 : 0;
+    h += `<g class="ntPlDev t-${d.type}${s ? ' sel' : ''}${st.bad.has(d.id) ? ' bad' : ''}" data-k="dev" data-id="${esc(d.id)}" transform="translate(${sx.toFixed(1)} ${sy.toFixed(1)})"><circle r="${r}"/>${devIcon(d.type, r * 1.25)}<text${lab ? '' : ' class="hov"'} x="${tx.toFixed(0)}" y="${L[3].toFixed(0)}"${L[2] !== 'middle' ? ` style="text-anchor:${L[2]}"` : ''}>${esc(nm)}</text></g>`;
   }
   st.placed = placed; // (le calque Wi-Fi place ses étiquettes de canaux en évitant ces boîtes)
   // Poignées de l'objet choisi.

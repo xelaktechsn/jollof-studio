@@ -28,6 +28,7 @@ function templates(api) {
     { id: 'office', icon: 'building', name: tl('Petit bureau'), text: tl('Un étage de bureaux de 40 × 18 m : pièces, local technique avec sa baie, chemin de câbles, prises, Wi-Fi et caméra déjà reliés, routeur d’accès.'), chips: [tl('1 étage'), tl('24 prises'), tl('1 baie')] },
     { id: 'school', icon: 'floorPlan', name: tl('Collège sur deux étages'), text: tl('Un projet complet de professionnel : 26 pièces, deux locaux techniques, rocade fibre, cœur de niveau 3, quatre VLAN, 17 points d’accès, liens certifiés.'), chips: [tl('2 étages'), tl('95 prises'), tl('2 baies')], off: !SCHOOL[Object.keys(SCHOOL)[0]] },
     { id: 'cad', icon: 'upload', name: tl('Depuis un plan DXF ou DWG'), text: tl('Importez le plan d’architecte : calques choisis, échelle reconnue, murs et pièces convertis, puis le réseau dessiné dessus.'), chips: ['DXF', 'DWG'], off: !api.cap.cad },
+    { id: 'ifc', icon: 'building', name: tl('Depuis un modèle IFC'), text: tl('La maquette BIM de l’architecte (IFC4, IFC2X3) : étages, pièces, murs et portes repris à l’échelle, puis le réseau dessiné dessus.'), chips: ['IFC'], off: !api.cap.ifc },
     { id: 'image', icon: 'image', name: tl('Depuis un plan scanné'), text: tl('Une image du plan (PNG, JPG) sous le dessin : étalonnez-la en cliquant deux points de distance connue, puis tracez murs et pièces.'), chips: ['PNG', 'JPG'] }
   ].filter(t => !t.off);
 }
@@ -61,6 +62,7 @@ export async function applyTemplate(api, id) {
   const { app, ws } = api;
   if (id === 'empty') { await api.view('logic'); api.status(tl('Projet réseau vide : glissez des équipements depuis la bibliothèque, ou ouvrez la vue Plans (Alt+2).'), 'ok'); return; }
   if (id === 'cad') return api.run({ act: 'importCad' });
+  if (id === 'ifc') return api.run({ act: 'importIfc' });
   if (id === 'image') { await api.view('plan'); return api.run({ act: 'importImage' }); }
   if (id === 'office') {
     const [demo, rack, sim, devs, dim] = await Promise.all([import('./plan-demo.js'), import('../rack.js').catch(() => null), import('./simpane.js').catch(() => null), import('../devices.js'), import('../dimension.js').catch(() => null)]);
@@ -166,7 +168,7 @@ let tour = null;
 function steps() {
   const pal = keyLabel('Mod+Shift+P', MAC, isEn), prob = keyLabel('Mod+Shift+M', MAC, isEn);
   return [
-    { sel: ['.ntViewBar', '.ntHost'], icon: 'layers', title: tl('Quatre vues, un seul projet'), text: tl('Vue logique, Plans, Baies et Conception montrent le même modèle : un switch posé sur le plan est aussi dans sa baie et sur le schéma. Alt+1 à Alt+4 pour passer de l’une à l’autre.') },
+    { sel: ['.ntViewBar', '.ntHost'], icon: 'layers', title: tl('Quatre vues, un seul projet'), text: tl('Vue logique, Plans, Baies et Conception montrent le même modèle : un switch posé sur le plan est aussi dans sa baie et sur le schéma. {0} à {1} pour passer de l’une à l’autre.', keyLabel('Alt+1', MAC, isEn), keyLabel('Alt+4', MAC, isEn)) },
     { sel: ['.app.netMode .ntLib:not([hidden])', '#actBar .actBtn'], icon: 'box', title: tl('La bibliothèque'), text: tl('Switchs, routeurs, prises, points d’accès, panneaux, onduleurs… Glissez-les dans la vue montrée : sur un plan, ils se posent à l’échelle et leurs câbles prennent leur longueur réelle.') },
     { sel: ['.panel.right'], icon: 'sliders', title: tl('L’inspecteur'), text: tl('Les réglages de la sélection : adresses IP, VLAN, routage et OSPF, Spanning Tree, emplacement et hauteur de pose. Sans sélection : la base des VLAN du projet.') },
     { sel: ['.statusbar .sbProblems', '.statusbar'], icon: 'alert', title: tl('Le vérificateur, en continu'), text: tl('Longueurs, PoE, VLAN, Wi-Fi, baies, fibre : chaque règle est vérifiée à chaque modification, avec sa source. {0} ouvre les problèmes ; un clic montre l’objet en cause.', prob) },

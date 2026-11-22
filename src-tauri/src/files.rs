@@ -129,6 +129,31 @@ impl Write1 {
     }
 }
 
+/// Copie atomique d'un fichier de l'application (DWG converti…) vers une cible déjà autorisée : même écriture que
+/// les enregistrements (temporaire du même dossier, vidé sur le disque, renommé). Rend la taille copiée.
+pub(crate) fn copy_atomic(src: &Path, target: &Path) -> Result<u64, String> {
+    static NEXT: AtomicU32 = AtomicU32::new(1 << 30);
+    let mut r = File::open(src).map_err(|e| format!("Lecture impossible : {e}"))?;
+    let mut w = Write1::begin(target, NEXT.fetch_add(1, Ordering::SeqCst))?;
+    let mut buf = vec![0u8; 1 << 20];
+    loop {
+        let n = match r.read(&mut buf) {
+            Ok(0) => break,
+            Ok(n) => n,
+            Err(e) => {
+                w.abort();
+                return Err(format!("Lecture impossible : {e}"));
+            }
+        };
+        if let Err(e) = w.append(w.len, &buf[..n]) {
+            w.abort();
+            return Err(e);
+        }
+    }
+    let size = w.len;
+    w.commit(size)
+}
+
 #[derive(Default)]
 pub struct Writes {
     open: Mutex<HashMap<u32, Write1>>,

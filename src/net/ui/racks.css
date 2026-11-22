@@ -58,41 +58,20 @@
 /* Élévation */
 .ntRkElev { position: relative; flex: 1; min-height: 0; }
 .ntRkElev[hidden], .ntRkOver[hidden] { display: none; }
-.ntRkSide { position: absolute; left: 12px; top: 0; bottom: 12px; width: 164px; overflow: auto; padding: 6px 8px 8px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); z-index: 5; }
-.ntRkSide header { display: flex; align-items: center; gap: 6px; margin: 0 0 6px 4px; }
-.ntRkSide h4 { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; color: var(--muted); }
-.ntRkSide header .tb { margin-left: auto; width: 24px; height: 24px; }
-.ntRkSide header .tb .ic { width: 14px; height: 14px; }
-.ntRkCount { min-width: 18px; padding: 0 5px; border-radius: 9px; background: var(--raise); color: var(--fg-2); font-size: 10.5px; text-align: center; }
-.ntRkCount:empty { display: none; }
-.ntRkSideRail { display: none; appearance: none; border: 0; background: none; color: var(--muted); width: 100%; padding: 8px 0; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; border-radius: 8px; }
-.ntRkSideRail:hover { color: var(--fg); background: var(--raise); }
-.ntRkSideRail .ic { width: 16px; height: 16px; }
-.ntRk.sideOff .ntRkSide { width: 36px; padding: 4px; overflow: hidden; }
-.ntRk.sideOff .ntRkSide > header, .ntRk.sideOff .ntRkList { display: none; }
-.ntRk.sideOff .ntRkSideRail { display: flex; }
-.ntRk.sideOff .ntRkCanvas, .ntRk.sideOff .ntRkPatch { left: 54px; }
-.ntRk.sideOff .ntRkSum { left: 66px; }
-.ntRkSide .mut { font-size: 11.5px; margin: 4px; }
-.ntRkItem { appearance: none; width: 100%; display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 7px; border: 1px solid transparent; background: none; color: var(--fg); font: inherit; font-size: 12px; cursor: grab; text-align: left; }
-.ntRkItem:hover { background: var(--raise); }
-.ntRkItem.isSel { border-color: var(--accent); }
-.ntRkItem .ic { width: 16px; height: 16px; color: var(--nt-c5e); flex: none; }
-.ntRkItem span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ntRkItem small { color: var(--muted); font-size: 10.5px; }
-.ntRkCanvas { position: absolute; left: 182px; right: 0; top: 0; bottom: 0; overflow: hidden; touch-action: none; }
+.ntRkCanvas { position: absolute; left: 0; right: 0; top: 0; bottom: 46px; overflow: hidden; touch-action: none; }
 .ntRkHint { position: absolute; left: 50%; top: 42%; transform: translate(-50%, -50%); max-width: 340px; display: grid; justify-items: center; gap: 6px; padding: 16px 18px; text-align: center; border-radius: 12px; border: 1px dashed var(--line-2); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); color: var(--fg-2); font-size: 12.5px; pointer-events: none; }
 .ntRkHint[hidden] { display: none; }
 .ntRkHint .ic { width: 28px; height: 28px; color: var(--nt-c5e); }
 .ntRkHint span { color: var(--muted); font-size: 12px; }
 .ntRk.patchOn .ntRkCanvas { bottom: clamp(150px, 34%, 210px); }
 .ntRkSvg { width: 100%; height: 100%; display: block; user-select: none; -webkit-user-select: none; }
-.ntRkSum { position: absolute; left: 194px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); font-size: 12px; color: var(--fg-2); max-width: calc(100% - 250px); z-index: 4; }
-.ntRk.patchOn .ntRkSum { bottom: calc(clamp(150px, 34%, 210px) + 12px); }
+.ntRkSum { position: absolute; left: 12px; bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); font-size: 12px; color: var(--fg-2); max-width: calc(100% - 80px); z-index: 4; }
+.ntRk.patchOn .ntRkSum { bottom: 8px; }
 .ntRkSum span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ntRkSum { flex-wrap: nowrap !important; overflow: hidden; }
 .ntRkSum .ic { width: 14px; height: 14px; color: var(--muted); }
 .ntRkSum .bad { color: var(--danger-ink, var(--nt-err)); }
-.ntRkSel { position: absolute; left: 194px; bottom: 56px; width: 260px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 24px #0004; z-index: 6; font-size: 12px; }
+.ntRkSel { position: absolute; left: 12px; bottom: 50px; width: 260px; padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line); background: var(--panel); box-shadow: 0 8px 24px #0004; z-index: 6; font-size: 12px; }
 .ntRkSel header { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto auto; column-gap: 6px; align-items: center; }
 .ntRkSel.open header { margin-bottom: 6px; }
 .ntRkSel header b, .ntRkSel header small { grid-column: 2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -104,7 +83,7 @@
 .ntRkSel .ntF { margin: 5px 0; grid-template-columns: 1fr 116px; gap: 6px; }
 .ntRkSel .ntF > span { font-size: 11.5px; line-height: 1.2; }
 .ntRkSel .mut { margin: 8px 0 0; font-size: 11px; }
-.ntRkPatch { position: absolute; left: 182px; right: 56px; bottom: 0; height: clamp(150px, 34%, 210px); border-right: 1px solid var(--line); display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); z-index: 5; }
+.ntRkPatch { position: absolute; left: 0; right: 56px; bottom: 0; height: clamp(150px, 34%, 210px); border-right: 1px solid var(--line); display: flex; flex-direction: column; border-top: 1px solid var(--line); background: var(--panel); z-index: 5; }
 .ntRkPatch[hidden] { display: none; }
 .ntRkPatch header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 6px 12px 2px 12px; font-size: 12.5px; }
 .ntRkTipTxt { margin-left: auto; font-size: 11px; }
@@ -199,7 +178,9 @@ td.bad { color: var(--nt-err); }
 .ntRkMs { color: var(--accent); font-weight: 600; }
 
 /* Niveau de détail : de loin, les ports s'effacent et les noms grossissent (taille à l'écran à peu près constante) */
-.ntRkSvg .ntRkLbl { dominant-baseline: central; paint-order: stroke; stroke: var(--nt-rk-dev); stroke-width: 2.5px; stroke-linejoin: round; }
+/* Nom d'un équipement : sur un fond plein à sa taille (filtre ntRkLblBg), lisible même par-dessus les ports à fort zoom */
+.ntRkSvg .ntRkLbl { dominant-baseline: central; filter: url(#ntRkLblBg); }
+.ntRkLblFlood { flood-color: var(--nt-rk-dev); }
 .ntRkSvg .ntRkLbl { font-size: var(--rkf, 8px); }
 .ntRkSvg.lodLo .ntRkPort, .ntRkSvg.lodLo .ntRkCage, .ntRkSvg.lodLo .ntRkLed, .ntRkSvg.lodLo .ntRkNum, .ntRkSvg.lodLo .ntRkScrew,
 .ntRkSvg.lodLo .ntRkLcSplit, .ntRkSvg.lodLo .ntRkOutlet, .ntRkSvg.lodLo .ntRkBtn { display: none; }
@@ -214,8 +195,6 @@ td.bad { color: var(--nt-err); }
   .ntRkBar .segBtn[data-rkmode] span, .ntRkBar .btn span { display: none; }
   .ntRkBar .btn { padding: 0 8px; }
   .ntRkPick .sel { min-width: 104px; max-width: 140px; }
-  .ntRk:not(.sideOff) .ntRkCanvas, .ntRk:not(.sideOff) .ntRkPatch { left: 150px; }
-  .ntRk:not(.sideOff) .ntRkSum { left: 162px; }
   .ntRkPatchScroll .c-perm, .ntRkPatchScroll .c-cord, .ntRkTipTxt { display: none; }
   .ntRkPatchForm { flex-wrap: wrap; } .ntRkPatchForm .sel { min-width: 118px; }
   .ntRkSum { font-size: 11.5px; gap: 2px 10px; }
@@ -229,26 +208,26 @@ td.bad { color: var(--nt-err); }
 .ntRkChip b, .ntRkChip span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ntRkChip span { color: var(--fg-2); }
 .ntRkChip .ic { width: 13px; height: 13px; color: var(--accent); flex: none; }
-.ntRk.sideOff .ntRkSel { left: 66px; }
 .ntRk.patchOn .ntRkSel { bottom: calc(clamp(150px, 34%, 210px) + 56px); }
-@container ntrk (max-width: 760px) { .ntRk:not(.sideOff) .ntRkSel { left: 162px; } .ntRkSide { width: 132px; } .ntRkSide header .ntRkCount { display: none; } .ntRkSide h4 { letter-spacing: .02em; font-size: 10.5px; } }
-
 /* Brassage : barre fine au bas de l'élévation (le tableau est dans le panneau du bas) */
-.ntRkPatch.slim { left: 194px; right: 68px; bottom: 56px; height: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 6px 20px #0004; }
+.ntRkPatch.slim { left: 12px; right: 68px; bottom: 46px; height: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--glass); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); box-shadow: 0 6px 20px #0004; }
 .ntRkPatch.slim .ntRkPatchForm { padding: 6px 8px; flex-wrap: nowrap; }
 .ntRkPatch.slim .ntRkPatchForm .btn.subtle { margin-left: auto; white-space: nowrap; }
 .ntRkPatchT { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
 .ntRkPatchT .ic { width: 14px; height: 14px; color: var(--nt-c5e); }
-.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkCanvas { bottom: 0; }
-.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSum { bottom: 12px; }
-.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSel { bottom: 104px; }
-.ntRk.sideOff .ntRkPatch.slim { left: 66px; }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkCanvas { bottom: 94px; }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSum { bottom: 8px; }
+.ntRk.patchOn:has(.ntRkPatch.slim) .ntRkSel { bottom: 98px; }
 .ntRkBar .segBtn:disabled, .ntRkBar .btn:disabled { opacity: .45; cursor: default; }
 /* Cartouche lisible à toute échelle */
 .ntRkSvg .ntRkTitle { font-size: var(--rkt, 24px); }
 .ntRkSvg .ntRkFoot { font-size: var(--rkc, 15px); }
 @container ntrk (max-width: 760px) {
-  .ntRk:not(.sideOff) .ntRkPatch.slim { left: 162px; }
   .ntRkPatch.slim .ntRkPatchT span, .ntRkPatch.slim .ntRkPatchForm .btn.subtle span { display: none; }
   .ntRkPatch.slim .ntRkPatchForm .sel { min-width: 0; max-width: 130px; }
 }
+
+/* Section « Hors baie » de la bibliothèque (vue Baies) */
+.ntRkLoose { position: relative; }
+.ntRkLoose small { position: absolute; top: 4px; right: 6px; font-size: 10px; color: var(--muted); }
+.ntRkLoose.isSel { outline: 2px solid var(--accent); outline-offset: -2px; }

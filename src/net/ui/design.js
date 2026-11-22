@@ -42,7 +42,9 @@ export function createDesignView(ctx) {
   const over = () => nav.scrollWidth > nav.clientWidth + 2;
   const fitTabs = () => { nav.classList.remove('compact', 'noicons'); if (over()) nav.classList.add('noicons'); if (over()) { nav.classList.remove('noicons'); nav.classList.add('compact'); } };
   const paintTabs = () => { el.querySelectorAll('[data-tab]').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === tab))); fitTabs(); };
-  if (typeof ResizeObserver === 'function') new ResizeObserver(() => fitTabs()).observe(nav);
+  // réajustement seulement quand la largeur change (pas à chaque changement de hauteur provoqué par le réajustement lui-même)
+  let navW = -1;
+  if (typeof ResizeObserver === 'function') new ResizeObserver(() => { if (nav.clientWidth === navW) return; navW = nav.clientWidth; fitTabs(); }).observe(nav);
   el.querySelector('.ntDsTabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; tab = b.dataset.tab; try { localStorage.setItem(PREF, tab); } catch (x) { /* rien */ } render('tab'); });
   bindSettings(ctx, body);
 
@@ -206,7 +208,7 @@ function renderDim(ctx) {
     { name: tl('Switchs'), key: x => x.switches.map(s => `${s.n} × ${s.ports}`).join(' + ') || '—', num: 1 }, { name: tl('Montantes'), key: 'uplinks', num: 1 },
     { name: tl('Surréservation'), key: x => x.uplinks ? fmt(x.oversub, 1) + ':1' : '—', num: 1, cls: '' },
     { name: 'PoE (W)', key: x => `${fmt(x.poe.need)} / ${x.poe.budget ? fmt(x.poe.budget) : '—'}`, num: 1 },
-    { name: 'U', key: x => `${x.u} (${x.racksNeeded} ${tl('baie(s)')})`, num: 1 }, { name: tl('Onduleur (W)'), key: x => x.ups.known ? fmt(x.ups.sizedW) : (x.poe.need ? '≥ ' + fmt(Math.round(x.poe.need * (1 + D.upsMargin / 100))) : '—'), num: 1 },
+    { name: 'U', key: x => `${x.u} (${tl('{0:# baie|# baies}', x.racksNeeded)})`, num: 1 }, { name: tl('Onduleur (W)'), key: x => x.ups.known ? fmt(x.ups.sizedW) : (x.poe.need ? '≥ ' + fmt(Math.round(x.poe.need * (1 + D.upsMargin / 100))) : '—'), num: 1 },
     { name: tl('Lien moyen (m)'), key: x => fmt(x.cable.avg, 1) + (x.cable.est ? ' *' : ''), num: 1 }, { name: tl('Câble (m)'), key: x => fmt(x.cable.total), num: 1 }
   ], r.trs.filter(x => x.outlets || !x.virtual), { attrs: x => (x.oversubOk && x.poe.ok ? '' : 'class="warn"') });
   const rackOpts = (data.racks || []).map(k => [k.id, L.rack(k.id) + ' · ' + (k.name || k.id)]);

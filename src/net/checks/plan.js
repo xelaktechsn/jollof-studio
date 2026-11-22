@@ -50,8 +50,8 @@ export function issues(data, lan, h) {
   for (const p of paths) {
     const cs = byPath.get(p.id) || [], f = fillOf(p, cs), nm = pathName(p);
     if (f.ratio > f.max + 1e-9) add('J1250', p.id, isConduitKind(p.kind)
-      ? tl('{0} : rempli à {1} % par {2} câble(s), au plus {3} % pour ce nombre de câbles.', nm, pct(f.ratio), f.n, pct(f.max))
-      : tl('{0} : rempli à {1} % par {2} câble(s), au plus {3} % de sa section.', nm, pct(f.ratio), f.n, pct(f.max)));
+      ? tl('{0} : rempli à {1} % par {2:# câble|# câbles}, au plus {3} % pour ce nombre de câbles.', nm, pct(f.ratio), f.n, pct(f.max))
+      : tl('{0} : rempli à {1} % par {2:# câble|# câbles}, au plus {3} % de sa section.', nm, pct(f.ratio), f.n, pct(f.max)));
     if (isTrayKind(p.kind) && f.depth > L.TRAY_DEPTH_MM.v) add('J1261', p.id, tl('{0} : {1} mm de câbles empilés, au plus {2} mm.', nm, Math.round(f.depth), L.TRAY_DEPTH_MM.v));
     if (p.kind === 'ceiling' && f.n > L.JHOOK_CABLES.v) add('J1260', p.id, tl('{0} : {1} câbles sur les crochets, au plus {2} par support.', nm, f.n, L.JHOOK_CABLES.v));
     if (p.kind === 'conduit') {
@@ -75,7 +75,7 @@ export function issues(data, lan, h) {
       const k = d.id + '|' + e.id; if (seen.has(k)) continue;
       const need = separationMm(cls, d, e); if (need <= 0) continue;
       const gap = parallelGap(d, e, 1);
-      if (gap != null && gap < need) { seen.add(k); add('J1253', d.id, tl('{0} longe {1} à {2} mm (bord à bord), il faut {3} mm (EN 50174-2, classe {4}, {5} circuit(s)).', pathName(d), pathName(e), Math.max(0, Math.round(gap)), Math.round(need), cls, e.circuits || 1)); }
+      if (gap != null && gap < need) { seen.add(k); add('J1253', d.id, tl('{0} longe {1} à {2} mm (bord à bord), il faut {3} mm (EN 50174-2, classe {4}, {5:# circuit|# circuits}).', pathName(d), pathName(e), Math.max(0, Math.round(gap)), Math.round(need), cls, e.circuits || 1)); }
     }
   }
   // Colonnes montantes (courses verticales) : une colonne de données et une colonne d'énergie du même bâtiment qui
@@ -88,7 +88,7 @@ export function issues(data, lan, h) {
     const run = Math.min(d.v.hi, e.v.hi) - Math.max(d.v.lo, e.v.lo); if (run < 1) continue;
     const need = separationMm(cls, d.p, e.p); if (need <= 0) continue;
     const gap = Math.hypot(d.p.pts[0][0] - e.p.pts[0][0], d.p.pts[0][1] - e.p.pts[0][1]) * 1000 - ((d.p.w || 0) + (e.p.w || 0)) / 2;
-    if (gap < need) add('J1253', d.p.id, tl('{0} monte à côté de {1} sur {2} m, à {3} mm (bord à bord) : il faut {4} mm (EN 50174-2, classe {5}, {6} circuit(s)).', pathName(d.p), pathName(e.p), dec(Math.round(run * 10) / 10), Math.max(0, Math.round(gap)), Math.round(need), cls, e.p.circuits || 1));
+    if (gap < need) add('J1253', d.p.id, tl('{0} monte à côté de {1} sur {2} m, à {3} mm (bord à bord) : il faut {4} mm (EN 50174-2, classe {5}, {6:# circuit|# circuits}).', pathName(d.p), pathName(e.p), dec(Math.round(run * 10) / 10), Math.max(0, Math.round(gap)), Math.round(need), cls, e.p.circuits || 1));
   }
   // Deux étages voisins : la dalle sépare leurs cheminements (hypothèse de modélisation : aucune source publique lue ne
   // dit qu'une dalle de béton vaut une séparation ; la seule séparation nulle de l'EN 50174-2 citée par DTECH est le
@@ -96,16 +96,16 @@ export function issues(data, lan, h) {
   // l'un des deux étages, ou colonne montante qui les relie. Là, un cheminement de données d'un étage et un cheminement
   // d'énergie de l'autre qui passent tous deux à moins de A de l'ouverture sont comparés en 3D (écart horizontal entre les
   // tronçons, écart vertical d'après les altitudes des étages et les hauteurs des cheminements, bord à bord).
-  for (const x of crossFloor(data, cls)) add('J1253', x.d.id, tl('{0} (étage {1}) passe à {2} mm de {3} (étage {4}) par {5} : il faut {6} mm (EN 50174-2, classe {7}, {8} circuit(s)).', pathName(x.d), x.fd.name, Math.max(0, Math.round(x.gap)), pathName(x.e), x.fe.name, x.via, Math.round(x.need), cls, x.e.circuits || 1));
+  for (const x of crossFloor(data, cls)) add('J1253', x.d.id, tl('{0} (étage {1}) passe à {2} mm de {3} (étage {4}) par {5} : il faut {6} mm (EN 50174-2, classe {7}, {8:# circuit|# circuits}).', pathName(x.d), x.fd.name, Math.max(0, Math.round(x.gap)), pathName(x.e), x.fe.name, x.via, Math.round(x.need), cls, x.e.circuits || 1));
   // Équipements hors des pièces ; étages avec prises sans local technique ; surface desservie ; prises trop loin.
   const routed = new Set(); for (const c of data.cables || []) if (c.route && c.route.mode === 'auto' && c.route.calc && !c.route.calc.fallback) { routed.add(c.a[0]); routed.add(c.b[0]); }
   for (const { b, f } of floors) {
     const devs = (data.devices || []).filter(d => d.loc && d.loc.floor === f.id), outs = devs.filter(d => OUTLETS.has(d.type));
     if (f.rooms.length) for (const d of devs) if (!roomAt(f, d.loc.x, d.loc.y)) add('J1254', d.id, tl('{0} est posé hors de toute pièce ({1}).', name(d.id), floorName(b, f)));
     const trs = trPoints(data, f), nTr = f.rooms.filter(isTechRoom).length || (trs.length ? 1 : 0);
-    if (outs.length && !trs.length) add('J1257', f.id, tl('{0} : {1} prise(s) mais aucun local technique ni baie à cet étage.', floorName(b, f), outs.length));
+    if (outs.length && !trs.length) add('J1257', f.id, tl('{0} : {1:# prise|# prises} mais aucun local technique ni baie à cet étage.', floorName(b, f), outs.length));
     const area = f.rooms.filter(r => !isTechRoom(r) && !isShaft(r)).reduce((s, r) => s + roomArea(r), 0);
-    if (nTr && area / nTr > L.TR_AREA_M2.v) add('J1259', f.id, tl('{0} : {1} m² desservis par {2} local(aux) technique(s), au plus {3} m² chacun.', floorName(b, f), Math.round(area), nTr, L.TR_AREA_M2.v));
+    if (nTr && area / nTr > L.TR_AREA_M2.v) add('J1259', f.id, tl('{0} : {1} m² desservis par {2:# local technique|# locaux techniques}, au plus {3} m² chacun.', floorName(b, f), Math.round(area), nTr, L.TR_AREA_M2.v));
     // Prises pas encore câblées (ou au tracé manuel) : distance le long des cheminements jusqu'au départ le plus proche.
     const tb = trs.length ? trs : floors.filter(x => x.b === b && x.f !== f).flatMap(x => trPoints(data, x.f));
     const g = tb.length && outs.length && (data.paths || []).length ? graphOf(data) : null;
@@ -206,8 +206,8 @@ export const LAB = {
       return iss.length ? { ok: false, why: 'issues', issues: iss } : { ok: true };
     },
     text(c, r) {
-      if (r.why === 'floors') return tl('Il faut au moins {0} étage(s) dans la vue Plans (ici {1}).', c.floors || 1, r.n);
-      if (r.why === 'rooms') return tl('Dessinez au moins {0} pièce(s) sur les plans (ici {1}).', c.rooms || 1, r.n);
+      if (r.why === 'floors') return tl('Il faut au moins {0:# étage|# étages} dans la vue Plans (ici {1}).', c.floors || 1, r.n);
+      if (r.why === 'rooms') return tl('Dessinez au moins {0:# pièce|# pièces} sur les plans (ici {1}).', c.rooms || 1, r.n);
       return tl('Le plan d’étage n’est pas encore correct : {0}', r.issues.slice(0, 2).map(i => `${i.code} ${i.text}`).join(' ; '));
     }
   },

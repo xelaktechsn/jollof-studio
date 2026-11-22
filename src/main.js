@@ -256,7 +256,7 @@ function replRender() {
   $('#rpMap').innerHTML = R.used.length
     ? `<table class="rpTable"><thead><tr><th>${tl('Broche actuelle')}</th><th>${tl('Reliée à')}</th><th></th><th>${tl('Nouvelle broche')}</th></tr></thead><tbody>${R.used.map(row).join('')}</tbody></table>`
     : `<p class="note">${tl('Ce composant n’a aucun fil : il est simplement remplacé, à la même place.')}</p>`;
-  $('#rpNote').textContent = bad.size ? tl('Une broche ne reçoit qu’un fil : deux lignes visent la même.') : lost ? tl('{0} fil(s) sans équivalent seront retirés.', lost) : R.used.length ? tl('Tous les fils sont gardés.') : '';
+  $('#rpNote').textContent = bad.size ? tl('Une broche ne reçoit qu’un fil : deux lignes visent la même.') : lost ? tl('{0:# fil|# fils} sans équivalent seront retirés.', lost) : R.used.length ? tl('Tous les fils sont gardés.') : '';
   $('#rpNote').dataset.kind = bad.size ? 'err' : lost ? 'warn' : 'ok';
   $('#rpGo').disabled = bad.size > 0 || !R.keys.length;
 }
@@ -279,7 +279,7 @@ function applyReplace() {
   const name = old.name, model = (BY_ID[R.type] && BY_ID[R.type].name) || nc.name;
   closeReplace(); removeComp(old, true); select(nc);
   renderWires(); updatePower(); changed();
-  status(lost ? tl('{0} remplacé par {1} : {2} fil(s) gardé(s), {3} retiré(s). Ctrl+Z pour revenir.', name, model, kept, lost) : tl('{0} remplacé par {1} : {2} fil(s) gardé(s). Ctrl+Z pour revenir.', name, model, kept), lost ? 'warn' : 'ok');
+  status(lost ? tl('{0} remplacé par {1} : {2:# fil gardé|# fils gardés}, {3:# retiré|# retirés}. Ctrl+Z pour revenir.', name, model, kept, lost) : tl('{0} remplacé par {1} : {2:# fil gardé|# fils gardés}. Ctrl+Z pour revenir.', name, model, kept), lost ? 'warn' : 'ok');
 }
 /** Centre libre le plus proche de (ox, oz) pour une emprise `size`, en spirale ; null si tout est pris. */
 function freeSpot(size, ox, oz, others, r0, dr) {
@@ -789,7 +789,7 @@ function setAutoShots(on) {
     S.timeline.camPlan = true; planShots.sig = null;
     changed();
     const n = S.shots.filter(s => s.auto === 'wire').length;
-    status(tl('Plans automatiques : une vue d’ensemble et {0} vue(s) de détail. La caméra suit chaque fil.', n), 'ok');
+    status(tl('Plans automatiques : une vue d’ensemble et {0:# vue|# vues} de détail. La caméra suit chaque fil.', n), 'ok');
   } else {
     delete S.timeline.camPlan; S.timeline.camAuto = true; S.shots = S.shots.filter(s => !s.auto);
     changed(); status(tl('Plans automatiques retirés.'), 'ok');
@@ -806,7 +806,7 @@ function renderShots() {
   if (btn) { btn.setAttribute('aria-pressed', plan); btn.querySelector('span').textContent = plan ? tl('Recalculer les plans') : tl('Plans automatiques'); }
   if (plan) {
     const all = S.shots.findIndex(s => s.auto === 'all'), n = S.shots.filter(s => s.auto === 'wire').length;
-    $('#shots').innerHTML = `<li><span class="n">${icon('wand')}</span><span class="l">${tl('Vue d’ensemble + {0} vue(s) de détail', n)}</span>
+    $('#shots').innerHTML = `<li><span class="n">${icon('wand')}</span><span class="l">${tl('Vue d’ensemble + {0:# vue|# vues} de détail', n)}</span>
     <button type="button" data-go="${all}" title="${tl('Voir la vue d’ensemble')}" aria-label="${tl('Voir la vue d’ensemble')}">${icon('eye')}</button><button type="button" data-edit="1" title="${tl('Régler ces plans à la main')}" aria-label="${tl('Régler ces plans à la main')}">${icon('frame')}</button><button type="button" data-auto-off="1" title="${tl('Retirer les plans automatiques')}" aria-label="${tl('Retirer les plans automatiques')}">${icon('trash')}</button></li>`;
     return;
   }
@@ -1626,7 +1626,7 @@ function installNav() {
 /** Tampon du schéma imprimé : le résultat du vérificateur (sans symbole hors des polices du PDF). */
 function checkStamp() {
   const r = chk && chk.result; if (!r) return null;
-  return { ok: !r.errors, text: r.errors ? tl('NON VÉRIFIÉ : {0} erreur(s), voir le rapport de vérification', r.errors) : r.proven ? tl('VÉRIFIÉ : aucune faute dans les {0} états atteignables', Number(r.states).toLocaleString(locale())) : tl('VÉRIFIÉ sur {0} états (vérification partielle)', Number(r.states).toLocaleString(locale())) };
+  return { ok: !r.errors, text: r.errors ? tl('NON VÉRIFIÉ : {0:# erreur|# erreurs}, voir le rapport de vérification', r.errors) : r.proven ? tl('VÉRIFIÉ : aucune faute dans les {0} états atteignables', Number(r.states).toLocaleString(locale())) : tl('VÉRIFIÉ sur {0} états (vérification partielle)', Number(r.states).toLocaleString(locale())) };
 }
 /**
  * Vérificateur (src/check) : pastille à côté de « Simuler », rapport à la manière de rustc. Il relit le montage et
@@ -2297,7 +2297,7 @@ function showWireShape(w) {
   const r = sh.round ?? ROUND; $('#wsRound').value = r; $('#wsRoundOut').textContent = `${String(+(+r).toFixed(1)).replace('.', DEC)} mm`;
   $('#wsRound').disabled = WIRES.style !== 'tidy' && !manual;
   $('#wsReset').disabled = !w.shape;
-  $('#wsMode').textContent = manual ? tl('Tracé à la main ({0} point(s))', sh.via.length) : tl('Tracé automatique');
+  $('#wsMode').textContent = manual ? tl('Tracé à la main ({0:# point|# points})', sh.via.length) : tl('Tracé automatique');
 }
 function selectWire(w) {
   if (w && !w.mesh) flushWires();
@@ -2725,7 +2725,7 @@ function renderParts(force = true) {
     const open = partsOpen.has(c.id) ? partsOpen.get(c.id) : !isBreadboard(c), e = BY_ID[c.type];
     const used = new Set(list.map(x => x.me.key)).size;
     return `<div class="wpGroup${open ? '' : ' closed'}${S.sel === c ? ' cur' : ''}" data-cid="${esc(c.id)}">
-      <div class="wpTop"><button type="button" class="wpHead" aria-expanded="${open}"><span class="foldChev" aria-hidden="true"></span>${catIcon(e ? e.cat : '')}<b>${esc(c.name)}</b><small>${esc(e ? e.name : tl('Modèle importé'))}</small><span class="wpUse" title="${tl('{0} broche(s) câblée(s) sur {1}', used, order.length)}">${used}/${order.length}</span></button>
+      <div class="wpTop"><button type="button" class="wpHead" aria-expanded="${open}"><span class="foldChev" aria-hidden="true"></span>${catIcon(e ? e.cat : '')}<b>${esc(c.name)}</b><small>${esc(e ? e.name : tl('Modèle importé'))}</small><span class="wpUse" title="${tl('{0:# broche câblée|# broches câblées} sur {1}', used, order.length)}">${used}/${order.length}</span></button>
       <button type="button" class="wpGo" data-go="${esc(c.id)}" aria-label="${esc(tl('Montrer {0} sur le plan de travail', c.name))}" title="${esc(tl('Montrer {0} sur le plan de travail', c.name))}">${icon('target')}</button></div>
       <ul class="wpRows">${list.map(row).join('')}</ul></div>`;
   }).join('');
@@ -3401,7 +3401,7 @@ async function exportGuide() {
   if (S.simOn) { status(tl('Arrêtez la simulation avant d’exporter le guide.'), 'warn'); return; }
   if (!S.wires.length) { status(tl('Ajoutez au moins un fil : le guide suit le câblage.'), 'warn'); return; }
   // Comme le guide PDF (schematic/guide.js) : un guide sert à câbler en vrai, seulement pour un montage sans erreur.
-  if (chk) { const r = await chk.verify(false); if (r && r.errors) { status(tl('Guide de montage refusé : le montage a {0} erreur(s). Corrigez-les d’abord (rapport ouvert).', r.errors), 'err'); chk.open(); return; } }
+  if (chk) { const r = await chk.verify(false); if (r && r.errors) { status(tl('Guide de montage refusé : le montage a {0:# erreur|# erreurs}. Corrigez-les d’abord (rapport ouvert).', r.errors), 'err'); chk.open(); return; } }
   if (S.rec || S.vr || S.simOn) return;
   if (S.anim) finishAnim();
   select(null); selectWire(null); cancelPending();

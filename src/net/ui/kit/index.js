@@ -5,7 +5,7 @@
 //   createTree(host, o) ............................. tree.js     createTable(host, o) ..................... table.js
 //   searchBox(host, o) .............................. search.js   task(label, fn, o) / notify(text, kind, o)  task.js
 // Logique pure (Node) : model.js.
-export { ctxMenu, menuAt, closeMenus, keyLabel } from './menu.js';
+export { ctxMenu, menuAt, closeMenus, keyLabel, scrollWithin } from './menu.js';
 export { propGrid } from './propgrid.js';
 export { createTree } from './tree.js';
 export { createTable } from './table.js';

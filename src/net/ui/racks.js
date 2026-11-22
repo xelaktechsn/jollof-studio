@@ -46,12 +46,7 @@ export function createRackView(ctx) {
     </div>
     <div class="ntRkOver"></div>
     <div class="ntRkElev">
-      <aside class="ntRkSide" aria-label="${tl('Équipements hors baie')}">
-        <header><h4>${tl('Hors baie')}</h4><span class="ntRkCount"></span><button type="button" class="tb" data-rkside data-tip="${tip(tl('Replier la liste'))}" aria-label="${tl('Replier la liste')}">${icon('chevsLeft')}</button></header>
-        <div class="ntRkList"></div>
-        <button type="button" class="ntRkSideRail" data-rkside data-tip="${tip(tl('Équipements hors baie'))}" aria-label="${tl('Déplier la liste des équipements hors baie')}">${icon('chevsRight')}<span class="ntRkCount"></span></button>
-      </aside>
-      <div class="ntRkCanvas"><svg class="ntRkSvg" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" role="img" aria-label="${tl('Élévation de la baie')}"><g class="ntRkWorld"></g><g class="ntRkGhostL"></g></svg><div class="ntRkHint" hidden></div></div>
+      <div class="ntRkCanvas"><svg class="ntRkSvg" xmlns="http://www.w3.org/2000/svg" shape-rendering="geometricPrecision" role="img" aria-label="${tl('Élévation de la baie')}"><defs><filter id="ntRkLblBg" x="-0.06" y="-0.1" width="1.12" height="1.2"><feFlood class="ntRkLblFlood"/><feComposite in="SourceGraphic" operator="over"/></filter></defs><g class="ntRkWorld"></g><g class="ntRkGhostL"></g></svg><div class="ntRkHint" hidden></div></div>
       <div class="ntRkSum"></div>
       <div class="ntRkSel" hidden></div>
       <section class="ntRkPatch" hidden></section>
@@ -62,7 +57,7 @@ export function createRackView(ctx) {
   const pref = (k, d) => { try { return localStorage.getItem(k) ?? d; } catch (e) { return d; } };
   const setPref = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { /* stockage indisponible */ } };
   let lastSel = '', mode = 'over', cur = null, patchOn = pref('jollof-net-rack-patch', '0') === '1', view = { x: 0, y: 0, k: 0.5 }, fitted = false, drag = null, band = null;
-  let facesPref = pref('jollof-net-rack-faces', 'auto'), sideOff = pref('jollof-net-rack-side', '') === 'off', cardOpen = false; // carte de place dépliée (au-dessus de la barre du bas)
+  let facesPref = pref('jollof-net-rack-faces', 'auto'), cardOpen = false; // carte de place dépliée (au-dessus de la barre du bas)
   /** Sélection multiple de la vue : clés 'dev:id' / 'rack:id' (la sélection simple partagée est la dernière). */
   let ms = [];
 
@@ -206,7 +201,7 @@ export function createRackView(ctx) {
       const r = rackById(s.id), list = n(s), errs = list.filter(i => i.kind === 'err').length, pct = (s.usedU / s.u) * 100;
       const kgPct = (s.kg / r.load) * 100, heatPct = (s.heatW / r.heat) * 100, ups = s.ups[0];
       return `<button type="button" class="ntRkCard${isSel('rack', s.id) ? ' isSel' : ''}" data-rkopen="${esc(s.id)}" data-tip="${tip(tl('Ouvrir l’élévation · clic droit : actions'))}">
-        <header>${icon('rack')}<b>${esc(s.name)}</b><small>${r.kind === 'wall' ? tl('Coffret mural') : tl('Baie au sol')} · ${s.u} U</small>${list.length ? `<span class="ntRkBadge ${errs ? 'err' : 'warn'}" title="${esc(tl('{0} problème(s)', list.length))}">${list.length}</span>` : `<span class="ntRkBadge ok">${icon('check')}</span>`}</header>
+        <header>${icon('rack')}<b>${esc(s.name)}</b><small>${r.kind === 'wall' ? tl('Coffret mural') : tl('Baie au sol')} · ${s.u} U</small>${list.length ? `<span class="ntRkBadge ${errs ? 'err' : 'warn'}" title="${esc(tl('{0:# problème|# problèmes}', list.length))}">${list.length}</span>` : `<span class="ntRkBadge ok">${icon('check')}</span>`}</header>
         <div class="ntRkMini">${miniRack(r, s)}</div>
         <dl>
           <dt>${tl('Remplissage')}</dt><dd><div class="ntRkGauge"><i style="width:${pct}%"></i></div><span>${tl('{0} / {1} U', s.usedU, s.u)}</span></dd>
@@ -226,10 +221,12 @@ export function createRackView(ctx) {
   }
 
   /* ---------- Liste « Hors baie », résumé, carte de sélection, brassage ---------- */
-  function drawSide() {
-    const list = unracked(data());
-    el.querySelectorAll('.ntRkCount').forEach(c => { c.textContent = list.length || ''; });
-    $('.ntRkList').innerHTML = list.length ? list.map(d => `<button type="button" class="ntRkItem${isSel('dev', d.id) ? ' isSel' : ''}" data-rkitem="${esc(d.id)}" data-tip="${tip(tl('{0} : glisser dans un U, ou clic pour ranger dans la baie', DEVICES[d.type].name()))}">${icon(DEVICES[d.type].icon)}<span>${esc(d.name)}</span><small>${MOUNT[d.type].u ? MOUNT[d.type].u + 'U' : '0U'}</small></button>`).join('') : `<p class="mut">${tl('Tout est rangé. Glissez un équipement de la bibliothèque pour en ajouter.')}</p>`;
+  /** Section « Hors baie » de la bibliothèque (workspace.js : libSections) : équipements du projet à ranger, à glisser dans un U. */
+  function libSections(q) {
+    const norm = v => String(v).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const list = unracked(data()).filter(d => !q || norm(`${d.name} ${DEVICES[d.type].name()} ${d.type}`).includes(q));
+    if (!list.length) return '';
+    return `<h3 class="ntRkLibH">${esc(tl('Hors baie'))}<span>${list.length}</span></h3><div class="ntGrid ntRkLibGrid">${list.map(d => `<button type="button" class="ntItem ntRkLoose${isSel('dev', d.id) ? ' isSel' : ''}" data-dev="${esc(d.id)}" data-t="${esc(d.type)}" title="${esc(tl('{0} : glisser dans un U, ou clic pour ranger dans la baie', DEVICES[d.type].name()))}">${icon(DEVICES[d.type].icon)}<span>${esc(d.name)}</span><small>${MOUNT[d.type].u ? MOUNT[d.type].u + 'U' : '0U'}</small></button>`).join('')}</div>`;
   }
   function drawSum(r, s) {
     const f = v => (Math.round(v * 10) / 10).toLocaleString(isEn ? 'en-GB' : 'fr-FR'), ups = s.ups[0];
@@ -262,10 +259,10 @@ export function createRackView(ctx) {
     box.classList.toggle('slim', dock);
     if (dock) {
       // Barre fine : nouveau cordon panneau → switch ; le tableau complet est dans le panneau du bas (onglet Brassage).
-      box.innerHTML = `<form class="ntRkPatchForm" data-rkform="patch"><b class="ntRkPatchT">${icon('cable')}<span>${tl('Brasser')}</span></b><select class="sel" name="a" aria-label="${tl('Port du panneau')}">${pOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><span aria-hidden="true">→</span><select class="sel" name="b" aria-label="${tl('Port du switch')}">${sOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><label class="ntRkLen"><input class="inp" name="len" type="number" min="0.1" max="10" step="0.1" value="${RACK_DESIGN.cord}" aria-label="${tl('Longueur du cordon (m)')}"><span>m</span></label><button class="btn small primary"${pOpts && sOpts ? '' : ' disabled'} data-tip="${tip(tl('Poser le cordon'))}">${icon('plus')}</button><button type="button" class="btn small subtle" data-rkdock data-tip="${tip(tl('Tableau de brassage (panneau du bas)'))}">${icon('list')}<span>${tl('{0} port(s) raccordé(s)', rows.length)}</span></button></form>`;
+      box.innerHTML = `<form class="ntRkPatchForm" data-rkform="patch"><b class="ntRkPatchT">${icon('cable')}<span>${tl('Brasser')}</span></b><select class="sel" name="a" aria-label="${tl('Port du panneau')}">${pOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><span aria-hidden="true">→</span><select class="sel" name="b" aria-label="${tl('Port du switch')}">${sOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><label class="ntRkLen"><input class="inp" name="len" type="number" min="0.1" max="10" step="0.1" value="${RACK_DESIGN.cord}" aria-label="${tl('Longueur du cordon (m)')}"><span>m</span></label><button class="btn small primary"${pOpts && sOpts ? '' : ' disabled'} data-tip="${tip(tl('Poser le cordon'))}">${icon('plus')}</button><button type="button" class="btn small subtle" data-rkdock data-tip="${tip(tl('Tableau de brassage (panneau du bas)'))}">${icon('list')}<span>${tl('{0:# port raccordé|# ports raccordés}', rows.length)}</span></button></form>`;
       return;
     }
-    box.innerHTML = `<header><b>${icon('cable')}${tl('Brassage de {0}', esc(r.name))}</b><span class="mut">${tl('{0} port(s) raccordé(s)', rows.length)}</span><span class="mut ntRkTipTxt">${tl('Clic droit sur un port : brasser vers…')}</span></header>
+    box.innerHTML = `<header><b>${icon('cable')}${tl('Brassage de {0}', esc(r.name))}</b><span class="mut">${tl('{0:# port raccordé|# ports raccordés}', rows.length)}</span><span class="mut ntRkTipTxt">${tl('Clic droit sur un port : brasser vers…')}</span></header>
       <form class="ntRkPatchForm" data-rkform="patch"><select class="sel" name="a" aria-label="${tl('Port du panneau')}">${pOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><span aria-hidden="true">→</span><select class="sel" name="b" aria-label="${tl('Port du switch')}">${sOpts || `<option value="">${tl('aucun port libre')}</option>`}</select><label class="ntRkLen"><input class="inp" name="len" type="number" min="0.1" max="10" step="0.1" value="${RACK_DESIGN.cord}" aria-label="${tl('Longueur du cordon (m)')}"><span>m</span></label><button class="btn small primary"${pOpts && sOpts ? '' : ' disabled'}>${icon('plus')}<span>${tl('Brasser')}</span></button></form>
       <div class="ntRkPatchScroll"><table class="ntTable"><thead><tr><th>${tl('Repère')}</th><th>${tl('Prise')}</th><th class="c-perm">${tl('Lien permanent')}</th><th>${tl('Panneau')}</th><th>${tl('Switch')}</th><th>VLAN</th><th class="c-cord">${tl('Cordon')}</th><th>${tl('Lien')}</th><th></th></tr></thead><tbody>
       ${rows.map(x => `<tr${x.cableId ? ` data-rkcable="${esc(x.cableId)}"` : ''} class="${isSel('cable', x.cableId) ? 'isSel' : ''}"><td>${esc(x.label)}</td><td>${esc(x.outlet || '—')}</td><td class="c-perm">${x.permLen != null ? f(x.permLen) + ' m' : '—'}</td><td>${esc(x.panel)} · ${esc(x.port)}</td><td>${x.switch ? esc(x.switch) + ' · ' + esc(x.switchPort) : '—'}</td><td>${x.vlan ?? '—'}</td><td class="c-cord">${x.cordLen != null ? f(x.cordLen) + ' m' : '—'}</td><td>${x.up == null ? '—' : x.up ? `<i class="led g" title="${esc(tl('Lien établi'))}"></i>` : `<i class="led down" title="${esc(tl('Pas de lien'))}"></i>`}</td><td>${x.cableId ? `<button type="button" class="tb" data-rkuncord="${esc(x.cableId)}" aria-label="${tl('Retirer le cordon')}" data-tip="${tip(tl('Retirer le cordon'))}">${icon('x')}</button>` : ''}</td></tr>`).join('') || `<tr><td colspan="9" class="mut">${tl('Aucun panneau raccordé dans cette baie.')}</td></tr>`}</tbody></table></div>`;
@@ -281,7 +278,6 @@ export function createRackView(ctx) {
     $('[data-rkpatch]').setAttribute('aria-pressed', String(patchOn && racks().length > 0));
     const none = !racks().length; $('[data-rkpatch]').disabled = none; el.querySelector('[data-rkmode="elev"]').disabled = none;
     el.classList.toggle('patchOn', patchOn && mode === 'elev' && racks().length > 0);
-    el.classList.toggle('sideOff', sideOff);
   }
   let lastFaces = '';
   function render() {
@@ -295,8 +291,8 @@ export function createRackView(ctx) {
     if (mode === 'over') { drawOverview(); nav.update(); return; }
     if (facesShown() !== lastFaces) { lastFaces = facesShown(); fitted = false; }
     const r = curRack(), s = drawRack(r);
-    drawSide(); drawSum(r, s); drawSelCard(); drawPatch(r);
-    if (!fitted) { fitted = true; requestAnimationFrame(fit); }
+    drawSum(r, s); drawSelCard(); drawPatch(r);
+    if (!fitted) { fitted = true; requestAnimationFrame(() => fit()); }
     applyView();
   }
 
@@ -304,22 +300,23 @@ export function createRackView(ctx) {
   function bounds() { const r = curRack(); return r ? { x0: -70, y0: 0, x1: (facesShown() === 'both' ? r.w * 2 + GAP : r.w) + 70, y1: totalH(r) + FOOT } : null; }
   function fitTo(b) {
     const R = canvas.getBoundingClientRect(); if (!b || !R.width) return;
-    const W = R.width - 56 - 24, H = R.height - 24 - (patchOn ? 104 : 52);
+    const W = R.width - 56 - 24, H = R.height - 24;
     view.k = Math.max(0.05, Math.min(6, Math.min(W / (b.x1 - b.x0), H / (b.y1 - b.y0))));
     view.x = b.x0 - (W / view.k - (b.x1 - b.x0)) / 2 - 12 / view.k; view.y = b.y0 - (H / view.k - (b.y1 - b.y0)) / 2 - 12 / view.k;
     applyView();
   }
   /**
-   * Tout voir : la baie à la largeur de la vue, avec au moins 14 px par U pour rester lisible ; si elle est alors plus
-   * haute que la vue, on la montre par le haut (là où sont les panneaux) et on fait défiler (Page préc./suiv., main).
+   * Tout voir (F) : d'abord la baie à la largeur de la vue (noms lisibles ; si elle est plus haute que la vue, on la montre
+   * par le haut, là où sont les panneaux, et on fait défiler : Page préc./suiv., main) ; F encore : la baie entière.
    */
-  function fit() {
+  let fitWhole = false;
+  function fit(toggle = false) {
     const b = bounds(), R = canvas.getBoundingClientRect(); if (!b || !R.width) return;
-    const W = R.width - 56 - 24, H = R.height - 24 - (patchOn ? 104 : 52), bw = b.x1 - b.x0, bh = b.y1 - b.y0;
-    const kAll = Math.min(W / bw, H / bh), kMin = 14 / U_MM;
-    if (kAll >= kMin) { fitTo(b); return; }
-    view.k = Math.min(W / bw, kMin);
-    view.x = b.x0 - (W / view.k - bw) / 2 - 12 / view.k; view.y = b.y0 - 12 / view.k;
+    const W = R.width - 56 - 24, H = R.height - 24, bw = b.x1 - b.x0, bh = b.y1 - b.y0;
+    const kW = Math.min(W / bw, 1.6), kAll = Math.min(W / bw, H / bh);
+    fitWhole = toggle ? !fitWhole : false;
+    if (fitWhole || kW <= kAll * 1.02) { fitWhole = kW > kAll * 1.02 ? fitWhole : false; fitTo(b); return; }
+    view.k = kW; view.x = b.x0 - (W / view.k - bw) / 2 - 12 / view.k; view.y = b.y0 - 12 / view.k;
     applyView();
   }
   /** Défilement vertical de l'élévation (fraction de la hauteur visible). */
@@ -345,7 +342,7 @@ export function createRackView(ctx) {
     active: () => ctx.isOn() && ctx.view() === 'racks' && mode === 'elev' && !el.hidden, target: () => svg, tools: () => ['select', 'pan', 'zoom'],
     zoomBy: (f, x, y) => zoomAt(f, x, y), panBy: (dx, dy) => { view.x -= dx / view.k; view.y -= dy / view.k; applyView(); },
     zoomPct: () => Math.round(view.k * 100 / 0.5), setZoomPct: p => zoomAt((p / 100) * 0.5 / view.k),
-    fit, fitSel: () => { const b = selBox(); if (!b) return false; fitTo(b); return true; }, hasSel: () => !!selBox(),
+    fit: () => fit(true), fitSel: () => { const b = selBox(); if (!b) return false; fitTo(b); return true; }, hasSel: () => !!selBox(),
     zoomRect(r) { fitTo({ x0: view.x + r.x / view.k, y0: view.y + r.y / view.k, x1: view.x + (r.x + r.w) / view.k, y1: view.y + (r.y + r.h) / view.k }); return true; },
     mini: {
       data: () => {
@@ -363,7 +360,7 @@ export function createRackView(ctx) {
       ['↑|↓', tl('Monter, descendre d’un U (Maj : 5 U)')], ['←|→', tl('Monter à l’avant, à l’arrière')],
       ['Mod+C', tl('Copier')], ['Mod+V', tl('Coller')], ['Mod+D', tl('Dupliquer')],
       ['Del', tl('Retirer de la baie')], ['Shift+Del', tl('Supprimer du projet')], ['Shift+F10', tl('Menu de la sélection (aussi : clic droit)')],
-      ['O|E', tl('Vue d’ensemble, élévation')], ['L', tl('Afficher dans la vue logique')], ['P', tl('Afficher sur le plan')], ['1|2|3', tl('Face avant, arrière, les deux')], ['B', tl('Brassage')], ['PageUp|PageDown', tl('Faire défiler l’élévation')], ['Home|End', tl('Haut, bas de la baie')], ['Esc', tl('Annuler le geste, désélectionner')]
+      ['O|E', tl('Vue d’ensemble, élévation')], ['L', tl('Afficher dans la vue logique')], ['P', tl('Afficher sur le plan')], ['1|2|3', tl('Face avant, arrière, les deux')], ['F', tl('Ajuster à la largeur, puis la baie entière')], ['B', tl('Brassage')], ['PageUp|PageDown', tl('Faire défiler l’élévation')], ['Home|End', tl('Haut, bas de la baie')], ['Esc', tl('Annuler le geste, désélectionner')]
     ]
   });
   svg.addEventListener('wheel', e => { e.preventDefault(); const R = canvas.getBoundingClientRect(); zoomAt(e.deltaY < 0 ? 1.12 : 1 / 1.12, e.clientX - R.left, e.clientY - R.top); }, { passive: false });
@@ -408,7 +405,8 @@ export function createRackView(ctx) {
   function placeAt(d, r, u, face) {
     d.rack = { ...(d.rack && d.rack.id === r.id ? d.rack : {}), id: r.id, u, face };
   }
-  const overSide = ev => { const b = $('.ntRkSide').getBoundingClientRect(); return ev.clientX >= b.left && ev.clientX <= b.right && ev.clientY >= b.top && ev.clientY <= b.bottom; };
+  /** Le pointeur est-il sur la bibliothèque (lâcher un équipement de la baie dessus : le retirer de la baie) ? */
+  const overSide = ev => { const L = document.querySelector('.panel.left.ntLib'); if (!L || !L.offsetParent) return false; const b = L.getBoundingClientRect(); return ev.clientX >= b.left && ev.clientX <= b.right && ev.clientY >= b.top && ev.clientY <= b.bottom; };
   svg.addEventListener('pointerdown', e => {
     if (e.button !== 0 || mode !== 'elev') return;
     const r = curRack(); if (!r) return;
@@ -470,7 +468,7 @@ export function createRackView(ctx) {
       }
       const base = b.add ? selected().filter(x => x.kind === 'dev').map(x => x.id) : [];
       selectList([...new Set([...base, ...hitIds])].map(id => ({ kind: 'dev', id })));
-      if (hitIds.length) ctx.status(tl('{0} équipement(s) sélectionné(s).', hitIds.length));
+      if (hitIds.length) ctx.status(tl('{0:# équipement sélectionné|# équipements sélectionnés}.', hitIds.length));
       return;
     }
     if (!drag) return;
@@ -514,32 +512,24 @@ export function createRackView(ctx) {
     selectList([{ kind: 'rack', id: r.id }]); A.rackMenu(e, r);
   });
 
-  // Liste « Hors baie » : glisser vers l'élévation, ou clic : place libre la plus basse.
-  let ghostEl = null;
-  $('.ntRkList').addEventListener('pointerdown', e => {
-    const b = e.target.closest('[data-rkitem]'); if (!b || e.button !== 0) return;
-    e.preventDefault();
-    const d = findDev(b.dataset.rkitem), sx = e.clientX, sy = e.clientY; let moved = false, p = null;
-    const mv = ev => {
-      if (!moved && Math.hypot(ev.clientX - sx, ev.clientY - sy) < 6) return;
-      moved = true;
-      if (!ghostEl) { ghostEl = document.createElement('div'); ghostEl.className = 'ntGhost ntRkDragGhost'; ghostEl.innerHTML = `${icon(DEVICES[d.type].icon)}<span>${esc(d.name)}</span>`; document.body.appendChild(ghostEl); }
-      ghostEl.style.left = ev.clientX + 'px'; ghostEl.style.top = ev.clientY + 'px';
-      const r = curRack(); if (r && MOUNT[d.type].u) { p = proposal(r, d, ev); const ok = p.inside ? p.ok : { ok: false }; paintGhost(r, p.inside ? [{ dev: d, u: p.u, face: p.face }] : [], ok, `U${p.u}${verdict(ok)}`); }
-    };
-    const up = ev => {
-      removeEventListener('pointermove', mv, true); removeEventListener('pointerup', up, true);
-      if (ghostEl) { ghostEl.remove(); ghostEl = null; } ghostL.innerHTML = '';
-      const r = curRack();
-      if (!moved) { selectList([{ kind: 'dev', id: d.id }]); if (r) quickPlace(d, r); return; }
-      if (!r) return;
-      if (!MOUNT[d.type].u) { const R = canvas.getBoundingClientRect(); if (ev.clientX >= R.left && ev.clientX <= R.right) quickPlace(d, r); return; }
-      if (p && p.inside && p.ok.ok) { placeAt(d, r, p.u, p.face); selectList([{ kind: 'dev', id: d.id }]); ctx.commit(); }
-      else if (p && p.inside) ctx.status(p.ok.why === 'clash' ? tl('Place prise par {0}.', ctx.nameOf(p.ok.with)) : tl('Hors de la baie.'), 'warn');
-    };
-    addEventListener('pointermove', mv, true); addEventListener('pointerup', up, true);
-  });
-  $('.ntRkList').addEventListener('contextmenu', e => { const b = e.target.closest('[data-rkitem]'); if (!b) return; e.preventDefault(); const d = findDev(b.dataset.rkitem); if (d) A.looseMenu(e, d); });
+  // Glisser depuis la bibliothèque (type neuf ou équipement « Hors baie ») : la place proposée suit le pointeur.
+  function dragOver(info, ev) {
+    const r = curRack(); ghostL.innerHTML = '';
+    if (!info || !ev || !r || mode !== 'elev' || !MOUNT[info.type] || !MOUNT[info.type].u) return;
+    const d = info.dev ? findDev(info.dev) : { id: '\u0000new', type: info.type }; if (!d) return;
+    const p = proposal(r, d, ev); if (!p.inside) return;
+    const m = MOUNT[d.type]; paintGhost(r, [{ dev: d, u: p.u, face: p.face }], p.ok, `U${p.u}${m.u > 1 ? '–' + (p.u + m.u - 1) : ''}${verdict(p.ok)}`);
+  }
+  /** Équipement « Hors baie » lâché (ev) ou cliqué (null) : à sa place sous le pointeur, sinon le premier U libre. */
+  function dropDev(id, ev) {
+    const d = findDev(id), r = curRack(); if (!d || !MOUNT[d.type]) return;
+    if (!r) { ctx.status(tl('Aucune baie'), 'warn'); return; }
+    if (mode !== 'elev') { mode = 'elev'; fitted = false; }
+    if (!ev || !MOUNT[d.type].u) { selectList([{ kind: 'dev', id }]); if (ev) { const R = canvas.getBoundingClientRect(); if (ev.clientX < R.left || ev.clientX > R.right) return; } quickPlace(d, r); return; }
+    const p = proposal(r, d, ev);
+    if (p.inside && p.ok.ok) { placeAt(d, r, p.u, p.face); selectList([{ kind: 'dev', id }]); ctx.commit(); }
+    else if (p.inside) ctx.status(p.ok.why === 'clash' ? tl('Place prise par {0}.', ctx.nameOf(p.ok.with)) : tl('Hors de la baie.'), 'warn');
+  }
   over.addEventListener('contextmenu', e => { const c = e.target.closest('[data-rkopen]'); if (!c) return; e.preventDefault(); const r = rackById(c.dataset.rkopen); if (r) { selectList([{ kind: 'rack', id: r.id }]); A.rackMenu(e, r, { card: true }); } });
   function quickPlace(d, r, near) {
     const m = MOUNT[d.type], face = m.u ? 'front' : 'rear', u = findFree(data(), r, d, face, near ?? 1);
@@ -576,7 +566,6 @@ export function createRackView(ctx) {
     const fb = t.closest('[data-rkfaces]'); if (fb) { setFaces(fb.dataset.rkfaces); return; }
     const am = t.closest('[data-rkaddmenu]'); if (am) { addMenu(am); return; }
     const a = t.closest('[data-rkadd]'); if (a) { addRack(a.dataset.rkadd); return; }
-    if (t.closest('[data-rkside]')) { sideOff = !sideOff; setPref('jollof-net-rack-side', sideOff ? 'off' : 'on'); render(); return; }
     if (t.closest('[data-rkpatch]')) { togglePatch(); return; }
     if (t.closest('[data-rkdock]')) { try { ctx.app.dock.show('netPatch'); } catch (e) { console.error(e); } return; }
     const o = t.closest('[data-rkopen]'); if (o) { openElev(o.dataset.rkopen); return; }
@@ -687,6 +676,9 @@ export function createRackView(ctx) {
     },
     keyup(e) { nav.key(e); },
     fit() { fit(); },
+    /** Bibliothèque en vue Baies : seulement ce qui se monte en baie, et la section « Hors baie » (équipements à ranger). */
+    libFilter: t => !!MOUNT[t], libSections, dragOver, dropDev,
+    libMenu(ev, id) { const d = findDev(id); if (d) A.looseMenu(ev, d); },
     /** Sélection multiple de la vue (navigateur du projet, recherche) : [{ kind, id }…]. */
     multi() { return selected(); },
     selectMany(list) {

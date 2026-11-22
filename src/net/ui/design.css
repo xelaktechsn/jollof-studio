@@ -2,15 +2,17 @@
 /* Copyright (C) 2026 Mamadou Sarr */
 /* Vue Conception du plan réseau (design.js et ses onglets) : onglets, réglages, chiffres clés, tableaux, documents. */
 .ntDs { display: flex; flex-direction: column; background: var(--bg); color: var(--fg); container-type: inline-size; container-name: ntds; }
-.ntDsTabs { flex: none; display: flex; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; scrollbar-width: thin; }
-.ntDsTabs button { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; padding: 7px 12px; margin-bottom: -1px; border: 1px solid transparent; border-bottom: 0; border-radius: 8px 8px 0 0; color: var(--fg-2); font-size: 12.5px; white-space: nowrap; cursor: pointer; }
+.ntDsTabs { flex: none; display: flex; gap: 2px; padding: 6px 10px 0; border-bottom: 1px solid var(--line); background: var(--panel); overflow-x: auto; scrollbar-width: none; }
+/* Pas de barre de défilement : sa venue pendant le réajustement des onglets changeait la hauteur de la barre (la page sautait). */
+.ntDsTabs::-webkit-scrollbar { display: none; }
+.ntDsTabs button { all: unset; box-sizing: border-box; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; margin-bottom: 6px; border-radius: 7px; color: var(--fg-2); font-size: 12.5px; white-space: nowrap; cursor: pointer; } /* même dessin que les onglets des vues (shell.css, .dkTab) */
 .ntDsTabs button .ic { width: 15px; height: 15px; }
 .ntDsTabs.compact button:not([aria-selected="true"]) span { display: none; }
-.ntDsTabs.compact button { padding: 7px 10px; }
+.ntDsTabs.compact button { padding: 0 10px; }
 .ntDsTabs.noicons button .ic { display: none; }
-.ntDsTabs.noicons button { padding: 7px 10px; }
+.ntDsTabs.noicons button { padding: 0 10px; }
 .ntDsTabs button:hover { color: var(--fg); background: var(--raise); }
-.ntDsTabs button[aria-selected="true"] { color: var(--fg); background: var(--bg); border-color: var(--line); }
+.ntDsTabs button[aria-selected="true"] { color: var(--fg); background: var(--panel-2); box-shadow: inset 0 -2px 0 var(--accent); }
 .ntDsTabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ntDsBody { flex: 1; min-height: 0; overflow: auto; padding: 16px 20px 48px; outline: none; }
 .ntDsBody input[type="search"] { -webkit-appearance: none; appearance: none; box-sizing: border-box; }
@@ -24,7 +26,7 @@
 .ntDs h3 .ic { width: 15px; height: 15px; color: var(--accent); }
 .ntDsMain { min-width: 0; }
 .ntDsPage { min-width: 0; }
-.ntDsF { display: grid; gap: 4px; font-size: 12px; min-width: 0; }
+.ntDsF { display: grid; gap: 4px; font-size: 12px; min-width: 0; align-content: start; }
 .ntDsF > span:first-child { color: var(--fg-2); }
 .ntDsF small { color: var(--muted); font-size: 11px; line-height: 1.35; }
 .ntDsF .inp, .ntDsF .sel { width: 100%; min-width: 0; height: 28px; }
@@ -56,7 +58,7 @@
 .ntDsTbl th:first-child { z-index: 2; background: var(--panel-2); }
 .ntDsTbl tbody tr:hover td:first-child { background: var(--raise); }
 .ntDsTbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-.ntDsTbl th { white-space: normal; position: sticky; top: 0; z-index: 1; padding: 6px 8px; text-align: left; font-weight: 600; color: var(--fg-2); background: var(--panel-2); border-bottom: 1px solid var(--line-2); vertical-align: bottom; padding: 6px 6px; }
+.ntDsTbl th { white-space: nowrap; position: sticky; top: 0; z-index: 1; padding: 6px 8px; text-align: left; font-weight: 600; color: var(--fg-2); background: var(--panel-2); border-bottom: 1px solid var(--line-2); vertical-align: bottom; padding: 6px 6px; }
 .ntDsTbl td { padding: 5px 6px; border-bottom: 1px solid var(--line); vertical-align: middle; white-space: nowrap; }
 .ntDsTbl td.w, .ntDsBom td:first-child, .ntDsCompact td { white-space: normal; min-width: 7em; }
 .ntDsTbl tr:last-child td { border-bottom: 0; }
@@ -108,6 +110,10 @@
 .ntDsReport { flex-direction: row; align-items: center; justify-content: space-between; gap: 18px; }
 .ntDsReport p { margin: 6px 0 0; font-size: 12.5px; line-height: 1.45; }
 .ntDsReport .ntDsBtns { flex: none; flex-direction: column; align-items: stretch; }
+.ntDsGrpTitle { margin: 10px 2px -2px; font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; color: var(--fg-2); }
+/* Entrée qui demande l'application de bureau (dans un navigateur, elle reste active et explique). */
+.ntDsDesk { display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 11px; color: var(--fg-2); }
+.ntDsDesk svg { width: 12px; height: 12px; }
 .ntDsDocs { max-width: 1100px; }
 .ntDsNum { width: 70px; }
 .ntDsSub { min-width: 0; }
@@ -131,7 +137,22 @@
 .ntDsFloorRow em { font-style: normal; font-size: 11px; color: var(--accent); }
 /* Tableaux larges : à la largeur de la carte, cellules qui passent à la ligne (aucune colonne coupée). */
 .ntDsTbl.ntDsFit { table-layout: fixed; }
-.ntDsTbl.ntDsFit td, .ntDsTbl.ntDsFit th { white-space: normal; overflow-wrap: anywhere; }
+.ntDsTbl.ntDsFit td { white-space: normal; overflow-wrap: anywhere; }
+.ntDsTbl .ntDsTh { display: block; max-width: 14em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntDsTbl.ntDsFit .ntDsTh { max-width: none; }
+/* Tableaux à largeur naturelle : en-têtes repliés aux espaces seulement (jamais au milieu d'un mot), nom complet en infobulle. */
+.ntDsTbl.ntDsWide th { white-space: normal; }
+.ntDsTbl.ntDsWide .ntDsTh { white-space: normal; overflow-wrap: normal; word-break: normal; hyphens: manual; max-width: 9em; }
+/* Ombre au bord droit tant qu'il reste des colonnes à droite (défilement horizontal visible même sans barre). */
+.ntDsTblWrap:has(> .ntDsWide) { background: linear-gradient(to left, var(--panel) 40%, transparent) right / 28px 100% no-repeat local, radial-gradient(farthest-side at 100% 50%, rgba(0, 0, 0, .28), transparent) right / 12px 100% no-repeat scroll, var(--panel); }
+.ntDsWide tbody td:not(:first-child) { background: transparent; }
+/* Étiquettes d'un équipement à l'autre (« RT-INTERNET:ge1/BOX:LAN1 ») : coupées après « / » ou « \ » seulement. */
+.ntDsWide td:first-child { white-space: normal; min-width: 8em; }
+.ntDsWide td:first-child .ntDsLink { white-space: normal; text-align: left; }
+.ntDsWide .ntDsNw { white-space: nowrap; }
+/* Câbles, brassage : largeur naturelle, défilement horizontal (1re colonne figée) plutôt qu'un écrasement ; les textes
+   longs se replient aux espaces seulement. */
+.ntDsTbl.ntDsWide td.w { white-space: normal; overflow-wrap: normal; word-break: normal; min-width: 8em; max-width: 20em; }
 .ntDsTbl.ntDsFit td.n { white-space: nowrap; overflow-wrap: normal; }
 .ntDsTbl.ntDsFit .inp { width: 100%; max-width: 90px; }
 .ntDsTbl.ntDsFit td.ntDsIpCell { overflow-wrap: normal; word-break: keep-all; }

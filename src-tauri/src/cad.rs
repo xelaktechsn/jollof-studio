@@ -20,7 +20,7 @@
 //! de lecture du DXF (seulement un numéro de travail) ; le DWG d'entrée doit être un fichier choisi dans la boîte de
 //! dialogue, existant, d'extension .dwg, commençant par la signature « AC », de taille bornée.
 
-use crate::{blocking, blocking_in_place, can_read, Grants};
+use crate::{blocking, blocking_in_place, can_read, can_write, Grants};
 use serde::Serialize;
 use serde_json::{json, Value};
 use std::collections::{HashMap, VecDeque};
@@ -61,11 +61,22 @@ impl Kind {
         }
     }
     fn name(self) -> &'static str {
-        match self {
-            Kind::Oda => "ODA File Converter",
-            Kind::LibreDwg => "LibreDWG dwg2dxf",
+        self.tool(Dir::ToDxf)
+    }
+    /// Nom du programme selon le sens (LibreDWG a un programme par sens, ODA un seul).
+    fn tool(self, dir: Dir) -> &'static str {
+        match (self, dir) {
+            (Kind::Oda, _) => "ODA File Converter",
+            (Kind::LibreDwg, Dir::ToDxf) => "LibreDWG dwg2dxf",
+            (Kind::LibreDwg, Dir::ToDwg) => "LibreDWG dxf2dwg",
         }
     }
+}
+/// Sens de la conversion : import (DWG → DXF) ou export (DXF → DWG).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Dir {
+    ToDxf,
+    ToDwg,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -180,10 +191,14 @@ fn oda_candidates() -> Vec<PathBuf> {
     }
     c
 }
-fn libredwg_candidates() -> Vec<PathBuf> {
+fn libredwg_candidates(dir: Dir) -> Vec<PathBuf> {
+    let name = match dir {
+        Dir::ToDxf => "dwg2dxf",
+        Dir::ToDwg => "dxf2dwg",
+    };
     search_dirs()
         .into_iter()
-        .map(|d| d.join(exe("dwg2dxf")))
+        .map(|d| d.join(exe(name)))
         .collect()
 }
 fn is_exec(p: &Path) -> bool {
@@ -199,10 +214,10 @@ fn is_exec(p: &Path) -> bool {
     #[cfg(not(unix))]
     true
 }
-fn find(kind: Kind) -> Option<PathBuf> {
+fn find(kind: Kind, dir: Dir) -> Option<PathBuf> {
     let list = match kind {
         Kind::Oda => oda_candidates(),
-        Kind::LibreDwg => libredwg_candidates(),
+        Kind::LibreDwg => libredwg_candidates(dir),
     };
     list.into_iter().find(|p| is_exec(p))
 }
@@ -229,7 +244,7 @@ fn plist_string(text: &str, key: &str) -> Option<String> {
     let v = rest[a..b].trim();
     (!v.is_empty() && v.len() <= 32).then(|| v.to_string())
 }
-/// `dwg2dxf --version` (« dwg2dxf 0.14 »), trois secondes au plus.
+/// `dwg2dxf --version` ou `dxf2dwg --version` (« dwg2dxf 0.14 »), trois secondes au plus.
 fn libredwg_version(p: &Path) -> Option<String> {
     let mut c = Command::new(p);
     c.arg("--version")
@@ -270,30 +285,49 @@ fn no_console(_c: &mut Command) {
         _c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW : pas de console qui s'ouvre
     }
 }
-fn detect(kind: Kind) -> Option<Converter> {
-    let p = find(kind)?;
+fn detect(kind: Kind, dir: Dir) -> Option<Converter> {
+    let p = find(kind, dir)?;
     let version = match kind {
         Kind::Oda => oda_version(&p),
         Kind::LibreDwg => libredwg_version(&p),
     };
     Some(Converter {
         id: kind.id(),
-        name: kind.name(),
+        name: kind.tool(dir),
         path: p.to_string_lossy().into_owned(),
         version,
     })
 }
 
-/// Convertisseurs DWG → DXF installés, ODA File Converter d'abord. Liste vide : aucun.
+/// Convertisseurs installés, ODA File Converter d'abord. dir : « dxf » (DWG → DXF, par défaut) ou « dwg »
+/// (DXF → DWG, export). Liste vide : aucun.
 #[tauri::command]
-pub async fn cad_converters() -> Result<Vec<Converter>, String> {
-    blocking(|| {
+pub async fn cad_converters(dir: Option<String>) -> Result<Vec<Converter>, String> {
+    let d = parse_dir(dir.as_deref().unwrap_or("dxf"))?;
+    blocking(move || {
         Ok([Kind::Oda, Kind::LibreDwg]
             .into_iter()
-            .filter_map(detect)
+            .filter_map(|k| detect(k, d))
             .collect())
     })
     .await
+}
+fn parse_dir(s: &str) -> Result<Dir, String> {
+    match s {
+        "dxf" => Ok(Dir::ToDxf),
+        "dwg" => Ok(Dir::ToDwg),
+        _ => Err("Sens de conversion inconnu".into()),
+    }
+}
+/// Le premier convertisseur installé (ODA d'abord), ou celui demandé.
+fn choose(want: Option<Kind>, dir: Dir) -> Result<(Kind, PathBuf), String> {
+    let found = match want {
+        Some(k) => find(k, dir).map(|p| (k, p)),
+        None => find(Kind::Oda, dir)
+            .map(|p| (Kind::Oda, p))
+            .or_else(|| find(Kind::LibreDwg, dir).map(|p| (Kind::LibreDwg, p))),
+    };
+    found.ok_or_else(|| "Aucun convertisseur DWG installé".to_string())
 }
 
 // ---------------------------------------------------------------------------
@@ -547,8 +581,9 @@ fn header<'a>(r: &'a Request<'_>, k: &str) -> Option<&'a str> {
     r.headers().get(k).and_then(|v| v.to_str().ok())
 }
 
-/// Un morceau du DWG glissé dans la fenêtre (corps binaire ; travail dans `x-job`, position dans `x-pos`).
-/// Il s'écrit dans le dossier d'entrée du travail, toujours sous le nom `input.DWG`.
+/// Un morceau du fichier à convertir (corps binaire ; travail dans `x-job`, position dans `x-pos`, type dans `x-ext` :
+/// `dwg` par défaut, DWG glissé dans la fenêtre ; `dxf` pour l'export DWG, DXF écrit par l'application). Il s'écrit
+/// dans le dossier d'entrée du travail, toujours sous le nom `input.DWG` ou `input.DXF`.
 #[tauri::command]
 pub async fn cad_upload_write(state: State<'_, Cad>, request: Request<'_>) -> Result<(), String> {
     let id: u32 = header(&request, "x-job")
@@ -560,15 +595,20 @@ pub async fn cad_upload_write(state: State<'_, Cad>, request: Request<'_>) -> Re
     let InvokeBody::Raw(bytes) = request.body() else {
         return Err("Le corps de la requête doit être binaire".into());
     };
+    let dxf = header(&request, "x-ext") == Some("dxf");
     pos.checked_add(bytes.len() as u64)
-        .filter(|&e| e <= MAX_DWG)
-        .ok_or("Fichier DWG trop gros")?;
+        .filter(|&e| e <= if dxf { MAX_DXF } else { MAX_DWG })
+        .ok_or("Fichier trop gros")?;
     let job = state.job(id)?;
     let mut up = job.upload.lock().unwrap_or_else(|e| e.into_inner());
     if up.is_none() {
         *up = Some(
-            File::create(job.dir.join("in").join("input.DWG"))
-                .map_err(|e| format!("Écriture impossible : {e}"))?,
+            File::create(
+                job.dir
+                    .join("in")
+                    .join(if dxf { "input.DXF" } else { "input.DWG" }),
+            )
+            .map_err(|e| format!("Écriture impossible : {e}"))?,
         );
     }
     let f = up.as_mut().ok_or("Écriture impossible")?;
@@ -631,13 +671,7 @@ fn run(
     ch: &Channel<Value>,
 ) -> Result<Converted, String> {
     let t0 = Instant::now();
-    let (kind, exe) = match want {
-        Some(k) => (k, find(k)),
-        None => find(Kind::Oda)
-            .map(|p| (Kind::Oda, Some(p)))
-            .unwrap_or_else(|| (Kind::LibreDwg, find(Kind::LibreDwg))),
-    };
-    let exe = exe.ok_or("Aucun convertisseur DWG installé")?;
+    let (kind, exe) = choose(want, Dir::ToDxf)?;
     let in_dir = j.dir.join("in");
     let out_dir = j.dir.join("out");
     let staged = in_dir.join("input.DWG");
@@ -666,8 +700,64 @@ fn run(
         return Err("Conversion annulée".into());
     }
     let args = build_args(kind, &input, &in_dir, &out_dir);
-    let mut cmd = Command::new(&exe);
-    cmd.args(&args)
+    let (status, tail) = exec(
+        j,
+        kind.name(),
+        &exe,
+        &args,
+        &out_dir,
+        MAX_DXF,
+        t0,
+        timeout,
+        ch,
+    )?;
+    let out = find_dxf(&out_dir).filter(|p| dxf_complete(p));
+    let Some(out) = out else {
+        log::warn!("dwg : {} : échec ({status}) {tail}", kind.name());
+        return Err(if tail.is_empty() {
+            format!("{} n'a pas produit de DXF ({status})", kind.name())
+        } else {
+            format!("{} n'a pas produit de DXF : {tail}", kind.name())
+        });
+    };
+    // Le DWG copié n'est plus utile : place libérée tout de suite.
+    let _ = fs::remove_file(&staged);
+    let size = fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
+    let ms = t0.elapsed().as_millis() as u64;
+    let version = match kind {
+        Kind::Oda => oda_version(&exe),
+        Kind::LibreDwg => None,
+    };
+    log::info!("dwg : {} → DXF {size} octets en {ms} ms", kind.name());
+    *j.out.lock().unwrap_or_else(|e| e.into_inner()) = Some(out);
+    let _ = ch.send(json!({ "stage": "done", "ms": ms, "bytes": size }));
+    Ok(Converted {
+        job: id,
+        converter: kind.id(),
+        version,
+        size,
+        ms,
+        warning: (!status.success()).then(|| format!("{status} {tail}").trim().to_string()),
+    })
+}
+
+/// Lance le convertisseur (sans interpréteur de commandes) et le surveille : progression (temps, taille déjà écrite
+/// dans `out_dir`) quatre fois par seconde, annulation, délai, taille maximale. Rend son code de sortie et ses
+/// dernières lignes.
+#[allow(clippy::too_many_arguments)]
+fn exec(
+    j: &Job,
+    name: &str,
+    exe: &Path,
+    args: &[OsString],
+    out_dir: &Path,
+    max_out: u64,
+    t0: Instant,
+    timeout: Duration,
+    ch: &Channel<Value>,
+) -> Result<(std::process::ExitStatus, String), String> {
+    let mut cmd = Command::new(exe);
+    cmd.args(args)
         .current_dir(&j.dir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -675,7 +765,7 @@ fn run(
     no_console(&mut cmd);
     let mut child = cmd
         .spawn()
-        .map_err(|e| format!("{} n'a pas pu démarrer : {e}", kind.name()))?;
+        .map_err(|e| format!("{name} n'a pas pu démarrer : {e}"))?;
     // Sorties du convertisseur lues en continu (un tuyau plein le bloquerait) ; on garde les dernières lignes.
     let lines = Arc::new(Mutex::new(VecDeque::<String>::new()));
     let mut readers = vec![];
@@ -727,7 +817,7 @@ fn run(
         if let Some(s) = st {
             break s;
         }
-        let bytes = watch_out(&out_dir);
+        let bytes = watch_out(out_dir);
         let why = if j.cancel.load(Ordering::SeqCst) {
             Some("Conversion annulée".to_string())
         } else if t0.elapsed() > timeout {
@@ -735,8 +825,8 @@ fn run(
                 "Conversion trop longue (plus de {} min) : arrêtée",
                 timeout.as_secs() / 60
             ))
-        } else if bytes > MAX_DXF {
-            Some("DXF trop gros : conversion arrêtée".to_string())
+        } else if bytes > max_out {
+            Some("Fichier converti trop gros : conversion arrêtée".to_string())
         } else {
             None
         };
@@ -745,7 +835,7 @@ fn run(
                 let _ = c.kill();
                 let _ = c.wait();
             }
-            log::warn!("dwg : {why}");
+            log::warn!("cad : {why}");
             return Err(why);
         }
         if last.elapsed() >= Duration::from_millis(250) {
@@ -762,34 +852,205 @@ fn run(
     if j.cancel.load(Ordering::SeqCst) {
         return Err("Conversion annulée".into());
     }
-    let out = find_dxf(&out_dir).filter(|p| dxf_complete(p));
-    let Some(out) = out else {
-        log::warn!("dwg : {} : échec ({status}) {tail}", kind.name());
+    Ok((status, tail))
+}
+
+// ---------------------------------------------------------------------------
+// Export : DXF écrit par l'application → DWG (ODA File Converter, ou dxf2dwg de LibreDWG s'il est installé)
+// ---------------------------------------------------------------------------
+
+/// Versions DWG proposées (année d'AutoCAD qui a introduit le format) et leur signature en tête de fichier.
+const DWG_YEARS: [(&str, &str); 6] = [
+    ("2018", "AC1032"),
+    ("2013", "AC1027"),
+    ("2010", "AC1024"),
+    ("2007", "AC1021"),
+    ("2004", "AC1018"),
+    ("2000", "AC1015"),
+];
+
+/// Argument de version du convertisseur pour l'année demandée, et l'année réellement écrite. ODA écrit toutes les
+/// versions (ACAD2018, ACAD2013…). dxf2dwg (LibreDWG 0.14, `--help`) n'écrit que r12, r14, r2000 (défaut) et r2004 ;
+/// une année plus récente donne donc un DWG 2000, que toutes les applications ouvrent, et la fenêtre le dit.
+fn dwg_version_arg(kind: Kind, want: &str) -> Result<(String, &'static str), String> {
+    let (year, _) = DWG_YEARS
+        .iter()
+        .find(|(y, _)| *y == want)
+        .ok_or("Version DWG inconnue")?;
+    Ok(match kind {
+        Kind::Oda => (format!("ACAD{year}"), year),
+        Kind::LibreDwg if *year == "2004" => ("r2004".into(), "2004"),
+        Kind::LibreDwg => ("r2000".into(), "2000"),
+    })
+}
+/// Arguments de l'export. ODA : comme l'import, type DWG et filtre *.DXF. dxf2dwg : écrase, version, sortie, DXF.
+fn build_export_args(
+    kind: Kind,
+    input: &Path,
+    in_dir: &Path,
+    out_dir: &Path,
+    ver: &str,
+) -> Vec<OsString> {
+    match kind {
+        Kind::Oda => vec![
+            in_dir.as_os_str().to_owned(),
+            out_dir.as_os_str().to_owned(),
+            ver.into(),
+            "DWG".into(),
+            "0".into(),
+            "1".into(),
+            "*.DXF".into(),
+        ],
+        Kind::LibreDwg => vec![
+            "-y".into(),
+            "--as".into(),
+            ver.into(),
+            "-o".into(),
+            out_dir.join("output.dwg").into_os_string(),
+            input.as_os_str().to_owned(),
+        ],
+    }
+}
+/// Année du format d'un DWG d'après sa signature (« AC1032 » → 2018), None si ce n'est pas un DWG connu.
+fn dwg_year(p: &Path) -> Option<&'static str> {
+    let mut head = [0u8; 6];
+    File::open(p).ok()?.read_exact(&mut head).ok()?;
+    DWG_YEARS
+        .iter()
+        .find(|(_, sig)| sig.as_bytes() == head)
+        .map(|(y, _)| *y)
+}
+/// Premier fichier .dwg (casse indifférente) d'un dossier.
+fn find_dwg(dir: &Path) -> Option<PathBuf> {
+    let mut v: Vec<PathBuf> = fs::read_dir(dir)
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| {
+            p.is_file()
+                && p.extension()
+                    .and_then(|e| e.to_str())
+                    .is_some_and(|e| e.eq_ignore_ascii_case("dwg"))
+        })
+        .collect();
+    v.sort();
+    v.into_iter().next()
+}
+
+#[derive(Serialize)]
+pub struct Exported {
+    job: u32,
+    converter: &'static str,
+    /// Version du convertisseur (ODA), si connue.
+    version: Option<String>,
+    /// Année du format DWG réellement écrit (lue dans le fichier) : 2018, 2013… 2000.
+    dwg: &'static str,
+    size: u64,
+    ms: u64,
+    warning: Option<String>,
+}
+
+/// Convertit en DWG le DXF envoyé par `cad_upload_write` (x-ext: dxf). version : 2018 | 2013 | 2010 | 2007 | 2004 |
+/// 2000 ; converter : oda | libredwg | auto. Le DWG reste dans le dossier du travail ; `cad_save_output` le copie à
+/// l'emplacement choisi dans la boîte « Enregistrer sous ».
+#[tauri::command]
+pub async fn cad_export_dwg(
+    state: State<'_, Cad>,
+    job: u32,
+    version: String,
+    converter: String,
+    timeout_s: Option<u64>,
+    on_progress: Channel<Value>,
+) -> Result<Exported, String> {
+    let want = parse_kind(&converter)?;
+    let j = state.job(job)?;
+    let timeout = clamp_timeout(timeout_s);
+    blocking(move || run_export(job, &j, &version, want, timeout, &on_progress)).await
+}
+
+fn run_export(
+    id: u32,
+    j: &Job,
+    version: &str,
+    want: Option<Kind>,
+    timeout: Duration,
+    ch: &Channel<Value>,
+) -> Result<Exported, String> {
+    let t0 = Instant::now();
+    let (kind, exe) = choose(want, Dir::ToDwg)?;
+    let (ver, _) = dwg_version_arg(kind, version)?;
+    let in_dir = j.dir.join("in");
+    let out_dir = j.dir.join("out");
+    let input = in_dir.join("input.DXF");
+    if let Some(f) = j.upload.lock().unwrap_or_else(|e| e.into_inner()).take() {
+        let _ = f.sync_data();
+    }
+    let len = fs::metadata(&input).map(|m| m.len()).unwrap_or(0);
+    if len == 0 || len > MAX_DXF || !dxf_complete(&input) {
+        return Err("DXF à convertir incomplet".into());
+    }
+    let name = kind.tool(Dir::ToDwg);
+    let args = build_export_args(kind, &input, &in_dir, &out_dir, &ver);
+    let (status, tail) = exec(j, name, &exe, &args, &out_dir, MAX_DWG, t0, timeout, ch)?;
+    let out = find_dwg(&out_dir).and_then(|p| dwg_year(&p).map(|y| (p, y)));
+    let Some((out, dwg)) = out else {
+        log::warn!("dwg : {name} : échec ({status}) {tail}");
         return Err(if tail.is_empty() {
-            format!("{} n'a pas produit de DXF ({status})", kind.name())
+            format!("{name} n'a pas produit de DWG ({status})")
         } else {
-            format!("{} n'a pas produit de DXF : {tail}", kind.name())
+            format!("{name} n'a pas produit de DWG : {tail}")
         });
     };
-    // Le DWG copié n'est plus utile : place libérée tout de suite.
-    let _ = fs::remove_file(&staged);
+    let _ = fs::remove_file(&input);
     let size = fs::metadata(&out).map(|m| m.len()).unwrap_or(0);
     let ms = t0.elapsed().as_millis() as u64;
-    let version = match kind {
-        Kind::Oda => oda_version(&exe),
-        Kind::LibreDwg => None,
-    };
-    log::info!("dwg : {} → DXF {size} octets en {ms} ms", kind.name());
+    log::info!("dwg : {name} → DWG {dwg}, {size} octets en {ms} ms");
     *j.out.lock().unwrap_or_else(|e| e.into_inner()) = Some(out);
     let _ = ch.send(json!({ "stage": "done", "ms": ms, "bytes": size }));
-    Ok(Converted {
+    Ok(Exported {
         job: id,
         converter: kind.id(),
-        version,
+        version: match kind {
+            Kind::Oda => oda_version(&exe),
+            Kind::LibreDwg => None,
+        },
+        dwg,
         size,
         ms,
         warning: (!status.success()).then(|| format!("{status} {tail}").trim().to_string()),
     })
+}
+
+/// Copie le DWG produit par `cad_export_dwg` à l'emplacement choisi dans la boîte « Enregistrer sous » (autorisation
+/// d'écriture vérifiée, extension .dwg), par l'écriture atomique de files.rs. Rend la taille écrite.
+#[tauri::command]
+pub async fn cad_save_output(
+    app: AppHandle,
+    grants: State<'_, Mutex<Grants>>,
+    state: State<'_, Cad>,
+    job: u32,
+    path: String,
+) -> Result<u64, String> {
+    let target = PathBuf::from(&path);
+    if !can_write(&app, &grants, &target) {
+        return Err("Emplacement non autorisé : choisissez-le dans la boîte de dialogue".into());
+    }
+    if !target
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("dwg"))
+    {
+        return Err("Le fichier enregistré doit avoir l'extension .dwg".into());
+    }
+    let j = state.job(job)?;
+    let src = j
+        .out
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
+        .clone()
+        .filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dwg")))
+        .ok_or("Aucun DWG converti à enregistrer")?;
+    blocking(move || crate::files::copy_atomic(&src, &target)).await
 }
 
 /// Morceau du DXF converti : `len` octets (16 Mo au plus) à partir de `offset`. Vide à la fin du fichier.
@@ -1003,7 +1264,7 @@ mod tests {
         };
         println!(
             "convertisseurs : {:?}",
-            [Kind::Oda, Kind::LibreDwg].map(detect)
+            [Kind::Oda, Kind::LibreDwg].map(|k| detect(k, Dir::ToDxf))
         );
         let dir = PathBuf::from(out).join("job-test");
         fs::create_dir_all(dir.join("in")).unwrap();
@@ -1043,6 +1304,145 @@ mod tests {
         );
         assert!(r.size > 0);
         let _ = fs::remove_dir_all(&dir);
+    }
+
+    /// Export réel, à la main : JOLLOF_DXF=<plan.dxf> JOLLOF_DWG_OUT=<dossier> [JOLLOF_DWG_VERSION=2018]
+    /// cargo test --lib cad -- --ignored ; le DWG est copié en <dossier>/export.dwg (par copy_atomic) pour la suite.
+    #[test]
+    #[ignore]
+    fn real_export_with_an_installed_converter() {
+        let (Some(dxf), Some(out)) = (
+            std::env::var_os("JOLLOF_DXF"),
+            std::env::var_os("JOLLOF_DWG_OUT"),
+        ) else {
+            return;
+        };
+        println!(
+            "convertisseurs d'export : {:?}",
+            [Kind::Oda, Kind::LibreDwg].map(|k| detect(k, Dir::ToDwg))
+        );
+        let out = PathBuf::from(out);
+        let dir = out.join("job-export");
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(dir.join("in")).unwrap();
+        fs::create_dir_all(dir.join("out")).unwrap();
+        fs::copy(PathBuf::from(dxf), dir.join("in").join("input.DXF")).unwrap();
+        let j = Job {
+            dir: dir.clone(),
+            cancel: AtomicBool::new(false),
+            child: Mutex::new(None),
+            upload: Mutex::new(None),
+            out: Mutex::new(None),
+        };
+        let ch = Channel::new(|_| Ok(()));
+        let ver = std::env::var("JOLLOF_DWG_VERSION").unwrap_or_else(|_| "2018".into());
+        let r = run_export(1, &j, &ver, None, clamp_timeout(Some(600)), &ch).unwrap();
+        let src = j.out.lock().unwrap().clone().unwrap();
+        let n = crate::files::copy_atomic(&src, &out.join("export.dwg")).unwrap();
+        println!(
+            "{} : DWG {} ({} octets) en {} ms, avertissement {:?}",
+            r.converter, r.dwg, n, r.ms, r.warning
+        );
+        assert_eq!(n, r.size);
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn dwg_versions_map_to_each_converter() {
+        assert_eq!(
+            dwg_version_arg(Kind::Oda, "2018").unwrap(),
+            ("ACAD2018".to_string(), "2018")
+        );
+        assert_eq!(
+            dwg_version_arg(Kind::Oda, "2013").unwrap(),
+            ("ACAD2013".to_string(), "2013")
+        );
+        // dxf2dwg n'écrit que r2000 et r2004 : une version plus récente donne un DWG 2000, annoncé comme tel.
+        assert_eq!(
+            dwg_version_arg(Kind::LibreDwg, "2018").unwrap(),
+            ("r2000".to_string(), "2000")
+        );
+        assert_eq!(
+            dwg_version_arg(Kind::LibreDwg, "2004").unwrap(),
+            ("r2004".to_string(), "2004")
+        );
+        assert!(dwg_version_arg(Kind::Oda, "ACAD2018").is_err());
+        assert!(dwg_version_arg(Kind::Oda, "2018 --x").is_err());
+        assert!(dwg_version_arg(Kind::LibreDwg, "").is_err());
+        assert_eq!(parse_dir("dwg"), Ok(Dir::ToDwg));
+        assert_eq!(parse_dir("dxf"), Ok(Dir::ToDxf));
+        assert!(parse_dir("exe").is_err());
+        assert_eq!(Kind::LibreDwg.tool(Dir::ToDwg), "LibreDWG dxf2dwg");
+    }
+
+    #[test]
+    fn export_arguments_are_fixed_lists() {
+        let a = build_export_args(
+            Kind::Oda,
+            Path::new("/c/in/input.DXF"),
+            Path::new("/c/in"),
+            Path::new("/c/out"),
+            "ACAD2013",
+        );
+        let s: Vec<String> = a.iter().map(|x| x.to_string_lossy().into_owned()).collect();
+        assert_eq!(s, ["/c/in", "/c/out", "ACAD2013", "DWG", "0", "1", "*.DXF"]);
+        let a = build_export_args(
+            Kind::LibreDwg,
+            Path::new("/c/in/input.DXF"),
+            Path::new("/c/in"),
+            Path::new("/c/out"),
+            "r2000",
+        );
+        let s: Vec<String> = a.iter().map(|x| x.to_string_lossy().into_owned()).collect();
+        assert_eq!(
+            s,
+            [
+                "-y",
+                "--as",
+                "r2000",
+                "-o",
+                "/c/out/output.dwg",
+                "/c/in/input.DXF"
+            ]
+        );
+    }
+
+    #[test]
+    fn exported_dwg_is_recognised_by_its_signature() {
+        let d = tmp("dwgsig");
+        assert!(find_dwg(&d).is_none());
+        for (sig, year) in [
+            ("AC1032", Some("2018")),
+            ("AC1015", Some("2000")),
+            ("AC1027", Some("2013")),
+            ("AC9999", None),
+        ] {
+            let p = d.join("output.DWG");
+            fs::write(&p, format!("{sig}\0\0rest")).unwrap();
+            assert_eq!(dwg_year(&p), year, "{sig}");
+        }
+        fs::write(d.join("short.dwg"), b"AC").unwrap();
+        assert_eq!(dwg_year(&d.join("short.dwg")), None);
+        assert!(find_dwg(&d).is_some());
+        // Copie atomique vers la cible choisie : contenu identique, aucun temporaire restant.
+        let dst = tmp("dwgcopy");
+        let target = dst.join("plan réseau.dwg");
+        fs::write(&target, b"ancien").unwrap();
+        let src = d.join("output.DWG");
+        assert_eq!(
+            crate::files::copy_atomic(&src, &target).unwrap(),
+            fs::metadata(&src).unwrap().len()
+        );
+        assert_eq!(fs::read(&target).unwrap(), fs::read(&src).unwrap());
+        assert_eq!(fs::read_dir(&dst).unwrap().count(), 1);
+        assert!(crate::files::copy_atomic(&d.join("absent.dwg"), &target).is_err());
+        assert_eq!(
+            fs::read(&target).unwrap(),
+            fs::read(&src).unwrap(),
+            "échec : cible intacte"
+        );
+        let _ = fs::remove_dir_all(&d);
+        let _ = fs::remove_dir_all(&dst);
     }
 
     #[test]

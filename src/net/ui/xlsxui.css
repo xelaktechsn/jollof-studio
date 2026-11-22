@@ -1,0 +1,38 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Échanges Excel (xlsxui.js) : options d'export, différences à l'import, tarif. Classes ntXl…, jetons du thème. */
+.ntXlDlg .sBody { max-height: min(70vh, 640px); overflow: auto; }
+.ntXl { display: flex; flex-direction: column; gap: 10px; font-size: 13px; color: var(--fg); }
+.ntXl fieldset { margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line); border-radius: 8px; display: flex; flex-direction: column; gap: 6px; }
+.ntXl legend { padding: 0 4px; font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.ntXlRadio { display: flex; align-items: flex-start; gap: 8px; cursor: pointer; }
+.ntXlRadio span { display: flex; flex-direction: column; gap: 1px; }
+.ntXlRadio small, .ntXl td small { display: block; color: var(--muted); font-size: 11.5px; }
+.ntXlChecks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px 12px; }
+.ntXlChecks label { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.ntXlNote { margin: 0; color: var(--fg-2); line-height: 1.45; }
+.ntXlWarn { margin: 0; padding: 6px 10px; border-left: 3px solid var(--warn-ink); background: var(--panel-2); border-radius: 6px; line-height: 1.45; }
+.ntXlEmpty { margin: 8px 0; padding: 14px; text-align: center; color: var(--muted); border: 1px dashed var(--line-2); border-radius: 8px; }
+.ntXlTools { display: flex; align-items: center; gap: 6px; }
+.ntXlCount { margin-left: auto; color: var(--fg-2); font-size: 12px; }
+.ntXlTbl { border: 1px solid var(--line); border-radius: 8px; overflow: auto; max-height: 46vh; }
+.ntXlTbl table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.ntXlTbl th { position: sticky; top: 0; z-index: 1; padding: 6px 8px; text-align: left; font-weight: 600; color: var(--fg-2); background: var(--panel-2); border-bottom: 1px solid var(--line-2); }
+.ntXlTbl td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.ntXlTbl td:first-child, .ntXlTbl th:first-child { width: 28px; }
+.ntXlGrp th { position: static; background: var(--panel); color: var(--fg); }
+.ntXlGrp label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.ntXlOld { color: var(--muted); text-decoration: line-through; text-decoration-color: var(--line-3, var(--muted)); }
+.ntXlNew { color: var(--ok-ink); font-weight: 600; }
+.ntXlConflict td { background: color-mix(in srgb, var(--warn-ink) 10%, transparent); }
+.ntXlMap { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.ntXlMap label { display: grid; gap: 4px; font-size: 12px; color: var(--fg-2); }
+.ntXl input[type="checkbox"], .ntXl input[type="radio"] { accent-color: var(--accent); }
+.ntXlTbl .n { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Lignes du tarif non retrouvées : raison et association à la main. */
+.ntXlMiss { margin-top: 2px; }
+.ntXlMiss > summary { cursor: pointer; font-size: 12px; font-weight: 600; color: var(--warn-ink, var(--fg-2)); padding: 4px 0; }
+.ntXlMiss .ntXlTbl { max-height: 180px; }
+.ntXlWhy { color: var(--fg-2); font-size: 11.5px; white-space: normal; }
+.ntXlMiss .sel { height: 26px; max-width: 260px; }
+.ntXlMiss .ntXlTbl td:first-child, .ntXlMiss .ntXlTbl th:first-child { width: auto; }

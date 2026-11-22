@@ -9,7 +9,7 @@
 //   de la barre des vues.
 import { tl } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
-import { ctxMenu, notify } from './kit/index.js';
+import { ctxMenu, notify, scrollWithin } from './kit/index.js';
 import { labeler, cableKind } from '../docs.js';
 import { testState, linkLabel } from '../certify.js';
 import { isExam } from '../exam.js';
@@ -62,7 +62,7 @@ export function installNav(ctx, { host, pane, viewBar, docks, onGo }) {
       await new Promise(r => requestAnimationFrame(r));
       let el = pane.querySelector(`[data-sec="${CSS.escape(sec)}"]`);
       if (!el) { const h = [...pane.querySelectorAll('section h4')].find(x => names.some(n => x.textContent.trim().startsWith(n))); el = h && h.closest('section'); }
-      if (el) { el.scrollIntoView({ block: 'start', behavior: 'smooth' }); el.classList.remove('ntFlash'); void el.offsetWidth; el.classList.add('ntFlash'); setTimeout(() => el.classList.remove('ntFlash'), 1600); return true; }
+      if (el) { scrollWithin(el); el.classList.remove('ntFlash'); void el.offsetWidth; el.classList.add('ntFlash'); setTimeout(() => el.classList.remove('ntFlash'), 1600); return true; }
     }
     return false;
   }
@@ -72,11 +72,11 @@ export function installNav(ctx, { host, pane, viewBar, docks, onGo }) {
     highlight(null);
     // Une seule entrée d'historique par saut, posée à l'arrivée (vue et sélection finales).
     navigating++;
-    try { await go0(t); } finally { await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); navigating--; record(); }
+    try { await go0(t); } finally { await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); navigating--; record(true); }
   }
   async function go0(t) {
     if (t.kind === 'vlan') { await ctx.openView('logic'); if (app.commands && app.commands.run) app.commands.run('net.sim.vlans'); return; }
-    if (t.select) { const l = t.select.filter(Boolean); if (l.length === 1) ctx.select(l[0]); else ctx.selectMany(l); ctx.status(tl('{0} objet(s) choisi(s).', l.length), 'ok'); return; }
+    if (t.select) { const l = t.select.filter(Boolean); if (l.length === 1) ctx.select(l[0]); else ctx.selectMany(l); ctx.status(tl('{0:# objet choisi|# objets choisis}.', l.length), 'ok'); return; }
     if (t.dock) { if (docks) { const d = await docks; if (d) d.show(t.dock, t.filter); } else if (app.dock) app.dock.show(t.dock); return; }
     if (t.id == null) { if (t.view) await ctx.openView(t.view); return; }
     let view = t.view || null;
@@ -139,14 +139,14 @@ export function installNav(ctx, { host, pane, viewBar, docks, onGo }) {
   function remove(list) {
     const n = removeItems(data(), list); if (!n) return 0;
     ctx.select(null); ctx.commit();
-    notify(tl('{0} objet(s) retiré(s)', n), 'ok', { action: { label: tl('Annuler'), run: () => { const u = document.getElementById('undoBtn'); if (u && !u.disabled) u.click(); } } });
+    notify(tl('{0:# objet retiré|# objets retirés}', n), 'ok', { action: { label: tl('Annuler'), run: () => { const u = document.getElementById('undoBtn'); if (u && !u.disabled) u.click(); } } });
     return n;
   }
   function duplicate(list) {
     const ids = list.filter(x => x.kind === 'dev').map(x => x.id); if (!ids.length) return [];
     const made = duplicateDevs(data(), ids, (type, at) => ctx.newDevice(type, at)); if (!made.length) return [];
     ctx.commit(); ctx.selectMany(made.map(d => ({ kind: 'dev', id: d.id })));
-    ctx.status(tl('{0} équipement(s) dupliqué(s) (sans leurs câbles).', made.length), 'ok');
+    ctx.status(tl('{0:# équipement dupliqué|# équipements dupliqués} (sans leurs câbles).', made.length), 'ok');
     return made;
   }
 
@@ -179,8 +179,9 @@ export function installNav(ctx, { host, pane, viewBar, docks, onGo }) {
   let navigating = 0;
   const here = () => { const v = ctx.view(), s = ctx.selection(); let floor = null; if (v === 'plan' && planVw && planVw.floor) floor = planVw.floor(); return { view: v, sel: s ? { kind: s.kind, id: s.id } : null, floor }; };
   let planVw = null;
-  function record() {
-    if (restoring || navigating || !ctx.isOn()) return;
+  /** force : fin d'un saut (posée même si un autre saut est en cours, sinon des sauts rapprochés n'en laissent qu'un). */
+  function record(force = false) {
+    if (restoring || (navigating && !force) || !ctx.isOn()) return;
     const e = here(), cur = H.list[H.i]; e.t = Date.now();
     if (cur && cur.view === e.view && same(cur.sel, e.sel) && (cur.floor === e.floor || !e.floor)) return;
     // Même vue, rien de choisi avant : on complète l'entrée plutôt que d'en empiler une vide.

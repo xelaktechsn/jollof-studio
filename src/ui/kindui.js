@@ -34,7 +34,7 @@ export function installKind(host) {
     const cur = host.get();
     // L'infobulle du bouton ne reste pas derrière le menu ouvert.
     const tip = btn.dataset.tip; delete btn.dataset.tip;
-    const v = await popMenu(btn, KIND_IDS.map(k => ({ label: `${KINDS[k].name()}${k === cur ? ' ✓' : ''}`, icon: KINDS[k].icon, value: k })));
+    const v = await popMenu(btn, KIND_IDS.map(k => ({ label: KINDS[k].name(), icon: KINDS[k].icon, value: k, checked: k === cur })));
     if (tip && btn.dataset.tip == null) btn.dataset.tip = tip;
     if (v && v !== cur) host.set(v);
   };

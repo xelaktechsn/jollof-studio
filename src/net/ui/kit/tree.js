@@ -54,7 +54,11 @@ export function createTree(host, o = {}) {
     inner.innerHTML = html;
     // Libellé coupé : le sous-titre s'efface (il reste dans l'infobulle) plutôt que deux textes tronqués.
     for (const r of inner.children) {
-      const lb = r.querySelector('.ntKLb'), sb = r.querySelector('.ntKSub'); if (!lb || !sb || lb.scrollWidth <= lb.clientWidth + 1) continue;
+      const lb = r.querySelector('.ntKLb'), sb = r.querySelector('.ntKSub'); if (!lb || !sb) continue;
+      // Largeur du texte entier (plage) contre celle de la boîte : scrollWidth arrondi ne voit pas les coupes d'un pixel.
+      // Le sous-titre ne prend que la place laissée par le libellé (flex-basis 0) : trop étroit pour se lire, il s'efface.
+      const rg = document.createRange(); rg.selectNodeContents(lb);
+      if (sb.clientWidth >= 40 && rg.getBoundingClientRect().width <= lb.getBoundingClientRect().width + 0.5) continue;
       sb.remove(); if (!r.title) { const n = rows[+r.dataset.i].node; r.title = n.sub ? `${n.label} · ${n.sub}` : n.label; }
     }
     const ai = act != null ? rowAt.get(act) : null;
@@ -63,6 +67,8 @@ export function createTree(host, o = {}) {
   }
   el.addEventListener('scroll', paint, { passive: true });
   const ro = new ResizeObserver(paint); ro.observe(el);
+  // Police chargée après le premier dessin : les largeurs changent, les libellés coupés sont revus.
+  if (document.fonts) { document.fonts.ready.then(paint); document.fonts.addEventListener && document.fonts.addEventListener('loadingdone', paint); }
 
   /* ---------- Sélection ---------- */
   const emit = ev => { if (o.onSelect) o.onSelect([...sel], ev || null); };

@@ -99,3 +99,10 @@ test('chaque entrée fait quelque chose', () => {
   const env = base({ cap: { cad: true, dxf: true, pdf: true }, floors: [{ id: 'F1', name: 'A' }], racks: [{ id: 'R1', name: 'B' }], has: () => true });
   for (const it of flatItems(env)) if (!it.sub) assert.ok(it.act || it.cmd, it.id);
 });
+
+test('commandes de l’application de bureau : signalées dans la version web, toujours ouvrables', () => {
+  const env = d => base({ desktop: d, cap: { dwg: true, netbox: true, dxf: true } });
+  const web = Object.fromEntries(flatItems(env(false)).map(x => [x.id, x])), desk = Object.fromEntries(flatItems(env(true)).map(x => [x.id, x]));
+  for (const id of ['file.exportDwg', 'docs.dwg', 'docs.netbox']) { assert.equal(web[id].tag, 'application de bureau', id); assert.equal(web[id].disabled, false, id); assert.equal(desk[id].tag, '', id); }
+  assert.equal(web['file.exportDxf'].tag, '');
+});

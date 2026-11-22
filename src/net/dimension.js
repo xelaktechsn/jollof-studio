@@ -450,8 +450,19 @@ export function applyDesign(data, opts = {}) {
   const fid = p => { let i = 1; while (ids.has(p + i)) i++; ids.add(p + i); return p + i; };
   // Noms des équipements posés : préfixe du type (localisé : OBT/BLK, PASS/CM, OND/UPS…), noms de pièces coupés sur un mot.
   const pre = t => (DEVICES[t] && DEVICES[t].prefix) || 'N';
-  const short = (s, n) => { s = String(s || ''); if (s.length <= n) return s; const c = s.slice(0, n + 1), k = Math.max(c.lastIndexOf(' '), c.lastIndexOf('-')); return (k >= 3 ? c.slice(0, k) : s.slice(0, n)).trim().replace(/(\s+\S{1,2})+$/, ''); };
-  const fname = n => { let s = n.slice(0, 24), i = 2; while (names.has(s)) s = (n.slice(0, 20) + '-' + i++).slice(0, 24); names.add(s); return s; };
+  // Mots vides retirés, puis mots entiers tant qu'ils tiennent ; le dernier mot est raccourci (4 lettres au moins) plutôt
+  // que laissé en suspens (« Salle des » → « Salle profes ») ; jamais d'espace final.
+  const STOP = /^(de|des|du|la|le|les|d|l|à|au|aux|et|en|of|the|and|for|a|an)$/i;
+  const short = (s, n) => {
+    s = String(s || '').trim(); if (s.length <= n) return s;
+    let out = '';
+    for (const w of s.replace(/[’']/g, ' ').split(/\s+/).filter(x => x && !STOP.test(x))) {
+      const room = n - (out ? out.length + 1 : 0); if (room < Math.min(4, w.length)) break;
+      out += (out ? ' ' : '') + w.slice(0, room); if (w.length > room) break;
+    }
+    return out || s.slice(0, n).trim();
+  };
+  const fname = n => { let s = n.slice(0, 24).trim(), i = 2; while (names.has(s)) s = (n.slice(0, 20).trim() + '-' + i++).slice(0, 24); names.add(s); return s; };
   const cid = () => { let i = data.cables.length + 1; while (cids.has('c' + i)) i++; cids.add('c' + i); return 'c' + i; };
   // Schéma logique : à droite de ce qui existe déjà.
   const x0 = data.devices.length ? Math.max(...data.devices.map(d => d.x)) + 260 : 0, y0 = data.devices.length ? Math.min(...data.devices.map(d => d.y)) : 0;

@@ -44,7 +44,7 @@ export function openBudget(ctx, cableId) {
   function render() {
     const S = state(); if (!S) { close(); return; }
     const { c, L, ch, link } = S, fib = c.media === 'fibre';
-    const sub = L ? tl('{0} ↔ {1}', name(L.a.n), name(L.b.n)) + (L.cables.length > 1 ? ' · ' + tl('{0} câbles bout à bout, {1} traversée(s)', L.cables.length, L.passes) : '') : tl('Câble seul (liaison incomplète)');
+    const sub = L ? tl('{0} ↔ {1}', name(L.a.n), name(L.b.n)) + (L.cables.length > 1 ? ' · ' + tl('{0} câbles bout à bout, {1:# traversée|# traversées}', L.cables.length, L.passes) : '') : tl('Câble seul (liaison incomplète)');
     const placed = L ? [L.modA, L.modB].map(x => x || tl('aucun')).join(' / ') : tl('aucun');
     const mods = MODULE_IDS.filter(id => MODULES[id].media !== 'copper');
     const rows = fib && link && link.nm ? budgetRows(ch, link) : fib ? budgetRows(ch, { module: st.mod || (L && (L.modA || L.modB)) || null, nm: (moduleOf(st.mod) || moduleOf(L && (L.modA || L.modB)) || {}).nm || 1310 }) : [];

@@ -9,4 +9,6 @@ import { tools as rack } from './tools-net-rack.js';
 import { tools as design } from './tools-net-design.js';
 import { tools as cert } from './tools-net-cert.js';
 import { tools as fibre } from './tools-net-fibre.js';
-export const netProTools = h => [sim, fibre, plan, wifi, rack, design, cert].flatMap(f => f(h));
+import { tools as interop } from './tools-net-interop.js';
+import { tools as visio } from './tools-net-visio.js';
+export const netProTools = h => [sim, fibre, plan, wifi, rack, design, cert, interop, visio].flatMap(f => f(h));

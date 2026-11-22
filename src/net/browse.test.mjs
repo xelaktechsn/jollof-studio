@@ -19,7 +19,7 @@ test('arbre : site → bâtiment → étage → pièce → baie → équipements
   const d = built(), roots = projectTree(d, opts(d)), idx = indexTree(roots);
   assert.equal(roots[0].key, 'site');
   const b = roots[0].children[0]; assert.equal(b.kind, 'building');
-  assert.deepEqual(b.children.map(f => f.id), ['f1', 'f0']); // étage le plus haut d'abord
+  assert.deepEqual(b.children.map(f => f.id), ['f0', 'f1']); // par niveau : RDC, puis R+1
   const lt = idx.get('room:f0-lt'); assert.ok(lt, 'local technique');
   const rk = lt.node.children.find(n => n.kind === 'rack'); assert.equal(rk.id, 'rk1');
   assert.ok(rk.children.length > 0, 'équipements de la baie');

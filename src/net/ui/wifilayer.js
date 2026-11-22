@@ -290,7 +290,7 @@ export function createWifiLayer(ctx) {
     const ch = WF.BANDS.flatMap(b => WF.autoChannels(d, b, set));
     if (!ch.length) { ctx.status(tl('Plan de canaux : rien à changer.')); return 0; }
     WF.applyChannels(d, ch); ctx.commit();
-    ctx.status(tl('Plan de canaux : {0} réglage(s) changé(s) (Ctrl+Z pour annuler).', ch.length), 'ok');
+    ctx.status(tl('Plan de canaux : {0:# réglage changé|# réglages changés} (Ctrl+Z pour annuler).', ch.length), 'ok');
     return ch.length;
   }
   /** Événements de la barre, des réglages et de l'inspecteur du calque ; dev : point d'accès inspecté. Rend true si traité. */

@@ -13,6 +13,7 @@ import { icon } from '../../ui/icons.js';
 import { menu as popMenu } from '../../school/ui.js';
 import { addHelpSection, onNavPaint } from '../../ui/navdock.js';
 import { onKeyFirst } from '../../ui/shell.js';
+import { KINDS } from '../../ui/kind.js';
 import { menusFor, flatItems, shortcutRows, globalKeys, matchKey, keyLabel, hasNet, MENUS } from '../menus.js';
 
 const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
@@ -20,6 +21,16 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 // Modules d'autres parties, peut-être absents de cette version : détectés sans casser la construction.
 const CAD = import.meta.glob('./cadimport.js');
+// Échange IFC (ifcimport.js : openIfcImport ; ifcexport.js : exportIfc), détecté de même.
+const IFC = import.meta.glob(['./ifcimport.js', './ifcexport.js']);
+// Échanges Excel (xlsxui.js : exportXlsx, openXlsxImport, openPriceImport), détectés de même.
+const XLSX = import.meta.glob('./xlsxui.js');
+// Synchronisation NetBox (netbox.js : openNetbox), détectée de même.
+const NETBOX = import.meta.glob('./netbox.js');
+// Export DWG (dwgexport.js : exportDwg, convertisseur installé sur l'ordinateur), détecté de même.
+const DWG = import.meta.glob('./dwgexport.js');
+// Schémas Visio et draw.io (visioexport.js : exportVsdx, exportDrawio ; vsdximport.js : openVsdxImport), détectés de même.
+const VISIO = import.meta.glob(['./visioexport.js', './vsdximport.js']);
 /** Commandes d'une vue que les menus remplacent (la palette ne les montre pas deux fois). */
 const SUPERSEDES = {
   'view.wifi': ['net.plan.wifi'], 'file.importImage': ['net.plan.image'], 'ins.building': ['net.plan.building'], 'ins.floor': ['net.plan.floor'],
@@ -40,7 +51,7 @@ export function installNetShell(app, net, ws) {
   const ctx = () => ws.ctx();
   const kind = () => (app.kind ? app.kind() : 'elec');
   const on = () => hasNet(kind());
-  const cap = { cad: !!CAD['./cadimport.js'], dxf: false, pdf: false };
+  const cap = { cad: !!CAD['./cadimport.js'], dxf: false, pdf: false, ifc: !!(IFC['./ifcimport.js'] && IFC['./ifcexport.js']), xlsx: !!XLSX['./xlsxui.js'], netbox: !!NETBOX['./netbox.js'], dwg: !!DWG['./dwgexport.js'], visio: !!(VISIO['./visioexport.js'] && VISIO['./vsdximport.js']) };
   const objs = {}; // vues chargées par les menus (plan.cmd, design.tab…)
   let docsMod = null;
 
@@ -67,7 +78,7 @@ export function installNetShell(app, net, ws) {
     let sel = null; try { sel = ctx().selection(); } catch (e) { /* rien */ }
     const ub = $('#undoBtn'), rb = $('#redoBtn');
     return {
-      kind: kind(), view, cap, floors, racks, sel, exam: d.exam === true, sim: simPref(), pro: PRO, insOpen: insOpen(),
+      desktop: !!(app.isDesktop && app.isDesktop()), kind: kind(), view, cap, floors, racks, sel, exam: d.exam === true, sim: simPref(), pro: PRO, insOpen: insOpen(),
       layers: plan ? plan.layers() : null,
       canUndo: ub ? !ub.disabled : true, canRedo: rb ? !rb.disabled : true,
       has: id => !!(app.commands && app.commands.get && app.commands.get(id))
@@ -135,10 +146,12 @@ export function installNetShell(app, net, ws) {
       const hs = [...document.querySelectorAll('#pane-nprop h4')];
       const h = want.map(re => hs.find(x => re.test(x.textContent.trim()))).find(Boolean);
       const sec = h && h.closest('section');
-      if (sec) { sec.scrollIntoView({ block: 'start', behavior: 'smooth' }); flash(sec); }
+      if (sec) { scrollPane(sec); flash(sec); }
       app.status(tl('{0} : réglages dans l’inspecteur.', ctx().nameOf(dev.id)));
     });
   }
+  /** Défilement du seul panneau (kit scrollWithin) : scrollIntoView ferait aussi glisser les ancêtres en overflow: hidden. */
+  const scrollPane = (el, block) => import('./kit/index.js').then(k => k.scrollWithin(el, block));
   function flash(el) { el.classList.remove('ntFlash'); void el.offsetWidth; el.classList.add('ntFlash'); setTimeout(() => el.classList.remove('ntFlash'), 1600); }
   function libSearch(q = '') {
     if (!ws.isOn()) ws.setMode(true);
@@ -149,7 +162,7 @@ export function installNetShell(app, net, ws) {
     const v = await view('design'); if (!v || !v.tab) return v;
     if (t === 'generate') {
       v.tab('dim');
-      for (let k = 0; k < 40; k++) { await new Promise(r => requestAnimationFrame(r)); const g = v.body && v.body().querySelector('.ntDsGen, .ntDsEmptyBig'); if (g) { g.scrollIntoView({ block: 'center', behavior: 'smooth' }); flash(g); const b = g.querySelector('button'); if (b) b.focus(); break; } }
+      for (let k = 0; k < 40; k++) { await new Promise(r => requestAnimationFrame(r)); const g = v.body && v.body().querySelector('.ntDsGen, .ntDsEmptyBig'); if (g) { scrollPane(g, 'center'); flash(g); const b = g.querySelector('button'); if (b) b.focus(); break; } }
     } else v.tab(t);
     return v;
   }
@@ -170,6 +183,16 @@ export function installNetShell(app, net, ws) {
         return app.status(tl('Cette fonction n’est pas disponible dans cette version.'), 'warn');
       }
       case 'importImage': { const v = await view('plan'); return v && v.cmd && v.cmd.action('image'); }
+      case 'importIfc': { if (!ws.isOn()) ws.setMode(true); const m = await IFC['./ifcimport.js'](); return m.openIfcImport && m.openIfcImport(ctx()); }
+      case 'netbox': { const m = await NETBOX['./netbox.js'](); return m.openNetbox && m.openNetbox(ctx()); }
+      case 'exportIfc': { const m = await IFC['./ifcexport.js'](); return m.exportIfc && m.exportIfc(ctx()); }
+      case 'exportDwg': { const m = await DWG['./dwgexport.js'](); return m.exportDwg && m.exportDwg(ctx()); }
+      case 'importVsdx': { if (!ws.isOn()) ws.setMode(true); const m = await VISIO['./vsdximport.js'](); return m.openVsdxImport && m.openVsdxImport(ctx()); }
+      case 'exportVsdx': { const m = await VISIO['./visioexport.js'](); return m.exportVsdx && m.exportVsdx(ctx()); }
+      case 'exportDrawio': { const m = await VISIO['./visioexport.js'](); return m.exportDrawio && m.exportDrawio(ctx()); }
+      case 'exportXlsx': { const m = await XLSX['./xlsxui.js'](); return m.exportXlsx && m.exportXlsx(ctx()); }
+      case 'importXlsx': { if (!ws.isOn()) ws.setMode(true); const m = await XLSX['./xlsxui.js'](); return m.openXlsxImport && m.openXlsxImport(ctx()); }
+      case 'importPrices': { if (!ws.isOn()) ws.setMode(true); const m = await XLSX['./xlsxui.js'](); return m.openPriceImport && m.openPriceImport(ctx()); }
       case 'exportDxf': return external(DXF_NAMES);
       case 'exportPdf': return external(PDF_NAMES);
       case 'csv': return docAction('csv-' + arg);
@@ -230,9 +253,9 @@ export function installNetShell(app, net, ws) {
     const out = [], walk = (list, cat) => {
       for (const it of list) {
         if (it.sep || it.palette === false) continue;
-        if (it.sub) { walk(typeof it.sub === 'function' ? it.sub({}) : it.sub, cat); continue; }
+        if (it.sub) { walk(typeof it.sub === 'function' ? it.sub({}) : it.sub, `${cat} ▸ ${it.label()}`); continue; } // « Fichier ▸ Exporter » : la palette trouve « export »
         if (it.cmd) continue;
-        out.push({ id: 'net.menu.' + it.id, cat, icon: it.icon, label: it.label(), keys: keyLabel(it.keys, MAC, isEn), supersedes: SUPERSEDES[it.id], when: () => on() && visibleIds().has(it.id), run: () => run(it) });
+        out.push({ id: 'net.menu.' + it.id, cat, icon: it.icon, label: it.label() + (it.desk && !(app.isDesktop && app.isDesktop()) ? ` (${tl('application de bureau')})` : ''), keys: keyLabel(it.keys, MAC, isEn), supersedes: SUPERSEDES[it.id], when: () => on() && visibleIds().has(it.id), run: () => run(it) });
       }
     };
     for (const m of MENUS) walk(m.items, m.label());
@@ -255,6 +278,22 @@ export function installNetShell(app, net, ws) {
     // Alt+1…4 depuis le montage d'un projet Objets connectés : la vue du plan réseau.
     if (!ws.isOn() && e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-4]$/.test(e.code) && !typing) { view(VIEW_IDS[+e.code.slice(5) - 1]); return true; }
     return false;
+  });
+  // Tab dans le plan de travail réseau : WebKit (Safari, l'application de bureau sur Mac) saute les boutons et les listes
+  // si le réglage « naviguer au clavier » du système est coupé ; on garde donc nous-mêmes l'ordre du document, boutons
+  // compris. Depuis un onglet de vue, Tab va au premier contrôle de la vue (pas aux autres onglets).
+  const FOCUSABLE = 'button, select, input:not([type="hidden"]), textarea, a[href], summary, [tabindex]';
+  const canFocus = el => el.tabIndex >= 0 && !el.disabled && el.offsetParent !== null && !el.closest('[hidden], [inert], .ndHelp') && getComputedStyle(el).visibility !== 'hidden';
+  onKeyFirst(e => {
+    if (e.key !== 'Tab' || e.ctrlKey || e.metaKey || e.altKey || !on() || !ws.isOn() || busy()) return false;
+    const a = document.activeElement, host = document.querySelector('.ntHost');
+    if (!host || !a || !host.contains(a)) return false;
+    const list = [...document.querySelectorAll(FOCUSABLE)].filter(canFocus);
+    let i = list.indexOf(a); if (i < 0) return false;
+    if (!e.shiftKey && a.classList.contains('ntVTab')) { const tabs = list.filter(x => x.classList.contains('ntVTab')); i = list.indexOf(tabs[tabs.length - 1]); }
+    const next = list[(i + (e.shiftKey ? -1 : 1) + list.length) % list.length];
+    if (!next || next === a) return false;
+    next.focus(); return true;
   });
   addHelpSection(() => (on() && ws.isOn() ? { title: tl('Projet réseau'), rows: shortcutRows(env()).concat([['F10', tl('Barre de menus')]]) } : null));
   // Raccourcis généraux de l'application, une fois pour toutes (aide « ? ») : même écriture que les menus.
@@ -286,14 +325,14 @@ export function installNetShell(app, net, ws) {
     let floor = '';
     if (v === 'plan' && objs.plan && objs.plan.cmd) { try { const f = objs.plan.cmd.floor(); if (f) floor = f.name || f.id; } catch (e) { /* rien */ } }
     vb.innerHTML = `${icon(VICON[v] || 'network')}<span>${esc(VNAME[v] ? VNAME[v]() : v)}${floor ? ' · ' + esc(floor) : ''}</span>`;
-    vb.title = tl('Vue montrée : cliquer pour en changer (Alt+1…4)');
+    vb.title = tl('Vue montrée : cliquer pour en changer ({0}…4)', keyLabel('Alt+1', MAC, isEn));
     const zb = sbEl.querySelector('[data-sb="zoom"]');
     // Zoom de la vue montrée : celui de sa barre de navigation visible ; aucune (Conception, vue d'ensemble des baies) : rien.
     let zoom = null; for (const [h, z] of zooms) if (h.isConnected && h.offsetParent && !h.closest('[hidden]') && h.querySelector(':scope > .ndDock:not([hidden])')) zoom = z;
     zb.hidden = zoom == null || v === 'design'; if (zoom != null) { zb.textContent = (isEn ? Math.round(zoom) + '%' : Math.round(zoom) + ' %'); zb.title = tl('Niveau de zoom : cliquer pour tout voir ou choisir un niveau'); }
     const dev = (d.devices || []).length, cab = (d.cables || []).length, rk = (d.racks || []).length;
     let rooms = 0; for (const b of (d.site && d.site.buildings) || []) for (const f of b.floors || []) rooms += (f.rooms || []).length;
-    const parts = [tl('{0} équipement(s)', dev), tl('{0} câble(s)', cab)]; if (rooms) parts.push(tl('{0} pièce(s)', rooms)); if (rk) parts.push(tl('{0} baie(s)', rk));
+    const parts = [tl('{0:# équipement|# équipements}', dev), tl('{0:# câble|# câbles}', cab)]; if (rooms) parts.push(tl('{0:# pièce|# pièces}', rooms)); if (rk) parts.push(tl('{0:# baie|# baies}', rk));
     sbEl.querySelector('[data-sb="counts"]').textContent = parts.join(' · ');
   }
   const paintSoon = () => { if (!rafSb) rafSb = requestAnimationFrame(paintSb); };
@@ -305,12 +344,15 @@ export function installNetShell(app, net, ws) {
   watchViews(); markView();
 
   try { ctx().onChange(paintSoon); } catch (e) { /* rien */ }
+  // Projet chargé (ouverture, exemple, restauration) : le message « Nouveau projet… » d'avant ne reste pas affiché.
+  const NEW_MSG = new Set(Object.keys(KINDS).map(k => tl('Nouveau projet {0}.', KINDS[k].name().toLowerCase())));
+  try { ctx().onChange(why => { if (why !== 'load') return; const st = $('#status'), d = ws.data() || {}; if (st && NEW_MSG.has(st.textContent.trim()) && ((d.devices || []).length || (d.site && (d.site.buildings || []).length))) setTimeout(() => app.status(tl('Projet ouvert : {0}', app.projectName ? app.projectName() : ''), 'ok'), 0); }); } catch (e) { /* rien */ } // nom du projet posé juste après le chargement
   addEventListener('click', paintSoon, true); addEventListener('keyup', paintSoon, true);
   new MutationObserver(paintSoon).observe($('.app'), { attributes: true, attributeFilter: ['class', 'data-kind'] });
   sbEl.addEventListener('click', async e => {
     const b = e.target.closest('[data-sb]'); if (!b) return;
     if (b.dataset.sb === 'view') {
-      const v = await popMenu(b, VIEW_IDS.map((id, i) => ({ label: `${VNAME[id]()} · Alt+${i + 1}${ws.view() === id ? ' ✓' : ''}`, icon: VICON[id], value: id })));
+      const v = await popMenu(b, VIEW_IDS.map((id, i) => ({ label: `${VNAME[id]()} · ${keyLabel('Alt+' + (i + 1), MAC, isEn)}`, icon: VICON[id], value: id, checked: ws.view() === id })));
       if (v) view(v);
     } else if (b.dataset.sb === 'zoom') { const p = [...document.querySelectorAll('.ntHost .ndDock .ndPct')].find(x => x.offsetParent); if (p) p.click(); }
   });

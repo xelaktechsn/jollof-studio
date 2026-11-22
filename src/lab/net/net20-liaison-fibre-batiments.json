@@ -409,8 +409,8 @@
     "en": "Fit the right modules"
    },
    "text": {
-    "fr": "Choisissez **10GBASE-LR** dans la cage x1 de CORE et dans celle de SWB (onglet **Réseau** de l’inspecteur de chaque switch).",
-    "en": "Choose **10GBASE-LR** in cage x1 of CORE and of SWB (**Network** tab of each switch’s inspector)."
+    "fr": "Cliquez sur **CORE** : dans l’inspecteur, section **Ports : VLAN et Spanning Tree**, la ligne du port **X1** a une liste **Module SFP+**. Choisissez-y **10GBASE-LR**. Faites de même sur **SWB**.",
+    "en": "Click **CORE**: in the inspector, section **Ports: VLAN and Spanning Tree**, the row of port **X1** has a **SFP+ module** list. Choose **10GBASE-LR** there. Do the same on **SWB**."
    },
    "hint": {
     "fr": "Les deux bouts doivent porter le même module : un SR ne parle pas à un LR (longueurs d’onde différentes).",

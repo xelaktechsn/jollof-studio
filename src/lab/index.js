@@ -159,7 +159,7 @@ export function installLab(app) {
       const levels = ['all', ...['college', 'lycee', 'pro'].filter(l => D.list.some(t => t.level === l))];
       const tabsOf = list => list.map(d => {
         const dn = d.list.filter(t => status(load(t.id)) === 'done').length;
-        return `<button type="button" role="tab" class="tpTab ${d.id}" data-tab="${d.id}" aria-selected="${d.id === tab}">${icon(d.icon)}<span class="tpTabName">${d.name()}</span><span class="tpTabMeta">${tl('{0} TP', d.list.length)}${dn ? ` · ${tl('{0} terminé(s)', dn)}` : ''}</span></button>`;
+        return `<button type="button" role="tab" class="tpTab ${d.id}" data-tab="${d.id}" aria-selected="${d.id === tab}">${icon(d.icon)}<span class="tpTabName">${d.name()}</span><span class="tpTabMeta">${tl('{0} TP', d.list.length)}${dn ? ` · ${tl('{0:# terminé|# terminés}', dn)}` : ''}</span></button>`;
       }).join('');
       const rest = DOMAINS.filter(d => !primary.includes(d));
       body.innerHTML = `<div class="tpTabs" role="tablist">${tabsOf(primary)}${rest.length ? (others ? tabsOf(rest) : `<button type="button" class="tpTab tpMore" data-more>${icon('chevDown')}<span class="tpTabName">${tl('Autres domaines')}</span><span class="tpTabMeta">${tl('{0} TP', rest.reduce((a, d) => a + d.list.length, 0))}</span></button>`) : ''}</div>
@@ -419,7 +419,7 @@ export function installLab(app) {
     /** Lignes fausses d'une table : entrées, attendu, obtenu. */
     function diffTable(r) {
       const rows = r.rows.filter(x => !x.ok).slice(0, 8);
-      return `<div class="lgTT labDiff"><table><thead><tr>${r.inputs.map(x => `<th>${esc(x)}</th>`).join('')}<th class="sep"></th>${r.outputs.map(x => `<th class="o">${esc(x)}<small>${tl('attendu')}</small></th><th class="o">${esc(x)}<small>${tl('obtenu')}</small></th>`).join('')}</tr></thead><tbody>${rows.map(x => `<tr>${x.in.map(b => `<td>${b}</td>`).join('')}<td class="sep"></td>${r.outputs.map(o => `<td class="o">${x.want[o] === 'x' ? '–' : x.want[o]}</td><td class="o${x.want[o] !== 'x' && x.want[o] !== x.got[o] ? ' bad' : ''}">${x.got[o].toUpperCase()}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${r.bad > rows.length ? `<small class="muted">${tl('… et {0} autre(s) ligne(s).', r.bad - rows.length)}</small>` : ''}`;
+      return `<div class="lgTT labDiff"><table><thead><tr>${r.inputs.map(x => `<th>${esc(x)}</th>`).join('')}<th class="sep"></th>${r.outputs.map(x => `<th class="o">${esc(x)}<small>${tl('attendu')}</small></th><th class="o">${esc(x)}<small>${tl('obtenu')}</small></th>`).join('')}</tr></thead><tbody>${rows.map(x => `<tr>${x.in.map(b => `<td>${b}</td>`).join('')}<td class="sep"></td>${r.outputs.map(o => `<td class="o">${x.want[o] === 'x' ? '–' : x.want[o]}</td><td class="o${x.want[o] !== 'x' && x.want[o] !== x.got[o] ? ' bad' : ''}">${x.got[o].toUpperCase()}</td>`).join('')}</tr>`).join('')}</tbody></table></div>${r.bad > rows.length ? `<small class="muted">${tl('… et {0:# autre ligne|# autres lignes}.', r.bad - rows.length)}</small>` : ''}`;
     }
     function verify(i) {
       const c = tp.steps[i].check;
@@ -544,7 +544,7 @@ export function installLab(app) {
       if (c.type === 'table-fill') {
         const r = checkTableFill(c, st.answers[i]);
         if (r.ok) return pass(i, tl('Table de vérité juste.'));
-        return fail(i, r.why === 'empty' ? tl('Remplissez toutes les cases (il reste des « ? »).') : tl('{0} case(s) fausse(s), en rouge. Essayez ces combinaisons sur le plan de travail.', r.bad.length), { bad: r.bad });
+        return fail(i, r.why === 'empty' ? tl('Remplissez toutes les cases (il reste des « ? »).') : tl('{0:# case fausse|# cases fausses}, en rouge. Essayez ces combinaisons sur le plan de travail.', r.bad.length), { bad: r.bad });
       }
       if (c.type === 'expr') {
         const r = checkExpr(c, st.answers[i]);
@@ -564,7 +564,7 @@ export function installLab(app) {
         if (r.why === 'missingOut') return fail(i, tl('Sortie introuvable : {0}. Gardez les sorties du TP avec leur nom (repère).', r.names.join(', ')));
         if (r.why === 'tooMany') return fail(i, tl('Trop d’entrées pour une table de vérité.'));
         if (r.why === 'unknown') return fail(i, tl('Certaines sorties restent inconnues (X ou Z) : une entrée de porte ou une sortie n’est reliée à rien.'), { detail: diffTable(r) });
-        return fail(i, tl('{0} ligne(s) sur {1} ne donnent pas le bon résultat :', r.bad, r.rows.length), { detail: diffTable(r) });
+        return fail(i, tl('{0:# ligne|# lignes} sur {1} ne donnent pas le bon résultat :', r.bad, r.rows.length), { detail: diffTable(r) });
       }
       if (c.type === 'logic-seq') {
         const r = checkLogicSeq(c, circuit);

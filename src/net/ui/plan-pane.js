@@ -51,12 +51,12 @@ function floorPane(ctx, V, f) {
   const S = (data.design && data.design.slack) || {};
   let h = head('floorPlan', f.name, `${b.name} · ${tl('niveau {0}', f.level)}`);
   h += `<section class="ntSec">${field(tl('Nom'), inp('f.name', f.name, 'maxlength="40"'))}${field(tl('Niveau'), numIn('f.level', f.level, -20, 200, 1))}${field(tl('Altitude du sol (m)'), numIn('f.elev', f.elev, -100, 1000, 0.05))}${field(tl('Hauteur d’étage (m)'), numIn('f.height', f.height, 2, 30, 0.05), tl('De sol à sol : sert aux colonnes montantes'))}${field(tl('Sous plafond (m)'), numIn('f.ceil', f.ceil, 2, 30, 0.05))}${field(tl('Faux plafond (m)'), numIn('f.plenum', f.plenum, 0, 5, 0.05))}${field(tl('Faux plancher (m)'), numIn('f.raised', f.raised, 0, 2, 0.05))}</section>`;
-  h += `<section class="ntSec"><h4>${tl('Contenu')}</h4><p class="mut">${tl('{0} pièce(s) · {1} m² · {2} mur(s) · {3} équipement(s) · {4} cheminement(s)', f.rooms.length, n1(area, 1), f.walls.length, devs.length, (data.paths || []).filter(p => p.floor === f.id).length)}</p><div class="row">${btn('addFloor', 'plus', tl('Étage au-dessus'))}${btn('copyFloor', 'copy', tl('Dupliquer l’étage'))}${f.walls.length > 2 ? btn('detect', 'wand', tl('Détecter les pièces')) : ''}</div></section>`;
+  h += `<section class="ntSec"><h4>${tl('Contenu')}</h4><p class="mut">${tl('{0:# pièce|# pièces} · {1} m² · {2:# mur|# murs} · {3:# équipement|# équipements} · {4:# cheminement|# cheminements}', f.rooms.length, n1(area, 1), f.walls.length, devs.length, (data.paths || []).filter(p => p.floor === f.id).length)}</p><div class="row">${btn('addFloor', 'plus', tl('Étage au-dessus'))}${btn('copyFloor', 'copy', tl('Dupliquer l’étage'))}${f.walls.length > 2 ? btn('detect', 'wand', tl('Détecter les pièces')) : ''}</div></section>`;
   // Fond DXF/DWG de l'étage (plan-underlay.js) : visible, opacité, réglages, remplacement par une nouvelle révision.
   const ul = data.underlays && data.underlays[f.id];
   if (ul) {
     const nOn = (ul.layers || []).filter(l => l.on !== false).length;
-    h += `<section class="ntSec"><h4>${tl('Fond DXF/DWG')}</h4><p><b>${esc(ul.name || (ul.source && ul.source.file) || '')}</b></p><p class="mut">${tl('{0} calque(s) affiché(s) sur {1} · {2} traits', nOn, (ul.layers || []).length, ((ul.stats && ul.stats.segs) || 0).toLocaleString(isEn ? 'en' : 'fr'))}</p>${chk('ul.on', ul.on !== false, tl('Fond affiché'))}${field(tl('Opacité'), `<input type="range" data-pl="ul.opacity" min="0.1" max="1" step="0.05" value="${ul.opacity ?? 0.85}">`)}<div class="row">${btn('cadcard', 'layers', tl('Calques et position…'), 'primary')}${btn('cad', 'upload', tl('Nouvelle révision…'))}</div></section>`;
+    h += `<section class="ntSec"><h4>${tl('Fond DXF/DWG')}</h4><p><b>${esc(ul.name || (ul.source && ul.source.file) || '')}</b></p><p class="mut">${tl('{0:# calque affiché|# calques affichés} sur {1} · {2} traits', nOn, (ul.layers || []).length, ((ul.stats && ul.stats.segs) || 0).toLocaleString(isEn ? 'en' : 'fr'))}</p>${chk('ul.on', ul.on !== false, tl('Fond affiché'))}${field(tl('Opacité'), `<input type="range" data-pl="ul.opacity" min="0.1" max="1" step="0.05" value="${ul.opacity ?? 0.85}">`)}<div class="row">${btn('cadcard', 'layers', tl('Calques et position…'), 'primary')}${btn('cad', 'upload', tl('Nouvelle révision…'))}</div></section>`;
   }
   h += `<section class="ntSec"><h4>${tl('Image du plan')}</h4>`;
   if (im) h += `${field(tl('Opacité'), `<input type="range" data-pl="im.opacity" min="0.05" max="1" step="0.05" value="${im.opacity}">`)}${chk('im.lock', im.lock, tl('Verrouillé (ne bouge plus)'))}<p class="mut">${tl('Échelle : {0} cm par pixel · {1} × {2} m', n1(im.scale * 100, 3), n1(im.iw * im.scale, 1), n1(im.ih * im.scale, 1))}</p><div class="row">${btn('calib', 'calibrate', tl('Étalonner'), 'primary')}${btn('image', 'image', tl('Remplacer'))}${btn('rmImage', 'trash', tl('Retirer'))}</div>`;
@@ -68,7 +68,7 @@ function floorPane(ctx, V, f) {
   return h;
 }
 function buildingPane(b) {
-  let h = head('building', b.name, tl('{0} étage(s)', b.floors.length));
+  let h = head('building', b.name, tl('{0:# étage|# étages}', b.floors.length));
   h += `<section class="ntSec">${field(tl('Nom'), inp('b.name', b.name, 'maxlength="40"'))}${field(tl('Position X (m)'), numIn('b.x', b.x, -10000, 10000, 1), tl('Place sur le plan de masse : sert aux longueurs entre bâtiments'))}${field(tl('Position Y (m)'), numIn('b.y', b.y, -10000, 10000, 1))}</section>`;
   h += `<section class="ntSec"><div class="row">${btn('addFloor', 'plus', tl('Ajouter un étage'))}${btn('newBuilding', 'plus', tl('Nouveau bâtiment'))}</div></section>`;
   return h;
@@ -76,7 +76,7 @@ function buildingPane(b) {
 function roomPane(ctx, o) {
   const r = o.o, A = roomArea(r), devs = ctx.data().devices.filter(d => d.loc && d.loc.floor === o.f.id && inside(d.loc, r));
   let h = head('room', r.name || USAGES[r.usage].name(), `${USAGES[r.usage].name()} · ${n1(A, 1)} m²`);
-  h += `<section class="ntSec">${field(tl('Nom'), inp('r.name', r.name, 'maxlength="40" placeholder="' + esc(tl('ex. Bureau 101')) + '"'))}${field(tl('Usage'), sel('r.usage', r.usage, Object.entries(USAGES).map(([k, u]) => [k, u.name()])))}<p class="mut">${tl('Surface {0} m² · périmètre {1} m · {2} sommets', n1(A, 2), n1(polyPerimeter(r.poly), 2), r.poly.length)}${r.holes ? ' · ' + tl('{0} trou(s) (cour, patio)', r.holes.length) : ''}</p></section>`;
+  h += `<section class="ntSec">${field(tl('Nom'), inp('r.name', r.name, 'maxlength="40" placeholder="' + esc(tl('ex. Bureau 101')) + '"'))}${field(tl('Usage'), sel('r.usage', r.usage, Object.entries(USAGES).map(([k, u]) => [k, u.name()])))}<p class="mut">${tl('Surface {0} m² · périmètre {1} m · {2} sommets', n1(A, 2), n1(polyPerimeter(r.poly), 2), r.poly.length)}${r.holes ? ' · ' + tl('{0:# trou|# trous} (cour, patio)', r.holes.length) : ''}</p></section>`;
   const racks = (ctx.data().racks || []).filter(k => k.floor === o.f.id && inside({ x: k.x, y: k.y }, r));
   h += `<section class="ntSec"><h4>${tl('Équipements de la pièce')}</h4>${devs.length ? `<p>${devs.map(d => esc(d.name)).join(', ')}</p>` : racks.length ? '' : `<p class="mut">${tl('Aucun : glissez une prise ou un point d’accès depuis la bibliothèque.')}</p>`}${racks.length ? `<p>${icon('rack')} ${racks.map(k => esc(k.name)).join(', ')}</p>` : ''}${isTechRoom(r) ? `<div class="row">${btn('rack', 'rack', tl('Poser une baie ici'), 'primary')}${btn('wrack', 'rack', tl('Coffret mural'))}</div>` : ''}</section>`;
   return h + issList(ctx, [r.id]);
@@ -117,10 +117,10 @@ function pathPane(ctx, V, p) {
   h += '</section>';
   if (!p.power) {
     h += `<section class="ntSec"><h4>${tl('Remplissage')}</h4>`;
-    if (p.kind === 'ceiling') h += `<p>${tl('{0} câble(s) sur les crochets (au plus {1} par support).', fl.n, PLAN_LIM.JHOOK_CABLES.v)}</p>`;
+    if (p.kind === 'ceiling') h += `<p>${tl('{0:# câble|# câbles} sur les crochets (au plus {1} par support).', fl.n, PLAN_LIM.JHOOK_CABLES.v)}</p>`;
     else {
       const over = fl.ratio > fl.max;
-      h += `<div class="ntGauge ntPlGauge${over ? ' over' : ''}"><i style="width:${Math.min(100, fl.ratio * 100).toFixed(1)}%"></i><b style="left:${(fl.max * 100).toFixed(1)}%"></b></div><p>${tl('{0} câble(s) · {1} % de la section (au plus {2} %)', fl.n, Math.round(fl.ratio * 100), Math.round(fl.max * 100))}</p>`;
+      h += `<div class="ntGauge ntPlGauge${over ? ' over' : ''}"><i style="width:${Math.min(100, fl.ratio * 100).toFixed(1)}%"></i><b style="left:${(fl.max * 100).toFixed(1)}%"></b></div><p>${tl('{0:# câble|# câbles} · {1} % de la section (au plus {2} %)', fl.n, Math.round(fl.ratio * 100), Math.round(fl.max * 100))}</p>`;
       if (isTrayKind(p.kind)) h += `<p class="mut">${tl('Hauteur de câbles : {0} mm (au plus {1} mm).', Math.round(fl.depth), PLAN_LIM.TRAY_DEPTH_MM.v)}</p>`;
       if (isConduitKind(p.kind) && p.kind === 'conduit') h += `<p class="mut">${tl('Coudes : {0}° (au plus {1}° entre deux boîtes de tirage) · {2} m (au plus {3} m).', bendsOf(p), PLAN_LIM.CONDUIT_BEND_DEG.v, n1(len, 1), PLAN_LIM.CONDUIT_RUN_M.v)}</p>`;
     }

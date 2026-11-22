@@ -67,7 +67,7 @@ export function installDocks(ctx, { goTo, showIn }) {
   const patch = addTab('netPatch', tl('Brassage'), el => {
     const cols = PK.map(k => ({ key: k, label: patchColName(k), num: k === 'permLen' || k === 'cordLen' || k === 'vlan', width: k === 'permLen' || k === 'cordLen' ? '96px' : k === 'vlan' ? '64px' : k === 'dport' || k === 'oport' ? '90px' : 'minmax(100px, 1fr)', text: r => (k.endsWith('Len') ? num1(r[k], en) : r[k]), html: k.endsWith('Len') ? r => esc(num1(r[k], en)) : k === 'device' ? r => `${r.up === true ? '<i class="ntDkUp on"></i>' : r.up === false ? '<i class="ntDkUp"></i>' : ''}${esc(r.device)}` : undefined }));
     const table = createTable(el, {
-      columns: cols, rowKey: r => r.key, label: tl('Brassage'), placeholder: tl('Filtrer (baie:B1, vlan:20…)'), tools: designBtn('patch') + csvBtn,
+      columns: cols, rowKey: r => r.key, label: tl('Brassage'), placeholder: tl('Filtrer… ex. : baie:B1 vlan:20'), tools: designBtn('patch') + csvBtn,
       empty: () => tl('Aucun panneau de brassage câblé : rangez des panneaux dans les baies et reliez-les aux prises et aux switchs.'),
       onActivate: r => { if (r.ids.panel) showIn('racks', r.ids.panel); },
       onContext: (r, ev) => ctxMenu(ev, [
@@ -98,7 +98,7 @@ export function installDocks(ctx, { goTo, showIn }) {
   CC[6].html = r => (r.mode === 'auto' && r.fallback ? `<span class="ntKV warn">${esc(CC[6].text(r))}</span>` : esc(CC[6].text(r)));
   const cables = addTab('netCables', tl('Câbles'), el => {
     const table = createTable(el, {
-      columns: CC, rowKey: r => r.id, label: tl('Câbles'), placeholder: tl('Filtrer (genre:rocade, type:cat 6a…)'), tools: designBtn('cables') + csvBtn,
+      columns: CC, rowKey: r => r.id, label: tl('Câbles'), placeholder: tl('Filtrer… ex. : genre:rocade type:6a'), tools: designBtn('cables') + csvBtn,
       empty: () => tl('Aucun câble dans le projet.'),
       onActivate: r => goTo({ kind: 'cable', id: r.id }),
       onContext: (r, ev) => ctxMenu(ev, [
@@ -115,7 +115,10 @@ export function installDocks(ctx, { goTo, showIn }) {
   /* ---------- Résultats des tests ---------- */
   const VCLS = { pass: 'ok', 'pass*': 'warn', 'fail*': 'warn', fail: 'err' };
   const state = r => (!r.stored ? 'none' : r.stale ? 'stale' : 'ok');
-  const STATE = { none: () => tl('non testé'), stale: () => tl('à refaire (le lien a changé)'), ok: () => tl('à jour') };
+  const STATE = { none: () => tl('non testé'), stale: () => tl('à refaire'), ok: () => tl('à jour') };
+  const STATE_LONG = { stale: () => tl('à refaire (le lien a changé)') };
+  // Mots du verdict dans la langue (filtre « verdict:échec », infobulle).
+  const VWORD = { pass: () => tl('réussi'), 'pass*': () => tl('réussi de justesse'), 'fail*': () => tl('échec de justesse'), fail: () => tl('échec') };
   const testRows = () => {
     const d = ctx.data(), exam = isExam(d), { rows } = testState(d);
     return rows.map(r => {
@@ -128,21 +131,19 @@ export function installDocks(ctx, { goTo, showIn }) {
     });
   };
   const TC = [
-    { key: 'label', label: tl('Lien'), width: 'minmax(180px, 2fr)' },
-    { key: 'kind', label: tl('Configuration'), width: '120px' },
-    { key: 'limit', label: tl('Limite'), width: 'minmax(120px, 1fr)' },
-    { key: 'verdict', label: tl('Verdict'), width: '96px', text: r => (r.exam ? '' : r.verdict ? verdictText(r.verdict) : ''), html: r => (r.verdict ? `<span class="ntKV ${VCLS[r.verdict] || 'mut'}">${esc(verdictText(r.verdict))}</span>` : r.exam && r.state !== 'none' ? `<span class="ntKV mut" title="${esc(tl('Mode examen : verdict caché'))}">${icon('lock')}</span>` : `<span class="ntKV mut">${esc(tl('non testé'))}</span>`) },
-    { key: 'margin', label: tl('Marge (dB)'), width: '96px', num: true, text: r => (r.margin == null ? '' : num1(r.margin, en)), html: r => (r.margin == null ? '<span class="mut">—</span>' : esc(num1(r.margin, en))) },
-    { key: 'param', label: tl('Paramètre le plus faible'), width: 'minmax(190px, 1fr)' },
-    { key: 'len', label: tl('Longueur (m)'), width: '100px', num: true, text: r => num1(r.len, en) },
-    { key: 'state', label: tl('État'), width: '170px', text: r => STATE[r.state](), html: r => `<span class="ntKV ${r.state === 'ok' ? 'mut' : r.state === 'stale' ? 'warn' : 'mut'}">${esc(STATE[r.state]())}</span>` },
-    { key: 'at', label: tl('Testé le'), width: '140px' }
+    { key: 'label', label: tl('Lien'), width: 'minmax(150px, 2fr)', title: r => r.label },
+    { key: 'limit', label: tl('Limite'), width: '118px', title: r => r.kind },
+    { key: 'verdict', label: tl('Verdict'), width: '88px', text: r => (r.exam ? '' : r.verdict ? `${verdictText(r.verdict)} ${VWORD[r.verdict] ? VWORD[r.verdict]() : ''}` : tl('non testé')), title: r => (r.verdict && VWORD[r.verdict] ? VWORD[r.verdict]() : ''), html: r => (r.verdict ? `<span class="ntKV ${VCLS[r.verdict] || 'mut'}">${esc(verdictText(r.verdict))}</span>` : r.exam && r.state !== 'none' ? `<span class="ntKV mut" title="${esc(tl('Mode examen : verdict caché'))}">${icon('lock')}</span>` : `<span class="ntKV mut">${esc(tl('non testé'))}</span>`) },
+    { key: 'margin', label: tl('Marge (dB)'), width: '84px', num: true, text: r => (r.margin == null ? '' : num1(r.margin, en)), html: r => (r.margin == null ? '<span class="mut">—</span>' : esc(num1(r.margin, en))) },
+    { key: 'param', label: tl('Paramètre limitant'), tip: tl('Paramètre le plus faible'), width: 'minmax(120px, 1fr)' },
+    { key: 'len', label: tl('Longueur (m)'), width: '90px', num: true, text: r => num1(r.len, en) },
+    { key: 'state', label: tl('État'), width: '104px', text: r => STATE[r.state](), title: r => [STATE_LONG[r.state] ? STATE_LONG[r.state]() : '', r.at ? tl('testé le {0}', r.at) : ''].filter(Boolean).join(' · '), html: r => `<span class="ntKV ${r.state === 'stale' ? 'warn' : 'mut'}">${esc(STATE[r.state]())}</span>` }
   ];
   for (const c of TC) if (c.text && !c.html) c.html = r => esc(c.text(r));
   const tests = addTab('netTests', tl('Résultats des tests'), el => {
     const certBtn = `<button type="button" class="tb ntDkCsv" data-dkcert data-tip="${tl('Certifier tous les liens (testeur simulé)')}">${icon('certifier')}<span>${tl('Certifier tout')}</span></button>`;
     const table = createTable(el, {
-      columns: TC, rowKey: r => r.id, label: tl('Résultats des tests'), placeholder: tl('Filtrer (verdict:fail, état:refaire…)'), tools: certBtn + designBtn('tests') + csvBtn, sortKey: 'state',
+      columns: TC, rowKey: r => r.id, label: tl('Résultats des tests'), placeholder: tl('Filtrer… ex. : verdict:échec état:refaire'), tools: certBtn + designBtn('tests') + csvBtn, sortKey: 'state',
       empty: () => tl('Aucun lien cuivre à certifier : il faut des câbles entre prises, panneaux et équipements.'),
       onActivate: r => { const c = r.link.cables[0]; if (c) goTo({ kind: 'cable', id: c.id }); },
       onContext: (r, ev) => ctxMenu(ev, [
@@ -152,7 +153,7 @@ export function installDocks(ctx, { goTo, showIn }) {
       ])
     });
     el.querySelector('[data-dkcert]').onclick = () => { if (app.commands && app.commands.run) app.commands.run('net.cert.all'); };
-    el.querySelector('[data-dkcsv]').onclick = () => csv(tests, tl('tests.csv'), TC.filter(c => !(isExam(ctx.data()) && (c.key === 'verdict' || c.key === 'margin' || c.key === 'param'))).map(c => ({ key: c.text || c.key, name: c.label })));
+    el.querySelector('[data-dkcsv]').onclick = () => csv(tests, tl('tests.csv'), [...TC.filter(c => !(isExam(ctx.data()) && (c.key === 'verdict' || c.key === 'margin' || c.key === 'param'))).map(c => ({ key: c.key === 'verdict' ? (r => (r.verdict ? verdictText(r.verdict) : '')) : c.text || c.key, name: c.label })), { key: 'kind', name: tl('Configuration') }, { key: 'at', name: tl('Testé le') }]);
     return { table, rows: testRows };
   });
 

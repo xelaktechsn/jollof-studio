@@ -37,7 +37,7 @@ export function createTable(host, o) {
   function apply() {
     const f = filterRows(all, cols, q);
     shown = sortRows(f, cols.find(c => c.key === sortKey), dir);
-    count.textContent = q ? tl('{0} sur {1}', shown.length, all.length) : tl('{0} ligne(s)', all.length);
+    count.textContent = q ? tl('{0} sur {1}', shown.length, all.length) : tl('{0:# ligne|# lignes}', all.length);
     body.style.height = shown.length * RH + 'px';
     paint();
   }

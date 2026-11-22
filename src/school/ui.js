@@ -86,11 +86,15 @@ export function clearToasts() { if (toastBox) toastBox.replaceChildren(); }
  * Boîte modale. body : HTML ou élément. actions : [{ label, value, kind: 'primary'|'danger'|'' }].
  * onAction(value, root) peut renvoyer false pour garder la boîte ouverte. Résout avec la valeur (null si annulé).
  */
-export function dialog({ title, body = '', actions = [{ label: tl('Fermer'), value: null }], width = 480, onAction, onOpen, cls = '' }) {
+/**
+ * Boîte de dialogue. head : { icon, sub } donne l'en-tête des assistants et fenêtres d'échange (icône, titre, sous-titre,
+ * fond et filet : le même que les assistants du plan réseau), sinon un simple titre.
+ */
+export function dialog({ title, body = '', actions = [{ label: tl('Fermer'), value: null }], width = 480, onAction, onOpen, cls = '', head = null }) {
   return new Promise(resolve => {
     const wrap = document.createElement('div');
     wrap.className = 'sDialogWrap';
-    wrap.innerHTML = `<div class="sDialog ${cls}" role="dialog" aria-modal="true" style="--w:${width}px"><header><h3>${title}</h3><button type="button" class="iconBtn" data-x aria-label="${tl('Fermer')}">${icon('x')}</button></header><div class="sBody"></div><footer>${actions.map((a, i) => `<button type="button" class="btn ${a.kind || ''}" data-a="${i}">${a.label}</button>`).join('')}</footer></div>`;
+    wrap.innerHTML = `<div class="sDialog ${cls}${head ? ' sDlgHd' : ''}" role="dialog" aria-modal="true" style="--w:${width}px"><header>${head ? `${head.icon ? icon(head.icon) : ''}<div class="sDlgTtl"><h3>${title}</h3>${head.sub ? `<span>${head.sub}</span>` : ''}</div>` : `<h3>${title}</h3>`}<button type="button" class="iconBtn" data-x aria-label="${tl('Fermer')}">${icon('x')}</button></header><div class="sBody"></div><footer>${actions.map((a, i) => `<button type="button" class="btn ${a.kind || ''}" data-a="${i}">${a.label}</button>`).join('')}</footer></div>`;
     const bodyEl = wrap.querySelector('.sBody');
     if (typeof body === 'string') bodyEl.innerHTML = body; else bodyEl.appendChild(body);
     document.body.appendChild(wrap); hydrateIcons(wrap);
@@ -106,7 +110,8 @@ export function dialog({ title, body = '', actions = [{ label: tl('Fermer'), val
       close(a.value);
     });
     if (onOpen) onOpen(bodyEl, close);
-    const f = bodyEl.querySelector('input, textarea, select'); if (f) setTimeout(() => f.focus(), 30);
+    // Premier champ de saisie (pas une liste : son cadre de focus s'afficherait sans action du clavier).
+    const f = bodyEl.querySelector('input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]), textarea'); if (f) setTimeout(() => f.focus(), 30);
   });
 }
 export const confirm = (title, text, label = tl('Confirmer'), danger = false) =>
@@ -124,7 +129,7 @@ export function menu(anchor, items) {
   return new Promise(resolve => {
     document.querySelectorAll('.sMenu').forEach(m => m.remove());
     const m = document.createElement('div'); m.className = 'sMenu';
-    m.innerHTML = items.map((it, i) => (it === '-' ? '<hr>' : `<button type="button" data-i="${i}" class="${it.danger ? 'danger' : ''}">${it.icon ? icon(it.icon) : ''}<span>${it.label}</span></button>`)).join('');
+    m.innerHTML = items.map((it, i) => (it === '-' ? '<hr>' : `<button type="button" data-i="${i}" class="${it.danger ? 'danger' : ''}"${it.checked != null ? ` role="menuitemradio" aria-checked="${!!it.checked}"` : ''}>${it.icon ? icon(it.icon) : ''}<span>${it.label}</span>${it.checked ? icon('check', 'sMenuCk') : ''}</button>`)).join('');
     document.body.appendChild(m);
     const r = anchor.getBoundingClientRect(), w = m.offsetWidth, hgt = m.offsetHeight;
     m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';

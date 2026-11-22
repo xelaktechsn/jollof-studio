@@ -11,9 +11,10 @@ import { icon } from '../../ui/icons.js';
 import { DEVICES, specOf, portsOf } from '../devices.js';
 import { portCfg, cleanVlans, vlanHue, parseNet, MANAGED } from '../vlan.js';
 import { cleanText } from '../../sanitize.js';
-import { prefixOf } from '../ip.js';
+import { prefixOf, ipStr } from '../ip.js';
 import { whyText } from '../labcheck.js';
 import { lagWhyText } from '../issues-sim.js';
+import { modulesFor, moduleAt } from '../fibre.js';
 
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ROLE = { root: () => tl('racine'), designated: () => tl('désigné'), alternate: () => tl('alternatif (bloqué)'), backup: () => tl('secours (bloqué)') };
@@ -42,7 +43,7 @@ export function simPane(ctx, n) {
   if (n.type === 'routerpro') h += ifSec(ctx, n);
   if (n.type === 'l3switch' || n.type === 'routerpro') h += routeSec(ctx, n) + ospfSec(ctx, n) + aclSec(ctx, n);
   if (n.type === 'routerpro') h += natSec(ctx, n);
-  if (P.dhcp) h += dhcpSec(ctx, n);
+  if (Array.isArray(P.dhcp)) h += dhcpSec(ctx, n);
   if (P.dns) h += dnsSec(ctx, n);
   void lan;
   return h;
@@ -62,11 +63,12 @@ function portsSec(ctx, n) {
     // Deux lignes par port : nom, lien, rôle Spanning Tree, coupure ; puis mode, VLAN, agrégat.
     return `<div class="ntSmPort${!r.fwd && l && l.up ? ' blk' : ''}"><b>${esc(p.label)}${p.sfp ? ` <small>${esc(p.sfp.toUpperCase())}</small>` : ''}</b><span class="ntSmLink">${link}${role ? ' · ' + role : ''}${m ? ` · <small>${esc(LAGST[m.state] ? LAGST[m.state]() : m.state)}</small>` : ''}</span>`
       + `${chk(`data-sport="${p.id}" data-f="shut" aria-label="${tl('Port coupé par l’administrateur')}"`, c.shut, `<small>${tl('Hors service')}</small>`)}`
+      + (p.sfp ? `<div class="ntSmPortCfg ntSmSfp"><small>${tl('Module {0}', p.sfp.toUpperCase())}</small>${sel(`data-ssfp="${p.id}" aria-label="${tl('Module optique de la cage')}" data-tip="${tl('Module posé dans la cage : il doit convenir à la fibre et être le même type aux deux bouts')}"`, [['', tl('cage vide')], ...modulesFor(p.sfp).map(id => [id, id])], moduleAt(n, p.id) || '')}</div>` : '')
       + `<div class="ntSmPortCfg">${sel(`data-sport="${p.id}" data-f="mode" aria-label="${tl('Mode')}"`, [['access', tl('accès')], ['trunk', 'trunk']], c.mode)}<span class="ntSmVl">${vl}</span>${sel(`data-sport="${p.id}" data-f="lag" aria-label="${tl('Agrégat')}"`, lags, c.lag)}</div></div>`;
   };
   const used = ports.filter(cabled), rest = ports.filter(p => !cabled(p));
   return sec(tl('Ports : VLAN et Spanning Tree'), `<div class="ntSmPorts">${used.map(row).join('')}</div>`
-    + (rest.length ? `<details class="ntSmMore"><summary>${tl('{0} autre(s) port(s), libres', rest.length)}</summary><div class="ntSmPorts">${rest.map(row).join('')}</div></details>` : ''),
+    + (rest.length ? `<details class="ntSmMore"><summary>${tl('{0:# autre port|# autres ports}, libres', rest.length)}</summary><div class="ntSmPorts">${rest.map(row).join('')}</div></details>` : ''),
   tl('Accès : un VLAN, sans étiquette. Trunk : VLAN natif sans étiquette, VLAN autorisés étiquetés 802.1Q.'));
 }
 function stpSec(ctx, n) {
@@ -155,7 +157,7 @@ function dhcpSec(ctx, n) {
   const rows = (P.dhcp || []).map((s2, i) => card(`${chk(`data-slist="dhcp" data-i="${i}" data-f="on" aria-label="${tl('Étendue')}"`, s2.on, '')}${inp(`data-slist="dhcp" data-i="${i}" data-f="net" aria-label="${tl('Réseau')}"`, s2.net)}${full.some(e => e.scope === s2.net) ? `<span class="bad">${tl('pleine')}</span>` : ''}`,
     L2(tl('début'), f(i, 'from', tl('début'))) + L2(tl('fin'), f(i, 'to', tl('fin'))) + L2(tl('Passerelle'), f(i, 'gw', '10.0.10.1')) + L2('DNS', f(i, 'dns', '10.0.99.10')), i, 'dhcp')).join('');
   return sec(tl('Serveur DHCP : étendues'), (rows || `<p class="mut">${tl('Aucune étendue.')}</p>`) + `<div class="row">${add('dhcp', tl('Étendue'))}</div>`
-    + (leases.length ? `<details class="ntSmMore"><summary>${tl('{0} bail(baux)', leases.length)}</summary><table class="ntTable mono">${leases.map(x => `<tr><td>${esc(ctx.nameOf(x.node))}</td><td>${esc(x.ip)}</td><td>${x.relay ? esc(tl('par {0}', ctx.nameOf(x.relay))) : ''}</td></tr>`).join('')}</table></details>` : ''),
+    + (leases.length ? `<details class="ntSmMore"><summary>${tl('{0:# bail|# baux}', leases.length)}</summary><table class="ntTable mono">${leases.map(x => `<tr><td>${esc(ctx.nameOf(x.node))}</td><td>${esc(x.ip)}</td><td>${x.relay ? esc(tl('par {0}', ctx.nameOf(x.relay))) : ''}</td></tr>`).join('')}</table></details>` : ''),
   tl('Le serveur choisit l’étendue du réseau de l’interface qui reçoit la demande, ou de l’adresse du relais (giaddr).'));
 }
 /** Règle en texte, façon Cisco : « permit tcp 10.0.20.0/24 any eq 80 », « permit tcp any eq 80 any established ». */
@@ -175,11 +177,13 @@ function dnsSec(ctx, n) {
 }
 
 /* ---------- Base des VLAN ---------- */
+/** Exemple de passerelle : première adresse du sous-réseau saisi (sinon un exemple générique). */
+const gwHint = net => { const n = parseNet(net); return n && n.prefix <= 30 ? ipStr(n.net + 1) : '10.0.10.1'; };
 /** Éditeur de la base des VLAN du projet (inspecteur quand rien n'est choisi). */
 export function vlanDbPane(ctx) {
   const V = ctx.data().vlans || [];
   const rows = V.map((v, i) => `<div class="ntSmV"><i class="ntSmSw" style="background:${vlanColor(ctx.data(), v.id)}"></i>${inp(`type="number" min="1" max="4094" data-vdb="${i}" data-f="id" aria-label="VLAN"`, v.id)}${inp(`data-vdb="${i}" data-f="name" aria-label="${tl('Nom')}"`, v.name)}<button type="button" class="tb ntSmDel" data-vdel="${i}" aria-label="${tl('Retirer')}">${icon('x')}</button>`
-    + `<span></span><div class="ntSmNet">${inp(`data-vdb="${i}" data-f="net" placeholder="10.0.10.0/24" aria-label="${tl('Sous-réseau')}" data-tip="${tl('Sous-réseau')}"`, v.net)}${inp(`data-vdb="${i}" data-f="gw" placeholder="10.0.10.1" aria-label="${tl('Passerelle')}" data-tip="${tl('Passerelle')}"`, v.gw)}</div></div>`).join('');
+    + `<span></span><div class="ntSmNet">${inp(`data-vdb="${i}" data-f="net" placeholder="10.0.10.0/24" aria-label="${tl('Sous-réseau')}" data-tip="${tl('Sous-réseau')}"`, v.net)}${inp(`data-vdb="${i}" data-f="gw" placeholder="${gwHint(v.net)}" aria-label="${tl('Passerelle')}" data-tip="${tl('Passerelle')}"`, v.gw)}</div></div>`).join('');
   return `<section class="ntSec ntSm ntSmVdb" id="ntVlanDb"><h4>${icon('vlanTag')}${tl('Base des VLAN du projet')}</h4>${rows || `<p class="mut">${tl('Aucun VLAN déclaré : tout le réseau est dans le VLAN 1.')}</p>`}<div class="row"><button type="button" class="btn small subtle" data-vadd>${icon('plus')}<span>${tl('VLAN')}</span></button></div></section>`;
 }
 
@@ -253,6 +257,11 @@ export function simPaneEvent(ctx, e, d) {
     const p = t.dataset.sport, f = t.dataset.f; P.ports = P.ports || {};
     P.ports[p] = { ...portCfg(d, p), [f]: valueOf(t, f) };
     reclean(d); ctx.commit(); return true;
+  }
+  if (t.dataset.ssfp) {
+    const cur = P.sfp && typeof P.sfp === 'object' ? { ...P.sfp } : {};
+    if (t.value) cur[t.dataset.ssfp] = t.value; else delete cur[t.dataset.ssfp];
+    P.sfp = cur; reclean(d); ctx.commit(); return true;
   }
   if (t.dataset.sprio) { P.stp.vlans = { ...(P.stp.vlans || {}), [t.dataset.sprio]: +t.value }; reclean(d); ctx.commit(); return true; }
   if (t.dataset.sospf) {

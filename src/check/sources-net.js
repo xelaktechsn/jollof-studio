@@ -894,6 +894,342 @@ export const NET_SOURCES = {
     publisher: 'Panduit',
     url: 'https://www.panduit.com/content/dam/panduit/en/website/solutions/documents/data-center-id-infrastructure0.pdf',
     section: 'Guide qui reprend TIA-606-B (norme payante) : identifiant du local « floor and room or area designation on that floor » ; baie par sa position (AY15) ; panneau par l’unité de sa vis de fixation haute (AR15-20) ; port « AB04-24:01 », numérotation de gauche à droite et de haut en bas, « a 48-port patch panel should be labeled 01 through 48 » ; câble « AB04-24:01/AB07-36:13 » (extrémité proche/extrémité lointaine), cordon « AB04-24:01\\AB04-36:13 » (barre oblique inverse).'
+  },
+  /* ---------- Échanges : IFC (src/net/interop/ifc.js, ifcwrite.js, step.js ; src/net/lim/ifc.js) ---------- */
+  // Le site standards.buildingsmart.org refuse les lectures automatiques (HTTP 403) : ses pages sont lues dans le dépôt
+  // public buildingSMART/Standards-builds, qui en est la source (même chemin, fichier CNAME du dépôt).
+  // @interop
+  ecma376Part1: {
+    title: 'ECMA-376 Office Open XML File Formats, 5th edition (December 2016), Part 1: Fundamentals and Markup Language Reference',
+    publisher: 'Ecma International',
+    url: 'https://ecma-international.org/publications-and-standards/standards/ecma-376/',
+    section: '§ 12.2-12.3 (p. 66-67) noms des parties d’un classeur ; § 18.2.5 definedName (_xlnm._FilterDatabase) ; § 18.2.27 workbookPr/date1904 ; § 18.3.1.2 autoFilter ; § 18.3.1.4 c et § 18.18.11 ST_CellType (b, d, e, inlineStr, n, s, str) ; § 18.3.1.13 col ; § 18.3.1.32 dataValidation ; § 18.3.1.66 pane (state="frozen") ; § 18.8.30 numFmt (p. 1776-1777 : formats intégrés 14-22 et 45-47 de date et d’heure, 49 « @ », formats propres à partir de 164) ; § 18.17.4.1 (p. 2063-2064) : système 1900, « 00:00:00 on December 30th, 1899 » = 0 ; système 1904, « 00:00:00 on January 1st, 1904 » = 0. Téléchargement : https://ecma-international.org/wp-content/uploads/ECMA-376-1_5th_edition_december_2016.zip.'
+  },
+  bsIfc4Express: {
+    title: 'IFC4 ADD2 TC1 (4.0.2.1), EXPRESS schema IFC4.exp',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp',
+    section: 'Schéma lu pour l’ordre et l’option des attributs (IfcProject, IfcSite, IfcBuilding, IfcBuildingStorey : …, CompositionType, Elevation ; IfcSpace : …, LongName, CompositionType, PredefinedType, ElevationWithFlooring ; IfcWall, IfcDoor : …, Tag, OverallHeight, OverallWidth ; IfcDistributionPort : …, FlowDirection, PredefinedType, SystemType) et les énumérations (IfcSpaceTypeEnum, IfcWallTypeEnum, IfcDoorTypeEnum, IfcFurnitureTypeEnum sans valeur « rack », IfcChangeActionEnum). Page publiée : https://standards.buildingsmart.org/IFC/RELEASE/IFC4/ADD2_TC1/EXPRESS/IFC4.exp.'
+  },
+  bsIfc4ReferenceView: {
+    title: 'IFC4 ADD2 TC1 Reference View 1.2 (MVD documentation), concept templates « Body SweptSolid PolyCurve Geometry » and « Body Advanced Swept Disk PolyCurve Geometry »',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/MVD/RELEASE/IFC4/ADD2_TC1/RV1_2/HTML/schema/templates/body-sweptsolid-polycurve-geometry.htm',
+    section: 'RepresentationIdentifier « Body », RepresentationType « SweptSolid », Items IfcExtrudedAreaSolid ou IfcRevolvedAreaSolid, SweptArea IfcArbitraryClosedProfileDef / IfcArbitraryProfileDefWithVoids, OuterCurve et InnerCurves IfcIndexedPolyCurve ; applicable à IfcElement, IfcOpeningElement, IfcSpace. Le gabarit voisin (body-advanced-swept-disk-polycurve-geometry.htm) réserve IfcSweptDiskSolid à IfcReinforcingElement. Les entités documentées par la vue (dossier schema/*/lexical) n’ont ni IfcPolyline, ni IfcRectangleProfileDef, ni IfcAxis2Placement2D, ni IfcMaterialLayerSetUsage ; la vue a « Material Single », « Element Voiding », les ports et l’affectation aux groupes. Raison de « ViewDefinition [ReferenceView_V1.2] » ou de « NotAssigned » (vue conception) dans FILE_DESCRIPTION.'
+  },
+  bsIfc2x3Express: {
+    title: 'IFC2x3 TC1, EXPRESS schema IFC2X3_TC1.exp',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC2x3/TC1/EXPRESS/IFC2X3_TC1.exp',
+    section: 'Aucune entité IfcCableCarrierSegment, IfcCableSegment, IfcCommunicationsAppliance, IfcOutlet ni IfcDistributionSystem ; IfcOutletTypeEnum = (AUDIOVISUALOUTLET, COMMUNICATIONSOUTLET, POWEROUTLET, USERDEFINED, NOTDEFINED) ; OwnerHistory obligatoire, IfcWallStandardCase, IfcMaterialLayer (Material, LayerThickness, IsVentilated) : lu pour le lecteur IFC2X3.'
+  },
+  bsIfcReleaseNotes: {
+    title: 'IFC Release Notes (IFC4 Add2 TC1, 4.0.2.1 ; IFC4 Add2 ; IFC4.3)',
+    publisher: 'buildingSMART International (technical.buildingsmart.org)',
+    url: 'https://raw.githubusercontent.com/buildingSMART/technical.buildingsmart.org/main/IFC-Release-Notes.md',
+    section: 'IFC4 Add2 TC1 : « corrections and clarifications to the documentation » ; IFC4 Add2 : améliorations issues des « pilot implementations of the first two Model View Definitions, the Reference View and the Design Transfer View » ; IFC4.3 : « extend the IFC schema to cover the description of infrastructure constructions within the domains of Railways, Roads, Ports and Waterways ». Raison du choix d’IFC4 pour l’écriture (choix de conception, pas une mesure de la prise en charge des visionneuses).'
+  },
+  bsIfc4GlobalId: {
+    title: 'IFC4 ADD2 TC1, IfcGloballyUniqueId (IfcUtilityResource)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcutilityresource/lexical/ifcgloballyuniqueid.htm',
+    section: '« A Globally Unique Identifier (GUID) which is an auto-generated 128-bit number » … « compress it to reduce overhead » ; alphabet « 0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$ » ; « The resulting string is a fixed 22 character length string » ; TYPE IfcGloballyUniqueId = STRING (22) FIXED.'
+  },
+  bsIfcGuid: {
+    title: 'IFC GUID (implementation guidance)',
+    publisher: 'buildingSMART International (technical.buildingsmart.org)',
+    url: 'https://raw.githubusercontent.com/buildingSMART/technical.buildingsmart.org/main/IFC-GUID.md',
+    section: 'Même alphabet de base 64 ; « The resulting IFC-GUID is a fixed 22 character length string » ; renvoie à l’ISO/IEC 9834-8 pour les UUID. Découpage écrit ici sans reprendre de code : premier octet en 2 caractères, puis cinq groupes de 3 octets en 4 caractères (24 bits), ce qui fait 22 ; vérifié en test contre IfcOpenShell (outil d’essai, non livré).'
+  },
+  bsIfcStringEncoding: {
+    title: 'String Encoding & Decoding',
+    publisher: 'buildingSMART International (technical.buildingsmart.org)',
+    url: 'https://raw.githubusercontent.com/buildingSMART/technical.buildingsmart.org/main/IFC-String-Encoding.md',
+    section: 'Le fichier STEP « uses characters represented by decimal value 32 to 126 » de l’ISO 8859-1, le reste « has to be encoded » selon l’ISO 10303-21 (norme payante, non lue) ; exemples pour Ä : \\S\\D (D = 0x44, + 0x80), \\PA\\ (page ISO 8859-1), \\X\\C4 (octet ISO 10646 rangée 0), \\X2\\00C4\\X0\\ (16 bits). L’écriture utilise \\X2\\ (et \\X4\\ hors du plan de base), la lecture comprend les quatre.'
+  },
+  bsIfc4ApplianceEnum: {
+    title: 'IFC4 ADD2 TC1, IfcCommunicationsApplianceTypeEnum (IfcElectricalDomain)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcelectricaldomain/lexical/ifccommunicationsappliancetypeenum.htm',
+    section: 'Valeurs : ANTENNA, COMPUTER, FAX, GATEWAY, MODEM, NETWORKAPPLIANCE, NETWORKBRIDGE, NETWORKHUB, PRINTER, REPEATER, ROUTER, SCANNER, USERDEFINED, NOTDEFINED (pas de SWITCH ni d’ACCESSPOINT) ; NETWORKBRIDGE : « connects multiple network segments at the data link layer (layer 2) … the term layer 2 switch is very often used interchangeably with bridge » ; ROUTER : « routing and forwarding information ». Page de l’entité (ifccommunicationsappliance.htm) : ports par type, ex. ROUTER « Uplink », « Link#1… » de système DATA.'
+  },
+  bsIfc4CarrierEnum: {
+    title: 'IFC4 ADD2 TC1, IfcCableCarrierSegmentTypeEnum et IfcCableCarrierSegment (IfcElectricalDomain)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcelectricaldomain/lexical/ifccablecarriersegmenttypeenum.htm',
+    section: 'CABLELADDERSEGMENT « carried on a ladder structure », CABLETRAYSEGMENT « A (typically) open carrier segment onto which cables are laid », CABLETRUNKINGSEGMENT « An enclosed carrier segment with one or more compartments », CONDUITSEGMENT « An enclosed tubular carrier segment through which cables are pulled », USERDEFINED, NOTDEFINED. Page de l’entité : représentations « Body » (SweptSolid…) et « Axis », ports « Head » et « Tail ».'
+  },
+  bsIfc4PsetCarrier: {
+    title: 'IFC4 ADD2 TC1, Pset_CableCarrierSegmentTypeCableTraySegment (et …TrunkingSegment, …ConduitSegment, …LadderSegment)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcelectricaldomain/pset/pset_cablecarriersegmenttypecabletraysegment.htm',
+    section: 'PSET_TYPEDRIVENOVERRIDE, applicable à IfcCableCarrierSegment / CABLETRAYSEGMENT : NominalWidth et NominalHeight (IfcPositiveLengthMeasure), HasCover (IfcBoolean) ; mêmes NominalWidth / NominalHeight dans les jeux …TrunkingSegment (plus NumberOfCompartments), …ConduitSegment et …LadderSegment. Pset_CableSegmentTypeCableSegment : OverallDiameter (IfcPositiveLengthMeasure) ; Pset_DistributionPortCommon : PortNumber (IfcInteger).'
+  },
+  bsIfc4OutletEnum: {
+    title: 'IFC4 ADD2 TC1, IfcOutletTypeEnum et IfcOutlet (IfcElectricalDomain)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcelectricaldomain/lexical/ifcoutlettypeenum.htm',
+    section: 'Journal : « DATAOUTLET ADDED » (IFC4) ; DATAOUTLET « An outlet used for connecting data communications equipment », COMMUNICATIONSOUTLET « for connecting communications equipment ». Page de l’entité (ifcoutlet.htm) : ports DATAOUTLET « Line#1 » (SINK, DATA) et « Jack#1… » (SOURCE, DATA).'
+  },
+  bsIfc4CableSegment: {
+    title: 'IFC4 ADD2 TC1, IfcCableSegment et IfcCableSegmentTypeEnum (IfcElectricalDomain)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcelectricaldomain/lexical/ifccablesegment.htm',
+    section: 'Table 329, Port Nesting : « Input » SINK et « Output » SOURCE, « While many cables may be bidirectional, port direction is indicated for connectivity purposes » ; représentations « Body » et « Axis ». IfcCableSegmentTypeEnum (ifccablesegmenttypeenum.htm) : CABLESEGMENT « Includes all types of electric cables ». IfcRelConnectsPorts (ifcproductextension/lexical/ifcrelconnectsports.htm) : « Each of the ports is logically contained within the IfcDistributionElement by using the ordered collection IfcRelNests ».'
+  },
+  bsIfc4DistributionSystem: {
+    title: 'IFC4 ADD2 TC1, IfcDistributionSystem et IfcDistributionSystemEnum (IfcSharedBldgServiceElements)',
+    publisher: 'buildingSMART International',
+    url: 'https://raw.githubusercontent.com/buildingSMART/Standards-builds/main/IFC/RELEASE/IFC4/ADD2_TC1/HTML/schema/ifcsharedbldgserviceelements/lexical/ifcdistributionsystem.htm',
+    section: 'Group Assignment : l’élément est rattaché au système par IfcRelAssignsToGroup, ses ports en font partie « implicitly » par leur PredefinedType ; « An IfcDistributionElement may belong to multiple systems, however only one IfcDistributionSystem of a particular PredefinedType ». IfcDistributionSystemEnum (ifcdistributionsystemenum.htm) : DATA « A network having general-purpose usage » (COMMUNICATION n’a pas de définition dans cette édition).'
+  },
+  /* ---------- Échanges : NetBox (src/net/interop/netbox.js, dcimsync.js, src-tauri/src/netbox.rs ; src/net/lim/netbox.js) ---------- */
+  netboxRestApi: {
+    title: 'NetBox documentation, REST API Overview (Authentication, Pagination, Related Objects, Creating / Updating / Deleting Multiple Objects)',
+    publisher: 'NetBox Labs',
+    url: 'https://netboxlabs.com/docs/netbox/integrations/rest-api/',
+    section: 'Page de la version courante (renvois 4.5, 4.6, 4.7). Jetons v2 : « Authorization: Bearer nbt_<key>.<token> », « Beginning with NetBox v4.5, two versions of API token are supported » ; v1 : « Authorization: Token <token> », « v1 API tokens are deprecated as of NetBox v4.6 and will be removed in NetBox v5.0 » ; sans jeton : 403. Pagination : count, next, previous, results ; limit/offset ; PAGINATE_COUNT « defaults to 50 », MAX_PAGE_SIZE « 1000 by default » ; exemple « next »: « http://netbox/api/dcim/devices/?limit=100&offset=100 » (adresse complète). Objets liés par clé primaire ou par attributs. Création groupée : liste POSTée, « an all-or-none operation » ; mise à jour groupée : PATCH d’une liste d’objets portant « id » ; suppression groupée : DELETE d’une liste de { id }. Erreurs de validation : dictionnaire champ → messages (« {"slug": ["This field may not be blank."]} »). Étiquettes : tags, add_tags, remove_tags.'
+  },
+  netboxReleaseNotes: {
+    title: 'NetBox Release Notes (index des versions 4.x)',
+    publisher: 'NetBox Labs',
+    url: 'https://netboxlabs.com/docs/netbox/release-notes/',
+    section: 'Versions : 4.0 (avril 2024), 4.1 (septembre 2024), 4.2 (janvier 2025), 4.3 (mai 2025), 4.4 (septembre 2025), 4.5 (janvier 2026 : « Improved API Authentication Tokens », « Advanced Port Mappings », « Cable Profiles »), 4.6 (mai 2026 : « Cable Bundles »), 4.7 (septembre 2026, la plus récente). Synchronisation écrite pour 4.4 à 4.7, refusée avant 4.0.'
+  },
+  netboxDcimChoices: {
+    title: 'NetBox source, netbox/dcim/choices.py (branche main)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/dcim/choices.py',
+    section: 'CableTypeChoices : cat3, cat5, cat5e, cat6, cat6a, cat7, cat7a, cat8, … mmf, mmf-om1 à mmf-om5, smf, smf-os1, smf-os2 ; CableLengthUnitChoices : km, m, cm, mi, ft, in ; LinkStatusChoices : connected, planned, decommissioning ; InterfaceTypeChoices : 100base-tx, 1000base-t, 2.5gbase-t, 10gbase-t, 1000base-x-sfp, 10gbase-x-sfpp, virtual (pas de 10base-t : « other ») ; InterfaceModeChoices : access, tagged, tagged-all, q-in-q ; PortTypeChoices : 8p8c, lc, lc-upc… ; RackFormFactorChoices : 2-post-frame, 4-post-frame, 4-post-cabinet, wall-frame, wall-frame-vertical, wall-cabinet, wall-cabinet-vertical ; RackDimensionUnitChoices : mm, in ; RackWidthChoices : 10, 19, 21, 23 ; DeviceFaceChoices : front, rear.'
+  },
+  netboxCableSerializer: {
+    title: 'NetBox source, netbox/dcim/api/serializers_/cables.py (CableSerializer)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/dcim/api/serializers_/cables.py',
+    section: 'a_terminations = GenericObjectSerializer(many=True), b_terminations de même ; status (LinkStatusChoices), length_unit (CableLengthUnitChoices) ; champs : type, a_terminations, b_terminations, status, profile, tenant, bundle, label, color, length, length_unit, description, tags, custom_fields. GenericObjectSerializer (netbox/api/serializers/generic.py) : object_type, object_id.'
+  },
+  netboxObjectTypeId: {
+    title: 'NetBox source, netbox/utilities/object_types.py (object_type_identifier)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/utilities/object_types.py',
+    section: '« Return a "raw" ObjectType identifier string suitable for bulk import/export (e.g. "dcim.site") » : f\'{object_type.app_label}.{object_type.model}\' — d’où dcim.interface, dcim.frontport, dcim.rearport, ipam.vlan, ipam.ipaddress.'
+  },
+  netboxCableModel: {
+    title: 'NetBox documentation, Cables (dcim)',
+    publisher: 'NetBox Labs',
+    url: 'https://netboxlabs.com/docs/netbox/models/dcim/cable/',
+    section: 'Un câble relie « two sets of endpoints (A and B) » : interfaces, ports de console, « pass-through ports (front and rear) », terminaisons de circuit, alimentations ; statut Active (défaut), Planned, Decommissioning ; Label ; Color ; longueur numérique avec unité (« 100 meters or 25 feet »).'
+  },
+  netboxPortMappings: {
+    title: 'NetBox source v4.5.0, netbox/dcim/api/serializers_/device_components.py (FrontPortSerializer)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/v4.5.0/netbox/dcim/api/serializers_/device_components.py',
+    section: 'Depuis 4.5 : rear_ports = FrontPortMappingSerializer(source=\'mappings\', many=True), chaque élément { position, rear_port, rear_port_position } ; plus de champs rear_port / rear_port_position au premier niveau ; même chose sur la branche main. InterfaceSerializer : mode, untagged_vlan, tagged_vlans (refusés en mode routé ; tagged_vlans refusé en access et tagged-all).'
+  },
+  netboxPortMappingsOld: {
+    title: 'NetBox source v4.4.0, netbox/dcim/api/serializers_/device_components.py (FrontPortSerializer)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/v4.4.0/netbox/dcim/api/serializers_/device_components.py',
+    section: 'Jusqu’à 4.4 : rear_port = FrontPortRearPortSerializer() et rear_port_position dans Meta.fields (correspondance plate, une position).'
+  },
+  netboxPrefixScope: {
+    title: 'NetBox documentation, Prefixes (ipam)',
+    publisher: 'NetBox Labs',
+    url: 'https://netboxlabs.com/docs/netbox/models/ipam/prefix/',
+    section: 'Scope : « The region, site, site group or location to which the prefix is assigned (optional) » ; « This field replaced the site field in NetBox v4.2 ». VLAN : « A VLAN may have multiple prefixes assigned to it ».'
+  },
+  netboxIpSerializer: {
+    title: 'NetBox source, netbox/ipam/api/serializers_/ip.py (PrefixSerializer, IPAddressSerializer)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/ipam/api/serializers_/ip.py',
+    section: 'PrefixSerializer : prefix, vrf, scope_type, scope_id, scope, tenant, vlan, status, role, is_pool… ; IPAddressSerializer : address, status, role, assigned_object_type, assigned_object_id, dns_name… ; adresse en notation CIDR (doc des adresses IP : « 192.0.2.0/24 »).'
+  },
+  netboxCustomFields: {
+    title: 'NetBox source, netbox/extras/api/serializers_/customfields.py (CustomFieldSerializer)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/extras/api/serializers_/customfields.py',
+    section: 'object_types = ContentTypeField(… many=True) ; type (CustomFieldTypeChoices) ; ui_visible, ui_editable ; champs : name, label, group_name, description, required, unique, default, validation_*. (Nom object_types depuis 4.0, content_types avant.)'
+  },
+  netboxStatusView: {
+    title: 'NetBox source, netbox/netbox/api/views.py (StatusView, /api/status/)',
+    publisher: 'NetBox Community (GitHub)',
+    url: 'https://raw.githubusercontent.com/netbox-community/netbox/main/netbox/netbox/api/views.py',
+    section: 'Réponse : django-version, hostname, installed_apps, netbox-version, netbox-full-version, plugins, python-version, rq-workers-running.'
+  },
+  /* ---------- Échanges : Visio et draw.io (src/net/interop/vsdx.js, drawio.js, diagram.js ; src/net/lim/visio.js) ---------- */
+  msVisioIntro: {
+    title: 'Introduction to the Visio file format (.vsdx)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/introduction-to-the-visio-file-formatvsdx',
+    section: 'Paquet OPC (« a ZIP container that contains other types of files »), parties de document et parties de relations (« *.rels » dans un dossier « _rels »), « the package is a valid Visio file if it contains the correct set of parts and the package contains the relationships between the parts » ; cellules de la ShapeSheet écrites en éléments Cell distingués par leur attribut N (exemple <Cell N="PinX" U="IN" V="2"/>), sections et lignes en Section / Row (N ou T), exemple Geometry avec Row T="LineTo".'
+  },
+  msVisioManipulate: {
+    title: 'Manipulate the Visio file format programmatically',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/how-to-manipulate-the-visio-file-format-programmatically',
+    section: 'Parties /docProps/app.xml (application/vnd.openxmlformats-officedocument.extended-properties+xml), core.xml, custom.xml (…custom-properties+xml), /visio/document.xml (application/vnd.ms-visio.drawing.main+xml), relation http://schemas.microsoft.com/visio/2010/relationships/document ; « Recalculate data in the file » : propriété « RecalcDocument » (fmtid {D5CDD505-2E9C-101B-9397-08002B2CF9AE}, vt:bool true) ajoutée à custom.xml pour que Visio recalcule le document à l’ouverture, nécessaire quand un changement « affect[s] the location of a connector ».'
+  },
+  msVsdxSpec: {
+    title: '[MS-VSDX]: Visio Graphics Service VSDX File Format, v20251113 (PDF)',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://officeprotocoldoc.z19.web.core.windows.net/files/MS-VSDX/%5bMS-VSDX%5d.pdf',
+    section: 'Page d’accueil : https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/. § 2.4.4.94 DrawingScale (défaut un pouce), § 2.4.4.95 DrawingScaleType (4 = Metric Scale), § 2.4.4.96 DrawingSizeType (3 = Custom Physical Page Size), § 2.4.4.165 LayerMember (« semicolon-delimited » liste de rangs de calques), § 2.5.8.1 angleInternalUnitNumber « a unit of radians », § 2.5.8.3 lengthInternalUnitNumber « a unit of inches » (p. 361), grammaire des formules : color-value = "#" 6HEXDIG ; annexe A (p. 444-456) : schéma XML complet, utilisé par les essais (outil d’essai, non livré) pour valider les parties écrites.'
+  },
+  msVsdxDocumentPart: {
+    title: '[MS-VSDX] 2.3.3.3 Document XML Part',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/7ec3d7b0-0de2-4711-a7b6-92daa2020d71',
+    section: 'Content Types application/vnd.ms-visio.drawing.main+xml ; Source Relationship http://schemas.microsoft.com/visio/2010/relationships/document ; « exactly one Document XML part », cible d’une relation du paquet ; relations permises vers Connections, Masters, Pages, Recordsets, Theme, Comments, Extensions (pas de Windows) ; racine VisioDocument.'
+  },
+  msVsdxPagesPart: {
+    title: '[MS-VSDX] 2.3.3.9 Pages XML Part',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/947b485d-676a-480b-96e6-c0e4d1bf58f3',
+    section: 'Content Type application/vnd.ms-visio.pages+xml ; Source Relationship http://schemas.microsoft.com/visio/2010/relationships/pages ; au plus une partie Pages, cible d’une relation du Document, relations vers les parties Page ; racine Pages.'
+  },
+  msVsdxPagePart: {
+    title: '[MS-VSDX] 2.3.3.8 Page XML Part',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/1f15c8f0-6565-465c-aefd-2be6af545e8a',
+    section: 'Content Type application/vnd.ms-visio.page+xml ; Source Relationship http://schemas.microsoft.com/visio/2010/relationships/page ; cible d’une relation explicite de la partie Pages ; racine PageContents (Shapes, puis Connects).'
+  },
+  msVsdxMastersPart: {
+    title: '[MS-VSDX] Masters XML Part',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/ac2cee21-ca0e-459b-85e3-35908a476f70',
+    section: 'Content Type application/vnd.ms-visio.masters+xml ; Source Relationship http://schemas.microsoft.com/visio/2010/relationships/masters ; cible d’une relation du Document, relations vers les parties Master ; racine Masters.'
+  },
+  msVsdxMasterPart: {
+    title: '[MS-VSDX] Master XML Part',
+    publisher: 'Microsoft (Open Specifications)',
+    url: 'https://learn.microsoft.com/en-us/openspecs/sharepoint_protocols/ms-vsdx/10b28d2f-d32d-4b8c-96f5-dad13d32dd11',
+    section: 'Content Type application/vnd.ms-visio.master+xml ; Source Relationship http://schemas.microsoft.com/visio/2010/relationships/master ; cible d’une relation de la partie Masters ; racine MasterContents.'
+  },
+  msVisioConnectElement: {
+    title: 'Connect element (Connects_Type complexType) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/connect-element-connects_type-complextypevisio-xml',
+    section: 'Namespace http://schemas.microsoft.com/office/visio/2012/main (VisioSchema15.xsd), parties page#.xml, master#.xml ; attributs FromSheet (requis, ID de la forme d’où part la connexion), FromCell, FromPart, ToSheet (requis), ToCell, ToPart.'
+  },
+  msVisioCellElement: {
+    title: 'Cell element (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/cell-elementvisio-xml',
+    section: 'Attributs N (requis), V, U (« The default is DL »), E, F (formule ; « Inh » si héritée) ; cellules BeginX/EndX (« begin point of the 1-D shape, in relation to the origin of its parent »), Width (« default formula … of a 1-D shape is: = SQRT((EndX - BeginX) ^ 2 + (EndY - BeginY) ^ 2) »), LocPinX (= Width * 0.5), LayerMember (« zero-based index of layers for the page … separated by a semicolon »), PageScale / DrawingScale, ObjType.'
+  },
+  msVisioShapeElement: {
+    title: 'Shape element (Shapes_Type complexType) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/shape-element-shapes_type-complextypevisio-xml',
+    section: 'Attributs ID (requis), Name, NameU, Type (Group, Shape, Guide, Foreign), Master (« ID of the Master element from which the shape inherits its data »), MasterShape, LineStyle, FillStyle, TextStyle, UniqueID ; enfants Cell, Section, Text, Shapes, Data1-3, ForeignData.'
+  },
+  msVisioPageElement: {
+    title: 'Page element (Pages_Type complexType) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/page-element-pages_type-complextypevisio-xml',
+    section: 'Attributs ID (requis), Name, NameU, Background, BackPage, ViewScale (« 1 = 100% »), ViewCenterX, ViewCenterY, IsCustomName(U) ; enfant PageSheet.'
+  },
+  msVisioMasterElement: {
+    title: 'Master element (Masters_Type complexType) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/master-element-masters_type-complextypevisio-xml',
+    section: 'Attributs ID (requis), BaseID et UniqueID (GUID), Name, NameU, IconSize, IconUpdate, Hidden, MatchByName, AlignName, PatternFlags, Prompt ; enfants PageSheet, Icon, Shapes, Connects.'
+  },
+  msVisioLayerCells: {
+    title: 'Cell element (Layer Section) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/cell-element-layer-sectionvisio-xml',
+    section: 'Cellules d’une ligne de calque : Active, Color, ColorTrans, Glue, Lock, Name, NameUniv, Print, Snap, Status, Visible ; parties masters.xml et pages.xml (feuille de page).'
+  },
+  msVisioLayerColor: {
+    title: 'Color Cell (Layers Section)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/color-cell-layers-section',
+    section: 'Index 0 à 23 ou couleur RGB ; « A value of 255 indicates that the layer has no color ».'
+  },
+  msVisioShapeDataCells: {
+    title: 'Cell element (Shape Data Section) (Visio XML)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/cell-element-shape-data-sectionvisio-xml',
+    section: 'Cellules d’une ligne de données : Calendar, DataLinked, Format, Invisible, Label (« label that appears to users in the Shape Data window »), LangID, Prompt, SortKey, Type, Value, Verify.'
+  },
+  msVisioPropType: {
+    title: 'Type Cell (Shape Data Section)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/type-cell-shape-data-section',
+    section: '0 String (défaut), 1 Fixed list, 2 Number, 3 Boolean, 4 Variable list, 5 Date or time, 6 Duration, 7 Currency.'
+  },
+  msVisioDrawingScale: {
+    title: 'DrawingScale Cell (Page Properties Section)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/drawingscale-cell-page-properties-section',
+    section: '« The drawing scale for the page is the ratio of the page unit shown in the PageScale cell to the drawing unit shown in the DrawingScale cell » ; les unités de la formule de DrawingScale fixent celles des règles.'
+  },
+  msVisioLineColor: {
+    title: 'LineColor Cell (Line Format Section)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/linecolor-cell-line-format-section',
+    section: 'Index 0 à 23, ou couleur propre par RGB() / HSL() ; « custom colors have values of 24 and above ».'
+  },
+  msVisFromParts: {
+    title: 'VisFromParts enumeration (Visio)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/vba/api/visio.visfromparts',
+    section: 'visBegin 9 « begin point of a 1D shape », visEnd 12 « end of a 1D shape », visBeginX 7, visEndX 10.'
+  },
+  msVisToParts: {
+    title: 'VisToParts enumeration (Visio)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/vba/api/visio.vistoparts',
+    section: 'visConnectionPoint « 100 + row index of connection point », visWholeShape 3 « using dynamic glue », visGuideX 1, visGuideY 2.'
+  },
+  msVisioGlueProgram: {
+    title: 'Creating a Connected Drawing from a Program (Visio 2002 Developer Reference, archive)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/office-xp/aa201778(v=office.10)',
+    section: 'Coller l’extrémité d’un 1-D : cellule BeginX/BeginY ou EndX/EndY vers Connections.Xi / Connections.Yi d’une autre forme (statique) ou PinX/PinY (dynamique) ; GlueTo « sets the formula of the Cell object to that cell reference » ; déplacer la forme cible garde la connexion.'
+  },
+  msVisioPar: {
+    title: 'PAR Function',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/par-function',
+    section: '« Returns the x,y coordinates of a point in the coordinate system of the shape’s parent » ; exemple PAR(PNT(PinX,PinY)).'
+  },
+  msVisioPnt: {
+    title: 'PNT Function',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/office/client-developer/visio/pnt-function',
+    section: '« Returns the point represented by the coordinates x and y as a single value ».'
+  },
+  msVisioRoutable: {
+    title: 'Creating Routable and Other 1-D Connectors (Visio 2002 Developer Reference, archive)',
+    publisher: 'Microsoft (learn.microsoft.com)',
+    url: 'https://learn.microsoft.com/en-us/previous-versions/office/developer/office-xp/aa200984(v=office.10)',
+    section: '« You can create a routable connector from any 1-D line by setting its ObjType cell in the Miscellaneous section to 2 » ; ObjType 1 placeable, 2 routable (1-D), 4 ni l’un ni l’autre.'
+  },
+  drawioFileFormat: {
+    title: '.drawio file format (reference)',
+    publisher: 'JGraph (drawio.com)',
+    url: 'https://www.drawio.com/docs/reference/file-format/',
+    section: 'mxfile (host, pages, compressed, modified, agent, version), diagram (id, name), mxGraphModel (dx, dy, grid, gridSize, page, pageScale, pageWidth, pageHeight…), mxCell (id, parent, value, style, vertex, edge, source, target, visible), mxGeometry (relative="1" pour un lien, mxPoint sourcePoint/targetPoint, Array as="points") ; calque = cellule de parent 0 dont value est le nom ; UserObject / object : l’enveloppe prend l’id, label, tooltip, placeholders, autres attributs = propriétés ; positions et tailles en px, y vers le bas, « 850 × 1100 is US Letter ».'
+  },
+  drawioStyleReference: {
+    title: 'Style reference for AI diagram generation',
+    publisher: 'JGraph (drawio.com)',
+    url: 'https://www.drawio.com/docs/reference/diagram-generation/style-reference/',
+    section: 'Clés : rounded, whiteSpace, html, fillColor, strokeColor, fontColor, fontSize (px), fontStyle (1 gras), align, verticalAlign, labelPosition, verticalLabelPosition, labelBackgroundColor, dashed, strokeWidth, rotation (degrés), ellipse, text, endArrow/startArrow, exitX/exitY/entryX/entryY (0 à 1) ; mêmes clés dans style-reference.md du dépôt jgraph/drawio-mcp.'
+  },
+  drawioDiagramGeneration: {
+    title: 'Diagram generation (reference)',
+    publisher: 'JGraph (drawio.com)',
+    url: 'https://www.drawio.com/docs/reference/diagram-generation/',
+    section: '« Always include the two structural cells » <mxCell id="0"/> et <mxCell id="1" parent="0"/> ; ids uniques ; contenu compressé = DEFLATE brut + Base64, à éviter : XML non compressé.'
+  },
+  drawioMxfileXsd: {
+    title: 'mxfile.xsd (schéma XML du format .drawio)',
+    publisher: 'JGraph (GitHub, jgraph/drawio-mcp)',
+    url: 'https://raw.githubusercontent.com/jgraph/drawio-mcp/main/shared/mxfile.xsd',
+    section: 'Schéma des éléments mxfile, diagram, mxGraphModel (pageWidth et pageHeight entiers positifs), root, mxCell, object / UserObject (id requis, anyAttribute pour les données), mxGeometry, mxPoint, Array ; utilisé par les essais (outil d’essai) pour valider les fichiers écrits.'
   }
 };
 Object.assign(SOURCES, NET_SOURCES);

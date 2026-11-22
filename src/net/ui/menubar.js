@@ -49,7 +49,7 @@ export function createMenuBar(o) {
     if (it.sep) return '<div class="ntMbSep" role="separator"></div>';
     const role = it.checked != null ? (it.radio ? 'menuitemradio' : 'menuitemcheckbox') : 'menuitem';
     const ck = it.checked != null ? `<span class="ntMbCk${it.radio ? ' radio' : ''}" aria-hidden="true">${it.checked ? (it.radio ? '<i class="ntMbDot"></i>' : icon('check')) : ''}</span>` : '<span class="ntMbCk" aria-hidden="true"></span>';
-    return `<button type="button" class="ntMbItem" role="${role}" tabindex="-1" data-i="${i}"${it.checked != null ? ` aria-checked="${!!it.checked}"` : ''}${it.disabled ? ' aria-disabled="true"' : ''}${it.sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${ck}<span class="ntMbIc">${it.icon ? icon(it.icon) : ''}</span><span class="ntMbLab">${esc(it.label)}</span>${it.sub ? `<span class="ntMbArrow">${icon('chevRight')}</span>` : `<kbd>${esc(o.keyLabel ? o.keyLabel(it.keys) : it.keys)}</kbd>`}</button>`;
+    return `<button type="button" class="ntMbItem${it.tag ? ' ntMbDim' : ''}" role="${role}" tabindex="-1" data-i="${i}"${it.tag ? ` title="${esc(it.tag)}"` : ''}${it.checked != null ? ` aria-checked="${!!it.checked}"` : ''}${it.disabled ? ' aria-disabled="true"' : ''}${it.sub ? ' aria-haspopup="menu" aria-expanded="false"' : ''}>${ck}<span class="ntMbIc">${it.icon ? icon(it.icon) : ''}</span><span class="ntMbLab">${esc(it.label)}${it.tag ? `<small class="ntMbTag">${esc(it.tag)}</small>` : ''}</span>${it.sub ? `<span class="ntMbArrow">${icon('chevRight')}</span>` : `<kbd>${esc(o.keyLabel ? o.keyLabel(it.keys) : it.keys)}</kbd>`}</button>`;
   }
   function popup(items, anchor, level) {
     const p = document.createElement('div');

@@ -79,11 +79,24 @@ export function installShell(host) {
  */
 const TAB_LIKE = '.edTab, .tab, .dkTab, .actBtn, .segBtn, [role="tab"], .wsSwitch button, #stageView button';
 function releaseTabFocus() {
+  // Le focus va à l'onglet cliqué (Tab repart de lui, pas du début de la page), marqué « souris » : pas de cadre du clavier
+  // tant qu'on ne navigue pas au clavier (data-mfocus, shell.css). Espace (déplacer la vue) le rend au plan de travail.
   document.addEventListener('click', e => {
     if (!e.detail) return;
     const b = e.target instanceof Element && e.target.closest(TAB_LIKE);
-    if (b && document.activeElement === b) b.blur();
+    if (!b || !b.isConnected || b.disabled) return;
+    // Boutons de barre (outils, activité) : rendus au plan de travail, sinon Entrée les recliquerait au milieu d'un tracé.
+    if (!b.matches('.edTab, .tab, .dkTab, [role="tab"]')) { if (document.activeElement === b) b.blur(); return; }
+    b.dataset.mfocus = '';
+    if (document.activeElement !== b) b.focus({ preventScroll: true });
+    b.addEventListener('blur', () => { delete b.dataset.mfocus; }, { once: true });
   });
+  onKeyFirst(e => { const a = document.activeElement; if (e.key === ' ' && a && a.dataset && a.dataset.mfocus != null) a.blur(); return false; });
+  // Clavier ou souris : une liste qui reçoit le focus d'un programme (assistant, boîte de dialogue) n'a pas de cadre
+  // tant qu'on n'a pas navigué au clavier (html.kbdNav, shell.css).
+  const root = document.documentElement;
+  addEventListener('keydown', e => { if (e.key === 'Tab' || e.key.startsWith('Arrow')) root.classList.add('kbdNav'); }, true);
+  addEventListener('pointerdown', () => root.classList.remove('kbdNav'), true);
 }
 
 /* ---------- Barre d'activité ---------- */
@@ -328,7 +341,7 @@ function createDock() {
     prob.type = 'button'; prob.title = `${tl('Problèmes')} · ${shortcut('M', true)}`; prob.setAttribute('aria-label', tl('Problèmes'));
     prob.onclick = () => toggle('problems');
     sb.prepend(prob);
-    countHooks.add(c => { prob.querySelector('.e').textContent = c.busy ? '…' : c.errors; prob.querySelector('.w').textContent = c.busy ? '…' : c.warnings; prob.className = 'sbProblems ' + (c.errors ? 'err' : c.warnings ? 'warn' : ''); prob.title = c.busy ? tl('Vérification…') : `${tl('Problèmes : {0} erreur(s), {1} avertissement(s)', c.errors, c.warnings)} · ${shortcut('M', true)}`; });
+    countHooks.add(c => { prob.querySelector('.e').textContent = c.busy ? '…' : c.errors; prob.querySelector('.w').textContent = c.busy ? '…' : c.warnings; prob.className = 'sbProblems ' + (c.errors ? 'err' : c.warnings ? 'warn' : ''); prob.title = c.busy ? tl('Vérification…') : `${tl('Problèmes : {0:# erreur|# erreurs}, {1:# avertissement|# avertissements}', c.errors, c.warnings)} · ${shortcut('M', true)}`; });
     stateHooks.add(t => prob.setAttribute('aria-pressed', String(t === 'problems')));
   }
   if (st) { st.title = `${OUTPUT} · ${shortcut('U', true)}`; st.onclick = () => toggle('output'); }

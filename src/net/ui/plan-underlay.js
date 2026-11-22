@@ -284,7 +284,7 @@ export function createUnderlayLayer(ctx, host) {
     if (!st.sel || st.sel.id !== e.un || !add) st.sel = { id: e.un, ents: new Set() };
     for (const k of list) { if (toggle && st.sel.ents.has(k)) st.sel.ents.delete(k); else st.sel.ents.add(k); }
     paint(); paintCard();
-    if (list.length || st.sel.ents.size) ctx.status(tl('{0} entité(s) choisie(s) dans le fond.', st.sel.ents.size));
+    if (list.length || st.sel.ents.size) ctx.status(tl('{0:# entité choisie|# entités choisies} dans le fond.', st.sel.ents.size));
   }
   const selList = () => { const { e } = cur(); return e && st.sel && st.sel.id === e.un ? [...st.sel.ents] : []; };
   /** Segments choisis, en mètres de l'étage : [[x0, y0, x1, y1], …], et chaînes (contours fermés, lignes). */
@@ -306,7 +306,7 @@ export function createUnderlayLayer(ctx, host) {
       try {
         const r = await m.convertSelection(ctx, f, g.segs, kind === 'paths' ? 'data' : kind) || {}; ctx.commit(); select([]); host.repaint();
         const any = (r.walls || 0) + (r.rooms || 0) + (r.paths || 0);
-        ctx.status(any ? tl('Depuis la sélection : {0} mur(s), {1} pièce(s), {2} cheminement(s) (modèle simplifié, à vérifier).', r.walls || 0, r.rooms || 0, r.paths || 0) : tl('Rien de reconnu dans la sélection pour ce genre d’objet.'), any ? 'ok' : 'warn');
+        ctx.status(any ? tl('Depuis la sélection : {0:# mur|# murs}, {1:# pièce|# pièces}, {2:# cheminement|# cheminements} (modèle simplifié, à vérifier).', r.walls || 0, r.rooms || 0, r.paths || 0) : tl('Rien de reconnu dans la sélection pour ce genre d’objet.'), any ? 'ok' : 'warn');
       } catch (err) { console.error(err); ctx.status(tl('La conversion de la sélection a échoué.'), 'err'); }
       return;
     }
@@ -316,10 +316,10 @@ export function createUnderlayLayer(ctx, host) {
       if (m && m.pairWalls && m.mergeWalls) { const tol = m.CONVERT_TOL; walls = m.mergeWalls(m.pairWalls(g.segs, tol, 0.1), [], tol); if (m.cleanCorners) walls = m.cleanCorners(walls); }
       else walls = g.segs.filter(s => Math.hypot(s[2] - s[0], s[3] - s[1]) > 0.3).map(s => ({ a: [s[0], s[1]], b: [s[2], s[3]], t: 0.1 }));
       for (const w of walls) { if (Math.hypot(w.b[0] - w.a[0], w.b[1] - w.a[1]) < 0.05) continue; f.walls.push({ id: uid('', 'w', ids), a: w.a.map(r3), b: w.b.map(r3), t: r3(Math.max(0.01, Math.min(2, w.t || 0.1))), mat: w.mat || 'block', src: tag }); n++; }
-      ctx.status(n ? tl('{0} mur(s) créé(s) depuis la sélection (modèle simplifié : traits doubles → mur d’axe médian).', n) : tl('Aucun mur reconnu dans la sélection (il faut des traits de plus de 30 cm).'), n ? 'ok' : 'warn');
+      ctx.status(n ? tl('{0:# mur créé|# murs créés} depuis la sélection (modèle simplifié : traits doubles → mur d’axe médian).', n) : tl('Aucun mur reconnu dans la sélection (il faut des traits de plus de 30 cm).'), n ? 'ok' : 'warn');
     } else if (kind === 'rooms') {
       for (const c of g.chains.filter(c => c.closed && c.pts.length >= 3)) { f.rooms.push({ id: uid('', 'rm', ids), name: '', usage: 'office', poly: c.pts, src: tag }); n++; }
-      ctx.status(n ? tl('{0} pièce(s) créée(s) depuis les contours fermés choisis : nommez-les dans l’inspecteur.', n) : tl('Aucun contour fermé dans la sélection.'), n ? 'ok' : 'warn');
+      ctx.status(n ? tl('{0:# pièce créée|# pièces créées} depuis les contours fermés choisis : nommez-les dans l’inspecteur.', n) : tl('Aucun contour fermé dans la sélection.'), n ? 'ok' : 'warn');
     } else if (kind === 'paths') {
       const route = await mod('../route.js'), pids = new Set((d.paths || []).map(p => p.id)); let i = 1;
       for (const c of g.chains.filter(c => c.pts.length >= 2)) {
@@ -327,7 +327,7 @@ export function createUnderlayLayer(ctx, host) {
         const p = route.cleanPaths([{ id: 'pa' + i, floor: f.id, kind: 'tray', pts: (c.closed ? [...c.pts, c.pts[0]] : c.pts).slice(0, 400) }])[0];
         if (p) { p.src = tag; (d.paths = d.paths || []).push(p); n++; }
       }
-      ctx.status(n ? tl('{0} cheminement(s) créé(s) depuis la sélection (genre : chemin de câbles, à changer dans l’inspecteur).', n) : tl('Aucun tracé dans la sélection.'), n ? 'ok' : 'warn');
+      ctx.status(n ? tl('{0:# cheminement créé|# cheminements créés} depuis la sélection (genre : chemin de câbles, à changer dans l’inspecteur).', n) : tl('Aucun tracé dans la sélection.'), n ? 'ok' : 'warn');
     }
     if (n) { ctx.commit(); select([]); host.repaint(); }
   }
@@ -341,10 +341,10 @@ export function createUnderlayLayer(ctx, host) {
     const kinds = [...new Set([...info.layers.keys()].map(l => K[guessKind(names.get(l) || '')]))].join(', ');
     const types = (u.pack && u.pack.entTypes) ? [...info.types].map(([t, n]) => `${esc(u.pack.entTypes[t] || '?')} ×${n}`).join(', ') : '';
     const b = info.box;
-    return `<section class="ntUlSelBox" aria-live="polite"><div class="ntUlSelHd"><b>${icon('pointer')}${esc(tl('Sélection · {0} entité(s)', info.ents))}</b>
+    return `<section class="ntUlSelBox" aria-live="polite"><div class="ntUlSelHd"><b>${icon('pointer')}${esc(tl('Sélection · {0:# entité|# entités}', info.ents))}</b>
         <button type="button" class="ntUlIc on" data-ul="selLayer" data-tip="${esc(tl('Tout le calque'))}" aria-label="${esc(tl('Tout le calque'))}">${icon('layers')}</button>
-        <button type="button" class="ntUlIc on" data-ul="selHide" data-tip="${esc(tl('Masquer ce(s) calque(s)'))}" aria-label="${esc(tl('Masquer ce(s) calque(s)'))}">${icon('eyeOff')}</button>
-        <button type="button" class="ntUlIc on" data-ul="selLock" data-tip="${esc(tl('Verrouiller ce(s) calque(s)'))}" aria-label="${esc(tl('Verrouiller ce(s) calque(s)'))}">${icon('lock')}</button>
+        <button type="button" class="ntUlIc on" data-ul="selHide" data-tip="${esc(tl('Masquer les calques de la sélection'))}" aria-label="${esc(tl('Masquer les calques de la sélection'))}">${icon('eyeOff')}</button>
+        <button type="button" class="ntUlIc on" data-ul="selLock" data-tip="${esc(tl('Verrouiller les calques de la sélection'))}" aria-label="${esc(tl('Verrouiller les calques de la sélection'))}">${icon('lock')}</button>
         <button type="button" class="ntUlIc on" data-ul="selClear" data-tip="${esc(tl('Désélectionner'))}" aria-label="${esc(tl('Désélectionner'))}">${icon('x')}</button></div>
       <dl class="ntUlDl"><dt>${esc(tl('Calques'))}</dt><dd title="${lay}">${lay}</dd><dt>${esc(tl('Genre'))}</dt><dd>${esc(kinds)}</dd>
         <dt>${esc(tl('Longueur'))}</dt><dd>${esc(tl('{0} m · {1} segments', fmt(info.length * s, 2), info.segs))}</dd>
@@ -361,7 +361,7 @@ export function createUnderlayLayer(ctx, host) {
   function paintCard() {
     if (card.hidden) return;
     const f = host.floor(), u = ulOf(f);
-    if (!u) { card.innerHTML = `<div class="ntUlHd">${icon('layers')}<b>${tl('Fond de plan DXF')}</b><button type="button" class="tb" data-ul="close" aria-label="${tl('Fermer')}">${icon('x')}</button></div><p class="mut">${tl('Pas de fond sur cet étage.')}</p><button type="button" class="btn small primary" data-ul="import">${icon('upload')}<span>${tl('Importer un plan DXF/DWG…')}</span></button>`; return; }
+    if (!u) { card.innerHTML = `<div class="ntUlHd">${icon('layers')}<b>${tl('Fond de plan DXF')}</b><button type="button" class="tb" data-ul="close" aria-label="${tl('Fermer')}">${icon('x')}</button></div><p class="mut">${tl('Pas de fond sur cet étage.')}</p><button type="button" class="btn small primary" data-ul="import">${icon('upload')}<span>${tl('Importer un plan DXF ou DWG…')}</span></button>`; return; }
     const raw = cache.get(u.id), e = raw && raw.st === 'ok' ? raw : null, q = st.q.trim();
     const nOn = u.layers.filter(l => l.on).length, bytes = blobBytes((data().blobs || {})[u.id]);
     const t = u.transform, rev = u.rev;
@@ -475,23 +475,28 @@ export function createUnderlayLayer(ctx, host) {
   /* ---------- « Et maintenant ? » : une fois, après un import ---------- */
   function showCoach(c) {
     cadSession.coach = null;
-    const conv = c.mode === 'convert', n = c.counts || {};
-    const item = (act, ic, label, hint) => `<li><button type="button" class="ntUlCoAct" data-co="${act}">${icon(ic)}<span><b>${esc(label)}</b>${hint ? `<small>${esc(hint)}</small>` : ''}</span></button></li>`;
-    coach.innerHTML = `<div class="ntUlCoHd"><b>${icon('check')}${esc(conv ? tl('Plan importé et converti : {0} murs, {1} pièces.', n.walls || 0, n.rooms || 0) : tl('Fond de plan importé.'))}</b><button type="button" class="tb" data-co="close" aria-label="${esc(tl('Fermer'))}">${icon('x')}</button></div>
-      <p class="mut">${esc(tl('Et maintenant ?'))}</p><ol>
-      ${conv ? item('rooms', 'room', tl('Vérifier les pièces'), tl('noms et usages dans l’inspecteur')) : item('pick', 'pointer', tl('Convertir des traits du fond'), tl('choisir des murs ou des contours, puis Murs, Salles…'))}
-      ${conv ? '' : item('wall', 'wall', tl('Dessiner les murs (W)'), tl('aimantés sur les traits du fond'))}
-      ${item('rack', 'rack', tl('Poser la baie'), tl('choisir le local technique, puis « Baie » dans l’inspecteur'))}
-      ${item('outlet', 'outlet', tl('Placer prises et points d’accès'), tl('glisser depuis la bibliothèque à gauche'))}
-      ${item('path', 'cableTray', tl('Tracer les cheminements (K)'), tl('chemins de câbles, faux plafond, colonnes'))}
-      ${item('design', 'clipboard', tl('Dimensionner le réseau'), tl('vue Conception : baies, switchs, nomenclature'))}</ol>
-      ${c.hid && c.hid.length ? `<p class="ntUlCoNote">${icon('eyeOff')}<span>${esc(tl('Calques de textes masqués : les pièces portent déjà les noms.'))}</span><button type="button" class="btn small subtle" data-co="showText">${esc(tl('Réafficher'))}</button></p>` : ''}`;
+    // mode 'ifc' (assistant IFC, ifcimport.js) : le modèle est déjà converti ; c.title donne le compte rendu.
+    const conv = c.mode === 'convert' || c.mode === 'ifc', n = c.counts || {};
+    // Bandeau fin sous la barre d'outils (il ne cache pas le plan : la vue se recadre en dessous) ; libellés courts,
+    // l'explication est dans l'infobulle.
+    const item = (act, ic, label, hint) => `<button type="button" class="btn small ntUlCoAct" data-co="${act}" data-tip="${esc(hint)}">${icon(ic)}<span>${esc(label)}</span></button>`;
+    coach.innerHTML = `<b class="ntUlCoTtl">${icon('check')}<span>${esc(c.title || (conv ? tl('Plan importé et converti : {0} murs, {1} pièces.', n.walls || 0, n.rooms || 0) : tl('Fond de plan importé.')))}</span></b>
+      <span class="ntUlCoQ">${esc(tl('Et maintenant ?'))}</span>
+      ${conv ? item('rooms', 'room', tl('Vérifier les pièces'), tl('noms et usages dans l’inspecteur')) : item('pick', 'pointer', tl('Convertir'), tl('choisir des murs ou des contours, puis Murs, Salles…'))}
+      ${conv ? '' : item('wall', 'wall', tl('Murs (W)'), tl('aimantés sur les traits du fond'))}
+      ${item('rack', 'rack', tl('Baie'), tl('choisir le local technique, puis « Baie » dans l’inspecteur'))}
+      ${item('outlet', 'outlet', tl('Prises et AP'), tl('glisser depuis la bibliothèque à gauche'))}
+      ${item('path', 'cableTray', tl('Cheminements (K)'), tl('chemins de câbles, faux plafond, colonnes'))}
+      ${item('design', 'clipboard', tl('Dimensionner'), tl('vue Conception : baies, switchs, nomenclature'))}
+      ${c.hid && c.hid.length ? `<button type="button" class="btn small subtle" data-co="showText" data-tip="${esc(tl('Calques de textes masqués : les pièces portent déjà les noms.'))}">${icon('eye')}<span>${esc(tl('Textes du DXF'))}</span></button>` : ''}
+      <button type="button" class="tb" data-co="close" aria-label="${esc(tl('Fermer'))}">${icon('x')}</button>`;
     coach.hidden = false; coach.dataset.hid = JSON.stringify(c.hid || []);
+    if (host.fitAvoid) requestAnimationFrame(() => host.fitAvoid((coach.offsetHeight + 12) / Math.max(200, host.stage.clientHeight - 130)));
   }
   coach.addEventListener('click', ev => {
     const b = ev.target.closest('[data-co]'); if (!b) return;
     const a = b.dataset.co;
-    if (a === 'showText') { const ids = new Set(JSON.parse(coach.dataset.hid || '[]')); change(u => { for (const l of u.layers) if (ids.has(l.id)) l.on = true; }); b.closest('p').remove(); return; }
+    if (a === 'showText') { const ids = new Set(JSON.parse(coach.dataset.hid || '[]')); change(u => { for (const l of u.layers) if (ids.has(l.id)) l.on = true; }); b.remove(); return; }
     coach.hidden = true;
     if (a === 'pick') { toggleCard(true); setMode('pick'); }
     else if (a === 'design') ctx.openView('design');
@@ -515,6 +520,8 @@ export function createUnderlayLayer(ctx, host) {
 
   const api = {
     paint, snap, bounds, toggleCard, paintCard,
+    /** Bandeau « Et maintenant ? » demandé par un autre import (IFC) : { floor, mode, counts, title }. */
+    coach: c => { if (c && (!host.floor() || c.floor === host.floor().id)) showCoach(c); },
     has: f => !!ulOf(f),
     cardOpen: () => !card.hidden,
     /** Échap : quitte le mode en cours, puis vide la sélection du fond ; Suppr : rien (le fond ne s'efface pas par entité). */

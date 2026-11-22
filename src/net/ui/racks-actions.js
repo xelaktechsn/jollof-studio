@@ -32,12 +32,12 @@ export function createRackActions(ctx, V) {
     if (rk.length) {
       const ids = new Set(data.devices.filter(d => d.rack && rk.some(r => r.id === d.rack.id)).map(d => d.id));
       CLIP = { kind: 'racks', racks: clone(rk), devs: clone(data.devices.filter(d => ids.has(d.id))), cables: clone(inner(data, ids)) };
-      ctx.status(tl('{0} baie(s) copiée(s).', rk.length), 'ok'); return true;
+      ctx.status(tl('{0:# baie copiée|# baies copiées}.', rk.length), 'ok'); return true;
     }
     const ds = devsOf(list); if (!ds.length) return false;
     const ids = new Set(ds.map(d => d.id));
     CLIP = { kind: 'devs', devs: clone(ds), cables: clone(inner(data, ids)) };
-    ctx.status(tl('{0} équipement(s) copié(s).', ds.length), 'ok'); return true;
+    ctx.status(tl('{0:# équipement copié|# équipements copiés}.', ds.length), 'ok'); return true;
   }
   const canPaste = () => !!CLIP;
   /** Copie des équipements de src (nouveaux ids et noms) ; place : (copies) → rien ; rend la table ancien id → copie. */
@@ -74,7 +74,7 @@ export function createRackActions(ctx, V) {
     if (CLIP.kind === 'racks') { dupRacks(CLIP.racks, CLIP.devs, CLIP.cables); return true; }
     const r = V.curRack(), out = pasteDevs(CLIP.devs, CLIP.cables, r, near);
     V.selectList(out.all.map(d => ({ kind: 'dev', id: d.id }))); ctx.commit();
-    ctx.status(out.placed.length === out.all.length ? tl('{0} équipement(s) collé(s) dans {1}.', out.all.length, r ? r.name : '—') : tl('{0} équipement(s) collé(s), {1} hors baie faute de place.', out.all.length, out.all.length - out.placed.length), out.placed.length === out.all.length ? 'ok' : 'warn');
+    ctx.status(out.placed.length === out.all.length ? tl('{0:# équipement collé|# équipements collés} dans {1}.', out.all.length, r ? r.name : '—') : tl('{0:# équipement collé|# équipements collés}, {1} hors baie faute de place.', out.all.length, out.all.length - out.placed.length), out.placed.length === out.all.length ? 'ok' : 'warn');
     return true;
   }
   function dupRacks(rs, devs, cables) {
@@ -89,7 +89,7 @@ export function createRackActions(ctx, V) {
       cloneCables(cables.filter(x => map.has(x.a[0]) && map.has(x.b[0])), map);
     }
     V.setCur(made[made.length - 1].id); V.selectList(made.map(r => ({ kind: 'rack', id: r.id }))); ctx.commit();
-    ctx.status(tl('{0} baie(s) dupliquée(s) avec leurs équipements.', made.length), 'ok');
+    ctx.status(tl('{0:# baie dupliquée|# baies dupliquées} avec leurs équipements.', made.length), 'ok');
   }
   /** Dupliquer (Ctrl+D) : la sélection, sans toucher au presse-papiers ; les équipements juste au-dessus des originaux. */
   function duplicate(list = V.selected()) {
@@ -99,7 +99,7 @@ export function createRackActions(ctx, V) {
     const r = ds[0].rack && V.rackById(ds[0].rack.id), top = Math.max(...ds.filter(d => d.rack).map(d => d.rack.u + ((MOUNT[d.type] || {}).u || 1)), 1);
     const out = pasteDevs(ds, inner(data, new Set(ds.map(d => d.id))), r, top);
     V.selectList(out.all.map(d => ({ kind: 'dev', id: d.id }))); ctx.commit();
-    ctx.status(tl('{0} équipement(s) dupliqué(s).', out.all.length), out.placed.length === out.all.length ? 'ok' : 'warn');
+    ctx.status(tl('{0:# équipement dupliqué|# équipements dupliqués}.', out.all.length), out.placed.length === out.all.length ? 'ok' : 'warn');
     return true;
   }
 
@@ -123,7 +123,7 @@ export function createRackActions(ctx, V) {
     const data = V.data(), ids = new Set(devsOf(list).map(d => d.id)); if (!ids.size) return false;
     data.devices = data.devices.filter(d => !ids.has(d.id)); data.cables = data.cables.filter(c => !ids.has(c.a[0]) && !ids.has(c.b[0]));
     for (const d of data.devices) if (d.rack && d.rack.pdu && ids.has(d.rack.pdu)) delete d.rack.pdu;
-    ctx.select(null); ctx.commit(); ctx.status(tl('{0} équipement(s) supprimé(s) du projet.', ids.size)); return true;
+    ctx.select(null); ctx.commit(); ctx.status(tl('{0:# équipement supprimé|# équipements supprimés} du projet.', ids.size)); return true;
   }
 
   /* ---------- Gestes de conception ---------- */
@@ -138,13 +138,13 @@ export function createRackActions(ctx, V) {
     const data = V.data(), devs = data.devices.filter(d => d.rack && d.rack.id === r.id), free = freeFrontU(r, devs);
     if (!free.length) { ctx.status(tl('Aucun U libre en façade dans {0}.', r.name)); return; }
     for (const u of free) { const b = ctx.newDevice('blank', { x: 40, y: 700 }); b.rack = { id: r.id, u, face: 'front' }; }
-    ctx.commit(); ctx.status(tl('{0} obturateur(s) posé(s) dans {1}.', free.length, r.name), 'ok');
+    ctx.commit(); ctx.status(tl('{0:# obturateur posé|# obturateurs posés} dans {1}.', free.length, r.name), 'ok');
   }
   function addManagers(r) {
     const data = V.data(), devs = data.devices.filter(d => d.rack && d.rack.id === r.id), slots = managerSlots(r, devs);
     if (!slots.length) { ctx.status(tl('Chaque panneau de {0} a déjà son passe-câbles, ou il n’y a pas de place à côté.', r.name)); return; }
     for (const s of slots) { const m = ctx.newDevice('cablemgr', { x: 40, y: 700 }); m.rack = { id: r.id, u: s.u, face: s.face }; }
-    ctx.commit(); ctx.status(tl('{0} passe-câbles posé(s) dans {1}.', slots.length, r.name), 'ok');
+    ctx.commit(); ctx.status(tl('{0:# passe-câbles posé|# passe-câbles posés} dans {1}.', slots.length, r.name), 'ok');
   }
   function patch(a, b) {
     const c = ctx.addCable(a, b, { kind: 'straight', len: RACK_DESIGN.cord }); ctx.commit();

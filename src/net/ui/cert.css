@@ -25,7 +25,12 @@
 .ntCeGo { justify-content: center; }
 .ntCeGo .nt-kbd { margin-left: auto; }
 .ntCeSep { height: 1px; background: var(--line); margin: 2px 0; }
-.ntCeNote { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.ntCeMethod { font-size: 12px; color: var(--fg-2); }
+.ntCeMethod summary { cursor: pointer; font-weight: 600; color: var(--fg); padding: 2px 0; }
+.ntCeMethod summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.ntCeMethod[open] summary { margin-bottom: 4px; }
+.ntCeMethod .ntCeNote + .ntCeNote { margin-top: 6px; }
+.ntCeNote { margin: 0; color: var(--fg-2); font-size: 11.5px; line-height: 1.45; }
 .ntCeProg { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-2); }
 .ntCeProg[hidden] { display: none; }
 .ntCeBar { flex: 1; min-width: 60px; height: 6px; border-radius: 3px; background: var(--raise); border: 1px solid var(--line); overflow: hidden; }
@@ -129,7 +134,13 @@
 .ntCeList { width: 100%; border-collapse: collapse; font-size: 12px; }
 .ntCeList th { position: sticky; top: 0; z-index: 1; background: var(--panel-2); color: var(--fg-2); font-weight: 600; font-size: 11px; text-align: left; padding: 6px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 .ntCeList td { padding: 5px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
-.ntCeList .n { text-align: right; font-family: var(--mono); }
+.ntCeList .n { text-align: right; font-variant-numeric: tabular-nums; } /* chiffres alignés, même police que le reste du tableau */
+/* Panneau étroit (Conception › Tests) : textes repliés aux espaces seulement, jamais au milieu d'un mot, pour que les
+   dernières colonnes (paramètre le plus faible, longueur, date) restent visibles sans défilement horizontal caché. */
+.ntCeList th, .ntCeList td.w { white-space: normal; overflow-wrap: normal; word-break: normal; vertical-align: bottom; }
+.ntCeList td.w { min-width: 6em; vertical-align: middle; }
+/* Dans Conception › Tests (panneau étroit), la colonne Type répète la limite (« Cat 6A lien permanent ») : masquée. */
+.ntDsSub.ntCeTab .ntCeList tr > :nth-child(2) { display: none; }
 .ntCeList tbody tr { cursor: pointer; }
 .ntCeList tbody tr:hover { background: var(--raise); }
 .ntCeList tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
@@ -139,7 +150,8 @@
   .ntCeBody { flex-direction: column; overflow: auto; }
   .ntCeSide { width: auto; flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px 10px; overflow: visible; border-right: 0; border-bottom: 1px solid var(--line); padding: 10px 12px; }
   .ntCeSide .ntCeFld { flex: 1 1 170px; min-width: 0; }
-  .ntCeSide .ntCeFld small, .ntCeSide .ntCeNote, .ntCeSep { display: none; }
+  .ntCeSide .ntCeFld small, .ntCeSide > .ntCeNote, .ntCeSep { display: none; }
+  .ntCeMethod { flex: 1 1 100%; }
   .ntCeProg { flex: 1 1 100%; }
   .ntCeMain { flex: none; overflow: visible; }
 }

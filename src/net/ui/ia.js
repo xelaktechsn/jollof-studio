@@ -13,7 +13,7 @@ import { tl } from '../../i18n/index.js';
 import { icon } from '../../ui/icons.js';
 import { spacesOf } from '../../ui/kind.js';
 import { confirm as confirmDlg } from '../../school/ui.js';
-import { createTree, searchBox, ctxMenu, propGrid, notify, keyLabel } from './kit/index.js';
+import { createTree, searchBox, ctxMenu, propGrid, notify, keyLabel, scrollWithin } from './kit/index.js';
 import { highlightParts } from './kit/model.js';
 import { labeler, cableKind } from '../docs.js';
 import { installNav } from './ia-nav.js';
@@ -100,7 +100,11 @@ export function installIa(ctx, { lib, host, pane }) {
     const list = lib.querySelector('.ntLibList'); if (!list) return;
     const racks = lib.dataset.view === 'racks';
     list.querySelectorAll('.ntItem').forEach(b => { b.hidden = racks && !rackable(b.dataset.t); });
-    list.querySelectorAll('h3').forEach(h => { const g = h.nextElementSibling; if (!g || !g.classList.contains('ntGrid')) return; const any = [...g.children].some(x => !x.hidden); h.hidden = !any; g.hidden = !any; });
+    list.querySelectorAll('h3').forEach(h => {
+      const g = h.nextElementSibling; if (!g || !g.classList.contains('ntGrid')) return;
+      const n = [...g.children].filter(x => !x.hidden).length; h.hidden = !n; g.hidden = !n;
+      const c = h.querySelector('span'); if (c) { if (!c.dataset.n) c.dataset.n = c.textContent; c.textContent = racks ? String(n) : c.dataset.n; } // compte des éléments montrés
+    });
     let note = list.querySelector('.ntLibNote');
     if (racks && !note) { note = document.createElement('p'); note.className = 'ntLibNote'; note.textContent = tl('Vue Baies : seulement ce qui se monte en baie.'); list.prepend(note); }
     else if (!racks && note) note.remove();
@@ -144,14 +148,14 @@ export function installIa(ctx, { lib, host, pane }) {
       over: (nodes, t) => canDrop(nodes, t),
       drop: (nodes, t) => {
         const r = moveDevs(data(), nodes.map(n => n.id), t);
-        if (r.moved) { ctx.commit(); ctx.status(tl('{0} équipement(s) rangé(s) dans {1}.', r.moved, t.label), 'ok'); }
-        if (r.refused) ctx.status(t.kind === 'rack' ? tl('{0} équipement(s) refusé(s) : pas montable(s) en baie, ou plus de place.', r.refused) : tl('{0} équipement(s) non déplacé(s).', r.refused), 'warn');
+        if (r.moved) { ctx.commit(); ctx.status(tl('{0:# équipement rangé|# équipements rangés} dans {1}.', r.moved, t.label), 'ok'); }
+        if (r.refused) ctx.status(t.kind === 'rack' ? tl('{0:# équipement refusé : pas montable|# équipements refusés : pas montables} en baie, ou plus de place.', r.refused) : tl('{0:# équipement non déplacé|# équipements non déplacés}.', r.refused), 'warn');
       }
     }
   });
   function paintFoot() {
     const n = ctx.multi().length, all = data().devices.length + data().cables.length;
-    footEl.textContent = n > 1 ? tl('{0} objets choisis', n) : tl('{0} équipement(s) · {1} câble(s)', data().devices.length, data().cables.length);
+    footEl.textContent = n > 1 ? tl('{0} objets choisis', n) : tl('{0:# équipement|# équipements} · {1:# câble|# câbles}', data().devices.length, data().cables.length);
     footEl.hidden = !all && n < 2;
   }
   let treeVer = -1;
@@ -190,7 +194,7 @@ export function installIa(ctx, { lib, host, pane }) {
   function removeKeys(keys) {
     const list = keys.filter(k => !isGroupKey(k)).map(parseKey).filter(x => x && canRemove(x.kind));
     if (!list.length) { ctx.status(tl('Rien à retirer ici : étages et bâtiments se retirent dans la vue Plans.'), 'warn'); return; }
-    const go = () => { const n = removeItems(data(), list); if (!n) return; ctx.select(null); ctx.commit(); notify(tl('{0} objet(s) retiré(s)', n), 'ok', { action: { label: tl('Annuler'), run: () => { const u = document.getElementById('undoBtn'); if (u && !u.disabled) u.click(); } } }); };
+    const go = () => { const n = removeItems(data(), list); if (!n) return; ctx.select(null); ctx.commit(); notify(tl('{0:# objet retiré|# objets retirés}', n), 'ok', { action: { label: tl('Annuler'), run: () => { const u = document.getElementById('undoBtn'); if (u && !u.disabled) u.click(); } } }); };
     if (list.length > 20) confirmDlg(tl('Retirer {0} objets ?', list.length), tl('Les câbles des équipements retirés partent avec eux. Ctrl+Z pour annuler.'), tl('Retirer'), true).then(ok => { if (ok) go(); });
     else go();
   }
@@ -199,7 +203,7 @@ export function installIa(ctx, { lib, host, pane }) {
     const made = duplicateDevs(data(), ids, (type, at) => ctx.newDevice(type, at));
     if (!made.length) return;
     ctx.commit(); ctx.selectMany(made.map(d => ({ kind: 'dev', id: d.id })));
-    ctx.status(tl('{0} équipement(s) dupliqué(s) (sans leurs câbles).', made.length), 'ok');
+    ctx.status(tl('{0:# équipement dupliqué|# équipements dupliqués} (sans leurs câbles).', made.length), 'ok');
   }
   function openMenu(node, keys, ev) {
     const multi = keys.filter(k => !isGroupKey(k)).length > 1;
@@ -279,12 +283,15 @@ export function installIa(ctx, { lib, host, pane }) {
     crumbs.hidden = false;
     const n = ctx.multi().length, L = crumbPath.length, last = L - 1;
     // Tout le chemin s'il tient ; sinon la racine en icône, « … » (niveaux du milieu, en menu) et les deux derniers
-    // niveaux ; sinon un seul niveau avant l'objet. mode : 0 tout, 1 replié, 2 serré.
+    // niveaux ; sinon un seul niveau avant l'objet ; sinon l'objet seul après « … ». L'objet reste toujours lisible en
+    // entier : en dernier recours, les onglets des vues passent en icônes. mode : 0 tout, 1 replié, 2 serré, 3 objet seul.
+    const cut = mode => (mode === 3 ? 0 : mode === 2 ? 1 : 2); // niveaux gardés avant l'objet (hors racine)
     const render = mode => {
-      const keep = i => mode === 0 || i === 0 || i >= L - (mode === 2 ? 1 : 2);
+      crumbs.classList.toggle('m3', mode === 3);
+      const keep = i => mode === 0 || i === 0 || i === last || i >= L - 1 - cut(mode);
       let h = '', gap = false;
       crumbPath.forEach((c, i) => {
-        if (!keep(i)) { if (!gap) { gap = true; h += `<button type="button" class="ntCrSep" data-crs="1" aria-hidden="true" tabindex="-1">${icon('chevRight')}</button><button type="button" class="ntCr ntCrMore" data-crmore="${mode}" aria-haspopup="menu" aria-label="${tl('Niveaux intermédiaires')}" title="${esc(crumbPath.slice(1, L - (mode === 2 ? 1 : 2)).map(x => x.label).join(' › '))}">…</button>`; } return; }
+        if (!keep(i)) { if (!gap) { gap = true; h += `<button type="button" class="ntCrSep" data-crs="1" aria-hidden="true" tabindex="-1">${icon('chevRight')}</button><button type="button" class="ntCr ntCrMore" data-crmore="${mode}" aria-haspopup="menu" aria-label="${tl('Niveaux intermédiaires')}" title="${esc(crumbPath.slice(1, L - 1 - cut(mode)).map(x => x.label).join(' › '))}">…</button>`; } return; }
         if (i) h += `<button type="button" class="ntCrSep" data-crs="${i}" aria-label="${esc(tl('Voisins de {0}', c.label))}" aria-haspopup="menu">${icon('chevRight')}</button>`;
         const iconOnly = i === 0 && mode > 0;
         h += `<button type="button" class="ntCr${i === last ? ' last' : ''}${i === 0 ? ' root' : ''}" data-cr="${i}" title="${esc(c.label)}"${iconOnly ? ` aria-label="${esc(c.label)}"` : ''}${i === last ? ' aria-current="location"' : ''}>${i === 0 || i === last ? icon(c.icon || 'dots') : ''}${iconOnly ? '' : `<span>${esc(c.label)}</span>`}</button>`;
@@ -292,7 +299,9 @@ export function installIa(ctx, { lib, host, pane }) {
       crumbs.innerHTML = h + (n > 1 ? `<span class="ntCrMulti">${tl('+{0} autres', n - 1)}</span>` : '');
     };
     const over = () => crumbs.scrollWidth > crumbs.clientWidth + 1 || [...crumbs.querySelectorAll('.ntCr span')].some(x => x.scrollWidth > x.clientWidth + 1);
-    render(0); if (L > 2 && over()) { render(1); if (L > 3 && over()) render(2); }
+    const fit = () => { render(0); for (const m of [1, 2, 3]) { if (!over()) return true; if (L - 2 - cut(m) <= 0) continue; render(m); } return !over(); };
+    viewBar.classList.remove('ntVbTight');
+    if (!fit()) { viewBar.querySelectorAll('.ntVTab').forEach(b => { if (!b.hasAttribute('aria-label')) b.setAttribute('aria-label', b.textContent.trim()); }); viewBar.classList.add('ntVbTight'); fit(); }
   }
   // La barre change de largeur (fenêtre, panneaux) : le fil se recalcule.
   new ResizeObserver(() => { if (crumbPath.length) paintCrumbs(); }).observe(crumbs.parentElement);
@@ -300,7 +309,7 @@ export function installIa(ctx, { lib, host, pane }) {
     const c = e.target.closest('[data-cr]');
     if (c) { const p = crumbPath[+c.dataset.cr]; if (!p) return; if (p.kind === 'grp') { setTab('project'); tree.reveal(p.key); tree.select([p.key], { silent: true }); return; } ctx.select({ kind: p.kind, id: p.id }); goTo(p); return; }
     const more = e.target.closest('[data-crmore]');
-    if (more) { ctxMenu(more, crumbPath.slice(1, crumbPath.length - (more.dataset.crmore === '2' ? 1 : 2)).map(p => ({ label: p.label, icon: p.icon, run: () => { if (p.kind === 'grp') { setTab('project'); tree.reveal(p.key); return; } ctx.select({ kind: p.kind, id: p.id }); goTo(p); } }))); return; }
+    if (more) { const m = +more.dataset.crmore; ctxMenu(more, crumbPath.slice(1, crumbPath.length - 1 - (m === 3 ? 0 : m === 2 ? 1 : 2)).map(p => ({ label: p.label, icon: p.icon, run: () => { if (p.kind === 'grp') { setTab('project'); tree.reveal(p.key); return; } ctx.select({ kind: p.kind, id: p.id }); goTo(p); } }))); return; }
     const sp = e.target.closest('[data-crs]');
     if (sp) {
       const i = +sp.dataset.crs, parent = crumbPath[i - 1]; if (!parent) return;
@@ -333,11 +342,11 @@ export function installIa(ctx, { lib, host, pane }) {
     function paint(q = sb.value()) {
       listEl.innerHTML = res.length ? res.map((r, i) => `<div class="ntFindRow${i === act ? ' act' : ''}" role="option" id="ntFind-${i}" data-i="${i}" aria-selected="${i === act}">${icon(r.icon || 'dots')}<span class="ntFindLb">${highlightParts(r.label, q).map(([t, m]) => (m ? `<mark>${esc(t)}</mark>` : esc(t))).join('')}</span><span class="ntFindSub">${esc(r.sub)}</span><span class="ntFindWh">${esc(r.where || kindTitle(r.kind))}</span></div>`).join('') : `<p class="ntFindNone">${q.trim() ? tl('Aucun objet ne correspond.') : tl('Tapez un nom, une étiquette (1A-A01), un type (switch, prise) ou une adresse IP.')}</p>`;
       if (res.length) sb.input.setAttribute('aria-activedescendant', 'ntFind-' + act); else sb.input.removeAttribute('aria-activedescendant');
-      footEl2.innerHTML = res.length ? `<span>${tl('{0} résultat(s)', res.length)}</span><span class="grow"></span><kbd>↑↓</kbd> ${tl('parcourir')} <kbd>↵</kbd> ${tl('aller')} <kbd>${esc(keyLabel('Alt+'))}↵</kbd> ${tl('tout choisir')}` : '';
-      const a = listEl.querySelector('.act'); if (a) a.scrollIntoView({ block: 'nearest' });
+      footEl2.innerHTML = res.length ? `<span>${tl('{0:# résultat|# résultats}', res.length)}</span><span class="grow"></span><kbd>↑↓</kbd> ${tl('parcourir')} <kbd>↵</kbd> ${tl('aller')} <kbd>${esc(keyLabel('Alt+'))}↵</kbd> ${tl('tout choisir')}` : '';
+      const a = listEl.querySelector('.act'); if (a) scrollWithin(a, 'nearest', false);
     }
     function go(i) { const r = res[i]; if (!r) return; close(); if (nav) nav.go({ kind: r.kind, id: r.id }); else { ctx.select({ kind: r.kind, id: r.id }); goTo(r); } }
-    function selectAll() { if (!res.length) return; const list = res.map(r => ({ kind: r.kind, id: r.id })); close(); ctx.selectMany(list); ctx.status(tl('{0} objet(s) choisi(s) : modifiez-les ensemble dans l’inspecteur.', list.length), 'ok'); }
+    function selectAll() { if (!res.length) return; const list = res.map(r => ({ kind: r.kind, id: r.id })); close(); ctx.selectMany(list); ctx.status(tl('{0:# objet choisi|# objets choisis} : modifiez-les ensemble dans l’inspecteur.', list.length), 'ok'); }
     function key(e) {
       if (e.key === 'ArrowDown') { act = Math.min(res.length - 1, act + 1); paint(); return true; }
       if (e.key === 'ArrowUp') { act = Math.max(0, act - 1); paint(); return true; }
@@ -372,7 +381,7 @@ export function installIa(ctx, { lib, host, pane }) {
     const g = propGrid(el.querySelector('.ntBulkGrid'), fields, its, (key, value, { field }) => {
       const n = applyBulk(d, its, field, value);
       if (!n) return;
-      ctx.commit(); ctx.status(tl('{0} : {1} objet(s) modifié(s).', field.label, n), 'ok');
+      ctx.commit(); ctx.status(tl('{0} : {1:# objet modifié|# objets modifiés}.', field.label, n), 'ok');
     }, { en: ctx.isEn });
     return { grid: g, its, fields };
   }
@@ -451,6 +460,6 @@ export function installIa(ctx, { lib, host, pane }) {
  */
 export function bulkEdit(ctx, sel, el) {
   const d = ctx.data(), its = resolveSel(d, sel || ctx.multi()), fields = bulkFields(d, its);
-  const grid = propGrid(el, fields, its, (key, value, { field }) => { const n = applyBulk(d, its, field, value); if (n) { ctx.commit(); ctx.status(tl('{0} : {1} objet(s) modifié(s).', field.label, n), 'ok'); } }, { en: ctx.isEn });
+  const grid = propGrid(el, fields, its, (key, value, { field }) => { const n = applyBulk(d, its, field, value); if (n) { ctx.commit(); ctx.status(tl('{0} : {1:# objet modifié|# objets modifiés}.', field.label, n), 'ok'); } }, { en: ctx.isEn });
   return { grid, its, fields };
 }

@@ -147,7 +147,7 @@ export function related(data, sel, o = {}) {
     if (d.type === 'l3switch') add({ key: 'a:svi', group: 'addressing', letter: 'i', label: tl('Interfaces VLAN (SVI)'), icon: 'globe', target: { view: 'logic', kind: 'dev', id: d.id, section: 'svi' }, hl: [d.id] });
     if (d.type === 'routerpro') add({ key: 'a:ifs', group: 'addressing', letter: 'i', label: tl('Interfaces et sous-interfaces'), icon: 'globe', target: { view: 'logic', kind: 'dev', id: d.id, section: 'ifs' }, hl: [d.id] });
     if (P.lan && typeof P.lan === 'object') add({ key: 'a:lan', group: 'addressing', letter: 'i', label: tl('Réseau local (LAN) {0}/{1}', P.lan.ip, P.lan.prefix), icon: 'globe', target: { view: 'logic', kind: 'dev', id: d.id, section: 'lan' }, hl: [d.id] });
-    if ((Array.isArray(P.dhcp) && P.dhcp.length) || (P.dhcp && P.dhcp.on)) add({ key: 'a:dhcp', group: 'addressing', letter: 'd', label: tl('Serveur DHCP'), sub: Array.isArray(P.dhcp) ? tl('{0} étendue(s)', P.dhcp.length) : '', icon: 'list', target: { view: 'logic', kind: 'dev', id: d.id, section: 'dhcp' }, hl: [d.id] });
+    if ((Array.isArray(P.dhcp) && P.dhcp.length) || (P.dhcp && P.dhcp.on)) add({ key: 'a:dhcp', group: 'addressing', letter: 'd', label: tl('Serveur DHCP'), sub: Array.isArray(P.dhcp) ? tl('{0:# étendue|# étendues}', P.dhcp.length) : '', icon: 'list', target: { view: 'logic', kind: 'dev', id: d.id, section: 'dhcp' }, hl: [d.id] });
     // Certification, brassage.
     testItems(allCables);
     if (isPanel(d)) add({ key: 'patch', group: 'test', letter: 'r', label: tl('Lignes du tableau de brassage'), sub: lab(d.id) || name(d), icon: 'patchPanel', target: { dock: 'netPatch', filter: lab(d.id) || name(d) } });
@@ -169,7 +169,7 @@ export function related(data, sel, o = {}) {
     const devs = (data.devices || []).filter(d => d.rack && d.rack.id === r.id);
     add({ key: 'v:racks', group: 'place', letter: 'b', label: tl('Élévation de la baie'), sub: `${r.u} U`, icon: 'rack', target: { view: 'racks', kind: 'rack', id: r.id }, hl: [r.id] });
     if (r.floor && floorOf(data.site, r.floor)) add({ key: 'v:plan', group: 'place', letter: 'p', label: tl('Emprise sur le plan · {0}', floorOf(data.site, r.floor).f.name), icon: 'floorPlan', target: { view: 'plan', kind: 'rack', id: r.id }, hl: [r.id] });
-    if (devs.length) add({ key: 'c:devs', group: 'contents', label: tl('{0} équipement(s) dans la baie', devs.length), icon: 'checklist', target: { select: devs.map(d => ({ kind: 'dev', id: d.id })) }, hl: devs.map(d => d.id) });
+    if (devs.length) add({ key: 'c:devs', group: 'contents', label: tl('{0:# équipement|# équipements} dans la baie', devs.length), icon: 'checklist', target: { select: devs.map(d => ({ kind: 'dev', id: d.id })) }, hl: devs.map(d => d.id) });
     for (const d of devs.filter(x => (specOf(x) || {}).role === 'switch' || MANAGED.has(x.type) || (specOf(x) || {}).role === 'router').slice(0, 6)) add({ key: 'c:' + d.id, group: 'contents', label: `${name(d)} · U${d.rack.u}`, sub: tl('nœud du schéma logique'), icon: devIcon(d), target: { view: 'logic', kind: 'dev', id: d.id }, hl: [d.id] });
     if (devs.some(isPanel)) add({ key: 'patch', group: 'test', letter: 'r', label: tl('Brassage de la baie'), sub: (o.rackLabel && o.rackLabel(r.id)) || r.name, icon: 'patchPanel', target: { dock: 'netPatch', filter: o.rackLabel ? o.rackLabel(r.id) || r.name : r.name } });
   } else if (['room', 'floor', 'building'].includes(sel.kind)) {
@@ -184,16 +184,16 @@ export function related(data, sel, o = {}) {
     const inside = d => { const w = roomOfDev(data, ix, d); return !!w && fids.has(w.f.f.id) && (!room || (w.room && w.room.id === room.id)); };
     const devs = (data.devices || []).filter(d => (d.loc || d.rack) && inside(d)), racks = (data.racks || []).filter(r => fids.has(r.floor) && (!room || r.room === room.id || (() => { const w = roomOfDev(data, ix, { rack: { id: r.id } }); return w && w.room && w.room.id === room.id; })()));
     add({ key: 'v:plan', group: 'place', letter: 'p', label: tl('Sur le plan'), icon: 'floorPlan', target: { view: 'plan', kind: sel.kind, id: sel.id }, hl: [sel.id] });
-    if (devs.length) add({ key: 'c:devs', group: 'contents', label: tl('{0} équipement(s)', devs.length), sub: tl('les choisir (modification groupée)'), icon: 'checklist', target: { select: devs.map(d => ({ kind: 'dev', id: d.id })) }, hl: devs.map(d => d.id) });
+    if (devs.length) add({ key: 'c:devs', group: 'contents', label: tl('{0:# équipement|# équipements}', devs.length), sub: tl('les choisir (modification groupée)'), icon: 'checklist', target: { select: devs.map(d => ({ kind: 'dev', id: d.id })) }, hl: devs.map(d => d.id) });
     const outs = devs.filter(isOutlet), aps = devs.filter(d => (specOf(d) || {}).role === 'ap');
-    if (outs.length && outs.length !== devs.length) add({ key: 'c:out', group: 'contents', label: tl('{0} prise(s)', outs.length), icon: 'outlet', target: { select: outs.map(d => ({ kind: 'dev', id: d.id })) }, hl: outs.map(d => d.id) });
-    if (aps.length && aps.length !== devs.length) add({ key: 'c:ap', group: 'contents', label: tl('{0} point(s) d’accès', aps.length), icon: 'wifi', target: { select: aps.map(d => ({ kind: 'dev', id: d.id })) }, hl: aps.map(d => d.id) });
+    if (outs.length && outs.length !== devs.length) add({ key: 'c:out', group: 'contents', label: tl('{0:# prise|# prises}', outs.length), icon: 'outlet', target: { select: outs.map(d => ({ kind: 'dev', id: d.id })) }, hl: outs.map(d => d.id) });
+    if (aps.length && aps.length !== devs.length) add({ key: 'c:ap', group: 'contents', label: tl('{0:# point|# points} d’accès', aps.length), icon: 'wifi', target: { select: aps.map(d => ({ kind: 'dev', id: d.id })) }, hl: aps.map(d => d.id) });
     for (const r of racks.slice(0, 6)) add({ key: 'c:' + r.id, group: 'contents', letter: racks.length === 1 ? 'b' : undefined, label: rackName(r), sub: tl('élévation'), icon: 'rack', target: { view: 'racks', kind: 'rack', id: r.id }, hl: [r.id] });
   } else if (sel.kind === 'path') {
     const p = (data.paths || []).find(x => x.id === sel.id); if (!p) return [];
     const via = (data.cables || []).filter(c => { const calc = c.route && c.route.calc; const l = calc && (calc.paths || calc.via || calc.ids || calc.segs); return Array.isArray(l) && l.some(x => (typeof x === 'string' ? x : x && (x.path || x.id)) === p.id); });
     add({ key: 'v:plan', group: 'place', letter: 'p', label: tl('Sur le plan'), icon: 'floorPlan', target: { view: 'plan', kind: 'path', id: p.id }, hl: [p.id] });
-    if (via.length) add({ key: 'c:cables', group: 'contents', label: tl('{0} câble(s) l’empruntent', via.length), icon: 'cable', target: { select: via.map(c => ({ kind: 'cable', id: c.id })) }, hl: via.map(c => c.id) });
+    if (via.length) add({ key: 'c:cables', group: 'contents', label: tl('{0:# câble|# câbles} l’empruntent', via.length), icon: 'cable', target: { select: via.map(c => ({ kind: 'cable', id: c.id })) }, hl: via.map(c => c.id) });
   }
   // Lettres : la première de chaque lettre seulement.
   const used = new Set();

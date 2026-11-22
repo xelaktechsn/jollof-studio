@@ -38,7 +38,7 @@ const STEPS = () => [['file', tl('Fichier')], ['zone', tl('Zone et échelle')], 
 export function openCadImport(ctx, file = null, opts = {}) {
   // Toute la fenêtre (l'aperçu a besoin de place) : un calque fixe porte le voile et la boîte.
   const layer = document.createElement('div'); layer.className = 'ntCiLayer'; document.body.appendChild(layer);
-  const O = overlay(layer, { label: tl('Importer un plan DXF / DWG'), cls: 'ntCiOv' }), { dlg } = O;
+  const O = overlay(layer, { label: tl('Importer un plan DXF ou DWG'), cls: 'ntCiOv' }), { dlg } = O;
   const W = {
     step: 'file', file: null, name: '', doc: null, err: null, busy: null, abort: null, R: null, view: null,
     units: 'm', toMetre: 1, unitsFrom: 'header', region: null, sheet: -1, box: false, layers: new Set(), dims: new Set(), kinds: null,
@@ -46,7 +46,7 @@ export function openCadImport(ctx, file = null, opts = {}) {
     dest: { bld: '', bldName: '', floor: '', floorName: '', level: 0, elev: 0 }, mode: 'bg', conv: null, convUi: null, tParse: 0
   };
   dlg.classList.add('ntCi');
-  dlg.innerHTML = `<div class="nt-hd">${icon('upload')}<div class="nt-ttl"><b>${esc(tl('Importer un plan DXF / DWG'))}</b><span class="ntCiSub"></span></div>
+  dlg.innerHTML = `<div class="nt-hd">${icon('upload')}<div class="nt-ttl"><b>${esc(tl('Importer un plan DXF ou DWG'))}</b><span class="ntCiSub"></span></div>
       <button class="nt-x" data-ci="close" aria-label="${esc(tl('Fermer'))}" title="${esc(tl('Fermer'))}">${icon('x')}</button></div>
     <ol class="ntCiSteps" aria-label="${esc(tl('Étapes'))}"></ol>
     <div class="ntCiBody">
@@ -111,7 +111,12 @@ export function openCadImport(ctx, file = null, opts = {}) {
     fileEl.hidden = s !== 'file'; main.hidden = s === 'file'; main.classList.toggle('conv', s === 'convert');
     if (s === 'convert') { showConvert(); } else { const c = dlg.querySelector('.ntCiConv'); if (c) c.hidden = true; }
     if (s === 'layers') computeRegion();
-    paintSteps(); if (s === 'file') paintFile(); else { if (s !== 'convert') paintSide(); resize(); restyle(); paintPrev(); }
+    paintSteps(); if (s === 'file') paintFile(); else {
+      if (s !== 'convert') paintSide(); resize();
+      // Le volet d'aperçu change de largeur (étape de conversion) : la zone est recadrée dedans.
+      const pw = prev.clientWidth; if (W.region && W.prevW && pw !== W.prevW) fitTo(W.region, false); W.prevW = pw;
+      restyle(); paintPrev();
+    }
     const f = dlg.querySelector(s === 'file' ? '.ntCiFile button, .ntCiFile' : s === 'dest' ? '.ntCiSide select' : '.ntCiSide input, .ntCiSide button'); if (f && f.focus) f.focus({ preventScroll: true });
   }
   function next() { const o = order(), i = o.indexOf(W.step); if (i === o.length - 1) doImport(); else go(o[i + 1]); }
@@ -149,7 +154,7 @@ export function openCadImport(ctx, file = null, opts = {}) {
     const list = Array.isArray(d.diagnostics) ? d.diagnostics : []; if (!list.length) return '';
     const nE = list.filter(x => x.level === 'error').length, nW = list.filter(x => x.level === 'warning').length;
     const row = x => `<li class="${esc(x.level)}"><b>${esc(x.code)}</b> ×${nf(x.n || 1)}${x.sample ? ` <span class="mut">${esc(String(x.sample).slice(0, 60))}</span>` : ''}${x.line != null ? ` <span class="mut">${esc(tl('ligne {0}', x.line))}</span>` : ''}</li>`;
-    return `<details class="ntCiDiag"${nE ? ' open' : ''}><summary>${icon(nE ? 'alert' : 'info')}${esc(tl('Diagnostic du lecteur : {0} erreur(s), {1} avertissement(s), {2} information(s)', nE, nW, list.length - nE - nW))}</summary><ul>${list.slice(0, 40).map(row).join('')}</ul></details>`;
+    return `<details class="ntCiDiag"${nE ? ' open' : ''}><summary>${icon(nE ? 'alert' : 'info')}${esc(tl('Diagnostic du lecteur : {0:# erreur|# erreurs}, {1:# avertissement|# avertissements}, {2:# information|# informations}', nE, nW, list.length - nE - nW))}</summary><ul>${list.slice(0, 40).map(row).join('')}</ul></details>`;
   }
   const input = $('.ntCiInput');
   input.addEventListener('change', () => { const f = input.files && input.files[0]; input.value = ''; if (f) readFile(f); });
@@ -414,7 +419,7 @@ export function openCadImport(ctx, file = null, opts = {}) {
       };
       h += walk(W.tree, 0, '') || `<p class="mut">${esc(tl('Aucun calque dans cette zone.'))}</p>`;
     }
-    h += `</div></section><p class="ntCiTot mut">${esc(tl('{0} calques gardés · {1} entités dans la zone', nf(nOn), kfmt(segOn)))}</p>`;
+    h += `</div></section><p class="ntCiTot mut">${esc(tl('{0:# calque gardé|# calques gardés} · {1:# entité|# entités} dans la zone', nf(nOn), kfmt(segOn)))}</p>`;
     return h;
   }
   function mountSearch() {
@@ -474,7 +479,7 @@ export function openCadImport(ctx, file = null, opts = {}) {
       <section class="ntCiSec"><h4>${icon('info')}${esc(tl('Résumé'))}</h4><dl class="ntCiDl">
         <dt>${esc(tl('Zone'))}</dt><dd>${esc(tl('{0} × {1} m', nf((r[2] - r[0]) * m, 1), nf((r[3] - r[1]) * m, 1)))}</dd>
         <dt>${esc(tl('Calques'))}</dt><dd>${nf(W.layers.size)}</dd>
-        <dt>${esc(tl('Éléments'))}</dt><dd>${esc(kfmt(segs))}</dd>
+        <dt>${esc(tl('Entités'))}</dt><dd>${esc(kfmt(segs))}</dd>
         <dt>${esc(tl('Taille estimée'))}</dt><dd>${esc(bytesFmt(LG.estimateBytes(segs, 0)))}</dd></dl></section>`;
   }
 
@@ -529,7 +534,7 @@ export function openCadImport(ctx, file = null, opts = {}) {
     if (!host) { host = document.createElement('section'); host.className = 'ntCiConv'; main.appendChild(host); }
     host.hidden = false;
     if (!W.convUi && W.conv) {
-      try { W.convUi = W.conv.ui.createConvertStep(host, { ctx, doc: W.doc, region: W.region, layers: W.layers, toMetre: W.toMetre, kinds: Object.fromEntries(W.doc.layers.map(l => [l.id, l.kind])) }); }
+      try { W.convUi = W.conv.ui.createConvertStep(host, { ctx, doc: W.doc, region: W.region, layers: W.layers, toMetre: W.toMetre, kinds: Object.fromEntries(W.doc.layers.map(l => [l.id, l.kind])), counts: Object.fromEntries(W.doc.layers.map(l => [l.id, computeRegion().n[l.id] || 0])) }); } // (counts : entités du fichier par calque dans la zone)
       catch (e) { console.error(e); host.innerHTML = `<p class="ntCiErr">${esc(tl('L’étape de conversion n’a pas pu s’ouvrir.'))}</p>`; }
     }
   }

@@ -44,6 +44,7 @@ const dxfSchemes = () => schemeChoices();
 
 export function renderDocs(ctx) {
   const data = ctx.data(), D = design(ctx), P = D.project, floors = floorsOf(data), L = labeler(data), ic = ctx.icon;
+  preloadXlsx();
   const btn = (act, label, i, extra = '', cls = '') => `<button type="button" class="btn small${cls}" data-act="${act}" ${extra}>${ic(i)}<span>${esc(label)}</span></button>`;
   return `<div class="ntDsPage ntDsDocs">
     <section class="ntDsCard"><h3>${esc(tl('Projet'))}</h3><div class="ntDsForm">
@@ -55,12 +56,13 @@ export function renderDocs(ctx) {
       <div class="ntDsBtns">${btn('print', tl('Imprimer ou enregistrer en PDF'), 'printer', '', ' primary')}${btn('save-report', tl('Enregistrer le rapport (HTML)'), 'download')}</div></section>
     <section class="ntDsCard ntDsReport"><div><h3>${ic('floorPlan')}${esc(tl('Planches à l’échelle'))}</h3>
       <p>${esc(tl('Une planche par étage (plan à l’échelle, fond de plan importé, prises et leurs identifiants, cheminements, câbles, baies, points d’accès) et les élévations des baies, avec cartouche, légende, nord et échelle graphique. A3 paysage, A2 ou A1 si l’étage est grand.'))}</p></div>
-      <div class="ntDsBtns">${btn('sheets-print', tl('Imprimer les planches (PDF)'), 'printer', '', ' primary')}${btn('dxf-all', tl('Exporter en DXF'), 'download')}</div></section>
+      <div class="ntDsBtns">${btn('sheets-print', tl('Imprimer les planches (PDF)'), 'printer', '', ' primary')}${btn('dxf-all', tl('Exporter en DXF'), 'download')}${has('dwgexport.js') ? btn('dwg-all', tl('Exporter en DWG…'), 'download') + (desktop() ? '' : `<small class="ntDsDesk">${ic('monitor')}${esc(tl('DWG : application de bureau'))}</small>`) : ''}</div></section>
     <section class="ntDsCard"><h3>${esc(tl('Par étage'))}</h3><div class="ntDsFloorRows">${floors.map(({ b, f }) => { const n = (floors.some(x => x.b !== b) ? (b.name || b.id) + ' · ' : '') + (f.name || f.id), ul = data.underlays && data.underlays[f.id]; return `<div class="ntDsFloorRow"><span>${ic('floorPlan')}${esc(n)}${ul ? `<em>${esc(tl('fond DXF : export dans ses coordonnées'))}</em>` : ''}</span>${btn('sheet-svg', tl('Planche SVG'), 'download', `data-id="${esc(f.id)}"`)}${btn('dxf-floor', 'DXF', 'download', `data-id="${esc(f.id)}"`)}${btn('svg-floor', tl('Plan simple SVG'), 'download', `data-id="${esc(f.id)}"`)}</div>`; }).join('') || `<p class="ntDsNote">${esc(tl('Aucun étage : dessinez-les dans la vue Plans.'))}</p>`}</div></section>
+    ${exchangeCards(btn, ic)}
     <section class="ntDsCard"><h3>${esc(tl('Échanges avec d’autres outils'))}</h3><div class="ntDsForm">
       ${selField(tl('En-têtes des CSV'), 'exports.csvHeaders', D.exports.csvHeaders, [['standard', tl('Standard (anglais)')], ['local', tl('Langue de l’interface')]], { hint: tl('Standard : Cable ID, From Device, Part Number… comme les outils courants.') })}
       ${selField(tl('Séparateur des champs'), 'exports.csvSep', D.exports.csvSep, [['auto', tl('Automatique')], ['semicolon', tl('Point-virgule ;')], ['comma', tl('Virgule ,')], ['tab', tl('Tabulation')]], { hint: tl('Automatique : point-virgule en français, virgule en anglais.') })}
-      ${selField(tl('Séparateur décimal'), 'exports.csvDecimal', D.exports.csvDecimal, [['auto', tl('Automatique')], ['point', tl('Point (1.5)')], ['comma', tl('Virgule (1,5)')]])}
+      ${selField(tl('Séparateur décimal'), 'exports.csvDecimal', D.exports.csvDecimal, [['auto', tl('Automatique')], ['point', tl('Point (1.5)')], ['comma', tl('Virgule (1,5)')]], { hint: tl('Automatique : virgule en français, point en anglais.') })}
       ${selField(tl('Calques du DXF'), 'exports.dxfScheme', D.exports.dxfScheme, dxfSchemes())}</div>
       <p class="ntDsNote">${esc(tl('Fichiers CSV en UTF-8 avec BOM (Excel, LibreOffice), champs entre guillemets au besoin (RFC 4180). Calques du DXF nommés selon le schéma choisi, couleurs et types de ligne par calque.'))}</p>
       <div class="ntDsBtns">${btn('csv-cables', tl('Câbles'), 'cable')}${btn('csv-patch', tl('Brassage'), 'patchPanel')}${btn('csv-bom', tl('Nomenclature'), 'list')}${btn('csv-outlets', tl('Prises'), 'outlet')}${btn('csv-ipplan', tl('Plan d’adressage'), 'network')}${btn('csv-labels', tl('Étiquettes'), 'tag')}${btn('csv-rooms', tl('Pièces et prises'), 'floorPlan')}${btn('csv-trs', tl('Locaux techniques'), 'rack')}</div></section>
@@ -90,10 +92,42 @@ function printBody(ctx, html, page) {
   setTimeout(() => { if (document.body.classList.contains('printing') && !matchMedia('print').matches) done(); }, 60000);
 }
 
+/** Charge l'import Excel dès l'affichage de l'onglet : le choix du fichier (input.click) doit suivre le clic sans attendre
+ *  le chargement du module, sinon le navigateur le refuse (activation utilisateur expirée). */
+let xlsxReady = null;
+const preloadXlsx = () => { if (!xlsxReady) xlsxReady = import('./xlsxui.js').catch(() => { xlsxReady = null; }); };
+/* ---------- Échanges (modules facultatifs détectés à la construction, comme dans shellnet.js) ---------- */
+const XMOD = import.meta.glob(['./ifcexport.js', './ifcimport.js', './visioexport.js', './vsdximport.js', './dwgexport.js', './netbox.js']);
+const has = (...f) => f.every(x => !!XMOD['./' + x]);
+/** Application de bureau (Tauri) : DWG et NetBox n'y sont complets que là ; dans un navigateur, l'entrée reste et explique. */
+const desktop = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+const XACT = {
+  'ifc-export': ['ifcexport.js', m => m.exportIfc], 'ifc-import': ['ifcimport.js', m => m.openIfcImport],
+  'vsdx-export': ['visioexport.js', m => m.exportVsdx], 'drawio-export': ['visioexport.js', m => m.exportDrawio], 'vsdx-import': ['vsdximport.js', m => m.openVsdxImport],
+  'dwg-all': ['dwgexport.js', m => m.exportDwg], netbox: ['netbox.js', m => m.openNetbox]
+};
+/** Cartes du groupe « Échanges » (Excel, IFC, Visio / draw.io, NetBox), chacune seulement si son module est présent. */
+function exchangeCards(btn, ic) {
+  const desk = desktop() ? '' : `<small class="ntDsDesk">${ic('monitor')}${esc(tl('Application de bureau'))}</small>`;
+  const card = (i, title, text, btns) => `<section class="ntDsCard ntDsReport"><div><h3>${ic(i)}${esc(title)}</h3><p>${esc(text)}</p></div><div class="ntDsBtns">${btns}</div></section>`;
+  const out = [];
+  out.push(card('list', tl('Classeur Excel'), tl('Tous les tableaux dans un classeur .xlsx (câbles, brassage, prises, équipements, nomenclature avec formules, adressage, étiquettes, tests). Modifiez-le dans Excel puis réimportez-le : les différences sont montrées avant d’être appliquées. Un tarif fournisseur peut aussi remplir les prix de la nomenclature.'),
+    `${btn('xlsx-export', tl('Exporter (.xlsx)…'), 'download', '', ' primary')}${btn('xlsx-import', tl('Importer un classeur modifié…'), 'upload')}${btn('xlsx-prices', tl('Importer un tarif…'), 'upload')}`));
+  if (has('ifcexport.js', 'ifcimport.js')) out.push(card('building', tl('Maquette BIM (IFC)'), tl('Bâtiment, étages, locaux, prises, baies, équipements et câbles dans un fichier IFC4 lisible par les visionneuses BIM ; un modèle IFC d’architecte peut aussi servir de point de départ (étages, pièces, murs, portes).'),
+    `${btn('ifc-export', tl('Modèle BIM (IFC)…'), 'download', '', ' primary')}${btn('ifc-import', tl('Importer un modèle IFC…'), 'upload')}`));
+  if (has('visioexport.js')) out.push(card('network', tl('Schémas Visio / draw.io'), tl('Vue logique, plans d’étage et élévations des baies en schémas modifiables (.vsdx pour Visio, .drawio pour draw.io) ; un schéma Visio peut aussi être importé.'),
+    `${btn('vsdx-export', tl('Schémas Visio (.vsdx)…'), 'download', '', ' primary')}${btn('drawio-export', tl('Schémas draw.io (.drawio)…'), 'download')}${has('vsdximport.js') ? btn('vsdx-import', tl('Importer un schéma Visio (.vsdx)…'), 'upload') : ''}`));
+  if (has('netbox.js')) out.push(card('dcimSync', tl('Inventaire NetBox'), tl('Sites, baies, équipements, câbles, VLAN et préfixes comparés à un serveur NetBox, puis envoyés ou repris après votre accord.'),
+    btn('netbox', tl('Synchroniser avec NetBox…'), 'dcimSync', '', ' primary') + desk));
+  return `<h2 class="ntDsGrpTitle">${esc(tl('Échanges'))}</h2>${out.join('')}`;
+}
+
 export async function onAction(ctx, act, b) {
   const data = ctx.data(), base = fileBase(ctx);
   if (act === 'sheets-print') return exportSheetsPdf(ctx);
+  if (/^xlsx-/.test(act)) { const X = await import('./xlsxui.js'); return act === 'xlsx-export' ? X.exportXlsx(ctx) : act === 'xlsx-import' ? X.openXlsxImport(ctx) : X.openPriceImport(ctx); }
   if (act === 'dxf-all') return exportDxf(ctx);
+  if (XACT[act]) { const [f, get] = XACT[act], load = XMOD['./' + f]; if (!load) return; const fn = get(await load()); return fn && fn(ctx); }
   if (act === 'dxf-floor') return exportDxf(ctx, { floor: b.dataset.id });
   if (act === 'sheet-svg') return exportSheetSvg(ctx, b.dataset.id);
   if (act === 'print') return printReport(ctx);
@@ -117,7 +151,7 @@ export async function exportDxf(ctx, o = {}) {
   const r = designDxf(data, { floors: o.floor ? [o.floor] : undefined });
   const F = o.floor ? floorsOf(data).find(x => x.f.id === o.floor) : null;
   await saveText(ctx, r.text, `${fileBase(ctx)}${F ? '-' + slug(F.f.name || F.f.id) : ''}.dxf`, 'application/dxf', 'dxf');
-  ctx.status(r.under ? tl('DXF : {0} étage(s), dont {1} dans les coordonnées de leur fond de plan ({2}).', r.floors, r.under, r.units) : tl('DXF : {0} étage(s) en mètres du plan.', r.floors), 'ok');
+  ctx.status(r.under ? tl('DXF : {0:# étage|# étages}, dont {1} dans les coordonnées de leur fond de plan ({2}).', r.floors, r.under, r.units) : tl('DXF : {0:# étage|# étages} en mètres du plan.', r.floors), 'ok');
   return r;
 }
 /** Fonds de plan décodés des étages qui en ont (pour les planches) : { [étage]: paquet }. */
@@ -151,7 +185,7 @@ export async function exportSheetsPdf(ctx, o = {}) {
   const native = await import('../../native.js');
   if (!native.isTauri()) {
     const w = window.open('', '_blank');
-    if (w) { w.document.open(); w.document.write(SH.sheetsHtml(sheets, { en: isEn, title: fileBase(ctx) })); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* rien */ } }, 400); ctx.status(tl('{0} planche(s) ouvertes dans une nouvelle fenêtre : imprimez-les ou enregistrez-les en PDF.', sheets.length), 'ok'); return sheets.length; }
+    if (w) { w.document.open(); w.document.write(SH.sheetsHtml(sheets, { en: isEn, title: fileBase(ctx) })); w.document.close(); setTimeout(() => { try { w.focus(); w.print(); } catch (e) { /* rien */ } }, 400); ctx.status(tl('{0:# planche|# planches} ouvertes dans une nouvelle fenêtre : imprimez-les ou enregistrez-les en PDF.', sheets.length), 'ok'); return sheets.length; }
   }
   const area = document.getElementById('printArea'); if (!area) { ctx.status(tl('Impression indisponible ici : enregistrez le rapport puis imprimez-le.'), 'warn'); return null; }
   const h = SH.sheetsHtml(sheets, { body: true });

@@ -171,3 +171,4 @@
 .ntPlWfAp summary::-webkit-details-marker { display: none; }
 .ntPlWfAp summary .ic { width: 15px; height: 15px; color: var(--nt-c5e); }
 .ntPlWfAp[open] summary { margin-bottom: 6px; }
+.ntPlRL.s text { font-size: 10px; }

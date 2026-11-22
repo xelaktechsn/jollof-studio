@@ -123,3 +123,12 @@ test('pièces à trous : cour au milieu du bâtiment, pièce enclavée, nettoyag
   assert.equal(room.holes.length, 1, 'trou hors du contour ou illisible retiré'); assert.deepEqual(cleanSite(s), s);
   assert.equal(roomAt(s.buildings[0].floors[0], 5, 3), null, 'un point dans la cour n’est dans aucune pièce');
 });
+
+test('pôle d’inaccessibilité : dans la pièce, loin des murs, hors des trous', async () => {
+  const { polePoint } = await import('./site.js');
+  const L = { poly: [[0, 0], [10, 0], [10, 2], [2, 2], [2, 10], [0, 10]] };
+  const p = polePoint(L); assert.ok(inPoly([p[0], p[1]], L.poly)); assert.ok(p[2] > 0.9 && p[2] < 1.2, 'au coin intérieur des deux ailes de 2 m (≈ 1,17 m des murs)');
+  const ring = { poly: [[0, 0], [10, 0], [10, 10], [0, 10]], holes: [[[3, 3], [7, 3], [7, 7], [3, 7]]] };
+  const q = polePoint(ring); assert.ok(inRoom([q[0], q[1]], ring)); assert.ok(q[2] > 1.2, 'dans la galerie, loin de la cour');
+  assert.equal(polePoint(ring), q, 'mis en cache');
+});

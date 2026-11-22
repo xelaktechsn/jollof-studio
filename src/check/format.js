@@ -42,12 +42,12 @@ export function formatDiag(d, programs) {
  */
 export function summary(r, o = {}) {
   if (o.net) {
-    if (r.errors) return tl('erreur : le projet réseau ne passe pas la vérification ({0} erreur(s), {1} avertissement(s))', r.errors, r.warnings);
-    return r.warnings ? tl('✓ projet réseau vérifié : 0 erreur, {0} avertissement(s)', r.warnings) : tl('✓ projet réseau vérifié : 0 erreur, 0 avertissement');
+    if (r.errors) return tl('erreur : le projet réseau ne passe pas la vérification ({0:# erreur|# erreurs}, {1:# avertissement|# avertissements})', r.errors, r.warnings);
+    return r.warnings ? tl('✓ projet réseau vérifié : 0 erreur, {0:# avertissement|# avertissements}', r.warnings) : tl('✓ projet réseau vérifié : 0 erreur, 0 avertissement');
   }
-  if (r.errors) return tl('erreur : le montage ne passe pas la vérification ({0} erreur(s), {1} avertissement(s))', r.errors, r.warnings);
+  if (r.errors) return tl('erreur : le montage ne passe pas la vérification ({0:# erreur|# erreurs}, {1:# avertissement|# avertissements})', r.errors, r.warnings);
   const how = r.proven ? tl('prouvé sûr dans les {0} états atteignables', fmtN(r.states)) : tl('vérifié sur {0} états sur {1} (partiel)', fmtN(r.states), fmtN(r.space));
-  return r.warnings ? tl('✓ montage vérifié : 0 erreur, {0} avertissement(s) ; {1}', r.warnings, how) : tl('✓ montage vérifié : 0 erreur ; {0}', how);
+  return r.warnings ? tl('✓ montage vérifié : 0 erreur, {0:# avertissement|# avertissements} ; {1}', r.warnings, how) : tl('✓ montage vérifié : 0 erreur ; {0}', how);
 }
 
 /** Rapport complet en texte. */

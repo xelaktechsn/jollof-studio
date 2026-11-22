@@ -213,7 +213,9 @@ const P = {
   // Barre de menus repliée (menus de l'application en un seul bouton).
   menuBars: 'M4 6h16 M4 12h16 M4 18h16',
   // Calque atténué (fond DXF) : cercle à moitié hachuré, pas le soleil du thème clair.
-  dimLayer: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z M12 3v18 M12 7.5h5.6 M12 12h8.9 M12 16.5h5.6'
+  dimLayer: 'M12 3a9 9 0 1 0 0 18 9 9 0 1 0 0-18z M12 3v18 M12 7.5h5.6 M12 12h8.9 M12 16.5h5.6',
+  // Synchroniser avec un serveur d'inventaire (DCIM / IPAM, NetBox) : base de données et flèches aller-retour.
+  dcimSync: 'M3 6.5c0-1.4 2.2-2.5 5-2.5s5 1.1 5 2.5-2.2 2.5-5 2.5-5-1.1-5-2.5z M3 6.5v11c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5v-11 M3 12c0 1.4 2.2 2.5 5 2.5s5-1.1 5-2.5 M15.5 9h5.5 M19 7l2 2-2 2 M21 15h-5.5 M17.5 13l-2 2 2 2'
 };
 
 export function icon(name, cls = '') {

@@ -90,7 +90,7 @@ export function issues(data0, lan, h) {
     for (const e of nb.edges) { deg.set(e.a, (deg.get(e.a) || 0) + 1); deg.set(e.b, (deg.get(e.b) || 0) + 1); }
     for (const a of nb.aps) {
       const w = a.r[b].w, k = WF.clearCount(b, set.reg, w), n = deg.get(a.d.id) || 0;
-      if (w > 20 && n >= k) out.push({ code: 'J1270', id: a.d.id, text: tl('{0} : canal de {1} MHz à {2} avec {3} voisin(s) entendu(s), pour {4} canal(aux) de cette largeur ; passez à une largeur plus étroite.', name(a.d.id), w, BN[b], n, k) });
+      if (w > 20 && n >= k) out.push({ code: 'J1270', id: a.d.id, text: tl('{0} : canal de {1} MHz à {2} avec {3:# voisin entendu|# voisins entendus}, pour {4:# canal|# canaux} de cette largeur ; passez à une largeur plus étroite.', name(a.d.id), w, BN[b], n, k) });
     }
   }
   for (const o of projectOverlaps(data, set)) {

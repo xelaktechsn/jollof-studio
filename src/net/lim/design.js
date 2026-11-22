@@ -22,5 +22,10 @@ export const DESIGN_LIM = {
   /** Calques AIA / NCS (convention publique qui les reprend) : discipline T, groupes JACK, EQPM, CABL, CABL-FIBR, CABL-TRAY, DATA ; A-AREA, A-WALL. */
   DXF_NCS_LAYERS: { v: { jack: 'T-JACK', equipment: 'T-EQPM', cable: 'T-CABL', fibre: 'T-CABL-FIBR', tray: 'T-CABL-TRAY', data: 'T-DATA', area: 'A-AREA', wall: 'A-WALL' }, src: 'moFmdcCad' },
   /** ISO 13567 : longueur des champs obligatoires d'un nom de calque (agent responsable, élément, présentation). */
-  ISO13567_FIELDS: { v: { agent: 2, element: 6, presentation: 2 }, src: 'iso13567Wiki' }
+  ISO13567_FIELDS: { v: { agent: 2, element: 6, presentation: 2 }, src: 'iso13567Wiki' },
+  /** Classeur .xlsx (ECMA-376 partie 1, § 18.17.4.1) : jour 0 du système 1900 et écart en jours avec le système 1904
+   *  (1er janvier 1904 = 0, soit 1462 jours plus tard). */
+  XLSX_DATE_SYSTEM: { v: { base1900: '1899-12-30', offset1904: 1462 }, src: 'ecma376Part1' },
+  /** Formats de nombre intégrés de date et d'heure (§ 18.8.30) ; formats propres numérotés à partir de 164. */
+  XLSX_NUMFMT: { v: { dateIds: [[14, 22], [45, 47]], customFrom: 164 }, src: 'ecma376Part1' }
 };

@@ -26,7 +26,8 @@ const CLIP = new Set(['logic', 'plan', 'racks']), CLIP_CUT = new Set(['logic', '
 
 /**
  * Menus d'un projet réseau. Entrée : { id, label(), icon, keys, act | cmd, when(env), enabled(env), check(env),
- * radio, sub(env) → entrées, global (raccourci traité par le module : il n'existe pas ailleurs), scope (vue où une touche
+ * radio, desk (application de bureau seulement : signalé dans la version web, reste ouvrable pour l'expliquer),
+ * sub(env) → entrées, global (raccourci traité par le module : il n'existe pas ailleurs), scope (vue où une touche
  * seule agit : 'plan', 'logic'), palette (false : pas d'entrée de palette, la commande y est déjà) }.
  */
 export const MENUS = [
@@ -38,12 +39,26 @@ export const MENUS = [
     { id: 'file.save', label: () => tl('Enregistrer'), icon: 'save', keys: 'Mod+S', act: 'click:#saveMenuBtn', palette: false },
     { id: 'file.saveAs', label: () => tl('Enregistrer sous…'), icon: 'save', keys: 'Mod+Shift+S', act: 'click:#saveAsBtn', palette: false },
     SEP,
-    { id: 'file.importCad', label: () => tl('Importer un plan DXF ou DWG…'), icon: 'upload', keys: 'Mod+I', act: 'importCad', global: true, when: env => cap(env, 'cad') },
-    { id: 'file.importImage', label: () => tl('Importer un plan (image)…'), icon: 'image', act: 'importImage' },
+    // Importer : plans (DXF/DWG, image, IFC), schéma Visio, classeur Excel modifié, tarif fournisseur.
+    { id: 'file.import', label: () => tl('Importer'), icon: 'upload', sub: () => [
+      { id: 'file.importCad', label: () => tl('Importer un plan DXF ou DWG…'), icon: 'upload', keys: 'Mod+I', act: 'importCad', global: true, when: env => cap(env, 'cad') },
+      { id: 'file.importImage', label: () => tl('Importer un plan (image)…'), icon: 'image', act: 'importImage' },
+      { id: 'file.importIfc', label: () => tl('Importer un modèle IFC…'), icon: 'upload', act: 'importIfc', when: env => cap(env, 'ifc') },
+      { id: 'file.importVsdx', label: () => tl('Importer un schéma Visio (.vsdx)…'), icon: 'upload', act: 'importVsdx', when: env => cap(env, 'visio') },
+      { id: 'file.importXlsx', label: () => tl('Importer un classeur Excel modifié…'), icon: 'upload', act: 'importXlsx', when: env => cap(env, 'xlsx') },
+      { id: 'file.importPrices', label: () => tl('Importer un tarif (Excel)…'), icon: 'upload', act: 'importPrices', when: env => cap(env, 'xlsx') },
+    ] },
     // Exporter : les mêmes commandes que le menu Documents, mêmes libellés (un seul nom par commande).
     { id: 'file.export', label: () => tl('Exporter'), icon: 'download', sub: () => [
       { id: 'file.exportDxf', label: () => tl('Plan en DXF…'), icon: 'download', keys: 'Mod+Shift+E', act: 'exportDxf', global: true, when: env => cap(env, 'dxf') },
+      // DWG : le DXF converti par le convertisseur installé (ui/dwgexport.js : exportDwg), détecté par shellnet.js.
+      { id: 'file.exportDwg', desk: true, label: () => tl('Plan en DWG…'), icon: 'download', act: 'exportDwg', when: env => cap(env, 'dwg') },
       { id: 'file.exportPdf', label: () => tl('Planches avec cartouche (PDF)…'), icon: 'printer', act: 'exportPdf', when: env => cap(env, 'pdf') },
+      { id: 'file.exportIfc', label: () => tl('Modèle BIM (IFC)…'), icon: 'download', act: 'exportIfc', when: env => cap(env, 'ifc') },
+      // Schémas Visio et draw.io (ui/visioexport.js : exportVsdx, exportDrawio), détectés par shellnet.js.
+      { id: 'file.exportVsdx', label: () => tl('Schémas Visio (.vsdx)…'), icon: 'download', act: 'exportVsdx', when: env => cap(env, 'visio') },
+      { id: 'file.exportDrawio', label: () => tl('Schémas draw.io (.drawio)…'), icon: 'download', act: 'exportDrawio', when: env => cap(env, 'visio') },
+      { id: 'file.exportXlsx', label: () => tl('Classeur Excel (.xlsx)…'), icon: 'list', act: 'exportXlsx', when: env => cap(env, 'xlsx') },
       { id: 'file.exportReport', label: () => tl('Enregistrer le rapport (HTML)…'), icon: 'download', act: 'doc:save-report', palette: false },
       { id: 'file.exportCsv', label: () => tl('Tableaux (CSV)'), icon: 'list', sub: () => CSV.map(([k, ic, name]) => ({ id: 'file.csv.' + k, label: name, icon: ic, act: 'csv:' + k })) }
     ] },
@@ -152,9 +167,18 @@ export const MENUS = [
     SEP,
     { id: 'docs.floors', label: () => tl('Plan d’étage (SVG)'), icon: 'floorPlan', enabled: env => !!(env.floors && env.floors.length), sub: env => (env.floors || []).map(f => ({ id: 'docs.floor.' + f.id, label: () => f.name, act: 'svg-floor:' + f.id, palette: false })) },
     { id: 'docs.racks', label: () => tl('Élévation de baie (SVG)'), icon: 'rack', enabled: env => !!(env.racks && env.racks.length), sub: env => (env.racks || []).map(r => ({ id: 'docs.rack.' + r.id, label: () => r.name, act: 'svg-rack:' + r.id, palette: false })) },
+    { id: 'docs.dxf', label: () => tl('Plan en DXF…'), icon: 'download', act: 'exportDxf', when: env => cap(env, 'dxf'), palette: false },
+    { id: 'docs.dwg', desk: true, label: () => tl('Plan en DWG…'), icon: 'download', act: 'exportDwg', when: env => cap(env, 'dwg'), palette: false },
+    { id: 'docs.ifc', label: () => tl('Modèle BIM (IFC)…'), icon: 'download', act: 'exportIfc', when: env => cap(env, 'ifc'), palette: false },
+    { id: 'docs.xlsx', label: () => tl('Classeur Excel (.xlsx)…'), icon: 'list', act: 'exportXlsx', when: env => cap(env, 'xlsx'), palette: false },
+    { id: 'docs.vsdx', label: () => tl('Schémas Visio (.vsdx)…'), icon: 'network', act: 'exportVsdx', when: env => cap(env, 'visio'), palette: false },
+    { id: 'docs.drawio', label: () => tl('Schémas draw.io (.drawio)…'), icon: 'network', act: 'exportDrawio', when: env => cap(env, 'visio'), palette: false },
     { id: 'docs.csv', label: () => tl('Tableaux (CSV)'), icon: 'list', sub: () => CSV.map(([k, ic, name]) => ({ id: 'docs.csv.' + k, label: name, icon: ic, act: 'csv:' + k, palette: false })) },
     SEP,
-    { id: 'docs.info', label: () => tl('Renseignements du projet (cartouche)'), icon: 'clipboard', act: 'design:docs' }
+    { id: 'docs.info', label: () => tl('Renseignements du projet (cartouche)'), icon: 'clipboard', act: 'design:docs' },
+    SEP,
+    // Inventaire DCIM / IPAM (ui/netbox.js : openNetbox), détecté par shellnet.js.
+    { id: 'docs.netbox', desk: true, label: () => tl('Synchroniser avec NetBox…'), icon: 'dcimSync', act: 'netbox', when: env => cap(env, 'netbox') }
   ] },
   { id: 'help', label: () => tl('Aide'), items: [
     { id: 'help.tour', label: () => tl('Visite guidée du module réseau'), icon: 'play', act: 'tour' },
@@ -182,7 +206,8 @@ function resolve(items, env) {
     if (!visible(it, env)) continue;
     const sub = it.sub ? resolve(val(it.sub, env, []), env) : null;
     if (sub && !sub.length && !it.enabled) continue; // sous-menu vide : rien à montrer
-    const r = { id: it.id, label: it.label(env), icon: it.icon || '', keys: it.scope && env.view !== it.scope ? '' : it.keys || '', scope: it.scope || '', act: it.act || '', cmd: it.cmd || '', disabled: it.enabled ? !val(it.enabled, env, true) : false };
+    const tag = it.desk && env.desktop === false ? tl('application de bureau') : ''; // version web : la commande l'explique
+    const r = { id: it.id, tag, label: it.label(env), icon: it.icon || '', keys: it.scope && env.view !== it.scope ? '' : it.keys || '', scope: it.scope || '', act: it.act || '', cmd: it.cmd || '', disabled: it.enabled ? !val(it.enabled, env, true) : false };
     if (it.check) { r.checked = !!val(it.check, env, false); r.radio = !!it.radio; }
     if (sub) { r.sub = sub; if (!sub.length) r.disabled = true; }
     out.push(r);

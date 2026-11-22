@@ -54,7 +54,7 @@ export function issues(data, lan, h) {
       if (p.pct > 100) add('J1276', p.id, tl('{0} : {1} VA demandés pour {2} VA ({3} %).', name(p.id), fmt(p.va), fmt(p.capVA), Math.round(p.pct)));
       if (p.plugs > p.outlets) add('J1285', p.id, tl('{0} : {1} appareils à brancher pour {2} prises.', name(p.id), p.plugs, p.outlets));
     }
-    if (!pw.pdus.length && pw.unplugged.length) add('J1285', r.id, tl('{0} : {1} appareil(s) alimenté(s) mais aucune PDU pour les brancher.', r.name, pw.unplugged.length));
+    if (!pw.pdus.length && pw.unplugged.length) add('J1285', r.id, tl('{0} : {1:# appareil alimenté|# appareils alimentés} mais aucune PDU pour les brancher.', r.name, pw.unplugged.length));
     for (const u of pw.ups) {
       if (u.pct > 100) add('J1277', u.id, tl('{0} : {1} W pour {2} W ({3} %) : il ne tiendra pas la charge.', name(u.id), fmt(u.w), u.capW, Math.round(u.pct)));
       else if (r.runtime > 0 && u.w > 0 && u.runtime < r.runtime) add('J1278', u.id, tl('{0} : environ {1} min d’autonomie à {2} W, pour {3} min visées.', name(u.id), fmt(u.runtime), fmt(u.w), r.runtime));
@@ -127,6 +127,6 @@ export const LAB = {
       const n = c.n ?? 1;
       return rows.length >= n ? { ok: true, n: rows.length } : { ok: false, why: 'few', got: rows.length, n };
     },
-    text: (c, r) => (r.why === 'norack' ? tl('Il n’y a aucune baie dans le projet.') : tl('{0} prise(s) brassée(s) jusqu’au switch, il en faut {1}.', r.got, r.n))
+    text: (c, r) => (r.why === 'norack' ? tl('Il n’y a aucune baie dans le projet.') : tl('{0:# prise brassée|# prises brassées} jusqu’au switch, il en faut {1}.', r.got, r.n))
   }
 };

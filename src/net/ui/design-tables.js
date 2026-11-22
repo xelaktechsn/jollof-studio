@@ -24,12 +24,12 @@ function labelData(ctx, state) {
 }
 function cableData(ctx, state) {
   const rows = cableSchedule(ctx.data()).filter(r => (!state.kind || r.kind === state.kind) && match(state.q, r.label, r.from, r.to, r.type));
-  return { rows, cols: [{ key: 'label', name: tl('Étiquette') }, { key: r => KIND_NAME[r.kind](), name: tl('Genre') }, { key: 'from', name: tl('De'), cls: 'w' }, { key: 'to', name: tl('Vers'), cls: 'w' }, { key: 'type', name: tl('Type') }, { key: r => fmt(r.len, 1), name: tl('Longueur (m)'), num: 1 }, { key: r => (r.mode === 'auto' ? (r.fallback ? tl('automatique, en équerre') : tl('automatique')) : r.mode === 'manual' ? tl('manuel') : '—'), name: tl('Tracé'), cls: 'w' }, { key: r => r.paths.join(' > '), name: tl('Cheminements'), cls: 'w' }] };
+  return { rows, cols: [{ key: 'label', name: tl('Étiquette') }, { key: r => KIND_NAME[r.kind](), name: tl('Genre') }, { key: 'from', name: tl('De') }, { key: 'to', name: tl('Vers') }, { key: 'type', name: tl('Type') }, { key: r => fmt(r.len, 1), name: tl('Longueur (m)'), num: 1 }, { key: r => (r.mode === 'auto' ? (r.fallback ? tl('automatique, en équerre') : tl('automatique')) : r.mode === 'manual' ? tl('manuel') : '—'), name: tl('Tracé') }, { key: r => r.paths.join(' > '), name: tl('Cheminements'), cls: 'w' }] };
 }
 /** Tableau de brassage : celui de rack.js (partie baies) mis à nos colonnes, sinon le nôtre (docs.js). */
 function patchData(ctx, state) {
   const rows = patchingRows(ctx.data(), ctx.lan()).filter(r => match(state.q, ...Object.values(r)));
-  return { rows, cols: PATCH_KEYS.map(k => ({ key: r => (/Len$/.test(k) && typeof r[k] === 'number' ? fmt(r[k], 1) : r[k] ?? ''), name: patchColName(k), num: /Len$/.test(k), cls: /^(outlet|device|panel)$/.test(k) ? 'w' : '' })) };
+  return { rows, cols: PATCH_KEYS.map(k => ({ key: r => (/Len$/.test(k) && typeof r[k] === 'number' ? fmt(r[k], 1) : r[k] ?? ''), name: patchColName(k), num: /Len$/.test(k), cls: k === 'outlet' ? 'w' : '' })) };
 }
 
 /** Rend l'onglet (labels, cables, patch, bom). */
@@ -40,12 +40,12 @@ export function renderTab(ctx, tab, state) {
     const tot = k => all.filter(r => r.kind === k).reduce((a, r) => a + r.len, 0);
     return `<div class="ntDsPage"><div class="ntDsKpis">${kpi(tl('Câbles'), fmt(all.length))}${kpi(tl('Liens permanents'), fmt(all.filter(r => r.kind === 'horizontal').length), { sub: fmt(tot('horizontal')) + ' m' })}${kpi(tl('Cordons'), fmt(all.filter(r => r.kind === 'cord').length))}${kpi(tl('Rocades'), fmt(all.filter(r => r.kind === 'backbone').length), { sub: fmt(tot('backbone')) + ' m' })}</div>
       ${tools(ctx, `${search(state, tl('Rechercher une étiquette, un équipement…'))}<select class="sel ntDsKind" data-filter="kind" aria-label="${esc(tl('Genre'))}"><option value="">${esc(tl('Tous les câbles'))}</option>${Object.keys(KIND_NAME).map(k => `<option value="${k}"${state.kind === k ? ' selected' : ''}>${esc(KIND_NAME[k]())}</option>`).join('')}</select>`, 'csv-cables')}
-      ${table([{ ...cols[0], key: r => `<button type="button" class="ntDsLink" data-act="reveal" data-id="${esc(r.id)}">${esc(r.label)}</button>`, html: 1 }, ...cols.slice(1)], rows.slice(0, MAX_ROWS), { empty: tl('Aucun câble.'), cls: 'ntDsFit' })}${more(rows.length)}</div>`;
+      ${table([{ ...cols[0], key: r => `<button type="button" class="ntDsLink" data-act="reveal" data-id="${esc(r.id)}">${String(r.label).split(/(?<=[/\\])/).map(x => `<span class="ntDsNw">${esc(x)}</span>`).join('<wbr>')}</button>`, html: 1 }, ...cols.slice(1)], rows.slice(0, MAX_ROWS), { empty: tl('Aucun câble.'), cls: 'ntDsWide' })}${more(rows.length)}</div>`;
   }
   if (tab === 'patch') {
     const { rows, cols } = patchData(ctx, state);
     return `<div class="ntDsPage">${tools(ctx, search(state, tl('Rechercher un port, un équipement…')), 'csv-patch')}
-      ${table(cols, rows.slice(0, MAX_ROWS), { cls: 'ntDsFit', empty: tl('Aucun cordon de brassage : posez des panneaux et des switchs dans les baies (ou lancez le générateur).') })}${more(rows.length)}
+      ${table(cols, rows.slice(0, MAX_ROWS), { cls: 'ntDsWide', empty: tl('Aucun cordon de brassage : posez des panneaux et des switchs dans les baies (ou lancez le générateur).') })}${more(rows.length)}
       <p class="ntDsNote">${esc(typeof RACK.patchingSchedule === 'function' ? tl('Tableau fourni par la vue Baies.') : tl('Cordons entre l’avant des panneaux et les ports des équipements, avec la prise au bout du lien permanent.'))}</p></div>`;
   }
   if (tab === 'bom') return renderBom(ctx);
@@ -91,10 +91,12 @@ function renderBom(ctx) {
   }
   const lab = D.labour.map((l, i) => `<tr><td><input class="inp" data-edit="labour" data-i="${i}" data-f="name" value="${esc(l.name)}" maxlength="80" aria-label="${esc(tl('Désignation'))}"></td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.5" data-edit="labour" data-i="${i}" data-f="qty" value="${l.qty}" aria-label="${esc(tl('Quantité'))}"></td><td><input class="inp ntDsUnit" data-edit="labour" data-i="${i}" data-f="unit" value="${esc(l.unit)}" maxlength="12" aria-label="${esc(tl('Unité'))}"></td><td class="n"><input class="inp ntDsPrice" type="number" min="0" step="0.01" data-edit="labour" data-i="${i}" data-f="price" value="${l.price || ''}" placeholder="${esc(tl('à renseigner'))}" aria-label="${esc(tl('Prix unitaire'))}"></td><td class="n"><button type="button" class="btn small icon" data-act="del-labour" data-i="${i}" aria-label="${esc(tl('Supprimer la ligne'))}" data-tip="${esc(tl('Supprimer la ligne'))}">${ctx.icon('trash')}</button></td><td class="n">${l.price ? esc(money(l.qty * l.price, cur, isEn)) : `<span class="ntDsToFill">${esc(tl('à renseigner'))}</span>`}</td></tr>`).join('');
   const nUn = b.unpriced.length, partial = nUn > 0;
-  const banner = !b.lines.length ? '' : partial ? `<section class="ntDsWarn ntDsPriceNote"><p>${ctx.icon('alert')}<span><b>${esc(tl('Prix unitaires à renseigner.'))}</b> ${esc(tl('Jollof Studio ne fournit aucun prix : saisissez ceux de votre fournisseur dans la colonne « Prix unitaire » (ils sont enregistrés avec le projet). {0} ligne(s) sans prix : les totaux sont partiels.', nUn))}</span></p></section>` : '';
+  // module de l'import du tarif chargé d'avance : le choix du fichier doit suivre le clic (activation utilisateur)
+  import('./xlsxui.js').catch(() => {});
+  const banner = !b.lines.length ? '' : partial ? `<section class="ntDsWarn ntDsPriceNote"><p>${ctx.icon('alert')}<span><b>${esc(tl('Prix unitaires à renseigner.'))}</b> ${esc(tl('Jollof Studio ne fournit aucun prix : saisissez ceux de votre fournisseur dans la colonne « Prix unitaire » (ils sont enregistrés avec le projet). {0:# ligne|# lignes} sans prix : les totaux sont partiels.', nUn))}</span></p></section>` : '';
   return `<div class="ntDsPage">${banner}
-    <div class="ntDsKpis">${kpi(partial ? tl('Total partiel') : tl('Total estimé'), money(b.total, cur, isEn), { sub: partial ? tl('incomplet : {0} ligne(s) à renseigner', nUn) : tl('hors taxes'), warn: partial })}${kpi(tl('Matériel et fournitures'), money(b.total - (b.groups.labour || 0), cur, isEn))}${kpi(tl('Main-d’œuvre'), money(b.groups.labour || 0, cur, isEn))}${kpi(tl('Lignes sans prix'), fmt(b.unpriced.filter(k => !/^labour/.test(k)).length), { warn: b.unpriced.length > 0, ok: !b.unpriced.length })}</div>
-    <div class="ntDsTools">${selField(tl('Devise'), 'currency', cur, CURRENCIES.map(c => [c, c]))}<span class="ntDsSp"></span><button type="button" class="btn small" data-act="csv-bom">${ctx.icon('download')}<span>CSV</span></button></div>
+    <div class="ntDsKpis">${kpi(partial ? tl('Total partiel') : tl('Total estimé'), money(b.total, cur, isEn), { sub: partial ? tl('incomplet : {0:# ligne|# lignes} à renseigner', nUn) : tl('hors taxes'), warn: partial })}${kpi(tl('Matériel et fournitures'), money(b.total - (b.groups.labour || 0), cur, isEn))}${kpi(tl('Main-d’œuvre'), money(b.groups.labour || 0, cur, isEn))}${kpi(tl('Lignes sans prix'), fmt(b.unpriced.filter(k => !/^labour/.test(k)).length), { warn: b.unpriced.length > 0, ok: !b.unpriced.length })}</div>
+    <div class="ntDsTools">${selField(tl('Devise'), 'currency', cur, CURRENCIES.map(c => [c, c]))}<span class="ntDsSp"></span><button type="button" class="btn small" data-act="xlsx-prices">${ctx.icon('upload')}<span>${esc(tl('Importer un tarif…'))}</span></button><button type="button" class="btn small" data-act="csv-bom">${ctx.icon('download')}<span>CSV</span></button></div>
     <div class="ntDsTblWrap"><table class="ntDsTbl ntDsBom"><thead><tr><th>${esc(tl('Désignation'))}</th><th class="n">${esc(tl('Qté'))}</th><th>${esc(tl('Unité'))}</th><th class="n">${esc(tl('Prix unitaire'))}</th><th></th><th class="n">${esc(tl('Total'))}</th></tr></thead>
     <tbody>${rowsHtml || `<tr><td colspan="6" class="ntDsEmpty">${esc(tl('Le modèle est vide : rien à chiffrer.'))}</td></tr>`}
     <tr class="ntDsGrp"><td colspan="5">${esc(GROUPS.labour)}</td><td class="n">${esc(money(b.groups.labour || 0, cur, isEn))}</td></tr>${lab}
@@ -106,6 +108,7 @@ function renderBom(ctx) {
 /** Boutons des onglets (data-act). */
 export function onAction(ctx, act, b, state, rerender) {
   const data = ctx.data();
+  if (act === 'xlsx-prices') return import('./xlsxui.js').then(X => X.openPriceImport(ctx));
   if (act === 'csv-labels') return saveTable(ctx, 'labels', tl('etiquettes'));
   if (act === 'csv-cables') return saveTable(ctx, 'cables', tl('cables'));
   if (act === 'csv-patch') return saveTable(ctx, 'patching', tl('brassage'));

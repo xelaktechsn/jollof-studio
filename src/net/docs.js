@@ -201,7 +201,8 @@ export function patchingRows(data, lan) {
   return rows.map(r => ({
     rack: r.rackId ? L.rack(r.rackId) : r.rack || '', panel: r.panelId ? L.of(r.panelId) : r.panel || '', port: r.panelId && r.portId ? L.of(r.panelId, r.portId) : r.port || '',
     device: r.switch || '', dport: r.switchPort || '', vlan: r.vlan ?? '', outlet: r.outlet || '', oport: r.outletPort || '',
-    permLen: r.permLen != null ? +(+r.permLen).toFixed(1) : null, cordLen: r.cordLen != null ? +(+r.cordLen).toFixed(1) : null
+    permLen: r.permLen != null ? +(+r.permLen).toFixed(1) : null, cordLen: r.cordLen != null ? +(+r.cordLen).toFixed(1) : null,
+    _sw: r.switchId || '', _swp: r.switchPortId || '', _cord: r.cableId || '' // identifiants stables (échanges : interop/xlsxnet.js)
   }));
 }
 
@@ -323,7 +324,7 @@ export function csvTables(data, lan, o = {}) {
       const link = at.get(d.id + '|' + bp.id), far = link ? (link.a[0] === d.id ? link.b : link.a) : null, P = far && devs.get(far[0]);
       const front = P && isPanel(P) ? at.get(P.id + '|f' + portNum(far[1])) : null, sw = front ? (front.a[0] === P.id ? front.b : front.a) : null, S = sw && devs.get(sw[0]);
       const cfg = S && S.p && S.p.ports ? S.p.ports[sw[1]] : null;
-      orows.push({ id: L.of(d.id, bp.id), dev: d.name, port: bp.label || bp.id, room: room ? room.name || room.id : '', floor: F ? F.f.name || F.f.id : '', building: F ? F.b.name || F.b.id : '',
+      orows.push({ _dev: d.id, _port: bp.id, _sw: S ? S.id : '', _swp: sw ? sw[1] : '', id: L.of(d.id, bp.id), dev: d.name, port: bp.label || bp.id, room: room ? room.name || room.id : '', floor: F ? F.f.name || F.f.id : '', building: F ? F.b.name || F.b.id : '',
         panel: P ? L.of(P.id) : '', pport: far ? portNum(far[1]) : '', sw: S ? S.name : '', swport: S ? pname(S, sw[1]) : '', vlan: cfg ? cfg.vlan ?? '' : '', voice: cfg && cfg.voice ? cfg.voice : '',
         len: link ? +(+link.len || 0).toFixed(1) : '', x: d.loc ? d.loc.x : '', y: d.loc ? d.loc.y : '', h: d.loc ? d.loc.h : '' });
     }
@@ -434,7 +435,7 @@ export function reportHtml(data, o = {}) {
   const lt = labelTable(data).filter(r => r.kind !== 'cable');
   parts.push(sec(tl('Étiquettes'), T([{ name: tl('Objet'), key: r => KIND[r.kind] ? KIND[r.kind]() : r.kind }, { name: tl('Étiquette'), key: 'label' }, { name: tl('Emplacement'), key: 'where' }], lt)));
   const toFill = tl('à renseigner'), nUn = b.unpriced.length;
-  parts.push(sec(tl('Nomenclature et chiffrage'), (nUn ? `<p class="warn">${esc(tl('Prix unitaires à renseigner : Jollof Studio ne fournit aucun prix. {0} ligne(s) sans prix ; le total ci-dessous est partiel.', nUn))}</p>` : '')
+  parts.push(sec(tl('Nomenclature et chiffrage'), (nUn ? `<p class="warn">${esc(tl('Prix unitaires à renseigner : Jollof Studio ne fournit aucun prix. {0:# ligne|# lignes} sans prix ; le total ci-dessous est partiel.', nUn))}</p>` : '')
     + T([{ name: tl('Désignation'), key: 'name' }, { name: tl('Qté'), key: 'qty', num: 1 }, { name: tl('Unité'), key: 'unit' }, { name: tl('Prix unitaire'), key: r => (r.price ? money(r.price, b.currency, en) : toFill), num: 1 }, { name: tl('Total'), key: r => (r.price ? money(r.total, b.currency, en) : toFill), num: 1 }], b.lines)
     + `<p class="tot">${esc(nUn ? tl('Total partiel (hors lignes à renseigner)') : tl('Total'))} : <b>${esc(money(b.total, b.currency, en))}</b></p>`));
   if ((data.vlans || []).length) parts.push(sec(tl('Plan d’adressage'), T([{ name: 'VLAN', key: 'id', num: 1 }, { name: tl('Nom'), key: 'name' }, { name: tl('Réseau'), key: 'net' }, { name: tl('Passerelle'), key: 'gw' }, { name: tl('Hôtes prévus'), key: v => v.hosts ?? '', num: 1 }], data.vlans)));

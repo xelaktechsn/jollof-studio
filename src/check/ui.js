@@ -162,7 +162,7 @@ export function installCheck(app) {
       <header><span class="jlv">${lvText}</span><code class="jcode">[${d.code}]</code><b>${esc(d.title)}</b></header>
       <div class="jloc">--&gt; <button type="button" class="link" data-a="see">${esc(where(d))}</button></div>
       ${srcBlock(d)}
-      ${row(tl('état :'), d.state ? d.state + (d.states > 1 ? tl(' (et {0} autre(s) état(s) sur {1})', fmtN(d.states - 1), fmtN(d.total)) : '') : '')}
+      ${row(tl('état :'), d.state ? d.state + (d.states > 1 ? tl(' (et {0:# autre état|# autres états} sur {1})', fmtN(d.states - 1), fmtN(d.total)) : '') : '')}
       ${row(tl('note :'), d.note)}${row(tl('aide :'), d.help, 'help')}
       ${d.accepted != null ? row(tl('accepté :'), d.accepted || tl('sans raison donnée'), 'accd') : ''}
       ${accepting === d.key ? `<form class="jaccept" data-a="acceptForm"><input class="inp" name="why" maxlength="160" required placeholder="${tl('Pourquoi cet avertissement est-il voulu ?')}" aria-label="${tl('Raison')}"><button class="btn small primary">${tl('Accepter')}</button><button type="button" class="btn small" data-a="cancelAccept">${CANCEL}</button></form>` : ''}

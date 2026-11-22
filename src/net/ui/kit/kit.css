@@ -49,7 +49,8 @@
 .ntKRow[aria-selected="true"] .ntKIc { color: var(--accent); }
 .ntKRow .ntKLb { min-width: 24px; flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .ntKRow .ntKLb mark { background: none; color: var(--accent-hi); font-weight: 600; }
-.ntKRow .ntKSub { min-width: 0; flex: 0 1000 auto; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--muted); }
+.ntKRow .ntKSub { min-width: 0; flex: 1 1 0; overflow: hidden; text-overflow: ellipsis; font-size: 11px; color: var(--muted); }
+:root[data-theme="light"] .ntKRow .ntKSub { color: var(--fg-2); } /* 11 px : contraste d'au moins 4,5:1 sur fond clair */
 .ntKRow .ntKBadge { margin-left: auto; flex: none; font: 500 10.5px var(--mono); color: var(--muted); padding-left: 6px; }
 .ntKRow .ntKDot { flex: none; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); }
 .ntKRow .ntKDot.err { background: var(--danger); }
@@ -86,7 +87,8 @@
 /* ---------- Tableau (virtualisé) ---------- */
 .ntKTbl { display: flex; flex-direction: column; min-height: 0; height: 100%; font-size: 12px; }
 .ntKTbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid var(--line); flex: none; }
-.ntKTbar .ntKSearch { width: 240px; }
+.ntKTbar .ntKTs { flex: 0 1 320px; min-width: 170px; }
+.ntKTbar .ntKSearch { width: 100%; }
 .ntKTbar .grow { flex: 1; }
 .ntKTbar .ntKTn { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .ntKTwrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; outline: none; }

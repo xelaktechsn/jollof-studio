@@ -38,8 +38,31 @@ export function t(s, ...args) {
     const m = /^(\s*)([\s\S]*?)(\s*)$/.exec(s), tr = EN[m[2]];
     if (tr != null) { const lead = /^[:;,.!?)]/.test(tr) ? '' : m[1]; out = lead + tr + m[3]; }
   }
-  return args.length ? String(out).replace(/\{(\d+)\}/g, (x, i) => (args[i] ?? '')) : out;
+  if (MAC && typeof out === 'string' && out.includes('+')) out = macKeys(out);
+  if (!args.length) return out;
+  // Pluriels : « {0:# câble|# câbles} » prend la forme qui convient au nombre {0} (# : le nombre), selon la langue.
+  return String(out).replace(PLURAL_RE, (x, i, one, many) => (isOne(args[i]) ? one : many).replace(/#/g, args[i] ?? '')).replace(/\{(\d+)\}/g, (x, i) => (args[i] ?? ''));
 }
+/** Mac : les raccourcis écrits dans les textes (« Ctrl+Z », « Ctrl+Maj+M », « Alt+3 », « Alt+← ») prennent les signes du
+ * système (⌘Z, ⌘⇧M, ⌥3, ⌥←), comme les menus ; ailleurs ils restent tels quels. */
+const MAC = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
+const MAC_SYM = { Ctrl: '⌘', Cmd: '⌘', Alt: '⌥', Maj: '⇧', Shift: '⇧' };
+export const macKeys = str => String(str).replace(/\b(?:(?:Ctrl|Cmd|Alt|Maj|Shift)\+)+(?=[^\s+])/g, m => m.split('+').filter(Boolean).map(k => MAC_SYM[k]).join(''));
+const PLURAL_RE = /\{(\d+):([^{}|]*)\|([^{}]*)\}/g;
+/**
+ * Règle du singulier de la langue : en français 0 et 1 (« 0 câble », « 1 câble »), en anglais 1 seulement (« 0 cables »).
+ * Un nombre écrit en texte (« 1 234 », « 1,5 ») est relu ; un texte qui n'est pas un nombre prend le pluriel.
+ */
+export function isOne(v) {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? '').replace(/[\s\u00a0\u202f]/g, '').replace(',', '.'));
+  if (!Number.isFinite(n)) return false;
+  return isEn ? n === 1 : Math.abs(n) < 2;
+}
+/**
+ * Texte au singulier ou au pluriel selon n : tn(n, forme au singulier, forme au pluriel, …arguments). Les deux formes sont des clés du
+ * dictionnaire (en.js). Pour plusieurs nombres dans une phrase : la forme « {k:un|plusieurs} » de tl().
+ */
+export function tn(n, one, many, ...args) { return t(isOne(n) ? one : many, ...args); }
 /** Ajoute des traductions (dictionnaire des modules Pro, chargé avec eux). */
 export function addDictionary(d) { if (isEn) Object.assign(EN, d); }
 /** Charge le dictionnaire anglais (à faire avant d'importer les modules de l'interface). */

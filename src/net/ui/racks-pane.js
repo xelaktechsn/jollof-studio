@@ -43,7 +43,7 @@ export function rackPane(ctx, r, s, list) {
     <tr><th>${tl('Puissance consommée')}</th><td>${f1(s.w, isEn)} W <small class="mut">(${s.basis === 'max' ? tl('maximale') : tl('typique')})</small><br><small class="mut">${tl('typique {0} W, maximale {1} W', f1(s.typW, isEn), f1(s.maxW, isEn))}</small>${s.poeW ? `<br><small class="mut">${tl('dont {0} W de PoE réservé par les switchs', f1(s.poeW, isEn))}</small>` : ''}</td></tr>
     <tr><th>${tl('Puissance apparente')}</th><td>${f1(s.va, isEn)} VA <small class="mut">(${tl('facteur de puissance {0}', f1(r.pf, isEn))})</small></td></tr>
     <tr><th>${tl('Chaleur')}</th><td>${f1(s.heatW, isEn)} W · ${f1(s.btu, isEn)} BTU/h${gauge(heatPct)}</td></tr></table>
-    ${s.guess.length ? `<p class="mut">${tl('{0} appareil(s) sans consommation typique dans sa fiche : sa puissance maximale est comptée (majorant). Saisissez une puissance mesurée dans son inspecteur.', s.guess.length)}</p>` : ''}</section>`;
+    ${s.guess.length ? `<p class="mut">${tl('{0:# appareil|# appareils} sans consommation typique dans sa fiche : sa puissance maximale est comptée (majorant). Saisissez une puissance mesurée dans son inspecteur.', s.guess.length)}</p>` : ''}</section>`;
   if (s.pdus.length) h += `<section class="ntSec"><h4>PDU</h4><table class="ntTable"><tr><th>${tl('PDU')}</th><th>${tl('Taux de charge')}</th><th>${tl('Prises')}</th></tr>${s.pdus.map(p => `<tr><td>${esc(ctx.nameOf(p.id))}</td><td>${f1(p.va, isEn)} / ${f1(p.capVA, isEn)} VA · ${f1(p.amps, isEn)} A${gauge(p.pct)}</td><td>${p.plugs} / ${p.outlets}</td></tr>`).join('')}</table><p class="mut">${tl('Branchements non choisis : partagés également entre les PDU (modèle simplifié).')}</p></section>`;
   if (s.ups.length) h += `<section class="ntSec"><h4>${tl('Onduleurs')}</h4><table class="ntTable"><tr><th>${tl('Onduleur')}</th><th>${tl('Taux de charge')}</th><th>${tl('Autonomie')}</th></tr>${s.ups.map(u => `<tr><td>${esc(ctx.nameOf(u.id))}${u.ebm ? `<br><small class="mut">+ ${esc(ctx.nameOf(u.ebm))}</small>` : ''}</td><td>${f1(u.w, isEn)} / ${u.capW} W${gauge(u.pct)}</td><td class="${u.runtime < r.runtime ? 'bad' : ''}">${u.runtime === Infinity ? '—' : tl('{0} min', f1(u.runtime, isEn))}${u.extra ? `<br><small class="mut">${tl('extrapolé')}</small>` : ''}</td></tr>`).join('')}</table><p class="mut">${tl('Autonomie interpolée entre les points de la fiche (pleine charge, demi-charge) : modèle simplifié, ±15 % selon le fabricant.')}</p></section>`;
   h += `<section class="ntSec"><h4>${tl('Valeurs de conception (modifiables)')}</h4>
@@ -53,7 +53,7 @@ export function rackPane(ctx, r, s, list) {
     ${field(tl('Puissance retenue'), `<select class="sel" data-rkf="basis"><option value="typ"${r.basis === 'typ' ? ' selected' : ''}>${tl('typique (fiches)')}</option><option value="max"${r.basis === 'max' ? ' selected' : ''}>${tl('maximale (fiches)')}</option></select>`)}
     ${field(tl('Tension (V)'), num('volts', r.volts, 'min="100" max="400"'))}</section>`;
   const tips = [];
-  if (s.managers.missing.length) tips.push(tl('{0} panneau(x) de brassage sans passe-câbles 1U à côté (règle de conception : un passe-câbles par panneau).', s.managers.missing.length));
+  if (s.managers.missing.length) tips.push(tl('{0:# panneau|# panneaux} de brassage sans passe-câbles 1U à côté (règle de conception : un passe-câbles par panneau).', s.managers.missing.length));
   if (s.blanks) tips.push(tl('{0} U libres à boucher par des obturateurs 1U.', s.blanks));
   if (tips.length) h += `<section class="ntSec"><h4>${tl('Conseils')}</h4><ul class="ntRkTips">${tips.map(t => `<li>${esc(t)}</li>`).join('')}</ul></section>`;
   h += `<section class="ntSec"><h4>${tl('Problèmes')}</h4>${issuesHtml(ctx, list)}</section>`;
@@ -90,7 +90,7 @@ export function placeFields(ctx, d, data) {
 /** Résumé de toutes les baies (rien n'est choisi). */
 export function summaryPane(ctx, sums, list) {
   const { tl, esc, icon, isEn } = ctx;
-  let h = `<div class="ntHead">${icon('rack')}<div><b>${tl('Baies')}</b><small>${tl('{0} baie(s)', sums.length)}</small></div></div>`;
+  let h = `<div class="ntHead">${icon('rack')}<div><b>${tl('Baies')}</b><small>${tl('{0:# baie|# baies}', sums.length)}</small></div></div>`;
   h += `<p class="ntDoc">${tl('Cliquez une baie ou un équipement pour voir ses réglages. Glissez les équipements de la bibliothèque ou de la liste « Hors baie » dans les U libres.')}</p>`;
   if (sums.length) h += `<section class="ntSec"><table class="ntTable"><tr><th>${tl('Baie')}</th><th>U</th><th>W</th><th>kg</th></tr>${sums.map(s => `<tr data-rkgo="${esc(s.id)}"><td>${esc(s.name)}</td><td>${s.usedU}/${s.u}</td><td>${f1(s.w, isEn)}</td><td>${f1(s.kg, isEn)}</td></tr>`).join('')}</table></section>`;
   if (sums.length) h += `<section class="ntSec"><h4>${tl('Problèmes des baies')}</h4>${issuesHtml(ctx, list, tl('Aucun problème dans les baies.'))}</section>`;

@@ -132,6 +132,13 @@ select.sInput { appearance: auto; }
 /* Icône en tête du titre (« {0}Nouveau projet ») : un espace entre elle et le texte. */
 .sDialog > header h3 > .ic:first-child { margin-right: 8px; vertical-align: -3px; color: var(--accent-hi); }
 .sDialog .sBody { padding: 8px 18px; overflow: auto; }
+/* En-tête d'assistant (dialog({ head })) : icône, titre, sous-titre, fond et filet, comme les assistants du plan réseau (.nt-hd). */
+.sDialog.sDlgHd > header { padding: 10px 10px 10px 16px; border-bottom: 1px solid var(--line); background: var(--panel-2); border-radius: 16px 16px 0 0; }
+.sDialog.sDlgHd > header > .ic { flex: none; width: 18px; height: 18px; color: var(--accent); }
+.sDlgTtl { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.sDlgTtl h3 { margin: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sDlgTtl span { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sDialog.sDlgHd .sBody { padding-top: 14px; }
 .sDialog > footer { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 18px 16px; }
 .dlgText { margin: 0 0 12px; line-height: 1.55; color: var(--fg-2); }
 .swatchRow { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -146,6 +153,8 @@ select.sInput { appearance: auto; }
 .sMenu button:hover { background: var(--raise); color: var(--fg); }
 .sMenu button.danger { color: var(--danger-ink); }
 .sMenu hr { border: 0; border-top: 1px solid var(--line); margin: 5px 0; }
+/* Entrée choisie (checked) : coche en fin de ligne, dans une colonne à elle. */
+.sMenu .sMenuCk { margin-left: auto; padding-left: 14px; width: 14px; height: 14px; box-sizing: content-box; color: var(--accent-hi); }
 .toasts { position: fixed; z-index: 80; right: 18px; bottom: 40px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
 .toast { display: flex; align-items: center; gap: 10px; max-width: 420px; padding: 11px 14px; border-radius: 11px; background: var(--glass); border: 1px solid var(--line-2); box-shadow: 0 14px 40px #000a; animation: toastIn .25s cubic-bezier(.2,.8,.2,1); font-size: 13px; }
 .toast .ic { color: var(--ok); }

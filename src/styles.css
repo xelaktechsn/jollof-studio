@@ -1170,7 +1170,7 @@ canvas.picking { cursor: crosshair !important; }
 .checkChip.warn { color: var(--warn); }
 .checkChip.idle { color: var(--muted); }
 /* Thème clair : texte de la pastille foncé (contraste d'au moins 4,5:1 sur son fond pâle). */
-:root[data-theme="light"] .checkChip.ok { color: var(--ok-ink); }
+:root[data-theme="light"] .checkChip.ok { color: #166534; } /* vert foncé : ≥ 4,5:1 sur le fond pâle de la pastille */
 :root[data-theme="light"] .checkChip.warn { color: var(--warn-ink); }
 .checkChip.busy .ic { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }

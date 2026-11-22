@@ -95,7 +95,7 @@ export function simIssues(lan, data, h) {
     }
     if (vlan && v && anyRouter && !gws.length && hs.some(f => f.ip)) {
       const sw = managed.find(n => st.l2.attach && [...st.l2.attach].some(([k, list]) => k.startsWith(n.id + '|') && list.some(x => st.find(x.v) === d)));
-      add('J1220', sw ? sw.id : hs[0].node, tl('VLAN {0} ({1}) : {2} poste(s) mais aucune passerelle (ni interface VLAN, ni sous-interface) : ils ne sortent pas de leur VLAN.', vlan, v.name, hs.length));
+      add('J1220', sw ? sw.id : hs[0].node, tl('VLAN {0} ({1}) : {2:# poste|# postes} mais aucune passerelle (ni interface VLAN, ni sous-interface) : ils ne sortent pas de leur VLAN.', vlan, v.name, hs.length));
     }
   }
 
@@ -133,7 +133,7 @@ export function simIssues(lan, data, h) {
       });
     }
   }
-  for (const e of lan.full()) add('J1223', e.node, tl('{0} : l’étendue DHCP {1} est pleine ({2} demande(s) sans adresse).', name(e.node), e.scope, e.n));
+  for (const e of lan.full()) add('J1223', e.node, tl('{0} : l’étendue DHCP {1} est pleine ({2:# demande|# demandes} sans adresse).', name(e.node), e.scope, e.n));
   for (const [v, r] of lan.relays()) {
     if (r.ok) continue;
     const f = st.ifaces.find(x => x.v === v); if (!f) continue;

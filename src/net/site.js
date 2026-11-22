@@ -328,3 +328,27 @@ export function detectRooms(floor, o = {}) {
   }
   return out;
 }
+
+/**
+ * Pôle d'inaccessibilité d'une pièce (point intérieur le plus éloigné de ses murs, trous compris) : [x, y, distance].
+ * Recherche sur grille affinée trois fois (précision ≈ 1/4 000 de la taille de la pièce), mise en cache par pièce.
+ * Sert à placer le nom d'une pièce bien à l'intérieur, même en L ou autour d'une cour.
+ */
+const POLES = new WeakMap();
+export function polePoint(r) {
+  const k = POLES.get(r); if (k && k.poly === r.poly && k.holes === r.holes) return k.p;
+  const rings = [r.poly, ...(r.holes || [])], edge = q => { let d = Infinity; for (const P of rings) for (let i = 0; i < P.length; i++) { const e = project(q, P[i], P[(i + 1) % P.length]).d; if (e < d) d = e; } return d; };
+  let [x0, y0, x1, y1] = bbox(r.poly), best = null;
+  for (let it = 0; it < 3; it++) {
+    const N = 16, cw = (x1 - x0) / N, chh = (y1 - y0) / N;
+    for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+      const q = [x0 + (i + 0.5) * cw, y0 + (j + 0.5) * chh]; if (!inRoom(q, r)) continue;
+      const d = edge(q); if (!best || d > best[2]) best = [q[0], q[1], d];
+    }
+    if (!best) break;
+    x0 = best[0] - cw; x1 = best[0] + cw; y0 = best[1] - chh; y1 = best[1] + chh;
+  }
+  const p = best || [...roomPoint(r), 0];
+  POLES.set(r, { poly: r.poly, holes: r.holes, p });
+  return p;
+}

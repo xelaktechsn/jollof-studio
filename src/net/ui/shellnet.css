@@ -26,6 +26,9 @@
 .ntMbCk .ic { width: 14px; height: 14px; color: var(--accent-hi); }
 .ntMbDot { display: block; width: 7px; height: 7px; border-radius: 50%; background: var(--accent-hi); }
 .ntMbLab { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Commande de l'application de bureau dans la version web : grisée mais ouvrable (elle explique pourquoi). */
+.ntMbDim .ntMbLab, .ntMbDim .ntMbIc .ic { color: var(--muted); }
+.ntMbTag { margin-left: 8px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line-2); font-size: 10.5px; color: var(--muted); }
 .ntMbItem kbd { padding-left: 22px; font: 500 11.5px system-ui, -apple-system, sans-serif; letter-spacing: .03em; color: var(--muted); background: none; border: 0; }
 .ntMbItem kbd:empty { display: none; }
 .ntMbArrow { display: inline-grid; place-items: center; padding-left: 16px; }
@@ -56,10 +59,11 @@
 @media (prefers-reduced-motion: reduce) { .ntFlash { animation: none; outline: 2px solid var(--accent); } }
 
 /* ---------- Mise en page des écrans moyens (≤ 1366 px, 1280 × 720) ---------- */
-/* Inspecteur plus étroit (la bibliothèque garde sa largeur : ses onglets Bibliothèque, Projet, Calques y tiennent) : le
-   plan de travail garde plus de la moitié de la largeur. La largeur choisie
+/* Bibliothèque et inspecteur plus étroits (les onglets Bibliothèque, Projet, Calques passent en icônes) : le plan de
+   travail garde plus de la moitié de la largeur. Bibliothèque repliée par l'utilisateur (Ctrl+B, retenu) : elle le reste. La largeur choisie
    à la poignée de l'inspecteur (--insUser) reste retenue ; Ctrl+B et Ctrl+Alt+B replient l'un ou l'autre. */
 @media (max-width: 1366px) {
+  .app.netMode:not(.libClosed) { --libW: 232px; } /* onglets du panneau de gauche en icônes sous 268 px (ia.js) */
   .app.netMode:not(.wide) { --insDef: 288px; --insW: clamp(256px, var(--insUser, var(--insDef)), 34vw); }
 }
 /* Inspecteur replié (Affichage → Inspecteur, Ctrl+Alt+B ; vue Conception sur un écran moyen) : sa colonne disparaît. */

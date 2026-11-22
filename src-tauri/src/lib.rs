@@ -15,6 +15,7 @@ mod espflash_cmd;
 mod ffmpeg;
 mod files;
 mod modbus;
+mod netbox;
 mod plcopen;
 mod qemu;
 mod render;
@@ -1016,12 +1017,21 @@ pub fn run() {
             cad::cad_read,
             cad::cad_cancel,
             cad::cad_cleanup,
+            cad::cad_export_dwg,
+            cad::cad_save_output,
             files::file_write_begin,
             files::file_write_chunk,
             files::file_write_commit,
             files::file_write_abort,
             files::file_size,
-            files::file_read_chunk
+            files::file_read_chunk,
+            netbox::nb_settings,
+            netbox::nb_configure,
+            netbox::nb_consent,
+            netbox::nb_status,
+            netbox::nb_get,
+            netbox::nb_write,
+            netbox::nb_cancel
         ])
         .build(tauri::generate_context!())
         .expect("Impossible de démarrer Jollof Studio")

@@ -388,7 +388,7 @@ function simLab() {
       text(c, r) {
         if (r.why === 'none') return tl('Équipement introuvable dans le plan : {0}.', c.of);
         if (r.why === 'nolag') return tl('{0} n’a pas d’agrégat de liens.', r.name);
-        if (r.why === 'min') return tl('{0}, agrégat {1} : {2} port(s) actif(s) seulement.', r.name, r.id, r.n);
+        if (r.why === 'min') return tl('{0}, agrégat {1} : {2:# port actif|# ports actifs} seulement.', r.name, r.id, r.n);
         return tl('{0}, agrégat {1} : pas formé ({2}).', r.name, r.id, r.why === 'down' ? tl('aucun port relié') : lagWhyText(r.why));
       }
     },
@@ -410,7 +410,7 @@ function simLab() {
         if (r.why === 'via') return tl('{0} joint {1} par {2}, pas par {3}.', r.name, c.to, r.via, c.via);
         if (r.why === 'kind') return tl('{0} joint {1} par une route {2}, pas {3}.', r.name, c.to, r.kind, c.kind);
         if (r.why === 'inter') return c.inter ? tl('{0} : la route vers {1} devrait venir d’une autre aire OSPF (par un routeur de bordure).', r.name, c.to) : tl('{0} : la route vers {1} devrait rester dans l’aire.', r.name, c.to);
-        if (r.why === 'ecmp') return tl('{0} : {1} chemin(s) vers {2}, il en faut {3} de même coût.', r.name, r.n, c.to, c.ecmp);
+        if (r.why === 'ecmp') return tl('{0} : {1:# chemin|# chemins} vers {2}, il en faut {3} de même coût.', r.name, r.n, c.to, c.ecmp);
         return tl('{0} n’a aucune route vers {1}.', r.name, c.to);
       }
     }
@@ -474,7 +474,7 @@ export function netResultText(c, r) {
       if (r.why === 'none' && !r.name) return tl('Équipement introuvable dans le plan : {0}.', c.of);
       return tl('{0} n’a pas d’adresse du DHCP : {1}.', r.name, SRC_TXT[r.why] ? SRC_TXT[r.why]() : r.why);
     case 'net-poe': return r.name ? tl('{0} n’est pas alimenté : {1}.', r.name, whyText(r.why)) : tl('Équipement introuvable dans le plan : {0}.', c.of);
-    case 'net-ok': return r.why === 'empty' ? tl('Le plan réseau est vide.') : tl('Encore {0} problème(s) : {1}', r.issues.length, r.issues.slice(0, 2).map(i => `${i.code} ${i.text}`).join(' ; '));
+    case 'net-ok': return r.why === 'empty' ? tl('Le plan réseau est vide.') : tl('Encore {0:# problème|# problèmes} : {1}', r.issues.length, r.issues.slice(0, 2).map(i => `${i.code} ${i.text}`).join(' ; '));
     case 'net-ip': return r.name ? tl('{0} : réglez {1} (onglet Réseau de l’inspecteur).', r.name, r.bad.map(k => FIELD_TXT[k] ? FIELD_TXT[k]() : k).join(', ')) : tl('Équipement introuvable dans le plan : {0}.', c.of);
     case 'net-wifi': return r.name ? tl('{0} n’est pas connecté au Wi-Fi ({1}).', r.name, r.why === 'ap' ? tl('mauvais point d’accès') : whyText('wifi:' + r.why)) : tl('Équipement introuvable dans le plan : {0}.', c.of);
     case 'net-http':

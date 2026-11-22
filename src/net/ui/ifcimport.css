@@ -1,0 +1,46 @@
+/* SPDX-License-Identifier: AGPL-3.0-or-later */
+/* Copyright (C) 2026 Mamadou Sarr */
+/* Assistant d'import IFC (ifcimport.js) : ce qui s'ajoute à l'allure de l'assistant DXF/DWG (cadimport.css) — liste des
+   étages, cases des objets à importer, légende de l'aperçu. */
+.ntIfc .ntCiPrevInfo { max-width: calc(100% - 20px); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntIfcList { flex: 1; min-height: 120px; overflow: auto; display: flex; flex-direction: column; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 9px; background: var(--panel-2); }
+.ntIfcRow { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 9px; padding: 7px 9px; border-radius: 7px; cursor: pointer; }
+.ntIfcRow:hover { background: var(--raise); }
+.ntIfcRow.on { background: var(--accent-soft); box-shadow: inset 2px 0 0 var(--accent); }
+.ntIfcRow:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.ntIfcRow input { margin: 0; accent-color: var(--accent); }
+.ntIfcRow div { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.ntIfcRow b { font-size: 12.5px; color: var(--fg); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ntIfcRow span { font-size: 11.5px; color: var(--fg-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.ntIfcWhat { display: flex; flex-direction: column; gap: 4px; }
+.ntIfcOpt { display: grid; grid-template-columns: auto 16px 1fr auto; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 9px; border: 1px solid var(--line-2); font-size: 12.5px; color: var(--fg-2); cursor: pointer; }
+.ntIfcOpt input { margin: 0; accent-color: var(--accent); }
+.ntIfcOpt svg { width: 16px; height: 16px; color: var(--fg-2); }
+.ntIfcOpt span { color: var(--fg); min-width: 0; }
+.ntIfcOpt em { font-style: normal; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.ntIfcOpt.on { border-color: var(--accent); background: var(--accent-soft); }
+.ntIfcOpt:has(input:disabled) { opacity: .55; cursor: default; }
+.ntIfcOpt:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ntIfcOpt:focus-within:not(:has(:focus-visible)) { outline: none; }
+.ntIfcWhat + p { margin-top: 2px; }
+.ntIfcLegend { position: absolute; right: 10px; bottom: 10px; display: flex; flex-wrap: wrap; gap: 4px 12px; padding: 5px 10px; border-radius: 8px; font-size: 11.5px; color: var(--fg-2); max-width: calc(100% - 20px); }
+.ntIfcLegend:empty { display: none; }
+.ntIfcLegend span { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.ntIfcLegend i { display: inline-block; width: 12px; height: 8px; border-radius: 2px; }
+.ntIfcLegend i.sp { background: color-mix(in srgb, var(--accent) 22%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 60%, transparent); }
+.ntIfcLegend i.wl { height: 4px; background: var(--fg); }
+.ntIfcLegend i.dr { height: 3px; background: var(--ok-ink); }
+.ntIfcLegend i.dv { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.ntIfcLegend i.pa { height: 0; border-top: 2px dashed var(--muted); border-radius: 0; }
+.ntIfc .ntCiPrevInfo { bottom: auto; top: 10px; }
+@media (max-width: 1100px) { .ntIfcLegend { display: none; } }
+/* Boîte d'options de l'export IFC (ifcexport.js). */
+.ntCiOv.ntIfxOv .nt-dlg.ntIfx { width: min(560px, 100%); max-height: min(820px, 100%); height: auto; display: flex; flex-direction: column; }
+.ntIfxBody { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 4px; padding: 10px 16px; }
+.ntIfx .ntCiSec h4 .grow { flex: 1; }
+.ntIfx .ntCiSec h4 .btn { height: 24px; padding: 0 8px; font-size: 11.5px; font-weight: 500; }
+.ntIfxFloors { max-height: 180px; flex: none; min-height: 0; }
+.ntIfx .ntIfcRow { cursor: pointer; }
+.ntIfx .ntIfcOpt span { display: flex; flex-direction: column; gap: 1px; }
+.ntIfx .ntIfcOpt small { font-size: 11px; color: var(--muted); }
+.ntIfx .ntCiField .inp { width: 100%; }

@@ -101,8 +101,8 @@ function compute(data) {
     }
   }
   stale += st.orphans.length;
-  if (stale) out.push({ code: 'J1288', id: staleId, text: tl('Rapport de certification périmé : {0} résultat(s) ne correspondent plus au plan (câble, longueur, catégorie ou limite changés, ou lien supprimé). Relancez les tests.', stale) });
-  if (never && hasSite(data)) out.push({ code: 'J1289', id: neverId, text: tl('{0} lien(s) permanent(s) jamais certifié(s) : lancez « Tester tout » (vue Conception, onglet Tests).', never) });
+  if (stale) out.push({ code: 'J1288', id: staleId, text: tl('Rapport de certification périmé : {0:# résultat|# résultats} ne correspondent plus au plan (câble, longueur, catégorie ou limite changés, ou lien supprimé). Relancez les tests.', stale) });
+  if (never && hasSite(data)) out.push({ code: 'J1289', id: neverId, text: tl('{0:# lien permanent jamais certifié|# liens permanents jamais certifiés} : lancez « Tester tout » (vue Conception, onglet Tests).', never) });
   return out;
 }
 
@@ -135,7 +135,7 @@ export const LAB = {
     },
     text(c, r) {
       if (r.why === 'nolink') return c.of ? tl('Aucun lien à certifier ne touche {0}.', c.of) : tl('Aucun lien à certifier dans le plan (un lien permanent relie le dos d’un panneau de brassage au dos d’une prise).');
-      return tl('{0} lien(s) sur {1} ne réussissent pas la certification : {2}.', r.bad.length, r.n, r.bad.slice(0, 3).map(b => `${b.label} (${verdictText(b.verdict)}, ${b.weak})`).join(' ; '));
+      return tl('{0:# lien|# liens} sur {1} ne réussissent pas la certification : {2}.', r.bad.length, r.n, r.bad.slice(0, 3).map(b => `${b.label} (${verdictText(b.verdict)}, ${b.weak})`).join(' ; '));
     }
   }
 };

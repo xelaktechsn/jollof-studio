@@ -38,11 +38,12 @@ export function bindSettings(ctx, el, after) {
     if (after) after(t);
   });
 }
-/** Tableau HTML : cols [{ key | fn, name, num?, cls? }], rows. attrs(row) → attributs de la ligne. */
+/** Tableau HTML : cols [{ key | fn, name, num?, cls?, min? (largeur mini CSS) }], rows. attrs(row) → attributs de la ligne.
+ *  En-têtes sur une ligne (ellipse au-delà de 14em, nom complet en infobulle), jamais coupés au milieu d'un mot. */
 export function table(cols, rows, o = {}) {
   const cell = (c, r) => { const v = typeof c.key === 'function' ? c.key(r) : r[c.key]; return c.html ? v : esc(v); };
   const body = rows.length ? rows.map(r => `<tr${o.attrs ? ' ' + o.attrs(r) : ''}>${cols.map(c => `<td class="${c.num ? 'n' : ''} ${c.cls || ''}">${cell(c, r)}</td>`).join('')}</tr>`).join('') : `<tr><td colspan="${cols.length}" class="ntDsEmpty">${esc(o.empty || tl('Rien à afficher.'))}</td></tr>`;
-  return `<div class="ntDsTblWrap"><table class="ntDsTbl${o.cls ? ' ' + o.cls : ''}"><thead><tr>${cols.map(c => `<th class="${c.num ? 'n' : ''}">${esc(c.name)}</th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
+  return `<div class="ntDsTblWrap"><table class="ntDsTbl${o.cls ? ' ' + o.cls : ''}"><thead><tr>${cols.map(c => `<th class="${c.num ? 'n' : ''}" title="${esc(c.name)}"${c.min ? ` style="min-width:${esc(c.min)}"` : ''}><span class="ntDsTh">${esc(c.name)}</span></th>`).join('')}</tr></thead><tbody>${body}</tbody></table></div>`;
 }
 /** Tuile de chiffre clé. */
 export const kpi = (label, value, o = {}) => `<div class="ntDsKpi${o.warn ? ' warn' : ''}${o.ok ? ' ok' : ''}"><span>${esc(label)}</span><b>${esc(value)}</b>${o.sub ? `<small>${esc(o.sub)}</small>` : ''}</div>`;

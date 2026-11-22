@@ -171,3 +171,7 @@ span.ntLyLock { cursor: default; }
 .ntLib.ntLibNarrow .ntLibTab .ic { display: block; }
 .ntLib.ntLibNarrow .ntLibTab span { display: none; }
 .ntLibTab { display: inline-flex; align-items: center; justify-content: center; }
+/* Fil d'Ariane serré : l'objet seul après « … », lisible en entier ; au besoin, onglets des vues en icônes. */
+.ntCrumbs.m3 .ntCr.last span { max-width: none; }
+.ntViewBar.ntVbTight .ntVTab span { display: none; }
+.ntViewBar.ntVbTight .ntVTab { padding: 0 9px; }

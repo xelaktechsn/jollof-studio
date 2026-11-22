@@ -490,7 +490,7 @@ table{border-collapse:collapse;width:100%;margin:8px 0}th,td{border:1px solid #d
   return `<!doctype html><html lang="${isEn ? 'en' : 'fr'}"><head><meta charset="utf-8"><title>${esc(o.title || tl('Rapport de certification'))}</title><style>${css}</style></head><body>
 <h1>${esc(o.title || tl('Rapport de certification'))}</h1><p class="sub">${esc(o.project || '')}${o.project ? ' · ' : ''}${esc(String(o.at || '').slice(0, 16).replace('T', ' '))}</p>
 <p class="warn">${esc(modelNote())} ${esc(limitsNote())}</p>
-<p><b>${tl('{0} lien(s)', rows.length)}</b> · <span class="ok">PASS ${count('pass')}</span> · <span class="mg">PASS* ${count('pass*')}</span> · <span class="bad">FAIL* ${count('fail*')}</span> · <span class="bad">FAIL ${count('fail')}</span></p>
+<p><b>${tl('{0:# lien|# liens}', rows.length)}</b> · <span class="ok">PASS ${count('pass')}</span> · <span class="mg">PASS* ${count('pass*')}</span> · <span class="bad">FAIL* ${count('fail*')}</span> · <span class="bad">FAIL ${count('fail')}</span></p>
 ${summary}${pages}</body></html>`;
 }
 /** Rapport du mode examen : liens, limites, mesures et courbes, sans verdict ni marge. */
@@ -506,5 +506,5 @@ function reportExam(o) {
   }).join('');
   return `<!doctype html><html lang="${isEn ? 'en' : 'fr'}"><head><meta charset="utf-8"><title>${esc(o.title || tl('Rapport de certification'))}</title><style>${css}</style></head><body>
 <h1>${esc(o.title || tl('Rapport de certification'))}</h1><p class="sub">${esc(o.project || '')}${o.project ? ' · ' : ''}${esc(String(o.at || '').slice(0, 16).replace('T', ' '))}</p>
-<p class="warn">${esc(tl('Mode examen : mesures et limites, sans verdict.'))} ${esc(modelNote())} ${esc(limitsNote())}</p><p><b>${tl('{0} lien(s)', rows.length)}</b></p>${summary}${pages}</body></html>`;
+<p class="warn">${esc(tl('Mode examen : mesures et limites, sans verdict.'))} ${esc(modelNote())} ${esc(limitsNote())}</p><p><b>${tl('{0:# lien|# liens}', rows.length)}</b></p>${summary}${pages}</body></html>`;
 }
