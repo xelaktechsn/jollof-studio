@@ -82,10 +82,7 @@ h1 span { display: block; }
 .heroFig img { width: 100%; }
 .heroFig figcaption { font-size: var(--fs-s); line-height: 1.45; max-width: 500px; margin: 10px 0 0 auto; }
 .heroFig figcaption b { font-weight: 600; }
-.facts { display: grid; grid-template-columns: repeat(6, auto); justify-content: space-between; gap: 0 24px; padding: 56px 0 0; }
-.facts div { display: flex; flex-direction: column-reverse; gap: 4px; }
-.facts dd { font: 600 var(--fs-l)/1 var(--sans); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
-.facts dt { font-size: var(--fs-s); line-height: 1.3; max-width: 12em; }
+.facts { padding: 48px 0 0; max-width: 30em; font: 600 var(--fs-m)/1.35 var(--sans); letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 
 /* Figures */
 .plate { padding: 56px 0 0; }
@@ -212,7 +209,6 @@ h3 { font-size: var(--fs-m); letter-spacing: -0.015em; line-height: 1.2; }
   .trio > .fig:first-child { max-width: 420px; }
   .narrow { margin-top: 0; }
   .sec { padding-top: 80px; }
-  .facts { grid-template-columns: repeat(3, auto); gap: 22px 24px; }
 }
 @media (max-width: 620px) {
   :root { --gut: 16px; }
@@ -235,12 +231,12 @@ h3 { font-size: var(--fs-m); letter-spacing: -0.015em; line-height: 1.2; }
 
 /* ---------- Thème sombre : celui du système, ou celui choisi (bouton de la barre) ---------- */
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { color-scheme: dark; --bg: #0f1114; --bg2: #171a1f; --panel: #171a1f; --panel2: #1f242b; --line: #272c34; --line2: #3a414c;
-    --text: #f3f4f6; --muted: #b9bec6; --dim: #8d939c; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
+  :root:not([data-theme="light"]) { color-scheme: dark; --bg: #000; --bg2: #141414; --panel: #141414; --panel2: #1f1f1f; --line: #262626; --line2: #3d3d3d;
+    --text: #fff; --muted: #bdbdbd; --dim: #8f8f8f; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
   :root:not([data-theme="light"]) .brand .wm, :root:not([data-theme="light"]) .foot img { content: url(assets/img/logo-dark.svg); }
 }
-:root[data-theme="dark"] { color-scheme: dark; --bg: #0f1114; --bg2: #171a1f; --panel: #171a1f; --panel2: #1f242b; --line: #272c34; --line2: #3a414c;
-    --text: #f3f4f6; --muted: #b9bec6; --dim: #8d939c; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
+:root[data-theme="dark"] { color-scheme: dark; --bg: #000; --bg2: #141414; --panel: #141414; --panel2: #1f1f1f; --line: #262626; --line2: #3d3d3d;
+    --text: #fff; --muted: #bdbdbd; --dim: #8f8f8f; --accent: #8ab4ff; --accent2: #a9c8ff; --led: #8ab4ff; --err: #ff9d91; }
 :root[data-theme="dark"] .brand .wm, :root[data-theme="dark"] .foot img { content: url(assets/img/logo-dark.svg); }
 .copy { background: var(--bg); }
 .themeBtn { width: 40px; height: 40px; display: grid; place-items: center; background: none; border: 0; border-radius: var(--r); color: var(--text); cursor: pointer; padding: 0; }
@@ -266,12 +262,8 @@ h3 { font-size: var(--fs-m); letter-spacing: -0.015em; line-height: 1.2; }
   .heroShadow { animation: heroShade 7s ease-in-out 1s infinite; }
   .heroTxt > * { animation: rise .7s cubic-bezier(.2, .7, .2, 1) both; }
   .heroTxt > :nth-child(2) { animation-delay: .08s; } .heroTxt > :nth-child(3) { animation-delay: .16s; } .heroTxt > :nth-child(n+4) { animation-delay: .24s; }
-  .js .rv { opacity: 0; transform: translateY(18px); transition: opacity .6s ease-out, transform .6s cubic-bezier(.2, .7, .2, 1); }
-  .js .rv.in { opacity: 1; transform: none; }
   .js .rv .pin { opacity: 0; transform: scale(.4); transition: opacity .3s, transform .4s cubic-bezier(.3, 1.5, .5, 1); transition-delay: calc(.35s + var(--i, 0) * .09s); }
   .js .rv.in .pin { opacity: 1; transform: none; }
-  .shot img { transition: transform .5s cubic-bezier(.2, .7, .2, 1); }
-  a.shot:hover img, .shot a:hover img { transform: scale(1.012); }
   .btn, .links a.navDl { transition: background-color .15s, transform .15s; }
   .btn:active, .links a.navDl:active { transform: translateY(1px); }
   .nav { transition: box-shadow .2s; }

@@ -88,7 +88,7 @@
   // ---------- Thème : celui du système, sauf choix du visiteur (gardé) ----------
   const root = document.documentElement, themeBtn = document.getElementById('themeBtn'), mq = matchMedia('(prefers-color-scheme: dark)');
   const isDark = () => (root.dataset.theme ? root.dataset.theme === 'dark' : mq.matches);
-  const paintTheme = () => { themeBtn.setAttribute('aria-pressed', String(isDark())); const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = isDark() ? '#0f1114' : '#ffffff'; };
+  const paintTheme = () => { themeBtn.setAttribute('aria-pressed', String(isDark())); const m = document.querySelector('meta[name="theme-color"]'); if (m) m.content = isDark() ? '#000000' : '#ffffff'; };
   themeBtn.addEventListener('click', () => { const t = isDark() ? 'light' : 'dark'; root.dataset.theme = t; try { localStorage.setItem('jollof-site-theme', t); } catch (e) { /* stockage indisponible */ } paintTheme(); });
   mq.addEventListener('change', paintTheme); paintTheme();
 
@@ -104,7 +104,7 @@
 
   // ---------- Apparition des figures (une fois), illustration qui suit le pointeur ----------
   root.classList.add('js');
-  const rv = $$('main figure:not(.heroFig), main table');
+  const rv = $$('main figure:not(.heroFig)').filter(f => f.querySelector('.pin'));
   for (const f of rv) { f.classList.add('rv'); [...f.querySelectorAll('.pin')].forEach((p, i) => p.style.setProperty('--i', i)); }
   if ('IntersectionObserver' in window && !calm.matches) {
     const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });

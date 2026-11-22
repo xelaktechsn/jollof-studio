@@ -18,8 +18,6 @@ window.JOLLOF_EN = {
   'hero.alt': 'Illustration: a child sitting at a desk wires a microcontroller board on a breadboard, with a multimeter, jumper wires and a laptop.',
   'hero.capb': 'Illustration.', 'hero.cap': 'The bench many students do not have: a board, a multimeter, wires, and time to get it wrong.',
 
-  'facts.label': 'Figures', 'facts.parts': 'components', 'facts.boards': 'boards', 'facts.labs': 'guided labs', 'facts.kinds': 'project kinds', 'facts.langs': 'languages, French and English', 'facts.price': 'network products in the catalogue',
-
   'fig1.alt': 'Jollof Studio window: an Arduino Uno, an ultrasonic sensor, an LCD and a buzzer wired in 3D, simulation running, readings on the right and the serial monitor at the bottom.',
   'fig1.no': 'Fig. 1. “Parking radar” example, simulation running',
   'fig1.l1': 'Three views of the same circuit: 3D, schematic, code.',
@@ -183,6 +181,7 @@ window.JOLLOF_EN = {
   'open.c': 'Contribute', 'open.i': 'Report an issue', 'open.help': 'Read the help', 'built.k': 'Built with',
 
   'foot.t': 'A full lab, minus the lab.', 'foot.p': 'Project', 'foot.r': 'Releases', 'foot.i': 'Issues', 'foot.d': 'Documentation', 'foot.help': 'Online help',
-  'foot.readme': 'Readme', 'foot.proven': 'What the checker proves', 'foot.arch': 'Architecture', 'foot.l': 'Licence', 'foot.com': 'Commercial licence', 'foot.third': 'Third-party software', 'theme.label': 'Dark theme',
+  'foot.readme': 'Readme', 'foot.proven': 'What the checker proves', 'foot.arch': 'Architecture', 'foot.l': 'Licence', 'foot.com': 'Commercial licence', 'foot.third': 'Third-party software', 'facts.line': '156 components, 10 boards, 82 guided labs, 7 project kinds. In French and English.',
+  'theme.label': 'Dark theme',
   'foot.top': 'Back to top'
 };
