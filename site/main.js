@@ -120,6 +120,26 @@
     hero.addEventListener('pointerleave', () => { img.style.setProperty('--px', '0px'); img.style.setProperty('--py', '0px'); img.style.setProperty('--rz', '0deg'); });
   }
 
+  // ---------- Types de projet : le nom choisi montre sa capture (clic, survol, flèches) ----------
+  const kinds = $$('.kind'), kImg = document.getElementById('kindImg'), kZoom = document.getElementById('kindZoom'), kPane = document.getElementById('kindPane');
+  const pickKind = (b, focus) => {
+    if (b.getAttribute('aria-selected') === 'true') return;
+    for (const k of kinds) { const on = k === b; k.setAttribute('aria-selected', String(on)); k.tabIndex = on ? 0 : -1; }
+    kImg.dataset.img = kZoom.dataset.zoom = b.dataset.kind; kPane.setAttribute('aria-labelledby', b.id);
+    const src = `assets/img/${b.dataset.kind}-${lang}.webp`; kImg.src = src; kZoom.href = src;
+    kImg.classList.remove('swap'); void kImg.offsetWidth; kImg.classList.add('swap');
+    if (focus) b.focus();
+  };
+  kinds.forEach((b, i) => {
+    b.tabIndex = i ? -1 : 0;
+    b.addEventListener('click', () => pickKind(b));
+    b.addEventListener('pointerenter', e => { if (e.pointerType === 'mouse') pickKind(b); });
+    b.addEventListener('keydown', e => {
+      const d = e.key === 'ArrowDown' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' || e.key === 'ArrowLeft' ? -1 : 0;
+      if (d) { e.preventDefault(); pickKind(kinds[(i + d + kinds.length) % kinds.length], true); }
+    });
+  });
+
   // Menu sur petit écran.
   const menu = document.querySelector('.menu'), links = document.getElementById('links');
   const closeMenu = () => { links.classList.remove('open'); menu.setAttribute('aria-expanded', 'false'); };

@@ -76,6 +76,58 @@
       </div>
     </section>
 
+    <section class="sec kindsSec" id="features">
+      <div class="wrap">
+        <header class="kindsHead">
+          <h2 data-i18n="kinds.h">Sept types de projet</h2>
+          <p class="sub" data-i18n="kinds.sub">Le type choisi décide des plans de travail affichés. Rien d’autre ne s’installe.</p>
+        </header>
+        <div class="kinds">
+          <div class="kindList" role="tablist" aria-label="Types de projet" data-i18n-label="kinds.h">
+            <button type="button" class="kind" role="tab" id="kt-k1" aria-controls="kindPane" aria-selected="true" data-kind="bench">
+              <span class="kindName"><span data-i18n="k1.n">Électronique</span></span>
+              <span class="kindWhat" data-i18n="k1.p">Câbler une carte et ses modules, la programmer par règles, par blocs ou en C++, simuler, téléverser.</span>
+              <span class="kindWs" data-i18n="k1.w">Montage 3D, Schéma, Code</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k2" aria-controls="kindPane" aria-selected="false" data-kind="analog">
+              <span class="kindName"><span data-i18n="k2.n">Analogique</span></span>
+              <span class="kindWhat" data-i18n="k2.p">NE555, amplis, MOSFET, bobines ; générateur et oscilloscope ; formes d’onde calculées par ngspice.</span>
+              <span class="kindWs" data-i18n="k2.w">Montage 3D, Schéma</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k3" aria-controls="kindPane" aria-selected="false" data-kind="pneu">
+              <span class="kindName"><span data-i18n="k3.n">Pneumatique</span></span>
+              <span class="kindWhat" data-i18n="k3.p">Distributeurs, vérins, capteurs ; GRAFCET qui produit le programme ; automate Ladder ; machine animée en 3D.</span>
+              <span class="kindWs" data-i18n="k3.w">Pneumatique, GRAFCET</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k4" aria-controls="kindPane" aria-selected="false" data-kind="epneu">
+              <span class="kindName"><span data-i18n="k4.n">Électropneumatique</span></span>
+              <span class="kindWhat" data-i18n="k4.p">Une carte commande les électrovannes 24 V et lit les capteurs de fin de course. Les deux simulés ensemble.</span>
+              <span class="kindWs" data-i18n="k4.w">Montage 3D, Pneumatique, Code</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k5" aria-controls="kindPane" aria-selected="false" data-kind="logic">
+              <span class="kindName"><span data-i18n="k5.n">Logique</span></span>
+              <span class="kindWhat" data-i18n="k5.p">Portes, bascules, compteurs, mémoires, bus ; table de vérité, chronogramme, Karnaugh.</span>
+              <span class="kindWs" data-i18n="k5.w">Logique</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k6" aria-controls="kindPane" aria-selected="false" data-kind="plan">
+              <span class="kindName"><span data-i18n="k6.n">Réseau</span> <em class="new" data-i18n="new">nouveau</em></span>
+              <span class="kindWhat" data-i18n="k6.p">Câbler et concevoir un réseau de bâtiment : plans, baies, fibre, VLAN, Wi-Fi, tests, livrables.</span>
+              <span class="kindWs" data-i18n="k6.w">Vue logique, Plans, Baies, Conception</span>
+            </button>
+            <button type="button" class="kind" role="tab" id="kt-k7" aria-controls="kindPane" aria-selected="false" data-kind="iot">
+              <span class="kindName"><span data-i18n="k7.n">Objets connectés</span> <em class="new" data-i18n="new">nouveau</em></span>
+              <span class="kindWhat" data-i18n="k7.p">Le montage électronique et le réseau dans le même projet : serveur web, MQTT, Modbus TCP.</span>
+              <span class="kindWs" data-i18n="k7.w">Montage 3D, Code, Réseau</span>
+            </button>
+          </div>
+          <div class="kindPane" id="kindPane" role="tabpanel" aria-labelledby="kt-k1">
+            <a class="zoom shot" id="kindZoom" data-zoom="bench" href="assets/img/bench-fr.webp" aria-label="Agrandir la figure" data-i18n-label="zoom"><img id="kindImg" data-img="bench" src="assets/img/bench-fr.webp" width="1600" height="1000" alt="" loading="lazy"></a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
     <!-- Figure 1 : l'application -->
     <section class="plate">
       <div class="wrap">
@@ -139,28 +191,6 @@
     </section>
 
     <!-- 03 Types de projet -->
-    <section class="sec" id="features">
-      <div class="wrap grid">
-        <header>
-          <h2 data-i18n="kinds.h">Sept types de projet</h2>
-          <p class="sub" data-i18n="kinds.sub">Le type choisi décide des plans de travail affichés. Rien d’autre ne s’installe.</p>
-        </header>
-        <div class="tableWrap" tabindex="0" role="region" aria-label="Types de projet" data-i18n-label="kinds.h">
-          <table class="spec kinds">
-            <thead><tr><th scope="col" data-i18n="kinds.c1">Type</th><th scope="col" data-i18n="kinds.c2">Ce qu’on y fait</th><th scope="col" data-i18n="kinds.c3">Plans de travail</th></tr></thead>
-            <tbody>
-              <tr><th scope="row" data-i18n="k1.n">Électronique</th><td data-i18n="k1.p">Câbler une carte et ses modules, la programmer par règles, par blocs ou en C++, simuler, téléverser.</td><td data-i18n="k1.w">Montage 3D, Schéma, Code</td></tr>
-              <tr><th scope="row" data-i18n="k2.n">Analogique</th><td data-i18n="k2.p">NE555, amplis, MOSFET, bobines ; générateur et oscilloscope ; formes d’onde calculées par ngspice.</td><td data-i18n="k2.w">Montage 3D, Schéma</td></tr>
-              <tr><th scope="row" data-i18n="k3.n">Pneumatique</th><td data-i18n="k3.p">Distributeurs, vérins, capteurs ; GRAFCET qui produit le programme ; automate Ladder ; machine animée en 3D.</td><td data-i18n="k3.w">Pneumatique, GRAFCET</td></tr>
-              <tr><th scope="row" data-i18n="k4.n">Électropneumatique</th><td data-i18n="k4.p">Une carte commande les électrovannes 24 V et lit les capteurs de fin de course. Les deux simulés ensemble.</td><td data-i18n="k4.w">Montage 3D, Pneumatique, Code</td></tr>
-              <tr><th scope="row" data-i18n="k5.n">Logique</th><td data-i18n="k5.p">Portes, bascules, compteurs, mémoires, bus ; table de vérité, chronogramme, Karnaugh.</td><td data-i18n="k5.w">Logique</td></tr>
-              <tr><th scope="row"><span data-i18n="k6.n">Réseau</span> <em class="new" data-i18n="new">nouveau</em></th><td data-i18n="k6.p">Câbler et concevoir un réseau de bâtiment : plans, baies, fibre, VLAN, Wi-Fi, tests, livrables.</td><td data-i18n="k6.w">Vue logique, Plans, Baies, Conception</td></tr>
-              <tr><th scope="row"><span data-i18n="k7.n">Objets connectés</span> <em class="new" data-i18n="new">nouveau</em></th><td data-i18n="k7.p">Le montage électronique et le réseau dans le même projet : serveur web, MQTT, Modbus TCP.</td><td data-i18n="k7.w">Montage 3D, Code, Réseau</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
 
     <!-- 04 Électronique et vérificateur -->
     <section class="sec">

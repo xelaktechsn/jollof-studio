@@ -46,7 +46,6 @@ window.JOLLOF_EN = {
 
   'kinds.h': 'Seven project kinds',
   'kinds.sub': 'The kind you pick decides which workspaces are shown. Nothing else gets installed.',
-  'kinds.c1': 'Kind', 'kinds.c2': 'What you do in it', 'kinds.c3': 'Workspaces',
   'k1.n': 'Electronics', 'k1.p': 'Wire a board and its modules, program it with rules, blocks or C++, simulate, upload.', 'k1.w': '3D circuit, Schematic, Code',
   'k2.n': 'Analog', 'k2.p': 'NE555, op-amps, MOSFETs, inductors; function generator and oscilloscope; waveforms computed by ngspice.', 'k2.w': '3D circuit, Schematic',
   'k3.n': 'Pneumatics', 'k3.p': 'Valves, cylinders, sensors; a GRAFCET that produces the program; a Ladder PLC; a machine animated in 3D.', 'k3.w': 'Pneumatics, GRAFCET',
